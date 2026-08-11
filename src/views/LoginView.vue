@@ -23,6 +23,7 @@
 
 <script>
 import authService from "../services/authService";
+import { setUsuario } from "../services/authState";
 
 export default {
   name: "LoginView",
@@ -43,8 +44,9 @@ export default {
 
       try {
         const response = await authService.login(this.credenciales);
-        console.log("JWT de login:", response.data.token);
-        console.log("Cookie de login:", response.headers["set-cookie"]);
+        const usuario = response?.data?.usuario || null;
+        setUsuario(usuario);
+        console.log("Usuario autenticado:", usuario);
         this.successMessage = "Inicio de sesión exitoso.";
       } catch (error) {
         this.errorMessage =

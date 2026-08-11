@@ -43,6 +43,7 @@
 
 <script>
 import authService from "../services/authService";
+import { setUsuario } from "../services/authState";
 
 export default {
   name: "RegistroView",
@@ -67,7 +68,9 @@ export default {
 
       try {
         const response = await authService.registrar(this.datosUsuario);
-        console.log("JWT de registro:", response.data.token);
+        const usuario = response?.data?.usuario || null;
+        setUsuario(usuario);
+        console.log("Usuario registrado/autenticado:", usuario);
         this.successMessage = "Registro exitoso.";
       } catch (error) {
         this.errorMessage =
