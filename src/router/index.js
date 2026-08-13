@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import LoginView from "../views/LoginView.vue";
 import RegistroView from "../views/RegistroView.vue";
 import HomeView from "../views/HomeView.vue";
+import RecuperarPasswordView from "../views/RecuperarPasswordView.vue";
 
 const routes = [
   {
@@ -23,6 +24,11 @@ const routes = [
     name: "home",
     component: HomeView,
   },
+  {
+    path: "/recuperar-password",
+    name: "recuperar-password",
+    component: RecuperarPasswordView,
+  }
 ];
 
 const router = createRouter({

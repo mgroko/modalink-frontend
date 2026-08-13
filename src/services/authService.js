@@ -8,6 +8,10 @@ const authService = {
   registrar(datosUsuario) {
     return http.post("/auth/registro", datosUsuario);
   },
+
+  recuperarPassword(correo) {
+  return http.post('/auth/recuperar-password', { correo });
+}
 };
 
 export default authService;
