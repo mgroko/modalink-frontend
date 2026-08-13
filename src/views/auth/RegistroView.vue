@@ -60,27 +60,36 @@
           <VaIcon
             :name="isPasswordVisible.value ? 'mso-visibility_off' : 'mso-visibility'"
             class="cursor-pointer"
-            color="secondary"
+            color="grey"
           />
         </template>
       </VaInput>
     </VaValue>
 
     <div class="flex justify-center mt-4">
+      
       <VaButton class="w-full" type="submit">Registrarme</VaButton>
+      
     </div>
 
-    <p v-if="successMessage" class="mt-4 text-green-600 font-semibold text-center">{{ successMessage }}</p>
-    <p v-if="errorMessage" class="mt-4 text-red-600 font-semibold text-center">{{ errorMessage }}</p>
+<!-- alertas nuevas -->
+    <BaseAlert :message="successMessage" type="success" />
+    <BaseAlert :message="errorMessage" type="error" />
   </VaForm>
+
 </template>
 
 <script>
+
 import authService from "../../services/authService";
 import { setUsuario } from "../../services/authState";
+import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
   name: "RegistroView",
+  components: {
+    BaseAlert,
+  },
   data() {
     return {
       datosUsuario: {

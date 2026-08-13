@@ -1,6 +1,11 @@
 import http from "./http";
 
 const authService = {
+
+  obtenerSesion() {
+    return http.get("/auth/me");
+  },
+
   login(credenciales) {
     return http.post("/auth/login", credenciales);
   },

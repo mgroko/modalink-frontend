@@ -28,7 +28,7 @@
           <VaIcon
             :name="isPasswordVisible.value ? 'mso-visibility_off' : 'mso-visibility'"
             class="cursor-pointer"
-            color="secondary"
+            color="grey"
           />
         </template>
       </VaInput>
@@ -43,17 +43,24 @@
       <VaButton class="w-full" type="submit">Ingresar</VaButton>
     </div>
 
-    <p v-if="successMessage" class="mt-4 text-green-600 font-semibold text-center">{{ successMessage }}</p>
-    <p v-if="errorMessage" class="mt-4 text-red-600 font-semibold text-center">{{ errorMessage }}</p>
-  </VaForm>
+    <!-- alertas nuevas -->
+    <BaseAlert :message="successMessage" type="success" />
+    <BaseAlert :message="errorMessage" type="error" />
+
+</VaForm>
+  
 </template>
 
 <script>
 import authService from "../../services/authService";
 import { setUsuario } from "../../services/authState";
+import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
   name: "LoginView",
+  components: {
+    BaseAlert,
+  },
   data() {
     return {
       credenciales: {
