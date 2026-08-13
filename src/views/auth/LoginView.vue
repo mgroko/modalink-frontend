@@ -49,8 +49,8 @@
 </template>
 
 <script>
-import authService from "../services/authService";
-import { setUsuario } from "../services/authState";
+import authService from "../../services/authService";
+import { setUsuario } from "../../services/authState";
 
 export default {
   name: "LoginView",
