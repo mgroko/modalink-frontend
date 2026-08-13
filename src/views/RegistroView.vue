@@ -1,44 +1,78 @@
 <template>
-  <section class="auth-page">
-    <h1>Registro</h1>
+  <VaForm ref="form" @submit.prevent="registrarUsuario" class="auth-page">
+    <h1 class="font-semibold text-4xl mb-4">Registro</h1>
+    <p class="text-base mb-4 leading-5">
+      ¿Ya tienes una cuenta?
+      <RouterLink :to="{ name: 'login' }" class="font-semibold text-primary">Inicia Sesión</RouterLink>
+    </p>
 
-    <form class="auth-form" @submit.prevent="registrarUsuario">
-      <label>
-        Nombre
-        <input v-model="datosUsuario.nombre" type="text" autocomplete="given-name" required />
-      </label>
+    <VaInput
+      v-model="datosUsuario.nombre"
+      :rules="[reglas.requerido]"
+      class="mb-4"
+      label="Nombre"
+      type="text"
+    />
 
-      <label>
-        Apellido
-        <input v-model="datosUsuario.apellido" type="text" autocomplete="family-name" required />
-      </label>
+    <VaInput
+      v-model="datosUsuario.apellido"
+      :rules="[reglas.requerido]"
+      class="mb-4"
+      label="Apellido"
+      type="text"
+    />
 
-      <label>
-        DNI
-        <input v-model="datosUsuario.dni" type="text" required />
-      </label>
+    <VaInput
+      v-model="datosUsuario.dni"
+      :rules="[reglas.requerido]"
+      class="mb-4"
+      label="DNI"
+      type="text"
+    />
 
-      <label>
-        Fecha de nacimiento
-        <input v-model="datosUsuario.fechaNacimiento" type="date" required />
-      </label>
+    <VaInput
+      v-model="datosUsuario.fechaNacimiento"
+      :rules="[reglas.requerido]"
+      class="mb-4"
+      label="Fecha de nacimiento"
+      type="date"
+    />
 
-      <label>
-        Correo
-        <input v-model="datosUsuario.correo" type="email" autocomplete="email" required />
-      </label>
+    <VaInput
+      v-model="datosUsuario.correo"
+      :rules="[reglas.requerido, reglas.email]"
+      class="mb-4"
+      label="Correo"
+      type="email"
+    />
 
-      <label>
-        Contraseña
-        <input v-model="datosUsuario.password" type="password" autocomplete="new-password" required />
-      </label>
+    <VaValue v-slot="isPasswordVisible" :default-value="false">
+      <VaInput
+        v-model="datosUsuario.password"
+        :rules="reglas.password"
+        :type="isPasswordVisible.value ? 'text' : 'password'"
+        class="mb-4"
+        label="Contraseña"
+        messages="La contraseña debe tener al menos 8 caracteres."
+        @clickAppendInner.stop="isPasswordVisible.value = !isPasswordVisible.value"
+      >
+        <template #appendInner>
+          <VaIcon
+            :name="isPasswordVisible.value ? 'mso-visibility_off' : 'mso-visibility'"
+            class="cursor-pointer"
+            color="secondary"
+          />
+        </template>
+      </VaInput>
+    </VaValue>
 
-      <button type="submit">Registrarme</button>
-    </form>
+    <div class="flex justify-center mt-4">
+      <VaButton class="w-full" type="submit">Registrarme</VaButton>
+    </div>
 
-    <p v-if="successMessage" class="success-message">{{ successMessage }}</p>
-    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-  </section>
+    <p v-if="successMessage" class="mt-4 text-green-600 font-semibold text-center">{{ successMessage }}</p>
+    <p v-if="errorMessage" class="mt-4 text-red-600 font-semibold text-center">{{ errorMessage }}</p>
+  </VaForm>
 </template>
 
 <script>
@@ -59,10 +93,22 @@ export default {
       },
       successMessage: "",
       errorMessage: "",
+      reglas: {
+        requerido: (v) => !!v || 'Este campo es requerido',
+        email: (v) => /.+@.+\..+/.test(v) || 'El correo debe ser válido',
+        password: [
+          (v) => !!v || 'La contraseña es requerida',
+          (v) => (v && v.length >= 8) || 'Debe tener al menos 8 caracteres'
+        ]
+      }
     };
   },
   methods: {
     async registrarUsuario() {
+      // Disparamos las validaciones de Vuestic
+      const isValid = this.$refs.form.validate();
+      if (!isValid) return;
+
       this.successMessage = "";
       this.errorMessage = "";
 
@@ -72,6 +118,7 @@ export default {
         setUsuario(usuario);
         console.log("Usuario registrado/autenticado:", usuario);
         this.successMessage = "Registro exitoso.";
+        // this.$router.push({ name: 'dashboard' })
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message || "No se pudo completar el registro. Verificá los datos ingresados.";
@@ -83,30 +130,7 @@ export default {
 
 <style scoped>
 .auth-page {
-  max-width: 360px;
-}
-
-.auth-form {
-  display: grid;
-  gap: 12px;
-}
-
-.auth-form label {
-  display: grid;
-  gap: 6px;
-}
-
-.auth-form input,
-.auth-form button {
-  font: inherit;
-  padding: 10px 12px;
-}
-
-.success-message {
-  color: #176f2c;
-}
-
-.error-message {
-  color: #b42318;
+  max-width: 400px;
+  margin: 0 auto;
 }
 </style>
