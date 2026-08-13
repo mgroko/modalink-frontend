@@ -1,14 +1,7 @@
 <template>
-  <div class="app-shell">
-    <nav class="nav">
-      <router-link to="/login">Login</router-link>
-      <router-link to="/home">Home</router-link>
-    </nav>
-
-    <main>
-      <router-view />
-    </main>
-  </div>
+  <component :is="$route.meta.layout || 'div'">
+    <RouterView />
+  </component>
 </template>
 
 <script>
@@ -20,16 +13,7 @@ export default {
 <style>
 body {
   margin: 0;
+  padding: 0;
   font-family: Arial, sans-serif;
-}
-
-.app-shell {
-  padding: 16px;
-}
-
-.nav {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
 }
 </style>

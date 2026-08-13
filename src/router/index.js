@@ -1,8 +1,11 @@
 import { createRouter, createWebHistory } from "vue-router";
-import LoginView from "../views/LoginView.vue";
-import RegistroView from "../views/RegistroView.vue";
+
+import AuthLayout from "../components/AuthLayout.vue";
+
+import LoginView from "../views/auth/LoginView.vue";
+import RegistroView from "../views/auth/RegistroView.vue";
 import HomeView from "../views/HomeView.vue";
-import RecuperarPasswordView from "../views/RecuperarPasswordView.vue";
+import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 
 const routes = [
   {
@@ -13,11 +16,13 @@ const routes = [
     path: "/login",
     name: "login",
     component: LoginView,
+    meta: { layout: AuthLayout }
   },
   {
     path: "/registro",
     name: "registro",
     component: RegistroView,
+    meta: { layout: AuthLayout }
   },
   {
     path: "/home",
@@ -28,6 +33,7 @@ const routes = [
     path: "/recuperar-password",
     name: "recuperar-password",
     component: RecuperarPasswordView,
+    meta: { layout: AuthLayout }
   }
 ];
 
