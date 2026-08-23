@@ -1,26 +1,24 @@
 <template>
   <VaForm ref="form" @submit.prevent="registrarUsuario" class="auth-page">
-    <h1 class="font-semibold text-4xl mb-4">Registro</h1>
-    <p class="text-base mb-4 leading-5">
-      ¿Ya tienes una cuenta?
-      <RouterLink :to="{ name: 'login' }" class="font-semibold text-primary">Inicia Sesión</RouterLink>
-    </p>
+  <h1 class="text-5xl mb-8 text-center tracking-wide" style="font-weight: 300;">Registro</h1>   
 
-    <VaInput
-      v-model="datosUsuario.nombre"
-      :rules="[reglas.requerido]"
-      class="mb-4"
-      label="Nombre"
-      type="text"
-    />
 
-    <VaInput
-      v-model="datosUsuario.apellido"
-      :rules="[reglas.requerido]"
-      class="mb-4"
-      label="Apellido"
-      type="text"
-    />
+    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+      <VaInput
+        v-model="datosUsuario.nombre"
+        :rules="[reglas.requerido]"
+        class="flex-1"
+        label="Nombre"
+        type="text"
+      />
+      <VaInput
+        v-model="datosUsuario.apellido"
+        :rules="[reglas.requerido]"
+        class="flex-1"
+        label="Apellido"
+        type="text"
+      />
+    </div>
 
     <VaInput
       v-model="datosUsuario.dni"
@@ -36,6 +34,16 @@
       class="mb-4"
       label="Fecha de nacimiento"
       type="date"
+    />
+
+    <VaSelect
+      v-model="datosUsuario.genero"
+      :options="opcionesGenero"
+      value-by="value"
+      text-by="text"
+      :rules="[reglas.requerido]"
+      class="mb-4 w-full"
+      label="Género con el que te identificas"
     />
 
     <VaInput
@@ -66,11 +74,14 @@
       </VaInput>
     </VaValue>
 
-    <div class="flex justify-center mt-4">
-      
-      <VaButton class="w-full" type="submit">Registrarme</VaButton>
-      
+    <div class="flex justify-center mb-6">
+      <VaButton class="w-2/3" type="submit" size="large">Registrarme</VaButton>
     </div>
+
+<p class="text-base mb-4 leading-5">
+      ¿Ya tienes una cuenta?
+      <RouterLink :to="{ name: 'login' }" class="font-semibold text-primary">Inicia Sesión</RouterLink>
+    </p>
 
 <!-- alertas nuevas -->
     <BaseAlert :message="successMessage" type="success" />
@@ -97,9 +108,16 @@ export default {
         apellido: "",
         dni: "",
         fechaNacimiento: "",
+        genero: "",
         correo: "",
         password: "",
       },
+      opcionesGenero: [
+        { text: "Mujer", value: "mujer" },
+        { text: "Hombre", value: "hombre" },
+        { text: "No binario", value: "no_binario" },
+        { text: "Prefiero no decirlo", value: "no_decirlo" }
+      ],
       successMessage: "",
       errorMessage: "",
       reglas: {
