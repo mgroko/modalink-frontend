@@ -11,6 +11,8 @@
     <VaInput v-model="datosUsuario.dni" :rules="[reglas.requerido]" label="DNI" type="text" />
     <VaInput v-model="datosUsuario.fechaNacimiento" :rules="[reglas.requerido]" label="Fecha de nacimiento" type="date" />
     <VaSelect v-model="datosUsuario.genero" :options="opcionesGenero" value-by="value" text-by="text" :rules="[reglas.requerido]" class="w-full" label="Género con el que te identificas" />
+    
+    
     <VaInput v-model="datosUsuario.correo" :rules="[reglas.requerido, reglas.email]" label="Correo" type="email" />
 
     <VaValue v-slot="isPasswordVisible" :default-value="false">
@@ -31,8 +33,8 @@
 
   <VaButton type="submit" size="medium" class="auth-button">Registrarme</VaButton>
 
-  <p class="auth-page__footer">
-    ¿Ya tienes una cuenta?
+  <p class="auth-page__footer" color="gray-700">
+    ¿Ya tenés una cuenta?
     <RouterLink :to="{ name: 'login' }" class="font-semibold text-primary">Inicia Sesión</RouterLink>
   </p>
 
@@ -111,6 +113,7 @@ export default {
 .auth-page {
   width: 100%;
   max-width: 400px;
+  margin: 0 auto;
 }
 
 .auth-page h1 {
@@ -123,7 +126,6 @@ export default {
   letter-spacing: 2px;
   margin: 0 0 1.25rem 0;
 }
-
 .auth-page__fields {
   display: flex;
   flex-direction: column;
@@ -141,6 +143,13 @@ export default {
   min-height: 40px;
 }
 
+.auth-button {
+  width: 180px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
 
 
 </style>

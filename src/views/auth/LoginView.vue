@@ -1,11 +1,8 @@
 <template>
   <VaForm ref="form" @submit.prevent="iniciarSesion" class="auth-page">
-    <h1 class="font-semibold text-4xl mb-4">Iniciar Sesión</h1>
-    <p class="text-base mb-4 leading-5">
-      ¿Nuevo en ModaLink?
-      <RouterLink :to="{ name: 'registro' }" class="font-semibold text-primary">Regístrate</RouterLink>
-    </p>
-
+    <h1 class="font-semibold text-4xl mb-3">Iniciar Sesión</h1>
+    
+    
     <VaInput
       v-model="credenciales.correo"
       :rules="[reglas.requerido, reglas.email]"
@@ -14,13 +11,12 @@
       type="email"
     />
 
-    <!-- VaValue nos permite manejar el estado de visibilidad del password en el template sin usar refs -->
     <VaValue v-slot="isPasswordVisible" :default-value="false">
       <VaInput
         v-model="credenciales.password"
         :rules="[reglas.requerido]"
         :type="isPasswordVisible.value ? 'text' : 'password'"
-        class="mb-4"
+        class="mb-1"
         label="Contraseña"
         @clickAppendInner.stop="isPasswordVisible.value = !isPasswordVisible.value"
       >
@@ -34,16 +30,18 @@
       </VaInput>
     </VaValue>
 
-    <p class="text-sm mb-4 text-right">
-      <RouterLink :to="{ name: 'recuperar-password' }" class="text-primary">¿Olvidaste tu contraseña?</RouterLink>
+    <p class="text-xs mb-4 text-left">
+      <RouterLink :to="{ name: 'recuperar-password' }" class="link-recuperar">Olvidé mi contraseña</RouterLink>
     </p>
 
+   <VaButton type="submit" size="medium" class="auth-button">Iniciar sesión</VaButton>
 
-    <div class="flex justify-center mt-4">
-      <VaButton class="w-full" type="submit">Ingresar</VaButton>
-    </div>
+    <p class="text-base mb-4 leading-9 text-center" color="gray-700">
+      ¿Nuevo en ModaLink?
+      <RouterLink :to="{ name: 'registro' }" class="font-semibold text-primary">Regístrate</RouterLink>
+    </p>
 
-    <!-- alertas nuevas -->
+    <!-- alertas -->
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
@@ -105,4 +103,37 @@ export default {
   max-width: 400px;
   margin: 0 auto;
 }
+
+
+.auth-page h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #FF512F 0%, #b865a4 50%, #240b36 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  margin: 0 0 1.25rem 0;
+}
+
+.auth-button {
+  width: 180px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.link-recuperar {
+  font-size: 12px; 
+  color: #6a7385; 
+  text-decoration: none; 
+  transition: color 0.2s ease; 
+}
+
+.link-recuperar:hover {
+  color: #374151; 
+  text-decoration: underline;
+}
+
 </style>

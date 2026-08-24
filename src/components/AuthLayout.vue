@@ -35,15 +35,15 @@ export default {
 
 .auth-layout__brand-text {
   color: #fff;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 2rem;
+  font-weight: 750;
+  letter-spacing: 0.20em;
 }
 
 .auth-layout__content {
   flex: 1;
   display: flex;
-  align-items: flex-start;  
+  align-items: center;  
   justify-content: center;
   padding: 2.5rem 1.5rem;    
 }
@@ -64,4 +64,6 @@ export default {
     padding: 1.5rem;
   }
 }
+
+
 </style>
