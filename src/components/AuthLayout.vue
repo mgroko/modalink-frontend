@@ -5,7 +5,7 @@
     </RouterLink>
 
     <main class="auth-layout__content">
-      <RouterView />
+      <slot />
     </main>
   </div>
 </template>
@@ -43,9 +43,9 @@ export default {
 .auth-layout__content {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;  
   justify-content: center;
-  padding: 2rem;
+  padding: 2.5rem 1.5rem;    
 }
 
 @media (max-width: 1024px) {

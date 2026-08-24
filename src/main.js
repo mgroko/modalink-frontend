@@ -5,6 +5,8 @@ import router from "./router";
 // import de vuestic-ui
 import { createVuestic } from "vuestic-ui";
 import "vuestic-ui/css";
+import "./style.css";
+import "./styles/vuestic-overrides.css";    
 import iconsConfig from "./services/vuestic-ui/icons-config";
 
 const app = createApp(App);
