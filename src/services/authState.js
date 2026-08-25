@@ -42,4 +42,10 @@ function marcarSesionRestaurada(usuario) {
   restauracionEnCurso = null;
 }
 
-export { state, setUsuario, clearUsuario, esAdmin, restaurarSesion, marcarSesionRestaurada };
+function limpiarSesion() {
+  clearUsuario();
+  sesionRestaurada = false;
+  restauracionEnCurso = null;
+}
+
+export { state, setUsuario, clearUsuario, esAdmin, restaurarSesion, marcarSesionRestaurada, limpiarSesion };

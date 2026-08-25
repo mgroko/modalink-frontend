@@ -1,14 +1,36 @@
 <template>
   <div class="admin-layout">
     <header class="admin-layout__header">
-      <RouterLink to="/home" class="admin-layout__brand">ModaLink</RouterLink>
+      <RouterLink to="/admin/gestion-usuarios" class="admin-layout__brand">ModaLink</RouterLink>
 
       <nav class="admin-layout__nav">
         <RouterLink to="/home" class="admin-layout__link">Inicio</RouterLink>
-        <VaChip v-if="usuario" outline size="small" color="primary">
-          <VaIcon name="mso-admin_panel_settings" size="small" class="mr-1" />
-          {{ usuario.nombre || usuario.correo }}
-        </VaChip>
+
+        <VaDropdown v-if="usuario" placement="bottom-end">
+          <template #anchor>
+            <VaButton preset="secondary" size="small" icon="mso-admin_panel_settings">
+              {{ usuario.nombre || usuario.correo }}
+            </VaButton>
+          </template>
+
+          <VaDropdownContent class="admin-dropdown">
+            <VaMenuItem
+              icon="mso-people"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'gestion-usuarios' })"
+            >
+              Gestión de usuarios
+            </VaMenuItem>
+            
+            <VaMenuItem
+              icon="mso-logout"
+              class="admin-dropdown__item text-danger"
+              @click="cerrarSesion"
+            >
+              Cerrar sesión
+            </VaMenuItem>
+          </VaDropdownContent>
+        </VaDropdown>
       </nav>
     </header>
 
@@ -19,13 +41,26 @@
 </template>
 
 <script>
-import { state } from "../services/authState";
+import authService from "../services/authService";
+import { state, limpiarSesion } from "../services/authState";
 
 export default {
   name: "AdminLayout",
   computed: {
     usuario() {
       return state.usuario;
+    },
+  },
+  methods: {
+    async cerrarSesion() {
+      try {
+        await authService.cerrarSesion();
+      } catch {
+        // ignore
+      } finally {
+        limpiarSesion();
+        this.$router.push({ name: "login" });
+      }
     },
   },
 };
@@ -83,4 +118,25 @@ export default {
   flex: 1;
   padding: 2.5rem 1.5rem;
 }
+
+.admin-dropdown {
+  min-width: 180px;      
+  max-width: 190px;     
+  padding: 0.5rem 0;     
+  border-radius: 8px;   
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+}
+
+.admin-dropdown__item {
+  color: rgb(56, 56, 56);
+  font-size: 0.8rem;     
+  padding: 0.5rem 1.25rem; 
+}
+
+
+.text-danger {
+  color: #d90429 !important;
+}
+
+
 </style>

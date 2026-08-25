@@ -16,7 +16,11 @@ const authService = {
 
   recuperarPassword(correo) {
   return http.post('/auth/recuperar-password', { correo });
-}
+  },
+
+  cerrarSesion() {
+    return http.post("/auth/logout");
+  }
 };
 
 export default authService;
