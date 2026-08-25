@@ -51,7 +51,7 @@
 
 <script>
 import authService from "../../services/authService";
-import { setUsuario } from "../../services/authState";
+import { marcarSesionRestaurada } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
@@ -75,7 +75,6 @@ export default {
   },
   methods: {
     async iniciarSesion() {
-      // Disparamos las validaciones de Vuestic
       const isValid = this.$refs.form.validate();
       if (!isValid) return;
 
@@ -85,10 +84,14 @@ export default {
       try {
         const response = await authService.login(this.credenciales);
         const usuario = response?.data?.usuario || null;
-        setUsuario(usuario);
-        console.log("Usuario autenticado:", usuario);
+        marcarSesionRestaurada(usuario);
         this.successMessage = "Inicio de sesión exitoso.";
-        // si uso vue-router, agregar: this.$router.push({ name: 'dashboard' })
+
+        if (usuario?.rolGlobal === "Administrador") {
+          this.$router.push({ name: "gestion-usuarios" });
+        } else {
+          this.$router.push({ name: "home" });
+        }
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message || "No se pudo iniciar sesión. Verificá los datos ingresados.";
