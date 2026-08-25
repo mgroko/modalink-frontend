@@ -88,7 +88,7 @@ export default {
         setUsuario(usuario);
         console.log("Usuario autenticado:", usuario);
         this.successMessage = "Inicio de sesión exitoso.";
-        // Si usás vue-router, podés agregar: this.$router.push({ name: 'dashboard' })
+        // si uso vue-router, agregar: this.$router.push({ name: 'dashboard' })
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message || "No se pudo iniciar sesión. Verificá los datos ingresados.";
