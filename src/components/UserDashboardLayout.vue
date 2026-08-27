@@ -116,11 +116,11 @@ export default {
     async confirmarBaja() {
       try {
         await usuarioService.solicitarBaja();
-      } catch {
-        // ignore
-      } finally {
         limpiarSesion();
         this.$router.push({ name: "login" });
+      } catch (error) {
+        const mensaje = error.response?.data?.message || "Error al solicitar la baja. Intentá nuevamente.";
+        alert(mensaje);
       }
     },
     async cerrarSesion() {
