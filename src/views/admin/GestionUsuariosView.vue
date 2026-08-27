@@ -69,27 +69,29 @@
             Ver perfil
           </VaButton>
 
-          <VaButton
-            v-if="rowData.estado === 'Activo'"
-            size="small"
-            color="danger"
-            icon="mso-block"
-            :loading="estaProcesando(rowData)"
-            @click="solicitarDeshabilitar(rowData)"
-          >
-            Deshabilitar
-          </VaButton>
+          <template v-if="obtenerId(rowData) !== idAdmin">
+            <VaButton
+              v-if="rowData.estado === 'Activo'"
+              size="small"
+              color="danger"
+              icon="mso-block"
+              :loading="estaProcesando(rowData)"
+              @click="solicitarDeshabilitar(rowData)"
+            >
+              Deshabilitar
+            </VaButton>
 
-          <VaButton
-            v-else-if="rowData.estado === 'Deshabilitado'"
-            size="small"
-            color="success"
-            icon="mso-check_circle"
-            :loading="estaProcesando(rowData)"
-            @click="habilitar(rowData)"
-          >
-            Habilitar
-          </VaButton>
+            <VaButton
+              v-else-if="rowData.estado === 'Deshabilitado'"
+              size="small"
+              color="success"
+              icon="mso-check_circle"
+              :loading="estaProcesando(rowData)"
+              @click="habilitar(rowData)"
+            >
+              Habilitar
+            </VaButton>
+          </template>
         </div>
       </template>
     </VaDataTable>
@@ -334,14 +336,26 @@ export default {
     };
   },
   computed: {
+    idAdmin() {
+      return this.obtenerId(state.usuario);
+    },
     usuariosFiltrados() {
       const texto = this.busqueda.trim().toLowerCase();
-      if (!texto) return this.usuarios;
-      return this.usuarios.filter((usuario) =>
-        [usuario.nombre, usuario.apellido, usuario.correo].some((campo) =>
-          String(campo || "").toLowerCase().includes(texto)
-        )
-      );
+      let lista = this.usuarios;
+      if (texto) {
+        lista = lista.filter((usuario) =>
+          [usuario.nombre, usuario.apellido, usuario.correo].some((campo) =>
+            String(campo || "").toLowerCase().includes(texto)
+          )
+        );
+      }
+      return [...lista].sort((a, b) => {
+        const aEsAdmin = this.obtenerId(a) === this.idAdmin;
+        const bEsAdmin = this.obtenerId(b) === this.idAdmin;
+        if (aEsAdmin && !bEsAdmin) return -1;
+        if (!aEsAdmin && bEsAdmin) return 1;
+        return 0;
+      });
     },
   },
   async mounted() {

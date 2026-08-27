@@ -90,7 +90,7 @@ export default {
         if (usuario?.rolGlobal === "Administrador") {
           this.$router.push({ name: "gestion-usuarios" });
         } else {
-          this.$router.push({ name: "home" });
+          this.$router.push({ name: "dashboard-usuario" });
         }
       } catch (error) {
         this.errorMessage =

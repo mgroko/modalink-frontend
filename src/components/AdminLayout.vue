@@ -4,7 +4,7 @@
       <RouterLink to="/admin/gestion-usuarios" class="admin-layout__brand">ModaLink</RouterLink>
 
       <nav class="admin-layout__nav">
-        <RouterLink to="/home" class="admin-layout__link">Inicio</RouterLink>
+        <RouterLink to="/admin/dashboard" class="admin-layout__link">Inicio</RouterLink>
 
         <VaDropdown v-if="usuario" placement="bottom-end">
           <template #anchor>
