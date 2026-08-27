@@ -169,7 +169,7 @@ export default {
 
 <style scoped>
 .dashboard-usuario {
-  max-width: 1100px;
+  width: 100%;
 }
 
 /* Tabs */

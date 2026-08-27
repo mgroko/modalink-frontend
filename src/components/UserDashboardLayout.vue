@@ -21,7 +21,7 @@
           <button class="sidebar__action" @click="$router.push({ name: 'modificar-datos' })">
             Modificar datos personales
           </button>
-          <button class="sidebar__action">
+          <button class="sidebar__action" @click="modalBajaVisible = true">
             Solicitar baja del sistema
           </button>
         </div>
@@ -36,28 +36,58 @@
     <div class="dashboard-main">
       <header class="dashboard-main__header">
         <div>
-          <h1 class="dashboard-main__title">MODALINK DASHBOARD</h1>
+          <h1 class="dashboard-main__title">DASHBOARD</h1>
           <span class="dashboard-main__subtitle">{{ titulo }}</span>
         </div>
-        <div class="dashboard-main__header-actions">
-          <button class="dashboard-main__icon-btn">
-            <span class="material-symbols-outlined">add_circle</span>
-          </button>
-          <button class="dashboard-main__icon-btn">
-            <span class="material-symbols-outlined">more_horiz</span>
-          </button>
-        </div>
+        <h1 class="modalink-main__title">ModaLink</h1>
       </header>
 
       <main class="dashboard-main__content">
         <slot />
       </main>
     </div>
+
+   <VaModal
+  v-model="modalBajaVisible"
+  hide-default-actions
+  blur
+>
+  <h3 class="va-h5">¿Solicitar baja del sistema?</h3>
+  <p class="mt-3">
+   Tenés <strong>30 días</strong> para volver a activar tu cuenta. Durante ese periodo, tus perfiles no serán visibles para otros usuarios.
+  </p>
+  <p class="mt-3">
+    Pasados los 30 días, tu cuenta se eliminará permanentemente del sistema.
+  </p>
+  <p class="mt-3">
+    Para reactivar tu cuenta, solo necesitás iniciar sesión nuevamente.
+  </p>
+
+  <template #footer>
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; width: 100%; margin-top: 1rem;">
+      <VaButton 
+        preset="secondary" 
+        color="#b865a4" 
+        @click="modalBajaVisible = false"
+      >
+        Cancelar
+      </VaButton>
+      <VaButton 
+        color="danger" 
+        @click="confirmarBaja"
+      >
+        Solicitar baja
+      </VaButton>
+    </div>
+  </template>
+</VaModal>
+
   </div>
 </template>
 
 <script>
 import authService from "../services/authService";
+import usuarioService from "../services/usuarioService";
 import { state, limpiarSesion } from "../services/authState";
 
 export default {
@@ -67,6 +97,11 @@ export default {
       type: String,
       default: "Perfiles",
     },
+  },
+  data() {
+    return {
+      modalBajaVisible: false,
+    };
   },
   computed: {
     usuario() {
@@ -78,6 +113,16 @@ export default {
     },
   },
   methods: {
+    async confirmarBaja() {
+      try {
+        await usuarioService.solicitarBaja();
+      } catch {
+        // ignore
+      } finally {
+        limpiarSesion();
+        this.$router.push({ name: "login" });
+      }
+    },
     async cerrarSesion() {
       try {
         await authService.cerrarSesion();
@@ -164,10 +209,11 @@ export default {
 
 /* Notificaciones */
 .sidebar__notifications {
+  
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin: 0 1.25rem;
+  margin: 0.5rem 1.25rem;
   padding: 0.5rem 0.7rem;
   background: #f0f4ff;
   border: none;
@@ -204,15 +250,15 @@ export default {
 
 /* Sección acciones */
 .sidebar__section {
-  margin-top: 1.25rem;
+  margin-top: 0.5rem;
   padding: 0 1.25rem;
 }
 
 .sidebar__section-title {
   display: block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #9ca3af;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: #7d22be;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
@@ -233,6 +279,19 @@ export default {
 .sidebar__action:hover {
   color: #b865a4;
   text-decoration: underline;
+}
+
+/*Modalink*/
+.modalink-main__title{
+font-size: 1.5rem;
+  font-weight: 750;
+  letter-spacing: 0.15em;
+  text-decoration: none;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #ff512f 0%, #b865a4 50%, #240b36 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Logout */

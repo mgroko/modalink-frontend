@@ -7,6 +7,7 @@ import UserDashboardLayout from "../components/UserDashboardLayout.vue";
 import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
 import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
+import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
@@ -33,6 +34,12 @@ const routes = [
     path: "/dashboard-usuario",
     name: "dashboard-usuario",
     component: DashboardUsuarioView,
+    meta: { layout: UserDashboardLayout },
+  },
+  {
+    path: "/dashboard-usuario/modificar-datos",
+    name: "modificar-datos",
+    component: ModificarDatosView,
     meta: { layout: UserDashboardLayout },
   },
   {

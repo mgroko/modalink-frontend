@@ -45,13 +45,30 @@
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
+    <VaModal
+      v-model="modalReactivarVisible"
+      ok-text="Reactivar cuenta"
+      cancel-text="Cerrar sesión"
+      blur
+      @ok="reactivarCuenta"
+      @cancel="cerrarSesion"
+    >
+      <h3 class="va-h5">Tu cuenta está pendiente de baja</h3>
+      <p class="mt-2">
+        Tu cuenta está programada para ser eliminada en los próximos 30 días. Si reactivas tu cuenta, se cancelará la solicitud de baja y todo volverá a la normalidad.
+      </p>
+      <p class="mt-2">
+        Si preferís no continuar, podés cerrar sesión.
+      </p>
+    </VaModal>
 </VaForm>
   
 </template>
 
 <script>
 import authService from "../../services/authService";
-import { marcarSesionRestaurada } from "../../services/authState";
+import usuarioService from "../../services/usuarioService";
+import { marcarSesionRestaurada, limpiarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
@@ -67,6 +84,7 @@ export default {
       },
       successMessage: "",
       errorMessage: "",
+      modalReactivarVisible: false,
       reglas: {
         requerido: (v) => !!v || 'Este campo es requerido',
         email: (v) => /.+@.+\..+/.test(v) || 'El correo debe ser válido',
@@ -85,6 +103,12 @@ export default {
         const response = await authService.login(this.credenciales);
         const usuario = response?.data?.usuario || null;
         marcarSesionRestaurada(usuario);
+
+        if (usuario?.estado === 'PendienteBaja') {
+          this.modalReactivarVisible = true;
+          return;
+        }
+
         this.successMessage = "Inicio de sesión exitoso.";
 
         if (usuario?.rolGlobal === "Administrador") {
@@ -96,6 +120,22 @@ export default {
         this.errorMessage =
           error?.response?.data?.message || "No se pudo iniciar sesión. Verificá los datos ingresados.";
       }
+    },
+    async reactivarCuenta() {
+      try {
+        await usuarioService.reactivarCuenta();
+        this.modalReactivarVisible = false;
+        this.$router.push({ name: "dashboard-usuario" });
+      } catch (error) {
+        this.modalReactivarVisible = false;
+        this.errorMessage =
+          error?.response?.data?.message || "No se pudo reactivar la cuenta.";
+      }
+    },
+    async cerrarSesion() {
+      this.modalReactivarVisible = false;
+      limpiarSesion();
+      this.$router.push({ name: "login" });
     },
   },
 };
