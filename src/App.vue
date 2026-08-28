@@ -1,35 +1,22 @@
 <template>
-  <div class="app-shell">
-    <nav class="nav">
-      <router-link to="/login">Login</router-link>
-      <router-link to="/home">Home</router-link>
-    </nav>
-
-    <main>
-      <router-view />
-    </main>
-  </div>
+  <component :is="$route.meta.layout || 'div'">
+    <RouterView />
+  </component>
 </template>
 
 <script>
+import { restaurarSesion } from "./services/authState";
+
 export default {
   name: "App",
+  async mounted() {
+    // Precalienta la cookie CSRF y, de paso, restaura la sesión si ya
+    // existe una cookie "jwt" válida (por ejemplo, tras refrescar la página).
+    await restaurarSesion();
+  },
 };
 </script>
 
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
 
-.app-shell {
-  padding: 16px;
-}
-
-.nav {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
 </style>

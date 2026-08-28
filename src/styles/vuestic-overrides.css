@@ -1,0 +1,12 @@
+/* Flecha de VaSelect: gris en vez del color secundario del tema */
+.va-select__toggle-icon {
+  color: var(--va-grey, #434343) !important;
+}
+
+/* Botones angostos reutilizables en pantallas de auth  */
+.auth-button {
+  width: 180px;
+  display: block;
+  margin: 0 auto;
+  justify-content: center;
+}
