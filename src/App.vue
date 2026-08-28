@@ -1,5 +1,5 @@
 <template>
-  <component :is="$route.meta.layout || 'div'">
+  <component :is="$route.meta.layout || 'div'" :titulo="$route.meta.titulo || 'Perfiles'">
     <RouterView />
   </component>
 </template>

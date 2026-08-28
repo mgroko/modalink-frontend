@@ -18,6 +18,9 @@
 
         <div class="sidebar__section">
           <span class="sidebar__section-title">Acciones</span>
+          <button class="sidebar__action" @click="$router.push({ name: 'crear-perfil' })">
+            Crear nuevo perfil
+          </button>
           <button class="sidebar__action" @click="$router.push({ name: 'modificar-datos' })">
             Modificar datos personales
           </button>

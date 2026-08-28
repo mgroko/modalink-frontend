@@ -30,7 +30,7 @@
         </div>
 
         <div class="dashboard-usuario__toolbar-right">
-          <VaButton color="#b865a4" size="small">
+          <VaButton color="#b865a4" size="small" @click="$router.push({ name: 'crear-perfil' })">
             <span class="material-symbols-outlined" style="font-size: 1rem; margin-right: 0.25rem;">add</span>
             Crear perfil
           </VaButton>
@@ -92,23 +92,27 @@
             </div>
           </div>
 
-          <div class="perfil-card__notifications">
-            <span class="material-symbols-outlined">notifications</span>
-            <span>Notificaciones</span>
-            <span class="perfil-card__badge">0</span>
+          <div class="perfil-card__meta">
+            <div class="perfil-card__meta-item">
+              <span class="perfil-card__meta-label">ID</span>
+              <span class="perfil-card__meta-value">{{ perfil.idPerfil }}</span>
+            </div>
+            <div class="perfil-card__meta-item">
+              <span class="perfil-card__meta-label">Estado</span>
+              <VaBadge :text="perfil.estado || '—'" :color="colorEstado(perfil.estado)" outline />
+            </div>
           </div>
+
+          <p v-if="perfil.biografia" class="perfil-card__biografia">{{ perfil.biografia }}</p>
 
           <div class="perfil-card__footer">
             <div class="perfil-card__footer-icons">
-              <button class="perfil-card__icon-btn">
-                <span class="material-symbols-outlined">settings</span>
-              </button>
-              <button class="perfil-card__icon-btn">
+              <button class="perfil-card__icon-btn" title="Ver detalle" @click="verDetalle(perfil)">
                 <span class="material-symbols-outlined">person</span>
               </button>
             </div>
-            <button class="perfil-card__ingresar">
-              Ingresar
+            <button class="perfil-card__ingresar" @click="verDetalle(perfil)">
+              Ver detalle
               <span class="material-symbols-outlined">chevron_right</span>
             </button>
           </div>
@@ -120,6 +124,59 @@
       <span class="material-symbols-outlined dashboard-usuario__estado-icono">calendar_month</span>
       Calendario — Próximamente
     </div>
+
+    <VaModal
+      v-model="modalPerfilVisible"
+      size="large"
+      close-button
+      hide-default-actions
+    >
+      <template #header>
+        <h3 class="va-h5">Detalle de perfil</h3>
+      </template>
+
+      <div v-if="perfilSeleccionado" class="detalle-perfil">
+        <div class="detalle-perfil__header">
+          <img
+            v-if="perfilSeleccionado.fotoUrl"
+            :src="perfilSeleccionado.fotoUrl"
+            :alt="perfilSeleccionado.nombreArtistico || 'Foto de perfil'"
+            class="detalle-perfil__foto"
+          />
+          <div v-else class="detalle-perfil__foto detalle-perfil__foto--placeholder">
+            <span class="material-symbols-outlined">person</span>
+          </div>
+          <div>
+            <h4 class="va-h5">{{ perfilSeleccionado.nombreArtistico || 'Sin nombre artístico' }}</h4>
+            <p class="detalle-perfil__texto-muted">{{ perfilSeleccionado.profesion || 'Sin profesión' }}</p>
+          </div>
+        </div>
+
+        <div class="detalle-perfil__grid">
+          <div class="detalle-perfil__campo">
+            <span class="detalle-perfil__label">ID Perfil</span>
+            <span>{{ perfilSeleccionado.idPerfil }}</span>
+          </div>
+          <div class="detalle-perfil__campo">
+            <span class="detalle-perfil__label">Estado</span>
+            <VaBadge :text="perfilSeleccionado.estado || '—'" :color="colorEstado(perfilSeleccionado.estado)" outline />
+          </div>
+          <div class="detalle-perfil__campo">
+            <span class="detalle-perfil__label">Solicitud de baja</span>
+            <span>{{ perfilSeleccionado.fechaSolicitudBaja ? formatearFecha(perfilSeleccionado.fechaSolicitudBaja) : 'No solicitó' }}</span>
+          </div>
+        </div>
+
+        <div v-if="perfilSeleccionado.biografia" class="detalle-perfil__biografia">
+          <span class="detalle-perfil__label">Biografía</span>
+          <p>{{ perfilSeleccionado.biografia }}</p>
+        </div>
+      </div>
+
+      <template #footer>
+        <VaButton preset="secondary" @click="modalPerfilVisible = false">Cerrar</VaButton>
+      </template>
+    </VaModal>
   </div>
 </template>
 
@@ -135,6 +192,8 @@ export default {
       vista: "cuadricula",
       perfiles: [],
       cargando: true,
+      modalPerfilVisible: false,
+      perfilSeleccionado: null,
     };
   },
   computed: {
@@ -162,6 +221,22 @@ export default {
       } finally {
         this.cargando = false;
       }
+    },
+    verDetalle(perfil) {
+      this.perfilSeleccionado = perfil;
+      this.modalPerfilVisible = true;
+    },
+    colorEstado(estado) {
+      if (estado === "Activo") return "success";
+      if (estado === "Deshabilitado") return "danger";
+      if (estado === "Baja") return "backgroundElement";
+      return "backgroundBorder";
+    },
+    formatearFecha(fecha) {
+      if (!fecha) return "—";
+      const partes = fecha.split("T")[0].split("-");
+      if (partes.length !== 3) return fecha;
+      return `${partes[2]}-${partes[1]}-${partes[0]}`;
     },
   },
 };
@@ -393,35 +468,45 @@ export default {
   color: #1f2937;
 }
 
-/* Notificaciones dentro de la tarjeta */
-.perfil-card__notifications {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
+/* Meta dentro de la tarjeta */
+.perfil-card__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
   border-top: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.78rem;
+}
+
+.perfil-card__meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.perfil-card__meta-label {
+  color: #9ca3af;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.perfil-card__meta-value {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.perfil-card__biografia {
+  margin: 0;
+  padding: 0.6rem 1rem;
   font-size: 0.78rem;
   color: #6b7280;
-}
-
-.perfil-card__notifications .material-symbols-outlined {
-  font-size: 1rem;
-  color: #6366f1;
-}
-
-.perfil-card__badge {
-  margin-left: auto;
-  background: #ef4444;
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 600;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
+  border-bottom: 1px solid #f3f4f6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Footer de la tarjeta */
@@ -476,5 +561,77 @@ export default {
 
 .perfil-card__ingresar .material-symbols-outlined {
   font-size: 1rem;
+}
+
+/* ── Detalle de perfil (modal) ── */
+.detalle-perfil {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.detalle-perfil__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.detalle-perfil__foto {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.detalle-perfil__foto--placeholder {
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+}
+
+.detalle-perfil__foto--placeholder .material-symbols-outlined {
+  font-size: 2rem;
+}
+
+.detalle-perfil__texto-muted {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.detalle-perfil__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.detalle-perfil__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #1f2937;
+}
+
+.detalle-perfil__label {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.detalle-perfil__biografia p {
+  margin: 0.35rem 0 0;
+  color: #374151;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 </style>
