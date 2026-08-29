@@ -47,11 +47,8 @@
 
     <VaModal
       v-model="modalReactivarVisible"
-      ok-text="Reactivar cuenta"
-      cancel-text="Cerrar sesión"
       blur
-      @ok="reactivarCuenta"
-      @cancel="cerrarSesion"
+      hide-default-actions
     >
       <h3 class="va-h5">Tu cuenta está pendiente de baja</h3>
       <p class="mt-2">
@@ -60,8 +57,27 @@
       <p class="mt-2">
         Si preferís no continuar, podés cerrar sesión.
       </p>
+
+      <template #footer>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; width: 100%; margin-top: 1rem;">
+          <VaButton 
+            preset="secondary" 
+            color="#b865a4" 
+            @click="cerrarSesion"
+          >
+            Cerrar sesión
+          </VaButton>
+          <VaButton 
+            color="#b865a4" 
+            ok-text="Reactivar cuenta"
+            @click="reactivarCuenta"
+          >
+            Reactivar cuenta
+          </VaButton>
+        </div>
+      </template>
     </VaModal>
-</VaForm>
+  </VaForm>
   
 </template>
 

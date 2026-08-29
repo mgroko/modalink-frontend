@@ -171,6 +171,30 @@
           <span class="detalle-perfil__label">Biografía</span>
           <p>{{ perfilSeleccionado.biografia }}</p>
         </div>
+
+        <div
+          v-if="perfilSeleccionado.caracteristicas && perfilSeleccionado.caracteristicas.length > 0"
+          class="detalle-perfil__caracteristicas"
+        >
+          <span class="detalle-perfil__label">Características</span>
+          <div class="detalle-perfil__caracteristicas-grid">
+            <div
+              class="detalle-perfil__campo"
+              v-for="carac in perfilSeleccionado.caracteristicas"
+              :key="carac.idCaracteristica"
+            >
+              <span class="detalle-perfil__label">{{ carac.codigo }}</span>
+              <span class="detalle-perfil__valor-carac">
+                <span
+                  v-if="carac.colorHex"
+                  class="detalle-perfil__swatch"
+                  :style="{ background: carac.colorHex }"
+                ></span>
+                {{ carac.codigoValor || carac.valor || '—' }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <template #footer>
@@ -390,7 +414,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f59e0b;
+  background: #a6ceb0;
   padding: 0.6rem 1rem;
 }
 
@@ -633,5 +657,35 @@ export default {
   font-size: 0.9rem;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.detalle-perfil__caracteristicas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detalle-perfil__caracteristicas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.detalle-perfil__valor-carac {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.detalle-perfil__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
 }
 </style>

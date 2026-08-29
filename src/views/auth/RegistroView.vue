@@ -47,7 +47,7 @@
 <script>
 
 import authService from "../../services/authService";
-import { setUsuario } from "../../services/authState";
+import { marcarSesionRestaurada } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
@@ -96,10 +96,15 @@ export default {
       try {
         const response = await authService.registrar(this.datosUsuario);
         const usuario = response?.data?.usuario || null;
-        setUsuario(usuario);
+        marcarSesionRestaurada(usuario);
         console.log("Usuario registrado/autenticado:", usuario);
         this.successMessage = "Registro exitoso.";
-        // this.$router.push({ name: 'dashboard' })
+
+        if (usuario?.rolGlobal === "Administrador") {
+          this.$router.push({ name: "gestion-usuarios" });
+        } else {
+          this.$router.push({ name: "dashboard-usuario" });
+        }
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message || "No se pudo completar el registro. Verificá los datos ingresados.";
