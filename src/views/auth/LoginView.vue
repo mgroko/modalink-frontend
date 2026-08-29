@@ -62,13 +62,13 @@
         <div style="display: flex; gap: 1rem; justify-content: flex-end; width: 100%; margin-top: 1rem;">
           <VaButton 
             preset="secondary" 
-            color="#b865a4" 
+            color="primary" 
             @click="cerrarSesion"
           >
             Cerrar sesión
           </VaButton>
           <VaButton 
-            color="#b865a4" 
+            color="primary" 
             ok-text="Reactivar cuenta"
             @click="reactivarCuenta"
           >
@@ -168,7 +168,7 @@ export default {
   font-size: 2.5rem;
   font-weight: 800;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #FF512F 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 2px;
@@ -185,13 +185,13 @@ export default {
 
 .link-recuperar {
   font-size: 12px; 
-  color: #6a7385; 
+  color: var(--color-text-muted); 
   text-decoration: none; 
   transition: color 0.2s ease; 
 }
 
 .link-recuperar:hover {
-  color: #374151; 
+  color: var(--color-text); 
   text-decoration: underline;
 }
 

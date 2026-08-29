@@ -30,7 +30,7 @@
         </div>
 
         <div class="dashboard-usuario__toolbar-right">
-          <VaButton color="#b865a4" size="small" @click="$router.push({ name: 'crear-perfil' })">
+          <VaButton color="primary" size="small" @click="$router.push({ name: 'crear-perfil' })">
             <span class="material-symbols-outlined" style="font-size: 1rem; margin-right: 0.25rem;">add</span>
             Crear perfil
           </VaButton>
@@ -285,7 +285,7 @@ export default {
   padding: 0.6rem 0;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-text-muted);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
@@ -293,13 +293,13 @@ export default {
 }
 
 .dashboard-usuario__tab:hover {
-  color: #374151;
+  color: var(--color-text);
 }
 
 .dashboard-usuario__tab--active {
-  color: #1f2937;
+  color: var(--color-text);
   font-weight: 600;
-  border-bottom-color: #b865a4;
+  border-bottom-color: var(--color-primary);
 }
 
 /* Toolbar */
@@ -318,13 +318,13 @@ export default {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   padding: 0.4rem 0.75rem;
-  background: #fff;
+  background: var(--color-surface);
   min-width: 220px;
 }
 
 .dashboard-usuario__search .material-symbols-outlined {
   font-size: 1.1rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .dashboard-usuario__search-input {
@@ -332,12 +332,12 @@ export default {
   outline: none;
   background: transparent;
   font-size: 0.85rem;
-  color: #374151;
+  color: var(--color-text);
   width: 100%;
 }
 
 .dashboard-usuario__search-input::placeholder {
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .dashboard-usuario__toolbar-right {
@@ -355,13 +355,13 @@ export default {
 }
 
 .dashboard-usuario__view-btn {
-  background: #fff;
+  background: var(--color-surface);
   border: none;
   padding: 0.35rem 0.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   transition: background 0.15s, color 0.15s;
 }
 
@@ -371,7 +371,7 @@ export default {
 
 .dashboard-usuario__view-btn--active {
   background: #f3f4f6;
-  color: #374151;
+  color: var(--color-text);
 }
 
 .dashboard-usuario__view-btn .material-symbols-outlined {
@@ -385,7 +385,7 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 3rem 1rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -402,7 +402,7 @@ export default {
 
 /* ── Tarjeta de perfil ── */
 .perfil-card {
-  background: #fff;
+  background: var(--color-surface);
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   overflow: hidden;
@@ -414,7 +414,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #a6ceb0;
+  background: var(--color-support);
   padding: 0.6rem 1rem;
 }
 
@@ -472,7 +472,7 @@ export default {
 
 .perfil-card__foto-placeholder {
   font-size: 1.6rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .perfil-card__info {
@@ -483,13 +483,13 @@ export default {
 
 .perfil-card__profesion {
   font-size: 0.72rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .perfil-card__nombre {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-text);
 }
 
 /* Meta dentro de la tarjeta */
@@ -510,14 +510,14 @@ export default {
 }
 
 .perfil-card__meta-label {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .perfil-card__meta-value {
-  color: #1f2937;
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -525,7 +525,7 @@ export default {
   margin: 0;
   padding: 0.6rem 1rem;
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   border-bottom: 1px solid #f3f4f6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -551,14 +551,14 @@ export default {
   background: none;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   padding: 0.2rem;
   display: flex;
   align-items: center;
 }
 
 .perfil-card__icon-btn:hover {
-  color: #374151;
+  color: var(--color-text);
 }
 
 .perfil-card__icon-btn .material-symbols-outlined {
@@ -613,7 +613,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .detalle-perfil__foto--placeholder .material-symbols-outlined {
@@ -621,7 +621,7 @@ export default {
 }
 
 .detalle-perfil__texto-muted {
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   margin: 0;
 }
@@ -641,19 +641,19 @@ export default {
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.85rem;
-  color: #1f2937;
+  color: var(--color-text);
 }
 
 .detalle-perfil__label {
   font-size: 0.72rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .detalle-perfil__biografia p {
   margin: 0.35rem 0 0;
-  color: #374151;
+  color: var(--color-text);
   font-size: 0.9rem;
   line-height: 1.5;
   white-space: pre-wrap;

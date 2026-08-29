@@ -525,7 +525,7 @@ export default {
 .gestion-usuarios__encabezado h1 {
   font-size: 2.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ff512f 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -534,7 +534,7 @@ export default {
 .gestion-usuarios__subtitulo {
   margin-top: 0.25rem;
   font-size: 0.95rem;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .gestion-usuarios__toolbar {
@@ -559,7 +559,7 @@ export default {
 .gestion-usuarios__id {
   font-family: monospace;
   font-size: 0.85rem;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .gestion-usuarios__acciones {
@@ -588,7 +588,7 @@ export default {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .detalle-usuario__perfiles {
@@ -602,7 +602,7 @@ export default {
 }
 
 .detalle-usuario__texto-muted {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -650,11 +650,11 @@ export default {
 .detalle-perfil__biografia p {
   margin-top: 0.35rem;
   white-space: pre-wrap;
-  color: #374151;
+  color: var(--color-text);
 }
 
 .detalle-perfil__texto-muted {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 </style>

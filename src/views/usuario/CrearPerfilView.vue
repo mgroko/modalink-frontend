@@ -313,6 +313,15 @@ function normCodigo(codigo) {
   return (codigo || "").toLowerCase().trim();
 }
 
+function normTexto(texto) {
+  return (texto || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 export default {
   name: "CrearPerfilView",
   components: {
@@ -391,6 +400,12 @@ export default {
 
       this.mensajeExito = "";
       this.mensajeError = "";
+
+      if (await this.usuarioTienePerfilConProfesion(this.form.idProfesion)) {
+        this.mensajeError = "Ya tenés un perfil con esta profesión. Podés modificar el perfil existente.";
+        return;
+      }
+
       this.cargandoCaracteristicas = true;
 
       try {
@@ -423,6 +438,21 @@ export default {
 
     esNumerico(carac) {
       return carac.tipoDato === "NUMERICO";
+    },
+
+    async usuarioTienePerfilConProfesion(idProfesion) {
+      const profesion = this.profesiones.find((p) => p.idProfesion === idProfesion);
+      const nombreProfesion = profesion?.nombre;
+      if (!nombreProfesion) return false;
+      const nombreNorm = normTexto(nombreProfesion);
+
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        const perfiles = Array.isArray(response?.data) ? response.data : [];
+        return perfiles.some((p) => normTexto(p.profesion) === nombreNorm);
+      } catch {
+        return false;
+      }
     },
 
     labelCaracteristica(codigo) {
@@ -518,13 +548,13 @@ export default {
 .crear-perfil__titulo {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--color-text);
   margin: 0 0 0.25rem 0;
 }
 
 .crear-perfil__subtitulo {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0 0 1.5rem 0;
 }
 
@@ -540,7 +570,7 @@ export default {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.82rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .crear-perfil__paso-numero {
@@ -548,7 +578,7 @@ export default {
   height: 24px;
   border-radius: 50%;
   background: #e5e7eb;
-  color: #6b7280;
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -558,17 +588,17 @@ export default {
 }
 
 .crear-perfil__paso--activo {
-  color: #b865a4;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .crear-perfil__paso--activo .crear-perfil__paso-numero {
-  background: #b865a4;
+  background: var(--color-primary);
   color: #fff;
 }
 
 .crear-perfil__paso--completo {
-  color: #374151;
+  color: var(--color-text);
 }
 
 .crear-perfil__paso--completo .crear-perfil__paso-numero {
@@ -584,7 +614,7 @@ export default {
 }
 
 .crear-perfil__paso-linea--activa {
-  background: #b865a4;
+  background: var(--color-primary);
 }
 
 /* Form */
@@ -642,7 +672,7 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 2rem 1rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 

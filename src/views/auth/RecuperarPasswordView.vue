@@ -77,7 +77,7 @@ export default {
   font-size: 30px;
   font-weight: 800;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #FF512F 0%, #b865a4 50%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 2px;
@@ -94,14 +94,14 @@ export default {
 
 .link-login {
   font-size: 12px; 
-  color: #673a58; 
+  color: var(--color-primary); 
   text-decoration: none; 
   transition: color 0.2s ease; 
   text-align: center;
 }
 
 .link-login:hover {
-  color: #661a49; 
+  color: var(--color-primary-dark); 
   text-decoration: underline;
 }
 

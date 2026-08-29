@@ -188,13 +188,13 @@ export default {
 .modificar-datos__titulo {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--color-text);
   margin: 0 0 0.25rem 0;
 }
 
 .modificar-datos__subtitulo {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0 0 1.5rem 0;
 }
 

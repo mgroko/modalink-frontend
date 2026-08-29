@@ -18,6 +18,9 @@
 
         <div class="sidebar__section">
           <span class="sidebar__section-title">Acciones</span>
+          <button class="sidebar__action" @click="$router.push({ name: 'dashboard-usuario' })">
+            Inicio
+          </button>
           <button class="sidebar__action" @click="$router.push({ name: 'crear-perfil' })">
             Crear nuevo perfil
           </button>
@@ -70,7 +73,7 @@
     <div style="display: flex; gap: 1rem; justify-content: flex-end; width: 100%; margin-top: 1rem;">
       <VaButton 
         preset="secondary" 
-        color="#b865a4" 
+        color="primary"
         @click="modalBajaVisible = false"
       >
         Cancelar
@@ -144,14 +147,14 @@ export default {
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
-  background: var(--va-background-secondary, #ffffe7);
+  background: var(--va-background-secondary, #F5F5F8);
 }
 
 /* ── Sidebar ── */
 .sidebar {
   width: 250px;
   min-width: 250px;
-  background: #fff;
+  background: var(--color-surface);
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
@@ -177,7 +180,7 @@ export default {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #6c757d;
+  background: var(--color-text-muted);
   color: #fff;
   display: flex;
   align-items: center;
@@ -196,7 +199,7 @@ export default {
 .sidebar__user-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -204,7 +207,7 @@ export default {
 
 .sidebar__user-email {
   font-size: 0.72rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -223,7 +226,7 @@ export default {
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.82rem;
-  color: #374151;
+  color: var(--color-text);
   text-align: left;
 }
 
@@ -233,12 +236,12 @@ export default {
 
 .sidebar__notifications .material-symbols-outlined {
   font-size: 1.15rem;
-  color: #6366f1;
+  color: var(--color-secondary);
 }
 
 .sidebar__badge {
   margin-left: auto;
-  background: #ef4444;
+  background: var(--va-danger);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 600;
@@ -261,7 +264,7 @@ export default {
   display: block;
   font-size: 0.85rem;
   font-weight: 750;
-  color: #7d22be;
+  color: var(--color-primary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
@@ -275,12 +278,12 @@ export default {
   border: none;
   padding: 0.45rem 0;
   font-size: 0.82rem;
-  color: #374151;
+  color: var(--color-text);
   cursor: pointer;
 }
 
 .sidebar__action:hover {
-  color: #b865a4;
+  color: var(--color-primary);
   text-decoration: underline;
 }
 
@@ -291,7 +294,7 @@ font-size: 1.5rem;
   letter-spacing: 0.15em;
   text-decoration: none;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #ff512f 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -309,7 +312,7 @@ font-size: 1.5rem;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   cursor: pointer;
   font-size: 0.82rem;
-  color: #d90429;
+  color: var(--va-danger);
   font-weight: 500;
 }
 
@@ -331,24 +334,25 @@ font-size: 1.5rem;
 
 .dashboard-main__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  height: 72.5px;
   justify-content: space-between;
-  padding: 1.25rem 2rem;
-  background: #fff;
+  padding: 0 2rem;
+  background: var(--color-surface);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .dashboard-main__title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--color-text);
   letter-spacing: 0.04em;
   margin: 0;
 }
 
 .dashboard-main__subtitle {
   font-size: 0.82rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .dashboard-main__header-actions {
@@ -365,12 +369,12 @@ font-size: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .dashboard-main__icon-btn:hover {
   background: #f3f4f6;
-  color: #374151;
+  color: var(--color-text);
 }
 
 .dashboard-main__icon-btn .material-symbols-outlined {

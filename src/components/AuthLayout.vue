@@ -20,13 +20,13 @@ export default {
 .auth-layout {
   min-height: 100vh;
   display: flex;
-  background: var(--va-background-secondary, #ffffe7);
+  background: var(--va-background-secondary, #F5F5F8);
 }
 
 .auth-layout__brand {
   width: 35vw;
   min-width: 280px;
-  background: var(--va-primary, #b865a4);
+  background: var(--va-primary, #494776);
   display: flex;
   align-items: center;
   justify-content: center;

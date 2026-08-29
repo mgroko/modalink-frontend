@@ -71,7 +71,7 @@ export default {
   font-size: 2rem;
   font-weight: 800;
   margin: 0 0 0.25rem 0;
-  background: linear-gradient(135deg, #ff512f 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -80,7 +80,7 @@ export default {
 .dashboard-admin__subtitulo {
   margin: 0 0 1.75rem 0;
   font-size: 0.95rem;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .dashboard-admin__grid {
@@ -94,7 +94,7 @@ export default {
   align-items: center;
   gap: 1rem;
   text-align: left;
-  background: #fff;
+  background: var(--color-surface);
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 1.25rem;
@@ -106,14 +106,14 @@ export default {
 .admin-card:hover {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
-  border-color: #b865a4;
+  border-color: var(--color-primary);
 }
 
 .admin-card__icon {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff512f 0%, #b865a4 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
   color: #fff;
   display: flex;
   align-items: center;
@@ -136,17 +136,17 @@ export default {
 .admin-card__titulo {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--color-text);
 }
 
 .admin-card__descripcion {
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   line-height: 1.4;
 }
 
 .admin-card__arrow {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -157,6 +157,6 @@ export default {
 }
 
 .admin-card:hover .admin-card__arrow {
-  color: #b865a4;
+  color: var(--color-primary);
 }
 </style>

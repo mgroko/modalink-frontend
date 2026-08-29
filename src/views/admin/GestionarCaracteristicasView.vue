@@ -728,7 +728,7 @@ export default {
   font-size: 2.25rem;
   font-weight: 800;
   margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, #ff512f 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -737,7 +737,7 @@ export default {
 .gestion-caracteristicas__subtitulo {
   margin-top: 0.25rem;
   font-size: 0.95rem;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .gestion-caracteristicas__toolbar {
@@ -766,7 +766,7 @@ export default {
 .gestion-caracteristicas__id {
   font-family: monospace;
   font-size: 0.85rem;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .gestion-caracteristicas__acciones {
@@ -789,7 +789,7 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 2.5rem 1rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -831,7 +831,7 @@ export default {
 .gestion-caracteristicas__valores-inline-titulo {
   font-weight: 600;
   font-size: 0.9rem;
-  color: #1f2937;
+  color: var(--color-text);
 }
 
 .gestion-caracteristicas__valor-fila {
@@ -855,7 +855,7 @@ export default {
   border-radius: 6px;
   cursor: pointer;
   padding: 0;
-  background: #fff;
+  background: var(--color-surface);
   flex-shrink: 0;
 }
 
@@ -891,6 +891,6 @@ export default {
 }
 
 .gestion-caracteristicas__texto-muted {
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 </style>

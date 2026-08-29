@@ -81,7 +81,7 @@ export default {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--va-background-secondary, #ffffe7);
+  background: var(--va-background-secondary, #F5F5F8);
 }
 
 .admin-layout__header {
@@ -90,7 +90,7 @@ export default {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 2rem;
-  background: #fff;
+  background: var(--color-surface);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -100,7 +100,7 @@ export default {
   letter-spacing: 0.15em;
   text-decoration: none;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #ff512f 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -113,14 +113,14 @@ export default {
 }
 
 .admin-layout__link {
-  color: #6a7385;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .admin-layout__link:hover {
-  color: #374151;
+  color: var(--color-text);
   text-decoration: underline;
 }
 
@@ -138,14 +138,14 @@ export default {
 }
 
 .admin-dropdown__item {
-  color: rgb(56, 56, 56);
+  color: var(--color-text);
   font-size: 0.8rem;     
   padding: 0.5rem 1.25rem; 
 }
 
 
 .text-danger {
-  color: #d90429 !important;
+  color: var(--va-danger) !important;
 }
 
 

@@ -125,7 +125,7 @@ export default {
   font-size: 2.5rem;
   font-weight: 800;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #FF512F 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 2px;
