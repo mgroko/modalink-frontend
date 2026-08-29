@@ -5,6 +5,8 @@
 
       <nav class="admin-layout__nav">
         <RouterLink to="/admin/dashboard" class="admin-layout__link">Inicio</RouterLink>
+        <RouterLink to="/admin/gestion-usuarios" class="admin-layout__link">Usuarios</RouterLink>
+        <RouterLink to="/admin/gestionar-caracteristicas" class="admin-layout__link">Características</RouterLink>
 
         <VaDropdown v-if="usuario" placement="bottom-end">
           <template #anchor>
@@ -20,6 +22,14 @@
               @click="$router.push({ name: 'gestion-usuarios' })"
             >
               Gestión de usuarios
+            </VaMenuItem>
+
+            <VaMenuItem
+              icon="mso-tune"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'gestionar-caracteristicas' })"
+            >
+              Características técnicas
             </VaMenuItem>
             
             <VaMenuItem

@@ -12,6 +12,7 @@ import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
+import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
 import { esAdmin, restaurarSesion } from "../services/authState";
 
 const routes = [
@@ -62,8 +63,15 @@ const routes = [
     meta: { layout: AdminLayout, requiereAdmin: true }
   },
   {
+    path: "/admin/gestion-usuarios",
     name: "gestion-usuarios",
     component: GestionUsuariosView,
+    meta: { layout: AdminLayout, requiereAdmin: true }
+  },
+  {
+    path: "/admin/gestionar-caracteristicas",
+    name: "gestionar-caracteristicas",
+    component: GestionarCaracteristicasView,
     meta: { layout: AdminLayout, requiereAdmin: true }
   }
 ];

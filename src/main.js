@@ -18,11 +18,14 @@ app.use(createVuestic({
   icons: iconsConfig,
   colors:{
     variables:{
-        primary: '#b865a4',     // color principal (botones, inputs, links)
-        secondary: '#ffffe7',
-        grey:'#434343',   // color secundario (fondo de la app)
-        success: '#16a34a',
-        danger: '#dc2626',
+        primary: '#b865a4', // color principal (botones, inputs, links)
+        background:   '#ffffe7',  
+        secondary: '#ff512f',   // color secundario 
+        grey:'#434343',   // color de texto
+        success: '#10B981',
+        danger: '#E11D48',
+        info: '#3B82F6',
+        warning: '#F59E0B',
     }
   } 
 } 
