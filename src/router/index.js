@@ -8,6 +8,7 @@ import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
 import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
 import CrearPerfilView from "../views/usuario/CrearPerfilView.vue";
+import EditarPerfilView from "../views/usuario/EditarPerfilView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
@@ -49,6 +50,12 @@ const routes = [
     name: "crear-perfil",
     component: CrearPerfilView,
     meta: { layout: UserDashboardLayout, titulo: "Crear perfil" },
+  },
+  {
+    path: "/dashboard-usuario/editar-perfil/:id",
+    name: "editar-perfil",
+    component: EditarPerfilView,
+    meta: { layout: UserDashboardLayout, titulo: "Editar perfil" },
   },
   {
     path: "/recuperar-password",

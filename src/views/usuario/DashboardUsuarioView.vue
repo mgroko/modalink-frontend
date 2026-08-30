@@ -53,6 +53,9 @@
         </div>
       </div>
 
+      <BaseAlert v-if="mensajeBaja" :message="mensajeBaja" type="success" />
+      <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
+
       <div v-if="cargando" class="dashboard-usuario__estado">
         <span class="material-symbols-outlined dashboard-usuario__estado-icono">hourglass_empty</span>
         Cargando perfiles...
@@ -109,6 +112,14 @@
             <div class="perfil-card__footer-icons">
               <button class="perfil-card__icon-btn" title="Ver detalle" @click="verDetalle(perfil)">
                 <span class="material-symbols-outlined">person</span>
+              </button>
+              <button
+                v-if="perfil.estado === 'Activo'"
+                class="perfil-card__icon-btn"
+                title="Editar perfil"
+                @click="irAEditar(perfil)"
+              >
+                <span class="material-symbols-outlined">edit</span>
               </button>
             </div>
             <button class="perfil-card__ingresar" @click="verDetalle(perfil)">
@@ -176,21 +187,94 @@
           v-if="perfilSeleccionado.caracteristicas && perfilSeleccionado.caracteristicas.length > 0"
           class="detalle-perfil__caracteristicas"
         >
-          <span class="detalle-perfil__label">Características</span>
-          <div class="detalle-perfil__caracteristicas-grid">
+          <span class="detalle-perfil__titulo-bloque">Características físicas</span>
+
+          <div v-if="renAltura.length" class="detalle-perfil__caracteristicas-grid">
             <div
               class="detalle-perfil__campo"
-              v-for="carac in perfilSeleccionado.caracteristicas"
+              v-for="carac in renAltura"
               :key="carac.idCaracteristica"
             >
-              <span class="detalle-perfil__label">{{ carac.codigo }}</span>
+              <span class="detalle-perfil__label">{{ carac._etiqueta }}</span>
               <span class="detalle-perfil__valor-carac">
                 <span
                   v-if="carac.colorHex"
                   class="detalle-perfil__swatch"
                   :style="{ background: carac.colorHex }"
                 ></span>
-                {{ carac.codigoValor || carac.valor || '—' }}
+                {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="renMedidas.length" class="detalle-perfil__caracteristicas-grid">
+            <div
+              class="detalle-perfil__campo"
+              v-for="carac in renMedidas"
+              :key="carac.idCaracteristica"
+            >
+              <span class="detalle-perfil__label">{{ carac._etiqueta }}</span>
+              <span class="detalle-perfil__valor-carac">
+                <span
+                  v-if="carac.colorHex"
+                  class="detalle-perfil__swatch"
+                  :style="{ background: carac.colorHex }"
+                ></span>
+                {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="renPielOjos.length" class="detalle-perfil__caracteristicas-grid">
+            <div
+              class="detalle-perfil__campo"
+              v-for="carac in renPielOjos"
+              :key="carac.idCaracteristica"
+            >
+              <span class="detalle-perfil__label">{{ carac._etiqueta }}</span>
+              <span class="detalle-perfil__valor-carac">
+                <span
+                  v-if="carac.colorHex"
+                  class="detalle-perfil__swatch"
+                  :style="{ background: carac.colorHex }"
+                ></span>
+                {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="renCabelloTipo.length" class="detalle-perfil__caracteristicas-grid">
+            <div
+              class="detalle-perfil__campo"
+              v-for="carac in renCabelloTipo"
+              :key="carac.idCaracteristica"
+            >
+              <span class="detalle-perfil__label">{{ carac._etiqueta }}</span>
+              <span class="detalle-perfil__valor-carac">
+                <span
+                  v-if="carac.colorHex"
+                  class="detalle-perfil__swatch"
+                  :style="{ background: carac.colorHex }"
+                ></span>
+                {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="renOtras.length" class="detalle-perfil__caracteristicas-grid">
+            <div
+              class="detalle-perfil__campo"
+              v-for="carac in renOtras"
+              :key="carac.idCaracteristica"
+            >
+              <span class="detalle-perfil__label">{{ carac._etiqueta }}</span>
+              <span class="detalle-perfil__valor-carac">
+                <span
+                  v-if="carac.colorHex"
+                  class="detalle-perfil__swatch"
+                  :style="{ background: carac.colorHex }"
+                ></span>
+                {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
               </span>
             </div>
           </div>
@@ -198,7 +282,57 @@
       </div>
 
       <template #footer>
-        <VaButton preset="secondary" @click="modalPerfilVisible = false">Cerrar</VaButton>
+        <div class="detalle-perfil__footer">
+          <VaButton
+            v-if="perfilSeleccionado && perfilSeleccionado.estado === 'PendienteBaja'"
+            preset="secondary"
+            color="success"
+            @click="reactivarPerfil(perfilSeleccionado)"
+          >
+            <span class="material-symbols-outlined detalle-perfil__footer-icono">refresh</span>
+            Reactivar perfil
+          </VaButton>
+          <div class="detalle-perfil__footer-der">
+            <VaButton preset="secondary" @click="modalPerfilVisible = false">Cerrar</VaButton>
+            <VaButton
+              v-if="perfilSeleccionado && puedeEliminar"
+              color="danger"
+              outline
+              @click="confirmarEliminar(perfilSeleccionado)"
+            >
+              <span class="material-symbols-outlined detalle-perfil__footer-icono">delete</span>
+              Eliminar
+            </VaButton>
+            <VaButton
+              v-if="perfilSeleccionado && puedeEditar"
+              color="primary"
+              @click="irAEditar(perfilSeleccionado)"
+            >
+              <span class="material-symbols-outlined detalle-perfil__footer-icono">edit</span>
+              Editar
+            </VaButton>
+          </div>
+        </div>
+      </template>
+    </VaModal>
+
+    <VaModal
+      v-model="modalEliminarVisible"
+      size="small"
+      close-button
+      hide-default-actions
+    >
+      <template #header>
+        <h3 class="va-h5">Eliminar perfil</h3>
+      </template>
+      <p>¿Estás seguro que querés solicitar la baja del perfil
+        <strong>{{ perfilAEliminar?.nombreArtistico }}</strong>?
+        Tendrás 30 días para reactivarlo antes de que se elimine definitivamente.</p>
+      <template #footer>
+        <div class="detalle-perfil__footer detalle-perfil__footer--der">
+          <VaButton preset="secondary" @click="modalEliminarVisible = false">Cancelar</VaButton>
+          <VaButton color="danger" :loading="eliminando" @click="ejecutarEliminar">Confirmar baja</VaButton>
+        </div>
       </template>
     </VaModal>
   </div>
@@ -206,9 +340,113 @@
 
 <script>
 import perfilService from "../../services/perfilService";
+import BaseAlert from "../../components/AlertaBase.vue";
+
+const ETIQUETAS_CARAC = {
+  color_piel: "Color de piel",
+  piel: "Color de piel",
+  color_ojos: "Color de ojos",
+  ojos: "Color de ojos",
+  color_cabello: "Color de cabello",
+  cabello: "Color de cabello",
+  pelo: "Color de cabello",
+  tipo_cabello: "Tipo de cabello",
+  tipo_de_cabello: "Tipo de cabello",
+  tipo_cabello_2: "Tipo de cabello",
+  altura: "Altura",
+  medida_pecho: "Pecho",
+  pecho: "Pecho",
+  busto: "Pecho",
+  medida_cintura: "Cintura",
+  cintura: "Cintura",
+  medida_cadera: "Cadera",
+  cadera: "Cadera",
+};
+
+const ETIQUETAS_VALORES = {
+  marron: "Marrón",
+  marrón: "Marrón",
+  negro: "Negro",
+  caoba: "Caoba",
+  castanio: "Castaño",
+  castano: "Castaño",
+  castaño: "Castaño",
+  rubio: "Rubio",
+  rubia: "Rubia",
+  pelirrojo: "Pelirrojo",
+  pelirroja: "Pelirroja",
+  otto: "Otro",
+  otro: "Otro",
+  celeste: "Celeste",
+  verde: "Verde",
+  azul: "Azul",
+  gris: "Gris",
+  blanco: "Blanco",
+  avellana: "Avellana",
+  miel: "Miel",
+  clara: "Clara",
+  media: "Media",
+  oscura: "Oscura",
+  muy_clara: "Muy clara",
+  muy_oscura: "Muy oscura",
+};
+
+const ORDEN_CARAC = {
+  color_piel: 10,
+  piel: 10,
+  color_ojos: 20,
+  ojos: 20,
+  color_cabello: 30,
+  cabello: 30,
+  pelo: 30,
+  tipo_cabello: 40,
+  tipo_de_cabello: 40,
+  tipo_cabello_2: 40,
+  altura: 100,
+  medida_pecho: 200,
+  pecho: 200,
+  busto: 200,
+  medida_cintura: 210,
+  cintura: 210,
+  medida_cadera: 220,
+  cadera: 220,
+};
+
+const CODIGOS_ALTURA = ["altura"];
+const CODIGOS_MEDIDAS = ["medida_pecho", "pecho", "busto", "medida_cintura", "cintura", "medida_cadera", "cadera"];
+const CODIGOS_PIEL_OJOS = ["color_piel", "piel", "color_ojos", "ojos"];
+const CODIGOS_CABELLO_TIPO = ["color_cabello", "cabello", "pelo", "tipo_cabello", "tipo_de_cabello", "tipo_cabello_2"];
+const TODOS_CODIGOS = [
+  ...CODIGOS_ALTURA,
+  ...CODIGOS_MEDIDAS,
+  ...CODIGOS_PIEL_OJOS,
+  ...CODIGOS_CABELLO_TIPO,
+];
+
+const UNIDADES_POR_CODIGO = {
+  altura: "cm",
+  medida_pecho: "cm",
+  pecho: "cm",
+  busto: "cm",
+  medida_cintura: "cm",
+  cintura: "cm",
+  medida_cadera: "cm",
+  cadera: "cm",
+};
+
+function normCodigo(codigo) {
+  return (codigo || "").toLowerCase().trim();
+}
+
+function inLista(codigo, lista) {
+  return lista.some((c) => normCodigo(c) === normCodigo(codigo));
+}
 
 export default {
   name: "DashboardUsuarioView",
+  components: {
+    BaseAlert,
+  },
   data() {
     return {
       tabActiva: "perfiles",
@@ -218,9 +456,20 @@ export default {
       cargando: true,
       modalPerfilVisible: false,
       perfilSeleccionado: null,
+      modalEliminarVisible: false,
+      perfilAEliminar: null,
+      eliminando: false,
+      mensajeBaja: "",
+      mensajeError: "",
     };
   },
   computed: {
+    puedeEliminar() {
+      return this.perfilSeleccionado?.estado === "Activo";
+    },
+    puedeEditar() {
+      return this.perfilSeleccionado?.estado === "Activo";
+    },
     perfilesFiltrados() {
       const texto = this.busqueda.toLowerCase().trim();
       if (!texto) return this.perfiles;
@@ -229,6 +478,24 @@ export default {
           (p.nombreArtistico || "").toLowerCase().includes(texto) ||
           (p.profesion || "").toLowerCase().includes(texto)
       );
+    },
+    renAltura() {
+      return this._ordenarCarac(CODIGOS_ALTURA);
+    },
+    renMedidas() {
+      return this._ordenarCarac(CODIGOS_MEDIDAS);
+    },
+    renPielOjos() {
+      return this._ordenarCarac(CODIGOS_PIEL_OJOS);
+    },
+    renCabelloTipo() {
+      return this._ordenarCarac(CODIGOS_CABELLO_TIPO);
+    },
+    renOtras() {
+      const caracs = this.perfilSeleccionado?.caracteristicas || [];
+      return caracs
+        .filter((c) => !inLista(c.codigo, TODOS_CODIGOS))
+        .map((c) => ({ ...c, _etiqueta: this.etiquetaCarac(c.codigo) }));
     },
   },
   mounted() {
@@ -248,10 +515,54 @@ export default {
     },
     verDetalle(perfil) {
       this.perfilSeleccionado = perfil;
+      this.mensajeBaja = "";
+      this.mensajeError = "";
       this.modalPerfilVisible = true;
+    },
+    irAEditar(perfil) {
+      this.$router.push({ name: "editar-perfil", params: { id: perfil.idPerfil } });
+    },
+    confirmarEliminar(perfil) {
+      this.perfilAEliminar = perfil;
+      this.mensajeError = "";
+      this.modalEliminarVisible = true;
+    },
+    async ejecutarEliminar() {
+      if (!this.perfilAEliminar) return;
+      this.eliminando = true;
+      this.mensajeError = "";
+      try {
+        const response = await perfilService.eliminar(this.perfilAEliminar.idPerfil);
+        const data = response?.data;
+        this.mensajeBaja = data?.mensaje || "Solicitud de baja registrada. Tenés 30 días para activar el perfil.";
+        this.modalEliminarVisible = false;
+        this.modalPerfilVisible = false;
+        await this.cargarPerfiles();
+      } catch (error) {
+        this.mensajeError =
+          error?.response?.data?.message || "No se pudo solicitar la baja del perfil.";
+      } finally {
+        this.eliminando = false;
+      }
+    },
+    async reactivarPerfil(perfil) {
+      this.cargando = true;
+      this.mensajeError = "";
+      try {
+        const response = await perfilService.reactivar(perfil.idPerfil);
+        this.mensajeBaja = "Perfil reactivado correctamente.";
+        this.modalPerfilVisible = false;
+        await this.cargarPerfiles();
+      } catch (error) {
+        this.mensajeError =
+          error?.response?.data?.message || "No se pudo reactivar el perfil.";
+      } finally {
+        this.cargando = false;
+      }
     },
     colorEstado(estado) {
       if (estado === "Activo") return "success";
+      if (estado === "PendienteBaja") return "warning";
       if (estado === "Deshabilitado") return "danger";
       if (estado === "Baja") return "backgroundElement";
       return "backgroundBorder";
@@ -261,6 +572,45 @@ export default {
       const partes = fecha.split("T")[0].split("-");
       if (partes.length !== 3) return fecha;
       return `${partes[2]}-${partes[1]}-${partes[0]}`;
+    },
+    _ordenarCarac(codigos) {
+      const caracs = this.perfilSeleccionado?.caracteristicas || [];
+      return caracs
+        .filter((c) => inLista(c.codigo, codigos))
+        .map((c) => ({ ...c, _etiqueta: this.etiquetaCarac(c.codigo) }))
+        .sort((a, b) => {
+          const na = normCodigo(a.codigo);
+          const nb = normCodigo(b.codigo);
+          const oa = ORDEN_CARAC[na] ?? codigos.indexOf(na);
+          const ob = ORDEN_CARAC[nb] ?? codigos.indexOf(nb);
+          return oa - ob;
+        });
+    },
+    etiquetaCarac(codigo) {
+      const n = normCodigo(codigo);
+      if (ETIQUETAS_CARAC[n]) return ETIQUETAS_CARAC[n];
+      const palabras = String(codigo || "")
+        .toLowerCase()
+        .split(/[_\-]+/)
+        .filter(Boolean)
+        .map((p) => p.charAt(0).toUpperCase() + p.slice(1));
+      return palabras.join(" ") || "—";
+    },
+    valorCarac(carac) {
+      const raw = carac.codigoValor || carac.valor;
+      if (raw == null || raw === "") return "—";
+      const n = normCodigo(raw);
+      if (ETIQUETAS_VALORES[n]) return ETIQUETAS_VALORES[n];
+      const palabras = String(raw)
+        .toLowerCase()
+        .split(/[_\-]+/)
+        .filter(Boolean)
+        .map((p) => p.charAt(0).toUpperCase() + p.slice(1));
+      return palabras.join(" ") || raw;
+    },
+    unidadCarac(carac) {
+      const unidad = UNIDADES_POR_CODIGO[normCodigo(carac.codigo)];
+      return unidad ? ` ${unidad}` : "";
     },
   },
 };
@@ -665,6 +1015,12 @@ export default {
   gap: 0.5rem;
 }
 
+.detalle-perfil__titulo-bloque {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
 .detalle-perfil__caracteristicas-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -688,4 +1044,27 @@ export default {
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.15);
 }
+
+.detalle-perfil__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.detalle-perfil__footer-der {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.detalle-perfil__footer--der {
+  justify-content: flex-end;
+}
+
+.detalle-perfil__footer-icono {
+  font-size: 1.1rem;
+}
+
 </style>

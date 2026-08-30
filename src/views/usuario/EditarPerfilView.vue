@@ -1,23 +1,40 @@
+
+Editarperfilview · VUE
 <template>
-  <div class="crear-perfil">
-    <h1 class="crear-perfil__titulo">Crear nuevo perfil</h1>
-    <p class="crear-perfil__subtitulo">Completá los datos generales y las características de tu perfil profesional.</p>
-
-    <div class="crear-perfil__stepper">
-      <div class="crear-perfil__paso" :class="{ 'crear-perfil__paso--activo': paso === 1, 'crear-perfil__paso--completo': paso > 1 }">
-        <span class="crear-perfil__paso-numero">1</span>
-        <span>Datos generales</span>
-      </div>
-      <div class="crear-perfil__paso-linea" :class="{ 'crear-perfil__paso-linea--activa': paso > 1 }"></div>
-      <div class="crear-perfil__paso" :class="{ 'crear-perfil__paso--activo': paso === 2, 'crear-perfil__paso--completo': paso > 2 }">
-        <span class="crear-perfil__paso-numero">2</span>
-        <span>Características y biografía</span>
-      </div>
+  <div class="editar-perfil">
+    <h1 class="editar-perfil__titulo">Editar perfil</h1>
+    <p class="editar-perfil__subtitulo">Actualizá la información de tu perfil profesional.</p>
+ 
+    <div v-if="cargandoInicial" class="editar-perfil__estado">
+      <span class="material-symbols-outlined editar-perfil__estado-icono">hourglass_empty</span>
+      Cargando perfil...
     </div>
-
-    <VaForm ref="form" :immediate="false" @submit.prevent="paso === 1 ? irPaso2() : guardar()" class="crear-perfil__form">
-      <template v-if="paso === 1">
-        <div class="crear-perfil__campos">
+ 
+    <div v-else-if="noEncontrado" class="editar-perfil__estado">
+      <span class="material-symbols-outlined editar-perfil__estado-icono">error</span>
+      No se encontró el perfil solicitado.
+      <VaButton preset="secondary" @click="volver">Volver al dashboard</VaButton>
+    </div>
+ 
+    <template v-else>
+      <div class="editar-perfil__foto">
+        <img
+          v-if="perfil.fotoUrl"
+          :src="perfil.fotoUrl"
+          :alt="perfil.nombreArtistico || 'Foto de perfil'"
+          class="editar-perfil__foto-img"
+        />
+        <div v-else class="editar-perfil__foto-img editar-perfil__foto-img--placeholder">
+          <span class="material-symbols-outlined">person</span>
+        </div>
+        <div class="editar-perfil__foto-info">
+          <span class="editar-perfil__profesion">{{ perfil.profesion || "Profesión" }}</span>
+          <span class="editar-perfil__foto-aviso">La foto de perfil no se edita desde este formulario.</span>
+        </div>
+      </div>
+ 
+      <VaForm ref="form" :immediate="false" @submit.prevent="guardar" class="editar-perfil__form">
+        <div class="editar-perfil__campos">
           <VaInput
             v-model="form.nombreArtistico"
             :rules="[reglas.requerido, reglas.min2]"
@@ -25,35 +42,30 @@
             type="text"
             placeholder="Ej: Lía Stylist"
           />
-
+ 
           <VaSelect
-            v-model="form.idProfesion"
+            :model-value="form.idProfesion"
             :options="profesiones"
             value-by="idProfesion"
             :text-by="(option) => capitalizarEtiqueta(option.nombre)"
-            :rules="[reglas.requerido]"
             label="Profesión"
-            placeholder="Seleccioná una profesión"
-            :loading="cargandoProfesiones"
+            disabled
           />
         </div>
-      </template>
-
-      <template v-else>
-        <div v-if="cargandoCaracteristicas" class="crear-perfil__estado">
-          <span class="material-symbols-outlined crear-perfil__estado-icono">hourglass_empty</span>
+ 
+        <div v-if="cargandoCaracteristicas" class="editar-perfil__estado">
+          <span class="material-symbols-outlined editar-perfil__estado-icono">hourglass_empty</span>
           Cargando características...
         </div>
-
-        <div v-else-if="caracteristicas.length === 0" class="crear-perfil__estado">
-          <span class="material-symbols-outlined crear-perfil__estado-icono">info</span>
-          No se encontraron características para esta profesión. Podés continuar con la biografía.
+ 
+        <div v-else-if="caracteristicas.length === 0" class="editar-perfil__estado">
+          <span class="material-symbols-outlined editar-perfil__estado-icono">info</span>
+          No se encontraron características para esta profesión.
         </div>
-
+ 
         <template v-else>
-          <div class="crear-perfil__campos">
-            <!-- Altura primero, ocupa ancho completo -->
-            <div v-if="caracteristicaAltura" class="crear-perfil__campo-caracteristica">
+          <div class="editar-perfil__campos">
+            <div v-if="caracteristicaAltura" class="editar-perfil__campo-caracteristica">
               <VaInput
                 v-if="!esEnumerado(caracteristicaAltura)"
                 v-model="form.caracteristicas[caracteristicaAltura.idCaracteristica].valor"
@@ -73,27 +85,26 @@
                 placeholder="Seleccioná un valor"
               >
                 <template #content="{ value }">
-                  <span v-if="getValorById(caracteristicaAltura, value)" class="crear-perfil__opcion">
-                    <span v-if="getValorById(caracteristicaAltura, value).colorHex" class="crear-perfil__swatch" :style="{ background: getValorById(caracteristicaAltura, value).colorHex }"></span>
+                  <span v-if="getValorById(caracteristicaAltura, value)" class="editar-perfil__opcion">
+                    <span v-if="getValorById(caracteristicaAltura, value).colorHex" class="editar-perfil__swatch" :style="{ background: getValorById(caracteristicaAltura, value).colorHex }"></span>
                     {{ labelValor(getValorById(caracteristicaAltura, value).codigo) }}
                   </span>
                 </template>
                 <template #option-content="{ option }">
-                  <span class="crear-perfil__opcion">
-                    <span v-if="option.colorHex" class="crear-perfil__swatch" :style="{ background: option.colorHex }"></span>
+                  <span class="editar-perfil__opcion">
+                    <span v-if="option.colorHex" class="editar-perfil__swatch" :style="{ background: option.colorHex }"></span>
                     {{ labelValor(option.codigo) }}
                   </span>
                 </template>
               </VaSelect>
             </div>
-
-            <!-- Medidas: pecho, cintura, cadera en un mismo renglón + acción alineada a Cadera -->
-            <div v-if="caracteristicasMedidas.length" class="crear-perfil__medidas-linea">
-              <div class="crear-perfil__fila-medidas">
+ 
+            <div v-if="caracteristicasMedidas.length" class="editar-perfil__medidas-linea">
+              <div class="editar-perfil__fila-medidas">
                 <div
                   v-for="carac in caracteristicasMedidas"
                   :key="carac.idCaracteristica"
-                  class="crear-perfil__campo-caracteristica"
+                  class="editar-perfil__campo-caracteristica"
                 >
                   <VaSelect
                     v-if="esEnumerado(carac)"
@@ -106,14 +117,14 @@
                     placeholder="Seleccioná un valor"
                   >
                     <template #content="{ value }">
-                      <span v-if="getValorById(carac, value)" class="crear-perfil__opcion">
-                        <span v-if="getValorById(carac, value).colorHex" class="crear-perfil__swatch" :style="{ background: getValorById(carac, value).colorHex }"></span>
+                      <span v-if="getValorById(carac, value)" class="editar-perfil__opcion">
+                        <span v-if="getValorById(carac, value).colorHex" class="editar-perfil__swatch" :style="{ background: getValorById(carac, value).colorHex }"></span>
                         {{ labelValor(getValorById(carac, value).codigo) }}
                       </span>
                     </template>
                     <template #option-content="{ option }">
-                      <span class="crear-perfil__opcion">
-                        <span v-if="option.colorHex" class="crear-perfil__swatch" :style="{ background: option.colorHex }"></span>
+                      <span class="editar-perfil__opcion">
+                        <span v-if="option.colorHex" class="editar-perfil__swatch" :style="{ background: option.colorHex }"></span>
                         {{ labelValor(option.codigo) }}
                       </span>
                     </template>
@@ -124,17 +135,16 @@
                     :rules="[reglas.requerido]"
                     :label="etiquetaCaracteristica(carac)"
                     :type="esNumerico(carac) ? 'number' : 'text'"
-                    :placeholder="`V${labelCaracteristica(carac.codigo)} ...`"
+                    :placeholder="`${labelCaracteristica(carac.codigo)} ...`"
                   />
                 </div>
               </div>
             </div>
-
-            <!-- Colores: piel, cabello, ojos -->
+ 
             <div
               v-for="carac in caracteristicasColores"
               :key="carac.idCaracteristica"
-              class="crear-perfil__campo-caracteristica"
+              class="editar-perfil__campo-caracteristica"
             >
               <VaSelect
                 v-if="esEnumerado(carac)"
@@ -147,14 +157,14 @@
                 placeholder="Seleccioná un valor"
               >
                 <template #content="{ value }">
-                  <span v-if="getValorById(carac, value)" class="crear-perfil__opcion">
-                    <span v-if="getValorById(carac, value).colorHex" class="crear-perfil__swatch" :style="{ background: getValorById(carac, value).colorHex }"></span>
+                  <span v-if="getValorById(carac, value)" class="editar-perfil__opcion">
+                    <span v-if="getValorById(carac, value).colorHex" class="editar-perfil__swatch" :style="{ background: getValorById(carac, value).colorHex }"></span>
                     {{ labelValor(getValorById(carac, value).codigo) }}
                   </span>
                 </template>
                 <template #option-content="{ option }">
-                  <span class="crear-perfil__opcion">
-                    <span v-if="option.colorHex" class="crear-perfil__swatch" :style="{ background: option.colorHex }"></span>
+                  <span class="editar-perfil__opcion">
+                    <span v-if="option.colorHex" class="editar-perfil__swatch" :style="{ background: option.colorHex }"></span>
                     {{ labelValor(option.codigo) }}
                   </span>
                 </template>
@@ -168,12 +178,11 @@
                 :placeholder="`${labelCaracteristica(carac.codigo)} ...`"
               />
             </div>
-
-            <!-- Resto de características no contempladas en el orden pedido -->
+ 
             <div
               v-for="carac in caracteristicasRestantes"
               :key="carac.idCaracteristica"
-              class="crear-perfil__campo-caracteristica"
+              class="editar-perfil__campo-caracteristica"
             >
               <VaSelect
                 v-if="esEnumerado(carac)"
@@ -186,14 +195,14 @@
                 placeholder="Seleccioná un valor"
               >
                 <template #content="{ value }">
-                  <span v-if="getValorById(carac, value)" class="crear-perfil__opcion">
-                    <span v-if="getValorById(carac, value).colorHex" class="crear-perfil__swatch" :style="{ background: getValorById(carac, value).colorHex }"></span>
+                  <span v-if="getValorById(carac, value)" class="editar-perfil__opcion">
+                    <span v-if="getValorById(carac, value).colorHex" class="editar-perfil__swatch" :style="{ background: getValorById(carac, value).colorHex }"></span>
                     {{ labelValor(getValorById(carac, value).codigo) }}
                   </span>
                 </template>
                 <template #option-content="{ option }">
-                  <span class="crear-perfil__opcion">
-                    <span v-if="option.colorHex" class="crear-perfil__swatch" :style="{ background: option.colorHex }"></span>
+                  <span class="editar-perfil__opcion">
+                    <span v-if="option.colorHex" class="editar-perfil__swatch" :style="{ background: option.colorHex }"></span>
                     {{ labelValor(option.codigo) }}
                   </span>
                 </template>
@@ -209,8 +218,8 @@
             </div>
           </div>
         </template>
-
-        <div class="crear-perfil__campos">
+ 
+        <div class="editar-perfil__campos">
           <VaInput
             v-model="form.biografia"
             :rules="[reglas.requerido, reglas.max500]"
@@ -219,37 +228,32 @@
             placeholder="Contá sobre tu trayectoria profesional..."
           />
         </div>
-      </template>
-      
-      <div
-        class="crear-perfil__alertas-wrapper"
-        :class="{ 'crear-perfil__alertas-wrapper--visible': mensajeExito || mensajeError }"
-      >
-        <div class="crear-perfil__alertas">
-          <BaseAlert v-if="mensajeExito" :message="mensajeExito" type="success" />
-          <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
+ 
+        <div
+          class="editar-perfil__alertas-wrapper"
+          :class="{ 'editar-perfil__alertas-wrapper--visible': mensajeExito || mensajeError }"
+        >
+          <div class="editar-perfil__alertas">
+            <BaseAlert v-if="mensajeExito" :message="mensajeExito" type="success" />
+            <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
+          </div>
         </div>
-      </div>
-
-      <div class="crear-perfil__acciones">
-        <template v-if="paso === 1">
-          <VaButton preset="secondary" @click="volver">Cancelar</VaButton>
-          <VaButton type="submit">Siguiente</VaButton>
-        </template>
-        <template v-else>
-          <VaButton preset="secondary" @click="paso = 1">Atrás</VaButton>
-          <VaButton type="submit" :loading="cargando">Crear perfil</VaButton>
-        </template>
-      </div>
-    </VaForm>
-
+ 
+        <div class="editar-perfil__acciones">
+          <VaButton preset="secondary" @click="volver" :disabled="cargando || !!mensajeExito">Cancelar</VaButton>
+          <VaButton type="submit" :loading="cargando" :disabled="!!mensajeExito">Guardar cambios</VaButton>
+        </div>
+      </VaForm>
+    </template>
+ 
+    
   </div>
 </template>
-
+ 
 <script>
 import perfilService from "../../services/perfilService";
 import BaseAlert from "../../components/AlertaBase.vue";
-
+ 
 const ETIQUETAS_CARACTERISTICAS = {
   altura: "Altura",
   peso: "Peso",
@@ -270,7 +274,7 @@ const ETIQUETAS_CARACTERISTICAS = {
   talle: "Talle",
   talle_calzado: "Talle de calzado",
 };
-
+ 
 const ETIQUETAS_VALORES = {
   marron: "Marrón",
   marrón: "Marrón",
@@ -298,7 +302,7 @@ const ETIQUETAS_VALORES = {
   muy_clara: "Muy clara",
   muy_oscura: "Muy oscura",
 };
-
+ 
 const ORDEN_PRIORIDAD = {
   altura: 10,
   medida_pecho: 20,
@@ -316,11 +320,11 @@ const ORDEN_PRIORIDAD = {
   color_ojos: 32,
   ojos: 32,
 };
-
+ 
 function normCodigo(codigo) {
   return (codigo || "").toLowerCase().trim();
 }
-
+ 
 function normTexto(texto) {
   return (texto || "")
     .toLowerCase()
@@ -329,9 +333,9 @@ function normTexto(texto) {
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
-
+ 
 export default {
-  name: "CrearPerfilView",
+  name: "EditarPerfilView",
   components: {
     BaseAlert,
   },
@@ -364,11 +368,13 @@ export default {
   },
   data() {
     return {
-      paso: 1,
+      idPerfil: null,
+      perfil: null,
       profesiones: [],
-      cargandoProfesiones: false,
-      cargandoCaracteristicas: false,
       caracteristicas: [],
+      cargandoInicial: true,
+      cargandoCaracteristicas: false,
+      noEncontrado: false,
       form: {
         nombreArtistico: "",
         idProfesion: null,
@@ -386,50 +392,77 @@ export default {
     };
   },
   async mounted() {
-    await this.cargarProfesiones();
+    this.idPerfil = this.$route.params.id;
+    await this.cargarPerfil();
   },
   methods: {
+    async cargarPerfil() {
+      this.cargandoInicial = true;
+      this.noEncontrado = false;
+      try {
+        const response = await perfilService.obtener(this.idPerfil);
+        this.perfil = response?.data;
+        if (!this.perfil) {
+          this.noEncontrado = true;
+          return;
+        }
+        this.form.nombreArtistico = this.perfil.nombreArtistico || "";
+        this.form.biografia = this.perfil.biografia || "";
+ 
+        const profesiones = await this.cargarProfesiones();
+        this.form.idProfesion = this.resolverIdProfesion(this.perfil.profesion, profesiones);
+        if (this.form.idProfesion != null) {
+          await this.cargarCaracteristicas(this.form.idProfesion);
+        }
+      } catch (error) {
+        if (error?.response?.status === 404) {
+          this.noEncontrado = true;
+        } else {
+          this.mensajeError =
+            error?.response?.data?.message || "No se pudo cargar el perfil. Intentá nuevamente.";
+        }
+      } finally {
+        this.cargandoInicial = false;
+      }
+    },
+    resolverIdProfesion(nombreProfesion, profesiones) {
+      const nombreNorm = normTexto(nombreProfesion);
+      const encontrada = profesiones.find((p) => normTexto(p.nombre) === nombreNorm);
+      return encontrada ? encontrada.idProfesion : null;
+    },
     async cargarProfesiones() {
-      this.cargandoProfesiones = true;
       try {
         const response = await perfilService.listarProfesiones();
         const datos = response?.data;
         this.profesiones = Array.isArray(datos) ? datos : datos?.profesiones || [];
       } catch {
-        this.mensajeError = "No se pudieron cargar las profesiones. Intentá nuevamente.";
-      } finally {
-        this.cargandoProfesiones = false;
+        this.profesiones = [];
       }
+      return this.profesiones;
     },
-
-    async irPaso2() {
-      const isValid = this.$refs.form.validate();
-      if (!isValid || !this.form.idProfesion) return;
-
-      this.mensajeExito = "";
-      this.mensajeError = "";
-
-      if (await this.usuarioTienePerfilConProfesion(this.form.idProfesion)) {
-        this.mensajeError = "Ya tenés un perfil con esta profesión. Podés modificar el perfil existente.";
-        return;
-      }
-
+    async cargarCaracteristicas(idProfesion) {
       this.cargandoCaracteristicas = true;
-
       try {
-        const response = await perfilService.caracteristicasPorProfesion(this.form.idProfesion);
+        const response = await perfilService.caracteristicasPorProfesion(idProfesion);
         const datos = response?.data;
         this.caracteristicas = Array.isArray(datos) ? datos : datos?.caracteristicas || [];
-
+ 
+        const valoresActuales = {};
+        (this.perfil?.caracteristicas || []).forEach((c) => {
+          valoresActuales[c.idCaracteristica] = {
+            valor: c.valor != null ? String(c.valor) : "",
+            idValor: c.idValor != null ? c.idValor : null,
+          };
+        });
+ 
         this.form.caracteristicas = {};
         this.caracteristicas.forEach((carac) => {
           this.form.caracteristicas[carac.idCaracteristica] = {
-            valor: "",
-            idValor: null,
+            valor: valoresActuales[carac.idCaracteristica]?.valor || "",
+            idValor: valoresActuales[carac.idCaracteristica]?.idValor ?? null,
           };
         });
-
-        this.paso = 2;
+ 
         this.$nextTick(() => {
           this.$refs.form?.resetValidation?.();
         });
@@ -439,50 +472,29 @@ export default {
         this.cargandoCaracteristicas = false;
       }
     },
-
     esEnumerado(carac) {
       return carac.tipoDato === "ENUMERADO";
     },
-
     esNumerico(carac) {
       return carac.tipoDato === "NUMERICO";
     },
-
-    async usuarioTienePerfilConProfesion(idProfesion) {
-      const profesion = this.profesiones.find((p) => p.idProfesion === idProfesion);
-      const nombreProfesion = profesion?.nombre;
-      if (!nombreProfesion) return false;
-      const nombreNorm = normTexto(nombreProfesion);
-
-      try {
-        const response = await perfilService.listarMisPerfiles();
-        const perfiles = Array.isArray(response?.data) ? response.data : [];
-        return perfiles.some((p) => normTexto(p.profesion) === nombreNorm);
-      } catch {
-        return false;
-      }
-    },
-
     labelCaracteristica(codigo) {
       if (!codigo) return codigo;
       const n = normCodigo(codigo);
       if (ETIQUETAS_CARACTERISTICAS[n]) return ETIQUETAS_CARACTERISTICAS[n];
       return this.capitalizarEtiqueta(codigo);
     },
-
     labelValor(codigo) {
       if (!codigo) return codigo;
       const n = normCodigo(codigo);
       if (ETIQUETAS_VALORES[n]) return ETIQUETAS_VALORES[n];
       return this.capitalizarEtiqueta(codigo);
     },
-
     capitalizarEtiqueta(texto) {
       const palabras = String(texto).toLowerCase().split(/[_\-]+/).filter(Boolean);
       const capitalizadas = palabras.map((p) => p.charAt(0).toUpperCase() + p.slice(1));
       return capitalizadas.join(" ");
     },
-
     etiquetaCaracteristica(carac) {
       const base = this.labelCaracteristica(carac.codigo);
       if (!carac.unidad) return base;
@@ -490,20 +502,18 @@ export default {
       if (unidadNorm === "color" || unidadNorm === "colour") return base;
       return `${base} (${carac.unidad.toLowerCase()})`;
     },
-
     getValorById(carac, idValor) {
       if (idValor == null || !carac || !Array.isArray(carac.valores)) return null;
       return carac.valores.find((v) => v.idValor === idValor) || null;
     },
-
     async guardar() {
       const isValid = this.$refs.form.validate();
       if (!isValid) return;
-
+ 
       this.mensajeExito = "";
       this.mensajeError = "";
       this.cargando = true;
-
+ 
       const caracteristicas = this.caracteristicas
         .map((carac) => {
           const entrada = this.form.caracteristicas[carac.idCaracteristica] || {};
@@ -519,146 +529,132 @@ export default {
           };
         })
         .filter((item) => item.idValor != null || (item.valor != null && item.valor !== ""));
-
+ 
       const request = {
         nombreArtistico: this.form.nombreArtistico.trim(),
-        idProfesion: this.form.idProfesion,
         biografia: this.form.biografia.trim(),
         caracteristicas,
       };
-
+ 
       try {
-        await perfilService.crear(request);
-        this.mensajeExito = "Perfil creado correctamente.";
+        await perfilService.editar(this.idPerfil, request);
+        this.mensajeExito = "Perfil actualizado correctamente.";
         setTimeout(() => {
           this.$router.push({ name: "dashboard-usuario" });
         }, 1200);
       } catch (error) {
+        const errores = error?.response?.data?.errores;
         this.mensajeError =
-          error?.response?.data?.message || "No se pudo crear el perfil. Intentá nuevamente.";
+          error?.response?.data?.message || "No se pudo actualizar el perfil. Intentá nuevamente.";
+        if (errores) {
+          this.mensajeError = `${this.mensajeError} ${JSON.stringify(errores)}`;
+        }
       } finally {
         this.cargando = false;
       }
     },
-
     volver() {
       this.$router.push({ name: "dashboard-usuario" });
     },
   },
 };
 </script>
-
+ 
 <style scoped>
-.crear-perfil {
+.editar-perfil {
   max-width: 860px;
 }
-
-.crear-perfil__titulo {
+ 
+.editar-perfil__titulo {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-text);
   margin: 0 0 0.25rem 0;
 }
-
-.crear-perfil__subtitulo {
+ 
+.editar-perfil__subtitulo {
   font-size: 0.85rem;
   color: var(--color-text-muted);
   margin: 0 0 1.5rem 0;
 }
-
-/* Stepper */
-.crear-perfil__stepper {
+ 
+.editar-perfil__foto {
   display: flex;
   align-items: center;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
-
-.crear-perfil__paso {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.crear-perfil__paso-numero {
-  width: 24px;
-  height: 24px;
+ 
+.editar-perfil__foto-img {
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  background: #e5e7eb;
-  color: var(--color-text-muted);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+ 
+.editar-perfil__foto-img--placeholder {
+  background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 0.78rem;
-  flex-shrink: 0;
+  color: var(--color-text-muted);
 }
-
-.crear-perfil__paso--activo {
-  color: var(--color-primary);
+ 
+.editar-perfil__foto-img--placeholder .material-symbols-outlined {
+  font-size: 2.2rem;
+}
+ 
+.editar-perfil__foto-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+ 
+.editar-perfil__profesion {
+  font-size: 1rem;
   font-weight: 600;
-}
-
-.crear-perfil__paso--activo .crear-perfil__paso-numero {
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.crear-perfil__paso--completo {
   color: var(--color-text);
 }
-
-.crear-perfil__paso--completo .crear-perfil__paso-numero {
-  background: #f59e0b;
-  color: #fff;
+ 
+.editar-perfil__foto-aviso {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
-
-.crear-perfil__paso-linea {
-  flex: 1;
-  height: 2px;
-  background: #e5e7eb;
-  margin: 0 1rem;
-}
-
-.crear-perfil__paso-linea--activa {
-  background: var(--color-primary);
-}
-
-/* Form */
-.crear-perfil__form {
+ 
+.editar-perfil__form {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
 }
-
-.crear-perfil__campos {
+ 
+.editar-perfil__campos {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
-
-.crear-perfil__campo-caracteristica :deep(.va-input-wrapper__field) {
+ 
+.editar-perfil__campo-caracteristica :deep(.va-input-wrapper__field) {
   min-height: 40px;
 }
-
-.crear-perfil__medidas-linea {
+ 
+.editar-perfil__medidas-linea {
   display: block;
 }
-
-.crear-perfil__fila-medidas {
+ 
+.editar-perfil__fila-medidas {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.85rem;
 }
-
-.crear-perfil__opcion {
+ 
+.editar-perfil__opcion {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
 }
-
-.crear-perfil__swatch {
+ 
+.editar-perfil__swatch {
   display: inline-block;
   width: 14px;
   height: 14px;
@@ -667,14 +663,14 @@ export default {
   flex-shrink: 0;
   vertical-align: middle;
 }
-
+ 
 @media (max-width: 900px) {
-  .crear-perfil__fila-medidas {
+  .editar-perfil__fila-medidas {
     grid-template-columns: 1fr;
   }
 }
-
-.crear-perfil__estado {
+ 
+.editar-perfil__estado {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -683,30 +679,30 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.9rem;
 }
-
-.crear-perfil__estado-icono {
+ 
+.editar-perfil__estado-icono {
   font-size: 2rem;
 }
-
-.crear-perfil__acciones {
+ 
+.editar-perfil__acciones {
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
   padding-top: 0.5rem;
 }
-
-.crear-perfil__alertas-wrapper {
+ 
+.editar-perfil__alertas-wrapper {
   display: grid;
   grid-template-rows: 0fr;
   min-height: 0;
   transition: grid-template-rows 0.25s ease;
 }
  
-.crear-perfil__alertas-wrapper--visible {
+.editar-perfil__alertas-wrapper--visible {
   grid-template-rows: 1fr;
 }
  
-.crear-perfil__alertas {
+.editar-perfil__alertas {
   overflow: hidden;
   min-height: 0;
   width: 100%;
@@ -715,18 +711,15 @@ export default {
   gap: 0.5rem;
 }
  
-.crear-perfil__alertas-wrapper--visible .crear-perfil__alertas {
+.editar-perfil__alertas-wrapper--visible .editar-perfil__alertas {
   padding-top: 0.15rem;
 }
  
-.crear-perfil__alertas > * {
+.editar-perfil__alertas > * {
   width: 100% !important;
   box-sizing: border-box;
   text-align: left;
 }
  
-:deep(.va-input-wrapper__field) {
-  min-height: 40px;
-}
-
 </style>
+ 
