@@ -30,4 +30,26 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+http.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const { config, response } = error;
+
+    const isCsrfFailure = response?.status === 403;
+    const alreadyRetried = config._csrfRetried;
+
+    if (isCsrfFailure && !alreadyRetried && isMutatingMethod(config.method)) {
+      config._csrfRetried = true;
+
+      const freshToken = getCookieValue("XSRF-TOKEN");
+      if (freshToken) {
+        config.headers["X-XSRF-TOKEN"] = freshToken;
+        return http(config); 
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export default http;

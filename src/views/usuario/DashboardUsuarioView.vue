@@ -1056,6 +1056,7 @@ export default {
 .detalle-perfil__footer-der {
   display: flex;
   align-items: center;
+  margin-left: auto;
   gap: 0.5rem;
 }
 
