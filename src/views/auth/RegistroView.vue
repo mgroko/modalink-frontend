@@ -101,7 +101,7 @@ export default {
         this.successMessage = "Registro exitoso.";
 
         if (usuario?.rolGlobal === "Administrador") {
-          this.$router.push({ name: "gestion-usuarios" });
+          this.$router.push({ name: "dashboard-admin" });
         } else {
           this.$router.push({ name: "dashboard-usuario" });
         }

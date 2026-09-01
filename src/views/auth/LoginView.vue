@@ -128,7 +128,7 @@ export default {
         this.successMessage = "Inicio de sesión exitoso.";
 
         if (usuario?.rolGlobal === "Administrador") {
-          this.$router.push({ name: "gestion-usuarios" });
+          this.$router.push({ name: "dashboard-admin" });
         } else {
           this.$router.push({ name: "dashboard-usuario" });
         }
