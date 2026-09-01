@@ -95,6 +95,20 @@ Modificardatosview · VUE
         </VaButton>
       </div>
     </VaForm>
+
+    <VaModal v-model="modalSinUbicacionVisible" hide-default-actions blur>
+      <h3 class="va-h5">Vas a guardar sin ubicación. ¿Continuar?</h3>
+      <template #footer>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; width: 100%; margin-top: 1rem;">
+          <VaButton preset="secondary" @click="modalSinUbicacionVisible = false">
+            Cancelar
+          </VaButton>
+          <VaButton @click="confirmarGuardarSinUbicacion">
+            Guardar
+          </VaButton>
+        </div>
+      </template>
+    </VaModal>
   </div>
 </template>
  
@@ -131,6 +145,7 @@ export default {
         { text: "Prefiero no decirlo", value: "no_decirlo" },
       ],
       cargando: false,
+      modalSinUbicacionVisible: false,
       mensajeExito: "",
       mensajeError: "",
       reglas: {
@@ -255,7 +270,19 @@ export default {
     async guardarDatos() {
       const isValid = this.$refs.form.validate();
       if (!isValid) return;
- 
+
+      if (!this.localidadSeleccionada) {
+        this.modalSinUbicacionVisible = true;
+        return;
+      }
+
+      await this.enviarDatos();
+    },
+    async confirmarGuardarSinUbicacion() {
+      this.modalSinUbicacionVisible = false;
+      await this.enviarDatos();
+    },
+    async enviarDatos() {
       this.mensajeExito = "";
       this.mensajeError = "";
       this.cargando = true;
