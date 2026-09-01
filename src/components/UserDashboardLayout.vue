@@ -27,6 +27,9 @@
           <button class="sidebar__action" @click="$router.push({ name: 'modificar-datos' })">
             Modificar datos personales
           </button>
+          <button class="sidebar__action" @click="$router.push({ name: 'calendario' })">
+            Calendario
+          </button>
           <button class="sidebar__action" @click="modalBajaVisible = true">
             Solicitar baja del sistema
           </button>

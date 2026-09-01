@@ -11,7 +11,7 @@
       <button
         class="dashboard-usuario__tab"
         :class="{ 'dashboard-usuario__tab--active': tabActiva === 'calendario' }"
-        @click="tabActiva = 'calendario'"
+        @click="$router.push({ name: 'calendario' })"
       >
         Calendario
       </button>
@@ -133,7 +133,11 @@
 
     <div v-else class="dashboard-usuario__estado">
       <span class="material-symbols-outlined dashboard-usuario__estado-icono">calendar_month</span>
-      Calendario — Próximamente
+      Gestioná tu disponibilidad y jornada laboral desde el calendario.
+      <button class="dashboard-usuario__calendario-link" @click="$router.push({ name: 'calendario' })">
+        Ir al calendario
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
     </div>
 
     <VaModal
@@ -741,6 +745,29 @@ export default {
 
 .dashboard-usuario__estado-icono {
   font-size: 2.5rem;
+}
+
+.dashboard-usuario__calendario-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-usuario__calendario-link:hover {
+  background: var(--color-primary-dark);
+}
+
+.dashboard-usuario__calendario-link .material-symbols-outlined {
+  font-size: 1.1rem;
 }
 
 /* Grid de perfiles */

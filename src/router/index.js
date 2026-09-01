@@ -10,6 +10,7 @@ import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
 import CrearPerfilView from "../views/usuario/CrearPerfilView.vue";
 import EditarPerfilView from "../views/usuario/EditarPerfilView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
+import CalendarioView from "../views/usuario/CalendarioView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
@@ -44,6 +45,12 @@ const routes = [
     name: "modificar-datos",
     component: ModificarDatosView,
     meta: { layout: UserDashboardLayout },
+  },
+  {
+    path: "/dashboard-usuario/calendario",
+    name: "calendario",
+    component: CalendarioView,
+    meta: { layout: UserDashboardLayout, titulo: "Calendario" },
   },
   {
     path: "/dashboard-usuario/crear-perfil",
