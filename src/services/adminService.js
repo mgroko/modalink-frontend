@@ -17,8 +17,8 @@ const adminService = {
     return http.patch(`/admin/usuarios/${idUsuario}/habilitar`);
   },
 
-  deshabilitarUsuario(idUsuario) {
-    return http.patch(`/admin/usuarios/${idUsuario}/deshabilitar`);
+  deshabilitarUsuario(idUsuario, datos) {
+    return http.patch(`/admin/usuarios/${idUsuario}/deshabilitar`, datos);
   },
 };
 

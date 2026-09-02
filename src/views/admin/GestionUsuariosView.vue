@@ -54,6 +54,16 @@
         <VaBadge :text="value" :color="colorEstado(value)" outline />
       </template>
 
+      <template #cell(deshabilitacion)="{ rowData }">
+        <div v-if="rowData.estado === 'Deshabilitado'" class="gestion-usuarios__deshabilitacion">
+          <span class="gestion-usuarios__deshabilitacion-motivo">{{ rowData.motivoDeshabilitacion || '—' }}</span>
+          <span class="gestion-usuarios__deshabilitacion-hasta">
+            {{ rowData.fechaHastaDeshabilitacion ? `Hasta ${formatearFecha(rowData.fechaHastaDeshabilitacion)}` : 'Indefinido' }}
+          </span>
+        </div>
+        <span v-else class="gestion-usuarios__deshabilitacion-vacio">—</span>
+      </template>
+
       <template #cell(fechaSolicitudBaja)="{ value }">
         {{ value ? formatearFecha(value) : 'No solicitó' }}
       </template>
@@ -137,6 +147,13 @@
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Estado</span>
               <VaBadge :text="usuarioDetalle.estado" :color="colorEstado(usuarioDetalle.estado)" outline />
+            </div>
+            <div v-if="usuarioDetalle.estado === 'Deshabilitado'" class="detalle-usuario__campo">
+              <span class="detalle-usuario__label">Deshabilitación</span>
+              <span>{{ usuarioDetalle.motivoDeshabilitacion || '—' }}</span>
+              <span class="detalle-usuario__texto-muted">
+                {{ usuarioDetalle.fechaHastaDeshabilitacion ? `Hasta ${formatearFecha(usuarioDetalle.fechaHastaDeshabilitacion)}` : 'Indefinido' }}
+              </span>
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Fecha de nacimiento</span>
@@ -262,11 +279,8 @@
     <!-- Modal deshabilitar -->
     <VaModal
       v-model="modalDeshabilitarVisible"
-      ok-text="Deshabilitar"
-      cancel-text="Cancelar"
-      ok-color="danger"
+      hide-default-actions
       blur
-      @ok="deshabilitarSeleccionado"
     >
       <h3 class="va-h5">¿Deshabilitar cuenta?</h3>
       <p class="mt-2">
@@ -274,6 +288,51 @@
         <strong>{{ usuarioSeleccionado?.correo }}</strong>
         no podrá iniciar sesión hasta que lo habilites nuevamente.
       </p>
+
+      <VaForm ref="formDeshabilitar" :immediate="false" class="deshabilitar-form">
+        <VaTextarea
+          v-model="motivoDeshabilitacion"
+          :rules="[reglasDeshabilitar.motivoRequerido, reglasDeshabilitar.motivoMax]"
+          label="Motivo"
+          placeholder="Ej: Incumplimiento de normas"
+          :max-length="200"
+          counter
+          :rows="3"
+        />
+
+        <div class="deshabilitar-form__duracion">
+          <span class="deshabilitar-form__label">Duración</span>
+          <VaRadio
+            v-model="duracionIndefinida"
+            :options="opcionesDuracion"
+            text-by="text"
+            value-by="value"
+            class="deshabilitar-form__radio"
+          />
+          <VaInput
+            v-if="!duracionIndefinida"
+            v-model="duracionDias"
+            :rules="[reglasDeshabilitar.duracionValida]"
+            type="number"
+            min="1"
+            label="Días"
+            class="deshabilitar-form__dias"
+          />
+        </div>
+      </VaForm>
+
+      <template #footer>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; width: 100%; margin-top: 1rem;">
+          <VaButton preset="secondary" @click="modalDeshabilitarVisible = false">Cancelar</VaButton>
+          <VaButton
+            color="danger"
+            :loading="procesandoId !== null"
+            @click="deshabilitarSeleccionado"
+          >
+            Deshabilitar
+          </VaButton>
+        </div>
+      </template>
     </VaModal>
   </div>
 </template>
@@ -312,6 +371,21 @@ export default {
       // Deshabilitar
       modalDeshabilitarVisible: false,
       usuarioSeleccionado: null,
+      motivoDeshabilitacion: "",
+      duracionIndefinida: true,
+      duracionDias: "",
+      opcionesDuracion: [
+        { text: "Indefinida", value: true },
+        { text: "Días", value: false },
+      ],
+      reglasDeshabilitar: {
+        motivoRequerido: (v) => (!!v && v.trim().length > 0) || "El motivo es obligatorio.",
+        motivoMax: (v) => !v || v.length <= 200 || "El motivo no puede superar los 200 caracteres.",
+        duracionValida: (v) => {
+          if (this.duracionIndefinida) return true;
+          return (!!v && parseInt(v, 10) > 0) || "Ingresá una duración mayor a 0 días.";
+        },
+      },
 
       columnas: [
         { key: "idUsuario", label: "ID", sortable: true },
@@ -321,6 +395,7 @@ export default {
         { key: "correo", label: "Correo", sortable: true },
         { key: "rolGlobal", label: "Rol" },
         { key: "estado", label: "Estado", sortable: true },
+        { key: "deshabilitacion", label: "Deshabilitación" },
         { key: "fechaSolicitudBaja", label: "Solicitud de baja" },
         { key: "acciones", label: "Acciones" },
       ],
@@ -463,13 +538,24 @@ export default {
     // Deshabilitar
     solicitarDeshabilitar(usuario) {
       this.usuarioSeleccionado = usuario;
+      this.motivoDeshabilitacion = "";
+      this.duracionIndefinida = true;
+      this.duracionDias = "";
+      this.errorMessage = "";
       this.modalDeshabilitarVisible = true;
     },
 
     deshabilitarSeleccionado() {
-      if (this.usuarioSeleccionado) {
-        this.deshabilitar(this.usuarioSeleccionado);
+      const isValid = this.$refs.formDeshabilitar?.validate();
+      if (isValid === false) return;
+      if (!this.usuarioSeleccionado) return;
+
+      const payload = { motivo: this.motivoDeshabilitacion.trim() };
+      if (!this.duracionIndefinida) {
+        payload.duracionDias = parseInt(this.duracionDias, 10);
       }
+
+      this.deshabilitar(this.usuarioSeleccionado, payload);
     },
 
     async habilitar(usuario) {
@@ -481,6 +567,8 @@ export default {
       try {
         await adminService.habilitarUsuario(id);
         usuario.estado = "Activo";
+        usuario.motivoDeshabilitacion = null;
+        usuario.fechaHastaDeshabilitacion = null;
         this.successMessage = `La cuenta de ${usuario.correo} fue habilitada.`;
       } catch (error) {
         this.errorMessage =
@@ -491,25 +579,35 @@ export default {
       }
     },
 
-    async deshabilitar(usuario) {
+    async deshabilitar(usuario, payload) {
       const id = this.obtenerId(usuario);
       this.procesandoId = id;
       this.errorMessage = "";
       this.successMessage = "";
 
       try {
-        await adminService.deshabilitarUsuario(id);
+        const response = await adminService.deshabilitarUsuario(id, payload);
+        const datos = response?.data;
         usuario.estado = "Deshabilitado";
+        usuario.motivoDeshabilitacion = datos?.motivoDeshabilitacion ?? null;
+        usuario.fechaHastaDeshabilitacion = datos?.fechaHastaDeshabilitacion ?? null;
         this.successMessage = `La cuenta de ${usuario.correo} fue deshabilitada.`;
       } catch (error) {
-        this.errorMessage =
-          error?.response?.data?.message ||
-          "No se pudo deshabilitar el usuario.";
+        this.errorMessage = this.mensajeErrorDeshabilitar(error);
       } finally {
         this.procesandoId = null;
         this.modalDeshabilitarVisible = false;
         this.usuarioSeleccionado = null;
       }
+    },
+
+    mensajeErrorDeshabilitar(error) {
+      const data = error?.response?.data;
+      if (data?.errores) {
+        const errores = Object.values(data.errores).filter(Boolean).join(" ");
+        if (errores) return errores;
+      }
+      return data?.message || "No se pudo deshabilitar el usuario.";
     },
   },
 };
@@ -566,6 +664,57 @@ export default {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.gestion-usuarios__deshabilitacion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 220px;
+}
+
+.gestion-usuarios__deshabilitacion-motivo {
+  font-size: 0.82rem;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gestion-usuarios__deshabilitacion-hasta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.gestion-usuarios__deshabilitacion-vacio {
+  color: var(--color-text-muted);
+}
+
+.deshabilitar-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.deshabilitar-form__duracion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.deshabilitar-form__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.deshabilitar-form__radio {
+  margin-bottom: 0.25rem;
+}
+
+.deshabilitar-form__dias {
+  max-width: 160px;
 }
 
 /* Detalle usuario */
