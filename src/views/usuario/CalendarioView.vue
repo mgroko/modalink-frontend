@@ -255,8 +255,10 @@ export default {
       let min = "09:00";
       let max = "18:00";
       (this.calendario?.jornada?.dias || []).forEach((d) => {
-        if (d.horaInicio && d.horaInicio < min) min = d.horaInicio;
-        if (d.horaFin && d.horaFin > max) max = d.horaFin;
+        const inicio = d.horarioInicioManiana || d.horaInicio;
+        const fin = d.horarioFinTarde || d.horaFin;
+        if (inicio && inicio.slice(0, 5) < min) min = inicio.slice(0, 5);
+        if (fin && fin.slice(0, 5) > max) max = fin.slice(0, 5);
       });
       (this.calendario?.actividades || []).forEach((a) => {
         if (!a.fechaHoraFin) return;
@@ -328,6 +330,25 @@ export default {
     jornadaPorDia(diaSemana) {
       return (this.calendario?.jornada?.dias || []).find((d) => d.diaSemana === diaSemana) || null;
     },
+    estaEnJornadaLaboral(diaSemana, slotInicio, slotFin) {
+      const jornada = this.jornadaPorDia(diaSemana);
+      if (!jornada) return false;
+
+      const iniManiana = (jornada.horarioInicioManiana || jornada.horaInicio || "").slice(0, 5);
+      const finManiana = (jornada.horarioFinManiana || "").slice(0, 5);
+      const iniTarde = (jornada.horarioInicioTarde || "").slice(0, 5);
+      const finTarde = (jornada.horarioFinTarde || jornada.horaFin || "").slice(0, 5);
+
+      if (!finManiana || !iniTarde) {
+        // Jornada corrida: entre iniManiana y finTarde
+        return slotInicio >= iniManiana && slotFin <= finTarde;
+      }
+
+      // Jornada partida: en el bloque de la mañana o en el bloque de la tarde
+      const enManiana = slotInicio >= iniManiana && slotFin <= finManiana;
+      const enTarde = slotInicio >= iniTarde && slotFin <= finTarde;
+      return enManiana || enTarde;
+    },
     horaAMinutos(hora) {
       const h = hora.split(":")[0];
       const m = hora.split(":")[1];
@@ -360,7 +381,10 @@ export default {
     },
     celdaClase(dia, slot) {
       const clases = [];
-      if (!dia.laborable) {
+      const diaSemana = dia.fecha.getDay() === 0 ? 7 : dia.fecha.getDay();
+      const laborableEnEsteSlot = dia.laborable && this.estaEnJornadaLaboral(diaSemana, slot.inicio, slot.fin);
+
+      if (!laborableEnEsteSlot) {
         clases.push("calendario__celda--nolaborable");
         return clases;
       }

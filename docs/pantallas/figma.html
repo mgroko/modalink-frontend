@@ -1,0 +1,2788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ModaLink - Design Showcase & Vistas para Figma</title>
+  
+  <!-- Tipografía & Iconografía oficial de ModaLink -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <style>
+    /* ═════════════════════════════════════════════════════════════════
+       VARIABLES CSS & DESIGN SYSTEM (MODALINK)
+       ═════════════════════════════════════════════════════════════════ */
+    :root {
+      --color-primary: #494776;
+      --color-primary-dark: #3E3C64;
+      --color-primary-light: #6D6C91;
+      --color-secondary: #6866A9;
+      --color-secondary-dark: #585790;
+      --color-accent: #A97B5C;
+      --color-accent-dark: #90694E;
+      --color-support: #5CA4A9;
+      --color-neutral-dark: #765640;
+      --color-text: #232134;
+      --color-text-muted: #6B6980;
+      --color-bg: #F5F5F8;
+      --color-surface: #FFFFFF;
+      --color-border: #E5E7EB;
+      --color-success: #10B981;
+      --color-warning: #F59E0B;
+      --color-danger: #EF4444;
+      --color-info: #3B82F6;
+
+      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: #0d1117;
+      color: var(--color-text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════
+       INDEX DE VISTAS (STICKY BAR SUPERIOR PARA INSPECCIÓN RÁPIDA)
+       ═════════════════════════════════════════════════════════════════ */
+    .figma-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+      background: rgba(13, 17, 23, 0.96);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #30363d;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .figma-toolbar__brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #f0f6fc;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.05em;
+    }
+
+    .figma-toolbar__tag {
+      background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    .figma-toolbar__links {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .figma-toolbar__link {
+      background: #21262d;
+      color: #c9d1d9;
+      text-decoration: none;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      transition: all 0.2s ease;
+    }
+
+    .figma-toolbar__link:hover {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary-light);
+    }
+
+    /* ═════════════════════════════════════════════════════════════════
+       CONTENEDOR DE ARTBOARDS / FRAMES DE FIGMA
+       ═════════════════════════════════════════════════════════════════ */
+    .figma-canvas {
+      padding: 3rem 2rem;
+      max-width: 1700px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 5rem;
+    }
+
+    .figma-section-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #f0f6fc;
+      border-bottom: 2px solid #30363d;
+      padding-bottom: 0.75rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .figma-section-title .material-symbols-outlined {
+      font-size: 2rem;
+      color: var(--color-support);
+    }
+
+    .figma-frame {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+    }
+
+    .figma-frame__header {
+      background: #21262d;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .figma-frame__name {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f0f6fc;
+    }
+
+    .figma-frame__file {
+      font-size: 0.75rem;
+      color: #8b949e;
+      font-family: monospace;
+    }
+
+    .figma-frame__body {
+      background-color: var(--color-bg);
+      min-height: 560px;
+      position: relative;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════
+       COMPONENTES REUTILIZABLES (EMULACIÓN VUESTIC / MODALINK)
+       ═════════════════════════════════════════════════════════════════ */
+    
+    /* Inputs */
+    .va-input-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+
+    .va-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-primary);
+      margin-bottom: 0.35rem;
+    }
+
+    .va-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: var(--color-surface);
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 0 0.85rem;
+      height: 42px;
+      transition: all 0.2s;
+    }
+
+    .va-input-wrapper:focus-within {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(73, 71, 118, 0.15);
+    }
+
+    .va-input-wrapper input,
+    .va-input-wrapper select,
+    .va-input-wrapper textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 0.875rem;
+      color: var(--color-text);
+      font-family: inherit;
+    }
+
+    .va-input-wrapper textarea {
+      padding: 0.5rem 0;
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .va-input-wrapper select {
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .va-input-wrapper .va-icon-append {
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      font-size: 1.25rem;
+    }
+
+    .va-input-message {
+      font-size: 0.7rem;
+      color: var(--color-text-muted);
+      margin-top: 0.25rem;
+    }
+
+    /* Buttons */
+    .va-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.875rem;
+      border-radius: 8px;
+      padding: 0.6rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .va-btn--primary {
+      background: var(--color-primary);
+      color: #ffffff;
+    }
+
+    .va-btn--primary:hover {
+      background: var(--color-primary-dark);
+    }
+
+    .va-btn--secondary {
+      background: #F3F4F6;
+      color: var(--color-text);
+      border-color: #E5E7EB;
+    }
+
+    .va-btn--secondary:hover {
+      background: #E5E7EB;
+    }
+
+    .va-btn--danger {
+      background: var(--color-danger);
+      color: #ffffff;
+    }
+
+    .va-btn--danger-outline {
+      background: transparent;
+      color: var(--color-danger);
+      border-color: var(--color-danger);
+    }
+
+    .va-btn--danger-outline:hover {
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    .va-btn--small {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.78rem;
+      border-radius: 6px;
+    }
+
+    /* Badges */
+    .va-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 999px;
+      line-height: 1;
+    }
+
+    .va-badge--success {
+      background: rgba(16, 185, 129, 0.12);
+      color: #059669;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .va-badge--warning {
+      background: rgba(245, 158, 11, 0.12);
+      color: #D97706;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .va-badge--danger {
+      background: rgba(239, 68, 68, 0.12);
+      color: #DC2626;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .va-badge--info {
+      background: rgba(59, 130, 246, 0.12);
+      color: #2563EB;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* Alert */
+    .base-alert {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .base-alert--success {
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
+
+    .base-alert--error {
+      background: #FEF2F2;
+      color: #991B1B;
+      border: 1px solid #FECACA;
+    }
+
+    /* Tablas estilo Vuestic DataTable */
+    .va-table-container {
+      background: var(--color-surface);
+      border-radius: 10px;
+      border: 1px solid #E5E7EB;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .va-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .va-table th {
+      background: #F9FAFB;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid #E5E7EB;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .va-table td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid #F3F4F6;
+      color: var(--color-text);
+      vertical-align: middle;
+    }
+
+    .va-table tr:hover {
+      background: #F9FAFB;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════
+       LAYOUT 1: AUTH (SPLIT SCREEN)
+       ═════════════════════════════════════════════════════════════════ */
+    .auth-layout {
+      min-height: 600px;
+      display: flex;
+      background: var(--color-bg);
+    }
+
+    .auth-layout__brand {
+      position: relative;
+      width: 40vw;
+      min-width: 320px;
+      background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 2.5rem;
+    }
+
+    .auth-layout__brand-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(169, 123, 92, 0.35) 0%, rgba(73, 71, 118, 0.85) 100%);
+      mix-blend-mode: overlay;
+    }
+
+    .auth-layout__brand-text {
+      color: #ecfeff;
+      font-size: 3.5rem;
+      font-weight: 900;
+      letter-spacing: 0.20em;
+      text-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      z-index: 2;
+      text-transform: uppercase;
+    }
+
+    .auth-layout__content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 1.5rem;
+    }
+
+    .auth-page {
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .auth-page h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+      margin: 0 0 1.25rem 0;
+    }
+
+    .auth-page__footer {
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      margin-top: 1.25rem;
+    }
+
+    .auth-page__footer a,
+    .link-recuperar,
+    .link-login {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .link-recuperar {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+    }
+
+    .auth-button {
+      width: 200px;
+      margin: 0.5rem auto 0 auto;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════
+       LAYOUT 2: USUARIO DASHBOARD (SIDEBAR + CONTENT)
+       ═════════════════════════════════════════════════════════════════ */
+    .dashboard-layout {
+      display: flex;
+      min-height: 720px;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: var(--color-surface);
+      border-right: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.5rem 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .sidebar__user {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .sidebar__avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .sidebar__user-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--color-text);
+      display: block;
+    }
+
+    .sidebar__user-email {
+      font-size: 0.74rem;
+      color: var(--color-text-muted);
+      display: block;
+    }
+
+    .sidebar__notifications {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      width: 100%;
+      background: #F9FAFB;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 0.55rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-text);
+      cursor: pointer;
+      margin-bottom: 1.75rem;
+    }
+
+    .sidebar__badge {
+      margin-left: auto;
+      background: var(--color-accent);
+      color: white;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+    }
+
+    .sidebar__section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted);
+      margin-bottom: 0.6rem;
+      display: block;
+    }
+
+    .sidebar__action {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      background: transparent;
+      border: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--color-text);
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s;
+      margin-bottom: 0.25rem;
+    }
+
+    .sidebar__action:hover,
+    .sidebar__action--active {
+      background: #F3F4F6;
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    .sidebar__logout {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: none;
+      border: none;
+      color: var(--color-danger);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.5rem 0;
+    }
+
+    .dashboard-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .dashboard-main__header {
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dashboard-main__title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: var(--color-text);
+      line-height: 1.1;
+    }
+
+    .dashboard-main__subtitle {
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+    }
+
+    .modalink-main__title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      letter-spacing: 0.1em;
+    }
+
+    .dashboard-main__content {
+      padding: 2rem;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    /* Tabs Usuario */
+    .dashboard-usuario__tabs {
+      display: flex;
+      gap: 1.5rem;
+      border-bottom: 2px solid var(--color-border);
+      margin-bottom: 1.5rem;
+    }
+
+    .dashboard-usuario__tab {
+      background: none;
+      border: none;
+      padding: 0.6rem 0;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+    }
+
+    .dashboard-usuario__tab--active {
+      color: var(--color-text);
+      font-weight: 700;
+      border-bottom-color: var(--color-primary);
+    }
+
+    .dashboard-usuario__toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .dashboard-usuario__search {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      background: var(--color-surface);
+      min-width: 260px;
+    }
+
+    .dashboard-usuario__search input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    /* Tarjetas de Perfil */
+    .dashboard-usuario__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .perfil-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+
+    .perfil-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--color-support);
+      color: #fff;
+      padding: 0.65rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .perfil-card__body {
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .perfil-card__avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      background: #E5E7EB;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-muted);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .perfil-card__foto {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .perfil-card__profesion {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .perfil-card__nombre {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .perfil-card__meta {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      border-top: 1px solid #F3F4F6;
+      border-bottom: 1px solid #F3F4F6;
+      background: #FAFAFA;
+      font-size: 0.78rem;
+    }
+
+    .perfil-card__meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .perfil-card__meta-label {
+      color: var(--color-text-muted);
+    }
+
+    .perfil-card__biografia {
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .perfil-card__footer {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      border-top: 1px solid #F3F4F6;
+    }
+
+    .perfil-card__footer-icons {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .perfil-card__icon-btn {
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0.25rem;
+      border-radius: 4px;
+    }
+
+    .perfil-card__icon-btn:hover {
+      background: #F3F4F6;
+      color: var(--color-primary);
+    }
+
+    .perfil-card__ingresar {
+      background: none;
+      border: none;
+      color: var(--color-primary);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════
+       LAYOUT 3: ADMIN (NAVBAR + CONTENT)
+       ═════════════════════════════════════════════════════════════════ */
+    .admin-layout {
+      min-height: 600px;
+      display: flex;
+      flex-direction: column;
+      background: var(--color-bg);
+    }
+
+    .admin-layout__header {
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: 1rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .admin-layout__brand {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--color-primary);
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .admin-layout__nav {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .admin-layout__link {
+      color: var(--color-text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .admin-layout__link:hover,
+    .admin-layout__link--active {
+      color: var(--color-primary);
+    }
+
+    .admin-layout__content {
+      padding: 2.5rem;
+      flex: 1;
+    }
+
+    .admin-dashboard__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .admin-card {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+
+    .admin-card:hover {
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      transform: translateY(-2px);
+      border-color: var(--color-primary);
+    }
+
+    .admin-card__icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .admin-card__titulo {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-text);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .admin-card__descripcion {
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+      line-height: 1.4;
+      display: block;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════
+       VISTA STEPPER (CREAR / EDITAR PERFIL)
+       ═════════════════════════════════════════════════════════════════ */
+    .crear-perfil {
+      max-width: 740px;
+      margin: 0 auto;
+      background: var(--color-surface);
+      padding: 2rem;
+      border-radius: 14px;
+      border: 1px solid var(--color-border);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    }
+
+    .crear-perfil__titulo {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--color-text);
+      margin-bottom: 0.35rem;
+    }
+
+    .crear-perfil__subtitulo {
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      margin-bottom: 1.75rem;
+    }
+
+    .crear-perfil__stepper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .crear-perfil__paso {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--color-text-muted);
+    }
+
+    .crear-perfil__paso-numero {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #E5E7EB;
+      color: var(--color-text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    .crear-perfil__paso--activo .crear-perfil__paso-numero {
+      background: var(--color-primary);
+      color: #fff;
+    }
+
+    .crear-perfil__paso--activo {
+      color: var(--color-primary);
+    }
+
+    .crear-perfil__paso--completo .crear-perfil__paso-numero {
+      background: var(--color-success);
+      color: #fff;
+    }
+
+    .crear-perfil__paso-linea {
+      flex: 1;
+      height: 2px;
+      background: #E5E7EB;
+      margin: 0 1rem;
+      max-width: 100px;
+    }
+
+    .crear-perfil__paso-linea--activa {
+      background: var(--color-success);
+    }
+
+    .form-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .form-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.35rem;
+      vertical-align: middle;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    /* ═════════════════════════════════════════════════════════════════
+       VISTA CALENDARIO
+       ═════════════════════════════════════════════════════════════════ */
+    .calendario-container {
+      background: var(--color-surface);
+      border-radius: 12px;
+      border: 1px solid var(--color-border);
+      padding: 1.5rem;
+    }
+
+    .calendario__toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .calendario__nav {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .calendario__periodo {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .calendario__leyenda {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+    }
+
+    .calendario__leyenda-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .calendario__leyenda-cuadro {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .cuadro--actividad { background: #A7F3D0; border: 1px solid #059669; }
+    .cuadro--bloqueo { background: #FECACA; border: 1px solid #DC2626; }
+    .cuadro--disponible { background: #E0E7FF; border: 1px solid #4F46E5; }
+    .cuadro--nolaborable { background: #F3F4F6; border: 1px solid #D1D5DB; }
+
+    .calendario-grid-mock {
+      display: grid;
+      grid-template-columns: 70px repeat(7, 1fr);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .cal-header-cell {
+      background: #F9FAFB;
+      padding: 0.6rem 0.25rem;
+      text-align: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border-bottom: 1px solid var(--color-border);
+      border-right: 1px solid var(--color-border);
+    }
+
+    .cal-header-cell--hoy {
+      background: rgba(73, 71, 118, 0.08);
+      color: var(--color-primary);
+    }
+
+    .cal-time-cell {
+      background: #F9FAFB;
+      font-size: 0.72rem;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      padding: 0.6rem 0.4rem;
+      text-align: right;
+      border-bottom: 1px solid #F3F4F6;
+      border-right: 1px solid var(--color-border);
+    }
+
+    .cal-slot-cell {
+      height: 38px;
+      border-bottom: 1px solid #F3F4F6;
+      border-right: 1px solid #F3F4F6;
+      background: #ffffff;
+    }
+
+    .cal-slot-cell--disp { background: rgba(224, 231, 255, 0.35); }
+    .cal-slot-cell--bloq { background: rgba(254, 202, 202, 0.6); border-left: 3px solid #DC2626; }
+    .cal-slot-cell--act { background: rgba(167, 243, 208, 0.6); border-left: 3px solid #059669; }
+    .cal-slot-cell--nolab { background: #F9FAFB; }
+
+    /* Modal Emulado */
+    .modal-preview-card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      border: 1px solid var(--color-border);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      max-width: 540px;
+      margin: 1.5rem auto 0 auto;
+      overflow: hidden;
+    }
+
+    .modal-preview-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .modal-preview-body {
+      padding: 1.25rem;
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+    }
+
+    .modal-preview-footer {
+      padding: 0.85rem 1.25rem;
+      background: #F9FAFB;
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    /* ── Badges y elementos de layouts ── */
+    .layout-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #30363d;
+      color: #58a6ff;
+      border: 1px solid #388bfd33;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    .layout-slot-placeholder {
+      border: 2px dashed #d1d5db;
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 3.5rem 2rem;
+      text-align: center;
+      color: var(--color-text-muted);
+      margin: 1rem 0;
+    }
+
+    .layout-slot-placeholder h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .layout-slot-placeholder p {
+      font-size: 0.85rem;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BARRA DE NAVEGACIÓN SUPERIOR PARA FIGMA -->
+  <header class="figma-toolbar">
+    <div class="figma-toolbar__brand">
+      <span>ModaLink UI Kit</span>
+      <span class="figma-toolbar__tag">HTML/CSS Figma Ready</span>
+    </div>
+    <nav class="figma-toolbar__links">
+      <!-- Layouts Base -->
+      <a href="#layout-auth" class="figma-toolbar__link" style="border-color: #58a6ff; color: #58a6ff;">Layout: Auth</a>
+      <a href="#layout-user" class="figma-toolbar__link" style="border-color: #58a6ff; color: #58a6ff;">Layout: User</a>
+      <a href="#layout-admin" class="figma-toolbar__link" style="border-color: #58a6ff; color: #58a6ff;">Layout: Admin</a>
+      <!-- Vistas -->
+      <a href="#view-login" class="figma-toolbar__link">Login</a>
+      <a href="#view-registro" class="figma-toolbar__link">Registro</a>
+      <a href="#view-recuperar" class="figma-toolbar__link">Recuperar Pass</a>
+      <a href="#view-admin-dash" class="figma-toolbar__link">Admin Dashboard</a>
+      <a href="#view-admin-users" class="figma-toolbar__link">Gestión Usuarios</a>
+      <a href="#view-admin-carac" class="figma-toolbar__link">Gestión Características</a>
+      <a href="#view-user-dash" class="figma-toolbar__link">Usuario Dashboard</a>
+      <a href="#view-crear-perfil" class="figma-toolbar__link">Crear Perfil</a>
+      <a href="#view-editar-perfil" class="figma-toolbar__link">Editar Perfil</a>
+      <a href="#view-modificar-datos" class="figma-toolbar__link">Modificar Datos</a>
+      <a href="#view-calendario" class="figma-toolbar__link">Calendario</a>
+    </nav>
+  </header>
+
+  <main class="figma-canvas">
+
+    <!-- ════════════════════════════════════════════════════════════════
+         SECCIÓN 0: ARQUITECTURA DE LAYOUTS (src/components)
+         ════════════════════════════════════════════════════════════════ -->
+    <section>
+      <h2 class="figma-section-title">
+        <span class="material-symbols-outlined">view_quilt</span>
+        0. Arquitectura de Layouts y Cascarones Base (src/components)
+      </h2>
+
+      <!-- LAYOUT 1: AuthLayout.vue -->
+      <article id="layout-auth" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">splitscreen</span>
+            AuthLayout — Estructura Base de Autenticación con Slider Fotográfico
+          </span>
+          <span class="figma-frame__file">src/components/AuthLayout.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="auth-layout" style="min-height: 480px;">
+            <div class="auth-layout__brand">
+              <div class="auth-layout__brand-overlay"></div>
+              <div style="z-index: 2; text-align: center;">
+                <span class="auth-layout__brand-text">ModaLink</span>
+                <div style="margin-top: 1rem; display: flex; justify-content: center; gap: 0.4rem;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #ffffff;"></span>
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4);"></span>
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.4);"></span>
+                </div>
+                <span style="display: block; font-size: 0.72rem; color: rgba(255,255,255,0.7); margin-top: 0.5rem; letter-spacing: 0.05em;">
+                  SLIDER DINÁMICO (5000ms)
+                </span>
+              </div>
+            </div>
+            <div class="auth-layout__content" style="padding: 3rem;">
+              <div style="width: 100%; max-width: 480px;">
+                <div class="layout-slot-placeholder">
+                  <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--color-primary); margin-bottom: 0.5rem;">input</span>
+                  <h4>&lt;slot /&gt; — Área de Inyección de Contenido</h4>
+                  <p>Aquí se renderizan dinámicamente las vistas de autenticación:</p>
+                  <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                    <span class="va-badge va-badge--info">LoginView</span>
+                    <span class="va-badge va-badge--info">RegistroView</span>
+                    <span class="va-badge va-badge--info">RecuperarPasswordView</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- LAYOUT 2: UserDashboardLayout.vue -->
+      <article id="layout-user" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">space_dashboard</span>
+            UserDashboardLayout — Estructura Principal con Sidebar y Topbar
+          </span>
+          <span class="figma-frame__file">src/components/UserDashboardLayout.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="dashboard-layout" style="min-height: 550px;">
+            <!-- SIDEBAR COMPLETO DEL LAYOUT -->
+            <aside class="sidebar">
+              <div class="sidebar__top">
+                <div class="sidebar__user">
+                  <div class="sidebar__avatar">V</div>
+                  <div class="sidebar__user-info">
+                    <span class="sidebar__user-name">Valentina Rossi</span>
+                    <span class="sidebar__user-email">valentina@modalink.com</span>
+                  </div>
+                </div>
+
+                <button class="sidebar__notifications">
+                  <span class="material-symbols-outlined" style="font-size: 1.15rem; color: var(--color-secondary);">notifications</span>
+                  <span>Notificaciones</span>
+                  <span class="sidebar__badge" style="background: var(--color-danger); color: white; border-radius: 999px; padding: 2px 6px; font-size: 0.65rem;">2</span>
+                </button>
+
+                <div class="sidebar__section">
+                  <span class="sidebar__section-title">Acciones</span>
+                  <button class="sidebar__action sidebar__action--active">
+                    <span class="material-symbols-outlined" style="font-size: 1rem; margin-right: 0.4rem; vertical-align: middle;">home</span>
+                    Inicio
+                  </button>
+                  <button class="sidebar__action">
+                    <span class="material-symbols-outlined" style="font-size: 1rem; margin-right: 0.4rem; vertical-align: middle;">add_circle</span>
+                    Crear nuevo perfil
+                  </button>
+                  <button class="sidebar__action">
+                    <span class="material-symbols-outlined" style="font-size: 1rem; margin-right: 0.4rem; vertical-align: middle;">badge</span>
+                    Modificar datos personales
+                  </button>
+                  <button class="sidebar__action">
+                    <span class="material-symbols-outlined" style="font-size: 1rem; margin-right: 0.4rem; vertical-align: middle;">calendar_month</span>
+                    Calendario
+                  </button>
+                  <button class="sidebar__action" style="color: var(--color-danger);">
+                    <span class="material-symbols-outlined" style="font-size: 1rem; margin-right: 0.4rem; vertical-align: middle;">heart_broken</span>
+                    Solicitar baja del sistema
+                  </button>
+                </div>
+              </div>
+
+              <button class="sidebar__logout">
+                <span class="material-symbols-outlined">power_settings_new</span>
+                Cerrar sesión
+              </button>
+            </aside>
+
+            <!-- MAIN CONTAINER DEL LAYOUT -->
+            <div class="dashboard-main">
+              <header class="dashboard-main__header">
+                <div>
+                  <h1 class="dashboard-main__title">DASHBOARD</h1>
+                  <span class="dashboard-main__subtitle">Prop: :titulo="Perfiles"</span>
+                </div>
+                <h1 class="modalink-main__title">ModaLink</h1>
+              </header>
+
+              <main class="dashboard-main__content">
+                <div class="layout-slot-placeholder" style="margin-top: 1rem;">
+                  <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--color-primary); margin-bottom: 0.5rem;">widgets</span>
+                  <h4>&lt;slot /&gt; — Área de Inyección de Usuario</h4>
+                  <p>Aloja las páginas internas con router-view en el flujo del usuario creativo:</p>
+                  <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                    <span class="va-badge va-badge--info">DashboardUsuarioView</span>
+                    <span class="va-badge va-badge--info">CrearPerfilView</span>
+                    <span class="va-badge va-badge--info">EditarPerfilView</span>
+                    <span class="va-badge va-badge--info">ModificarDatosView</span>
+                    <span class="va-badge va-badge--info">CalendarioView</span>
+                  </div>
+                </div>
+
+                <!-- MODAL INCLUIDO DENTRO DEL LAYOUT: modalBajaVisible -->
+                <div class="modal-preview-card" style="margin-top: 2rem;">
+                  <div class="modal-preview-header" style="color: var(--color-danger);">
+                    <span style="display: flex; align-items: center; gap: 0.4rem;">
+                      <span class="material-symbols-outlined">warning</span>
+                      Modal Integrado en UserDashboardLayout: ¿Solicitar baja del sistema?
+                    </span>
+                    <span class="material-symbols-outlined" style="cursor: pointer;">close</span>
+                  </div>
+                  <div class="modal-preview-body">
+                    <p style="margin-bottom: 0.5rem;">Tenés <strong>30 días</strong> para volver a activar tu cuenta. Durante ese periodo, tus perfiles no serán visibles para otros usuarios.</p>
+                    <p style="margin-bottom: 0.5rem;">Pasados los 30 días, tu cuenta se eliminará permanentemente del sistema.</p>
+                    <p>Para reactivar tu cuenta, solo necesitás iniciar sesión nuevamente.</p>
+                  </div>
+                  <div class="modal-preview-footer">
+                    <button class="va-btn va-btn--secondary va-btn--small">Cancelar</button>
+                    <button class="va-btn va-btn--danger va-btn--small">Solicitar baja</button>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- LAYOUT 3: AdminLayout.vue -->
+      <article id="layout-admin" class="figma-frame" style="margin-bottom: 4rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">shield_person</span>
+            AdminLayout — Navbar Corporativa Superior con Dropdown de Sesión
+          </span>
+          <span class="figma-frame__file">src/components/AdminLayout.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="admin-layout" style="min-height: 480px;">
+            <!-- HEADER / NAVBAR DEL LAYOUT ADMIN -->
+            <header class="admin-layout__header">
+              <a href="#layout-admin" class="admin-layout__brand">ModaLink</a>
+
+              <nav class="admin-layout__nav">
+                <a href="#view-admin-dash" class="admin-layout__link admin-layout__link--active">Inicio</a>
+                <a href="#view-admin-users" class="admin-layout__link">Usuarios</a>
+                <a href="#view-admin-carac" class="admin-layout__link">Características</a>
+
+                <!-- DROPDOWN ACTIVO DESPLEGADO PARA FIGMA -->
+                <div style="position: relative; display: inline-block;">
+                  <div class="va-btn va-btn--secondary va-btn--small" style="display: flex; align-items: center; gap: 0.4rem; border-color: var(--color-primary);">
+                    <span class="material-symbols-outlined" style="font-size: 1.1rem; color: var(--color-primary);">admin_panel_settings</span>
+                    <span>Martín Gomez</span>
+                    <span class="material-symbols-outlined" style="font-size: 1rem;">expand_less</span>
+                  </div>
+
+                  <!-- Menú desplegable simulado -->
+                  <div class="admin-dropdown" style="position: absolute; right: 0; top: 110%; background: #ffffff; border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); min-width: 210px; z-index: 100; overflow: hidden;">
+                    <div style="padding: 0.6rem 1rem; border-bottom: 1px solid #f3f4f6; font-size: 0.75rem; color: var(--color-text-muted);">
+                      Rol Global: <strong>Administrador</strong>
+                    </div>
+                    <a href="#view-admin-users" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; font-size: 0.8rem; color: var(--color-text); text-decoration: none; border-bottom: 1px solid #f9fafb;">
+                      <span class="material-symbols-outlined" style="font-size: 1rem; color: var(--color-primary);">groups</span>
+                      Gestión de usuarios
+                    </a>
+                    <a href="#view-admin-carac" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; font-size: 0.8rem; color: var(--color-text); text-decoration: none; border-bottom: 1px solid #f9fafb;">
+                      <span class="material-symbols-outlined" style="font-size: 1rem; color: var(--color-primary);">tune</span>
+                      Características técnicas
+                    </a>
+                    <div style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem; font-size: 0.8rem; color: var(--color-danger); cursor: pointer;">
+                      <span class="material-symbols-outlined" style="font-size: 1rem;">logout</span>
+                      Cerrar sesión
+                    </div>
+                  </div>
+                </div>
+              </nav>
+            </header>
+
+            <!-- MAIN CONTENT ÁREA DEL SLOT -->
+            <main class="admin-layout__content">
+              <div style="max-width: 1000px; margin: 0 auto;">
+                <div class="layout-slot-placeholder">
+                  <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--color-primary); margin-bottom: 0.5rem;">admin_panel_settings</span>
+                  <h4>&lt;slot /&gt; — Área de Inyección de Panel de Control</h4>
+                  <p>Espacio reservado donde se montan las vistas de backoffice administrativo:</p>
+                  <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem;">
+                    <span class="va-badge va-badge--info">DashboardAdminView</span>
+                    <span class="va-badge va-badge--info">GestionUsuariosView</span>
+                    <span class="va-badge va-badge--info">GestionarCaracteristicasView</span>
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         SECCIÓN 1: VISTAS DE AUTENTICACIÓN (src/views/auth)
+         ════════════════════════════════════════════════════════════════ -->
+    <section>
+      <h2 class="figma-section-title">
+        <span class="material-symbols-outlined">lock</span>
+        1. Módulo Autenticación (AuthLayout)
+      </h2>
+
+      <!-- FRAME 1: LoginView.vue -->
+      <article id="view-login" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">login</span>
+            LoginView — Iniciar Sesión
+          </span>
+          <span class="figma-frame__file">src/views/auth/LoginView.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="auth-layout">
+            <div class="auth-layout__brand">
+              <div class="auth-layout__brand-overlay"></div>
+              <span class="auth-layout__brand-text">ModaLink</span>
+            </div>
+            <div class="auth-layout__content">
+              <form class="auth-page" onsubmit="return false;">
+                <h1>Iniciar Sesión</h1>
+
+                <div class="va-input-group">
+                  <label class="va-label">Correo</label>
+                  <div class="va-input-wrapper">
+                    <input type="email" placeholder="usuario@modalink.com" value="admin@modalink.com" />
+                  </div>
+                </div>
+
+                <div class="va-input-group">
+                  <label class="va-label">Contraseña</label>
+                  <div class="va-input-wrapper">
+                    <input type="password" value="••••••••••••" />
+                    <span class="material-symbols-outlined va-icon-append">visibility</span>
+                  </div>
+                </div>
+
+                <p style="text-align: left; margin-bottom: 1.25rem;">
+                  <a href="#view-recuperar" class="link-recuperar">Olvidé mi contraseña</a>
+                </p>
+
+                <button type="button" class="va-btn va-btn--primary auth-button">Iniciar sesión</button>
+
+                <p class="auth-page__footer">
+                  ¿Nuevo en ModaLink?
+                  <a href="#view-registro">Regístrate</a>
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRAME 2: RegistroView.vue -->
+      <article id="view-registro" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">person_add</span>
+            RegistroView — Registro de Usuario
+          </span>
+          <span class="figma-frame__file">src/views/auth/RegistroView.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="auth-layout">
+            <div class="auth-layout__brand">
+              <div class="auth-layout__brand-overlay"></div>
+              <span class="auth-layout__brand-text">ModaLink</span>
+            </div>
+            <div class="auth-layout__content">
+              <form class="auth-page" style="max-width: 440px;" onsubmit="return false;">
+                <h1>Registro</h1>
+
+                <div class="form-grid-2">
+                  <div class="va-input-group">
+                    <label class="va-label">Nombre</label>
+                    <div class="va-input-wrapper">
+                      <input type="text" value="Valentina" />
+                    </div>
+                  </div>
+                  <div class="va-input-group">
+                    <label class="va-label">Apellido</label>
+                    <div class="va-input-wrapper">
+                      <input type="text" value="Rossi" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-grid-2">
+                  <div class="va-input-group">
+                    <label class="va-label">DNI</label>
+                    <div class="va-input-wrapper">
+                      <input type="text" value="40889123" />
+                    </div>
+                  </div>
+                  <div class="va-input-group">
+                    <label class="va-label">Fecha de nacimiento</label>
+                    <div class="va-input-wrapper">
+                      <input type="date" value="1998-05-14" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="va-input-group">
+                  <label class="va-label">Género con el que te identificas</label>
+                  <div class="va-input-wrapper">
+                    <select>
+                      <option selected>Mujer</option>
+                      <option>Hombre</option>
+                      <option>No binario</option>
+                      <option>Prefiero no decirlo</option>
+                    </select>
+                    <span class="material-symbols-outlined va-icon-append">expand_more</span>
+                  </div>
+                </div>
+
+                <div class="va-input-group">
+                  <label class="va-label">Correo</label>
+                  <div class="va-input-wrapper">
+                    <input type="email" value="valentina.rossi@moda.com" />
+                  </div>
+                </div>
+
+                <div class="va-input-group">
+                  <label class="va-label">Contraseña</label>
+                  <div class="va-input-wrapper">
+                    <input type="password" value="PasswordSegura2026" />
+                    <span class="material-symbols-outlined va-icon-append">visibility</span>
+                  </div>
+                  <span class="va-input-message">La contraseña debe tener al menos 8 caracteres.</span>
+                </div>
+
+                <button type="button" class="va-btn va-btn--primary auth-button">Registrarme</button>
+
+                <p class="auth-page__footer">
+                  ¿Ya tenés una cuenta?
+                  <a href="#view-login">Inicia Sesión</a>
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRAME 3: RecuperarPasswordView.vue -->
+      <article id="view-recuperar" class="figma-frame">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">lock_reset</span>
+            RecuperarPasswordView — Recuperar Contraseña
+          </span>
+          <span class="figma-frame__file">src/views/auth/RecuperarPasswordView.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="auth-layout">
+            <div class="auth-layout__brand">
+              <div class="auth-layout__brand-overlay"></div>
+              <span class="auth-layout__brand-text">ModaLink</span>
+            </div>
+            <div class="auth-layout__content">
+              <form class="auth-page" onsubmit="return false;">
+                <h1>Recuperar Contraseña</h1>
+                <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1.5rem; line-height: 1.4;">
+                  Ingresá tu correo y te enviaremos un enlace para restablecer tu contraseña.
+                </p>
+
+                <div class="va-input-group">
+                  <label class="va-label">Correo</label>
+                  <div class="va-input-wrapper">
+                    <input type="email" placeholder="ejemplo@modalink.com" value="valentina.rossi@moda.com" />
+                  </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem; margin-top: 1rem;">
+                  <button type="button" class="va-btn va-btn--primary auth-button">Enviar enlace</button>
+                  <a href="#view-login" class="link-login">Volver a Iniciar Sesión</a>
+                </div>
+
+                <div class="base-alert base-alert--success" style="margin-top: 1.5rem; text-align: left;">
+                  <span class="material-symbols-outlined">check_circle</span>
+                  <span>Si el correo está registrado, vas a recibir un enlace para restablecer tu contraseña.</span>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+
+    <!-- ════════════════════════════════════════════════════════════════
+         SECCIÓN 2: VISTAS DE ADMINISTRACIÓN (src/views/admin)
+         ════════════════════════════════════════════════════════════════ -->
+    <section>
+      <h2 class="figma-section-title">
+        <span class="material-symbols-outlined">admin_panel_settings</span>
+        2. Módulo Administración (AdminLayout)
+      </h2>
+
+      <!-- FRAME 4: DashboardAdminView.vue -->
+      <article id="view-admin-dash" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">dashboard</span>
+            DashboardAdminView — Panel de Administración
+          </span>
+          <span class="figma-frame__file">src/views/admin/DashboardAdminView.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="admin-layout">
+            <header class="admin-layout__header">
+              <a href="#view-admin-users" class="admin-layout__brand">ModaLink</a>
+              <nav class="admin-layout__nav">
+                <a href="#view-admin-dash" class="admin-layout__link admin-layout__link--active">Inicio</a>
+                <a href="#view-admin-users" class="admin-layout__link">Usuarios</a>
+                <a href="#view-admin-carac" class="admin-layout__link">Características</a>
+                <div class="va-btn va-btn--secondary va-btn--small" style="display: flex; align-items: center; gap: 0.4rem;">
+                  <span class="material-symbols-outlined" style="font-size: 1.1rem;">admin_panel_settings</span>
+                  <span>Martín Gomez (Admin)</span>
+                  <span class="material-symbols-outlined" style="font-size: 1rem;">expand_more</span>
+                </div>
+              </nav>
+            </header>
+
+            <main class="admin-layout__content">
+              <div style="max-width: 900px; margin: 0 auto;">
+                <section style="margin-bottom: 2rem;">
+                  <h1 style="font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    Panel de administración
+                  </h1>
+                  <p style="font-size: 0.95rem; color: var(--color-text-muted); margin-top: 0.25rem;">
+                    Bienvenido/a, Martín. Seleccioná una opción para comenzar.
+                  </p>
+                </section>
+
+                <div class="admin-dashboard__grid">
+                  <a href="#view-admin-users" class="admin-card" style="text-decoration: none;">
+                    <div class="admin-card__icon">
+                      <span class="material-symbols-outlined" style="font-size: 1.8rem;">groups</span>
+                    </div>
+                    <div style="flex: 1;">
+                      <span class="admin-card__titulo">Gestión de usuarios</span>
+                      <span class="admin-card__descripcion">Administrar cuentas, visualizar usuarios y sus perfiles.</span>
+                    </div>
+                    <span class="material-symbols-outlined" style="color: var(--color-text-muted);">chevron_right</span>
+                  </a>
+
+                  <a href="#view-admin-carac" class="admin-card" style="text-decoration: none;">
+                    <div class="admin-card__icon">
+                      <span class="material-symbols-outlined" style="font-size: 1.8rem;">tune</span>
+                    </div>
+                    <div style="flex: 1;">
+                      <span class="admin-card__titulo">Gestionar características técnicas</span>
+                      <span class="admin-card__descripcion">Configurar características técnicas y sus valores por profesión.</span>
+                    </div>
+                    <span class="material-symbols-outlined" style="color: var(--color-text-muted);">chevron_right</span>
+                  </a>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRAME 5: GestionUsuariosView.vue -->
+      <article id="view-admin-users" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">manage_accounts</span>
+            GestionUsuariosView — Listado y Control de Cuentas
+          </span>
+          <span class="figma-frame__file">src/views/admin/GestionUsuariosView.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="admin-layout">
+            <header class="admin-layout__header">
+              <a href="#view-admin-users" class="admin-layout__brand">ModaLink</a>
+              <nav class="admin-layout__nav">
+                <a href="#view-admin-dash" class="admin-layout__link">Inicio</a>
+                <a href="#view-admin-users" class="admin-layout__link admin-layout__link--active">Usuarios</a>
+                <a href="#view-admin-carac" class="admin-layout__link">Características</a>
+                <div class="va-btn va-btn--secondary va-btn--small">
+                  <span class="material-symbols-outlined" style="font-size: 1.1rem;">admin_panel_settings</span>
+                  <span>Martín Gomez</span>
+                </div>
+              </nav>
+            </header>
+
+            <main class="admin-layout__content">
+              <div style="max-width: 1200px; margin: 0 auto;">
+                <div style="margin-bottom: 1.5rem;">
+                  <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--color-text);">Gestión de usuarios</h1>
+                  <p style="font-size: 0.88rem; color: var(--color-text-muted);">Administrá las cuentas registradas en ModaLink.</p>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                  <div class="va-input-wrapper" style="width: 340px; margin: 0;">
+                    <span class="material-symbols-outlined" style="color: var(--color-text-muted); margin-right: 0.5rem; font-size: 1.2rem;">search</span>
+                    <input type="text" placeholder="Buscar por nombre, apellido o correo..." value="valen" />
+                  </div>
+
+                  <button class="va-btn va-btn--secondary">
+                    <span class="material-symbols-outlined" style="font-size: 1.1rem;">refresh</span>
+                    Actualizar
+                  </button>
+                </div>
+
+                <div class="va-table-container">
+                  <table class="va-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Apellido</th>
+                        <th>Correo</th>
+                        <th>Rol Global</th>
+                        <th>Estado</th>
+                        <th>Deshabilitación</th>
+                        <th>Baja solicitada</th>
+                        <th style="text-align: right;">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>#101</strong></td>
+                        <td>Valentina</td>
+                        <td>Rossi</td>
+                        <td>valentina.rossi@moda.com</td>
+                        <td><span class="va-badge va-badge--info">Usuario</span></td>
+                        <td><span class="va-badge va-badge--success">Activo</span></td>
+                        <td>—</td>
+                        <td>No solicitó</td>
+                        <td style="text-align: right;">
+                          <div style="display: inline-flex; gap: 0.5rem;">
+                            <button class="va-btn va-btn--secondary va-btn--small">
+                              <span class="material-symbols-outlined" style="font-size: 1rem;">person</span>
+                              Ver perfil
+                            </button>
+                            <button class="va-btn va-btn--danger-outline va-btn--small">
+                              <span class="material-symbols-outlined" style="font-size: 1rem;">block</span>
+                              Deshabilitar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><strong>#102</strong></td>
+                        <td>Lucas</td>
+                        <td>Benítez</td>
+                        <td>lucas.b@estilo.com</td>
+                        <td><span class="va-badge va-badge--info">Usuario</span></td>
+                        <td><span class="va-badge va-badge--danger">Deshabilitado</span></td>
+                        <td>
+                          <div style="font-size: 0.75rem;">
+                            <span style="font-weight: 600; color: var(--color-danger); display: block;">Infracción a términos</span>
+                            <span style="color: var(--color-text-muted);">Hasta 15-10-2026</span>
+                          </div>
+                        </td>
+                        <td>No solicitó</td>
+                        <td style="text-align: right;">
+                          <div style="display: inline-flex; gap: 0.5rem;">
+                            <button class="va-btn va-btn--secondary va-btn--small">Ver perfil</button>
+                            <button class="va-btn va-btn--primary va-btn--small">Habilitar</button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><strong>#103</strong></td>
+                        <td>Camila</td>
+                        <td>Duarte</td>
+                        <td>camiladuarte@fotografia.com</td>
+                        <td><span class="va-badge va-badge--info">Usuario</span></td>
+                        <td><span class="va-badge va-badge--warning">PendienteBaja</span></td>
+                        <td>—</td>
+                        <td>28-08-2026</td>
+                        <td style="text-align: right;">
+                          <div style="display: inline-flex; gap: 0.5rem;">
+                            <button class="va-btn va-btn--secondary va-btn--small">Ver perfil</button>
+                            <button class="va-btn va-btn--danger-outline va-btn--small">Deshabilitar</button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Detalle Modal Emulado (para inspección en Figma) -->
+                <div class="modal-preview-card">
+                  <div class="modal-preview-header">
+                    <span>Modal: Detalle de Usuario</span>
+                    <span class="material-symbols-outlined" style="cursor: pointer;">close</span>
+                  </div>
+                  <div class="modal-preview-body">
+                    <div class="form-grid-2" style="margin-bottom: 1rem;">
+                      <div><strong style="color: var(--color-text);">Nombre:</strong> Valentina Rossi</div>
+                      <div><strong style="color: var(--color-text);">DNI:</strong> 40.889.123</div>
+                      <div><strong style="color: var(--color-text);">Correo:</strong> valentina.rossi@moda.com</div>
+                      <div><strong style="color: var(--color-text);">Rol:</strong> <span class="va-badge va-badge--info">Usuario</span></div>
+                    </div>
+                    <div style="border-top: 1px solid #E5E7EB; padding-top: 0.75rem;">
+                      <p style="font-weight: 700; color: var(--color-text); margin-bottom: 0.5rem;">Perfiles artísticos asociados (2):</p>
+                      <ul style="padding-left: 1.25rem; font-size: 0.8rem; line-height: 1.6;">
+                        <li><strong>Valen Rossi Model</strong> — Modelo de pasarela (Activo)</li>
+                        <li><strong>VR Stylist</strong> — Diseñadora de vestuario (Activo)</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="modal-preview-footer">
+                    <button class="va-btn va-btn--secondary va-btn--small">Cerrar</button>
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRAME 6: GestionarCaracteristicasView.vue -->
+      <article id="view-admin-carac" class="figma-frame">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">tune</span>
+            GestionarCaracteristicasView — Catálogo de Características Técnicas
+          </span>
+          <span class="figma-frame__file">src/views/admin/GestionarCaracteristicasView.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="admin-layout">
+            <header class="admin-layout__header">
+              <a href="#view-admin-users" class="admin-layout__brand">ModaLink</a>
+              <nav class="admin-layout__nav">
+                <a href="#view-admin-dash" class="admin-layout__link">Inicio</a>
+                <a href="#view-admin-users" class="admin-layout__link">Usuarios</a>
+                <a href="#view-admin-carac" class="admin-layout__link admin-layout__link--active">Características</a>
+                <div class="va-btn va-btn--secondary va-btn--small">
+                  <span class="material-symbols-outlined" style="font-size: 1.1rem;">admin_panel_settings</span>
+                  <span>Martín Gomez</span>
+                </div>
+              </nav>
+            </header>
+
+            <main class="admin-layout__content">
+              <div style="max-width: 1200px; margin: 0 auto;">
+                <div style="margin-bottom: 1.5rem;">
+                  <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--color-text);">Características técnicas</h1>
+                  <p style="font-size: 0.88rem; color: var(--color-text-muted);">Administrá las características técnicas y sus valores de catálogo por profesión.</p>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                  <div class="va-input-wrapper" style="width: 340px; margin: 0;">
+                    <span class="material-symbols-outlined" style="color: var(--color-text-muted); margin-right: 0.5rem; font-size: 1.2rem;">search</span>
+                    <input type="text" placeholder="Buscar por código, unidad o profesión..." />
+                  </div>
+
+                  <div style="display: flex; gap: 0.75rem;">
+                    <button class="va-btn va-btn--secondary">
+                      <span class="material-symbols-outlined" style="font-size: 1.1rem;">refresh</span>
+                      Actualizar
+                    </button>
+                    <button class="va-btn va-btn--primary">
+                      <span class="material-symbols-outlined" style="font-size: 1.1rem;">add</span>
+                      Nueva característica
+                    </button>
+                  </div>
+                </div>
+
+                <div class="va-table-container">
+                  <table class="va-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Código</th>
+                        <th>Tipo de Dato</th>
+                        <th>Unidad</th>
+                        <th>Cant. Valores</th>
+                        <th>Profesiones Vinculadas</th>
+                        <th style="text-align: right;">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>#1</strong></td>
+                        <td><strong>color_ojos</strong> (Color de ojos)</td>
+                        <td><span class="va-badge va-badge--info">ENUMERADO</span></td>
+                        <td>—</td>
+                        <td><strong>8</strong> valores</td>
+                        <td>Modelo, Actor/Actriz</td>
+                        <td style="text-align: right;">
+                          <div style="display: inline-flex; gap: 0.4rem;">
+                            <button class="va-btn va-btn--secondary va-btn--small">Valores</button>
+                            <button class="va-btn va-btn--secondary va-btn--small">Editar</button>
+                            <button class="va-btn va-btn--danger-outline va-btn--small">Eliminar</button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><strong>#2</strong></td>
+                        <td><strong>altura</strong> (Altura)</td>
+                        <td><span class="va-badge va-badge--success">NUMERICO</span></td>
+                        <td>cm</td>
+                        <td>—</td>
+                        <td>Modelo</td>
+                        <td style="text-align: right;">
+                          <div style="display: inline-flex; gap: 0.4rem;">
+                            <button class="va-btn va-btn--secondary va-btn--small">Editar</button>
+                            <button class="va-btn va-btn--danger-outline va-btn--small">Eliminar</button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><strong>#3</strong></td>
+                        <td><strong>color_piel</strong> (Color de piel)</td>
+                        <td><span class="va-badge va-badge--info">ENUMERADO</span></td>
+                        <td>—</td>
+                        <td><strong>6</strong> valores</td>
+                        <td>Modelo, Fotógrafo/a</td>
+                        <td style="text-align: right;">
+                          <div style="display: inline-flex; gap: 0.4rem;">
+                            <button class="va-btn va-btn--secondary va-btn--small">Valores</button>
+                            <button class="va-btn va-btn--secondary va-btn--small">Editar</button>
+                            <button class="va-btn va-btn--danger-outline va-btn--small">Eliminar</button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      </article>
+    </section>
+
+
+    <!-- ════════════════════════════════════════════════════════════════
+         SECCIÓN 3: VISTAS DE USUARIO (src/views/usuario)
+         ════════════════════════════════════════════════════════════════ -->
+    <section>
+      <h2 class="figma-section-title">
+        <span class="material-symbols-outlined">person</span>
+        3. Módulo Usuario (UserDashboardLayout)
+      </h2>
+
+      <!-- FRAME 7: DashboardUsuarioView.vue -->
+      <article id="view-user-dash" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">grid_view</span>
+            DashboardUsuarioView — Mis Perfiles y Catálogo Creativo
+          </span>
+          <span class="figma-frame__file">src/views/usuario/DashboardUsuarioView.vue</span>
+        </div>
+        <div class="figma-frame__body">
+          <div class="dashboard-layout">
+            <aside class="sidebar">
+              <div>
+                <div class="sidebar__user">
+                  <div class="sidebar__avatar">V</div>
+                  <div class="sidebar__user-info">
+                    <span class="sidebar__user-name">Valentina Rossi</span>
+                    <span class="sidebar__user-email">valentina@moda.com</span>
+                  </div>
+                </div>
+
+                <button class="sidebar__notifications">
+                  <span class="material-symbols-outlined" style="font-size: 1.15rem;">notifications</span>
+                  <span>Notificaciones</span>
+                  <span class="sidebar__badge">2</span>
+                </button>
+
+                <span class="sidebar__section-title">Acciones</span>
+                <button class="sidebar__action sidebar__action--active">Inicio</button>
+                <a href="#view-crear-perfil" class="sidebar__action" style="text-decoration:none;">Crear nuevo perfil</a>
+                <a href="#view-modificar-datos" class="sidebar__action" style="text-decoration:none;">Modificar datos personales</a>
+                <a href="#view-calendario" class="sidebar__action" style="text-decoration:none;">Calendario</a>
+                <button class="sidebar__action">Solicitar baja del sistema</button>
+              </div>
+
+              <button class="sidebar__logout">
+                <span class="material-symbols-outlined">power_settings_new</span>
+                Cerrar sesión
+              </button>
+            </aside>
+
+            <div class="dashboard-main">
+              <header class="dashboard-main__header">
+                <div>
+                  <h1 class="dashboard-main__title">DASHBOARD</h1>
+                  <span class="dashboard-main__subtitle">Perfiles profesionales</span>
+                </div>
+                <h1 class="modalink-main__title">ModaLink</h1>
+              </header>
+
+              <main class="dashboard-main__content">
+                <div class="dashboard-usuario__tabs">
+                  <button class="dashboard-usuario__tab dashboard-usuario__tab--active">Perfiles (3)</button>
+                  <a href="#view-calendario" class="dashboard-usuario__tab" style="text-decoration:none;">Calendario</a>
+                </div>
+
+                <div class="dashboard-usuario__toolbar">
+                  <div class="dashboard-usuario__search">
+                    <span class="material-symbols-outlined">search</span>
+                    <input type="text" placeholder="Buscar perfil por nombre o profesión..." />
+                  </div>
+
+                  <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <a href="#view-crear-perfil" class="va-btn va-btn--primary va-btn--small" style="text-decoration:none;">
+                      <span class="material-symbols-outlined" style="font-size: 1rem;">add</span>
+                      Crear perfil
+                    </a>
+                    <div style="display: flex; border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden;">
+                      <button style="padding: 0.35rem 0.55rem; background: #E5E7EB; border:none;"><span class="material-symbols-outlined" style="font-size: 1.1rem;">grid_view</span></button>
+                      <button style="padding: 0.35rem 0.55rem; background: #fff; border:none;"><span class="material-symbols-outlined" style="font-size: 1.1rem; color: var(--color-text-muted);">view_list</span></button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="dashboard-usuario__grid">
+                  <!-- CARD 1 -->
+                  <div class="perfil-card">
+                    <div class="perfil-card__header">
+                      <span>Valen Rossi Alta Costura</span>
+                      <span class="material-symbols-outlined" style="font-size: 1.1rem;">more_vert</span>
+                    </div>
+                    <div class="perfil-card__body">
+                      <div class="perfil-card__avatar">
+                        <span class="material-symbols-outlined" style="font-size: 2rem;">face_3</span>
+                      </div>
+                      <div class="perfil-card__info">
+                        <span class="perfil-card__profesion">Modelo de pasarela</span>
+                        <span class="perfil-card__nombre">Valen Rossi</span>
+                      </div>
+                    </div>
+                    <div class="perfil-card__meta">
+                      <div class="perfil-card__meta-item">
+                        <span class="perfil-card__meta-label">ID:</span>
+                        <strong>#45</strong>
+                      </div>
+                      <div class="perfil-card__meta-item">
+                        <span class="va-badge va-badge--success">Activo</span>
+                      </div>
+                    </div>
+                    <p class="perfil-card__biografia">
+                      Modelo con 4 años de experiencia en pasarelas nacionales e internacionales, especializada en editoriales y alta costura.
+                    </p>
+                    <div class="perfil-card__footer">
+                      <div class="perfil-card__footer-icons">
+                        <button class="perfil-card__icon-btn" title="Ver detalle"><span class="material-symbols-outlined">person</span></button>
+                        <a href="#view-editar-perfil" class="perfil-card__icon-btn" title="Editar"><span class="material-symbols-outlined">edit</span></a>
+                      </div>
+                      <button class="perfil-card__ingresar">
+                        Ver detalle
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">chevron_right</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- CARD 2 -->
+                  <div class="perfil-card">
+                    <div class="perfil-card__header" style="background: var(--color-secondary);">
+                      <span>Rossi Creative Styling</span>
+                      <span class="material-symbols-outlined" style="font-size: 1.1rem;">more_vert</span>
+                    </div>
+                    <div class="perfil-card__body">
+                      <div class="perfil-card__avatar">
+                        <span class="material-symbols-outlined" style="font-size: 2rem;">checkroom</span>
+                      </div>
+                      <div class="perfil-card__info">
+                        <span class="perfil-card__profesion">Estilista de moda</span>
+                        <span class="perfil-card__nombre">VR Styling</span>
+                      </div>
+                    </div>
+                    <div class="perfil-card__meta">
+                      <div class="perfil-card__meta-item">
+                        <span class="perfil-card__meta-label">ID:</span>
+                        <strong>#46</strong>
+                      </div>
+                      <div class="perfil-card__meta-item">
+                        <span class="va-badge va-badge--success">Activo</span>
+                      </div>
+                    </div>
+                    <p class="perfil-card__biografia">
+                      Asesoría de imagen integral, producción de moda para campañas publicitarias y marcas de indumentaria sustentable.
+                    </p>
+                    <div class="perfil-card__footer">
+                      <div class="perfil-card__footer-icons">
+                        <button class="perfil-card__icon-btn"><span class="material-symbols-outlined">person</span></button>
+                        <a href="#view-editar-perfil" class="perfil-card__icon-btn"><span class="material-symbols-outlined">edit</span></a>
+                      </div>
+                      <button class="perfil-card__ingresar">
+                        Ver detalle
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">chevron_right</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- CARD 3 -->
+                  <div class="perfil-card">
+                    <div class="perfil-card__header" style="background: var(--color-accent);">
+                      <span>V. Rossi Foto & Arte</span>
+                      <span class="material-symbols-outlined" style="font-size: 1.1rem;">more_vert</span>
+                    </div>
+                    <div class="perfil-card__body">
+                      <div class="perfil-card__avatar">
+                        <span class="material-symbols-outlined" style="font-size: 2rem;">photo_camera</span>
+                      </div>
+                      <div class="perfil-card__info">
+                        <span class="perfil-card__profesion">Fotógrafa</span>
+                        <span class="perfil-card__nombre">Valentina R.</span>
+                      </div>
+                    </div>
+                    <div class="perfil-card__meta">
+                      <div class="perfil-card__meta-item">
+                        <span class="perfil-card__meta-label">ID:</span>
+                        <strong>#58</strong>
+                      </div>
+                      <div class="perfil-card__meta-item">
+                        <span class="va-badge va-badge--warning">PendienteBaja</span>
+                      </div>
+                    </div>
+                    <p class="perfil-card__biografia">
+                      Fotografía analógica y digital de moda, retratos y coberturas en backstage de Fashion Weeks.
+                    </p>
+                    <div class="perfil-card__footer">
+                      <div class="perfil-card__footer-icons">
+                        <button class="perfil-card__icon-btn"><span class="material-symbols-outlined">person</span></button>
+                      </div>
+                      <button class="perfil-card__ingresar">
+                        Ver detalle
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">chevron_right</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRAME 8: CrearPerfilView.vue -->
+      <article id="view-crear-perfil" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">add_circle</span>
+            CrearPerfilView — Formulario Stepper de Nuevo Perfil
+          </span>
+          <span class="figma-frame__file">src/views/usuario/CrearPerfilView.vue</span>
+        </div>
+        <div class="figma-frame__body" style="padding: 2rem;">
+          <div class="crear-perfil">
+            <h1 class="crear-perfil__titulo">Crear nuevo perfil</h1>
+            <p class="crear-perfil__subtitulo">Completá los datos generales y las características de tu perfil profesional.</p>
+
+            <div class="crear-perfil__stepper">
+              <div class="crear-perfil__paso crear-perfil__paso--completo">
+                <span class="crear-perfil__paso-numero"><span class="material-symbols-outlined" style="font-size: 1rem;">check</span></span>
+                <span>Datos generales</span>
+              </div>
+              <div class="crear-perfil__paso-linea crear-perfil__paso-linea--activa"></div>
+              <div class="crear-perfil__paso crear-perfil__paso--activo">
+                <span class="crear-perfil__paso-numero">2</span>
+                <span>Características y biografía</span>
+              </div>
+            </div>
+
+            <form onsubmit="return false;">
+              <!-- Altura -->
+              <div class="va-input-group">
+                <label class="va-label">Altura (cm)</label>
+                <div class="va-input-wrapper">
+                  <input type="number" value="178" placeholder="Ej: 178 cm..." />
+                </div>
+              </div>
+
+              <!-- Medidas en 1 renglón -->
+              <div class="form-grid-3">
+                <div class="va-input-group">
+                  <label class="va-label">Pecho (cm)</label>
+                  <div class="va-input-wrapper">
+                    <input type="number" value="88" />
+                  </div>
+                </div>
+                <div class="va-input-group">
+                  <label class="va-label">Cintura (cm)</label>
+                  <div class="va-input-wrapper">
+                    <input type="number" value="62" />
+                  </div>
+                </div>
+                <div class="va-input-group">
+                  <label class="va-label">Cadera (cm)</label>
+                  <div class="va-input-wrapper">
+                    <input type="number" value="90" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Selects con muestras de color -->
+              <div class="form-grid-2">
+                <div class="va-input-group">
+                  <label class="va-label">Color de piel</label>
+                  <div class="va-input-wrapper">
+                    <span class="swatch" style="background: #FCE0C6;"></span>
+                    <select>
+                      <option selected>Clara</option>
+                      <option>Media</option>
+                      <option>Oscura</option>
+                    </select>
+                    <span class="material-symbols-outlined va-icon-append">expand_more</span>
+                  </div>
+                </div>
+
+                <div class="va-input-group">
+                  <label class="va-label">Color de ojos</label>
+                  <div class="va-input-wrapper">
+                    <span class="swatch" style="background: #5C824E;"></span>
+                    <select>
+                      <option>Marrón</option>
+                      <option selected>Verde</option>
+                      <option>Azul</option>
+                      <option>Miel</option>
+                    </select>
+                    <span class="material-symbols-outlined va-icon-append">expand_more</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="va-input-group">
+                <label class="va-label">Biografía</label>
+                <div class="va-input-wrapper" style="height: auto;">
+                  <textarea placeholder="Contá sobre tu trayectoria profesional...">Modelo profesional con participación en pasarelas de Buenos Aires y Milán. Apasionada por el diseño de autor y producciones vanguardistas.</textarea>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; margin-top: 1.75rem;">
+                <button type="button" class="va-btn va-btn--secondary">Anterior</button>
+                <button type="button" class="va-btn va-btn--primary">Guardar perfil</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRAME 9: EditarPerfilView.vue -->
+      <article id="view-editar-perfil" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">edit_note</span>
+            EditarPerfilView — Edición de Perfil Profesional
+          </span>
+          <span class="figma-frame__file">src/views/usuario/EditarPerfilView.vue</span>
+        </div>
+        <div class="figma-frame__body" style="padding: 2rem;">
+          <div class="crear-perfil">
+            <h1 class="crear-perfil__titulo">Editar perfil</h1>
+            <p class="crear-perfil__subtitulo">Actualizá la información de tu perfil profesional.</p>
+
+            <!-- Bloque de foto de perfil (no editable desde aquí) -->
+            <div style="display: flex; align-items: center; gap: 1.25rem; background: #F9FAFB; border: 1px solid var(--color-border); border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem;">
+              <div style="width: 58px; height: 58px; border-radius: 12px; background: var(--color-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                <span class="material-symbols-outlined">person</span>
+              </div>
+              <div>
+                <span style="font-weight: 700; font-size: 0.95rem; color: var(--color-text); display: block;">Modelo de pasarela</span>
+                <span style="font-size: 0.76rem; color: var(--color-text-muted);">La foto de perfil se gestiona desde el álbum multimedia del perfil.</span>
+              </div>
+            </div>
+
+            <form onsubmit="return false;">
+              <div class="form-grid-2">
+                <div class="va-input-group">
+                  <label class="va-label">Nombre artístico</label>
+                  <div class="va-input-wrapper">
+                    <input type="text" value="Valen Rossi Alta Costura" />
+                  </div>
+                </div>
+                <div class="va-input-group">
+                  <label class="va-label">Profesión (No modificable)</label>
+                  <div class="va-input-wrapper" style="background: #F3F4F6;">
+                    <input type="text" value="Modelo de pasarela" disabled />
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-grid-3">
+                <div class="va-input-group">
+                  <label class="va-label">Pecho (cm)</label>
+                  <div class="va-input-wrapper">
+                    <input type="number" value="88" />
+                  </div>
+                </div>
+                <div class="va-input-group">
+                  <label class="va-label">Cintura (cm)</label>
+                  <div class="va-input-wrapper">
+                    <input type="number" value="62" />
+                  </div>
+                </div>
+                <div class="va-input-group">
+                  <label class="va-label">Cadera (cm)</label>
+                  <div class="va-input-wrapper">
+                    <input type="number" value="90" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="va-input-group">
+                <label class="va-label">Biografía</label>
+                <div class="va-input-wrapper" style="height: auto;">
+                  <textarea>Modelo con 4 años de experiencia en pasarelas nacionales e internacionales, especializada en editoriales y alta costura.</textarea>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" class="va-btn va-btn--secondary">Cancelar</button>
+                <button type="button" class="va-btn va-btn--primary">Guardar cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRAME 10: ModificarDatosView.vue -->
+      <article id="view-modificar-datos" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">badge</span>
+            ModificarDatosView — Datos Personales y Ubicación
+          </span>
+          <span class="figma-frame__file">src/views/usuario/ModificarDatosView.vue</span>
+        </div>
+        <div class="figma-frame__body" style="padding: 2rem;">
+          <div class="crear-perfil" style="max-width: 680px;">
+            <h1 class="crear-perfil__titulo">Modificar datos personales</h1>
+            <p class="crear-perfil__subtitulo">Actualizá tu información personal y lugar de residencia.</p>
+
+            <form onsubmit="return false;">
+              <div class="form-grid-2">
+                <div class="va-input-group">
+                  <label class="va-label">Nombre</label>
+                  <div class="va-input-wrapper">
+                    <input type="text" value="Valentina" />
+                  </div>
+                </div>
+                <div class="va-input-group">
+                  <label class="va-label">Apellido</label>
+                  <div class="va-input-wrapper">
+                    <input type="text" value="Rossi" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="va-input-group">
+                  <label class="va-label">Género</label>
+                  <div class="va-input-wrapper">
+                    <select>
+                      <option selected>Mujer</option>
+                      <option>Hombre</option>
+                      <option>No binario</option>
+                    </select>
+                    <span class="material-symbols-outlined va-icon-append">expand_more</span>
+                  </div>
+                </div>
+                <div class="va-input-group">
+                  <label class="va-label">Fecha de nacimiento</label>
+                  <div class="va-input-wrapper">
+                    <input type="date" value="1998-05-14" />
+                  </div>
+                </div>
+              </div>
+
+              <div style="background: #FAFAFA; border: 1px solid var(--color-border); border-radius: 10px; padding: 1.25rem; margin: 1.25rem 0;">
+                <p style="font-size: 0.88rem; font-weight: 700; color: var(--color-text); margin-bottom: 0.85rem;">Ubicación</p>
+                <div class="form-grid-3">
+                  <div class="va-input-group" style="margin-bottom: 0;">
+                    <label class="va-label">País</label>
+                    <div class="va-input-wrapper" style="background: #E5E7EB;">
+                      <input type="text" value="Argentina" disabled />
+                    </div>
+                  </div>
+                  <div class="va-input-group" style="margin-bottom: 0;">
+                    <label class="va-label">Provincia</label>
+                    <div class="va-input-wrapper">
+                      <select>
+                        <option selected>Córdoba</option>
+                        <option>Buenos Aires</option>
+                        <option>Santa Fe</option>
+                      </select>
+                      <span class="material-symbols-outlined va-icon-append">expand_more</span>
+                    </div>
+                  </div>
+                  <div class="va-input-group" style="margin-bottom: 0;">
+                    <label class="va-label">Localidad</label>
+                    <div class="va-input-wrapper">
+                      <select>
+                        <option selected>Córdoba Capital</option>
+                        <option>Villa Carlos Paz</option>
+                        <option>Río Cuarto</option>
+                      </select>
+                      <span class="material-symbols-outlined va-icon-append">expand_more</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" class="va-btn va-btn--secondary">Cancelar</button>
+                <button type="button" class="va-btn va-btn--primary">Guardar cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRAME 11: CalendarioView.vue -->
+      <article id="view-calendario" class="figma-frame">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">calendar_month</span>
+            CalendarioView — Disponibilidad y Bloqueos de Agenda
+          </span>
+          <span class="figma-frame__file">src/views/usuario/CalendarioView.vue</span>
+        </div>
+        <div class="figma-frame__body" style="padding: 2rem;">
+          <div class="calendario-container">
+            <div class="calendario__toolbar">
+              <div class="calendario__nav">
+                <button class="va-btn va-btn--secondary va-btn--small" style="padding: 0.35rem 0.5rem;">
+                  <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <h2 class="calendario__periodo">14 – 20 Sep 2026</h2>
+                <button class="va-btn va-btn--secondary va-btn--small" style="padding: 0.35rem 0.5rem;">
+                  <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+                <button class="va-btn va-btn--secondary va-btn--small">Hoy</button>
+              </div>
+
+              <div style="display: flex; gap: 0.75rem;">
+                <button class="va-btn va-btn--secondary">
+                  <span class="material-symbols-outlined" style="font-size: 1.1rem;">schedule</span>
+                  Configurar jornada
+                </button>
+                <button class="va-btn va-btn--primary">
+                  <span class="material-symbols-outlined" style="font-size: 1.1rem;">add</span>
+                  Agregar bloqueo
+                </button>
+              </div>
+            </div>
+
+            <!-- Leyenda -->
+            <div class="calendario__leyenda">
+              <div class="calendario__leyenda-item">
+                <span class="calendario__leyenda-cuadro cuadro--actividad"></span>
+                <span>Actividad de proyecto</span>
+              </div>
+              <div class="calendario__leyenda-item">
+                <span class="calendario__leyenda-cuadro cuadro--bloqueo"></span>
+                <span>Bloqueo manual</span>
+              </div>
+              <div class="calendario__leyenda-item">
+                <span class="calendario__leyenda-cuadro cuadro--disponible"></span>
+                <span>Disponible</span>
+              </div>
+              <div class="calendario__leyenda-item">
+                <span class="calendario__leyenda-cuadro cuadro--nolaborable"></span>
+                <span>No laborable</span>
+              </div>
+            </div>
+
+            <!-- Grid Calendario Semanal -->
+            <div class="calendario-grid-mock">
+              <!-- Header Row -->
+              <div class="cal-header-cell">Hora</div>
+              <div class="cal-header-cell">Lun 14</div>
+              <div class="cal-header-cell cal-header-cell--hoy">Mar 15 (Hoy)</div>
+              <div class="cal-header-cell">Mié 16</div>
+              <div class="cal-header-cell">Jue 17</div>
+              <div class="cal-header-cell">Vie 18</div>
+              <div class="cal-header-cell" style="color: var(--color-text-muted);">Sáb 19</div>
+              <div class="cal-header-cell" style="color: var(--color-text-muted);">Dom 20</div>
+
+              <!-- Fila 09:00 -->
+              <div class="cal-time-cell">09:00</div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--bloq" title="Consulta médica"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--act" title="Desfile Primavera Moda"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--nolab"></div>
+              <div class="cal-slot-cell cal-slot-cell--nolab"></div>
+
+              <!-- Fila 10:00 -->
+              <div class="cal-time-cell">10:00</div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--bloq"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--act"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--nolab"></div>
+              <div class="cal-slot-cell cal-slot-cell--nolab"></div>
+
+              <!-- Fila 11:00 -->
+              <div class="cal-time-cell">11:00</div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--act"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--nolab"></div>
+              <div class="cal-slot-cell cal-slot-cell--nolab"></div>
+
+              <!-- Fila 14:00 -->
+              <div class="cal-time-cell">14:00</div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--act" title="Sesión de Fotos Campaña"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--disp"></div>
+              <div class="cal-slot-cell cal-slot-cell--nolab"></div>
+              <div class="cal-slot-cell cal-slot-cell--nolab"></div>
+            </div>
+
+            <!-- Panel Detalle inferior -->
+            <div style="margin-top: 1.75rem; border-top: 1px solid var(--color-border); padding-top: 1.25rem;">
+              <h3 style="font-size: 1rem; font-weight: 700; color: var(--color-text); margin-bottom: 0.75rem;">
+                Detalle del día: Martes 15 de Septiembre
+              </h3>
+              <div class="form-grid-2">
+                <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 0.85rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 700; font-size: 0.85rem; color: #991B1B;">09:00 – 11:00</span>
+                    <span class="material-symbols-outlined" style="font-size: 1rem; color: #DC2626; cursor: pointer;">delete</span>
+                  </div>
+                  <span style="font-size: 0.78rem; color: #7F1D1D;">Bloqueo manual: Consulta médica particular</span>
+                </div>
+
+                <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 0.85rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 700; font-size: 0.85rem; color: #065F46;">15:00 – 18:00</span>
+                    <span class="va-badge va-badge--success" style="font-size: 0.65rem;">Proyecto #12</span>
+                  </div>
+                  <span style="font-size: 0.78rem; color: #064E3B;">Fitting y prueba de vestuario — Colección Verano 2027</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         SECCIÓN 4: COMPONENTES MODALES Y ALERTAS DE LAYOUTS (src/components)
+         ════════════════════════════════════════════════════════════════ -->
+    <section>
+      <h2 class="figma-section-title">
+        <span class="material-symbols-outlined">extension</span>
+        4. Componentes Base y Modales Reutilizables (src/components)
+      </h2>
+
+      <!-- COMPONENT: AlertaBase.vue -->
+      <article id="comp-alertas" class="figma-frame" style="margin-bottom: 3rem;">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">notification_important</span>
+            AlertaBase — Componente de Feedback y Notificación Global
+          </span>
+          <span class="figma-frame__file">src/components/AlertaBase.vue</span>
+        </div>
+        <div class="figma-frame__body" style="padding: 2.5rem;">
+          <div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem;">
+            <div class="base-alert base-alert--success">
+              <span class="material-symbols-outlined" style="font-size: 1.3rem;">check_circle</span>
+              <span style="font-weight: 600;">type="success": Datos guardados correctamente en la base de datos.</span>
+            </div>
+            <div class="base-alert base-alert--error">
+              <span class="material-symbols-outlined" style="font-size: 1.3rem;">error</span>
+              <span style="font-weight: 600;">type="error": Error al procesar la solicitud. Verificá los campos obligatorios.</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- COMPONENT: ConfigurarJornada.vue & CrearBloqueo.vue -->
+      <article id="comp-modales-cal" class="figma-frame">
+        <div class="figma-frame__header">
+          <span class="figma-frame__name">
+            <span class="material-symbols-outlined">calendar_add_on</span>
+            Modales de Calendario — Configurar Jornada y Crear Bloqueo
+          </span>
+          <span class="figma-frame__file">src/components/calendario/*.vue</span>
+        </div>
+        <div class="figma-frame__body" style="padding: 2.5rem; display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center;">
+          
+          <!-- ConfigurarJornada.vue -->
+          <div class="modal-preview-card" style="margin: 0; width: 100%; max-width: 480px;">
+            <div class="modal-preview-header">
+              <span>Configurar jornada laboral</span>
+              <span class="material-symbols-outlined" style="cursor: pointer;">close</span>
+            </div>
+            <div class="modal-preview-body">
+              <div class="va-input-group">
+                <label class="va-label">Margen de actividad (minutos)</label>
+                <div class="va-input-wrapper">
+                  <input type="number" value="60" />
+                </div>
+                <span class="va-input-message">Buffer aplicado antes y después de cada actividad.</span>
+              </div>
+
+              <div style="border-top: 1px solid var(--color-border); padding-top: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid #f3f4f6;">
+                  <span style="font-weight: 600; font-size: 0.85rem; color: var(--color-text);">Lunes</span>
+                  <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="time" value="09:00" style="padding: 2px 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem;" />
+                    <span>a</span>
+                    <input type="time" value="18:00" style="padding: 2px 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem;" />
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid #f3f4f6;">
+                  <span style="font-weight: 600; font-size: 0.85rem; color: var(--color-text);">Martes</span>
+                  <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="time" value="09:00" style="padding: 2px 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem;" />
+                    <span>a</span>
+                    <input type="time" value="18:00" style="padding: 2px 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.8rem;" />
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0;">
+                  <span style="font-weight: 600; font-size: 0.85rem; color: var(--color-text-muted);">Sábado</span>
+                  <span class="va-badge" style="background: #f3f4f6; color: var(--color-text-muted);">No laborable</span>
+                </div>
+              </div>
+            </div>
+            <div class="modal-preview-footer">
+              <button class="va-btn va-btn--secondary va-btn--small">Cancelar</button>
+              <button class="va-btn va-btn--primary va-btn--small">Guardar jornada</button>
+            </div>
+          </div>
+
+          <!-- CrearBloqueo.vue -->
+          <div class="modal-preview-card" style="margin: 0; width: 100%; max-width: 440px;">
+            <div class="modal-preview-header">
+              <span>Agregar bloqueo de disponibilidad</span>
+              <span class="material-symbols-outlined" style="cursor: pointer;">close</span>
+            </div>
+            <div class="modal-preview-body">
+              <div class="va-input-group">
+                <label class="va-label">Fecha y hora de inicio</label>
+                <div class="va-input-wrapper">
+                  <input type="datetime-local" value="2026-09-15T09:00" />
+                </div>
+              </div>
+              <div class="va-input-group">
+                <label class="va-label">Fecha y hora de fin</label>
+                <div class="va-input-wrapper">
+                  <input type="datetime-local" value="2026-09-15T11:00" />
+                </div>
+              </div>
+              <div class="va-input-group">
+                <label class="va-label">Motivo (opcional)</label>
+                <div class="va-input-wrapper">
+                  <input type="text" value="Consulta médica particular" placeholder="Ej: Vacaciones..." />
+                </div>
+                <span class="va-input-message">Máximo 200 caracteres.</span>
+              </div>
+            </div>
+            <div class="modal-preview-footer">
+              <button class="va-btn va-btn--secondary va-btn--small">Cancelar</button>
+              <button class="va-btn va-btn--primary va-btn--small">Agregar bloqueo</button>
+            </div>
+          </div>
+
+        </div>
+      </article>
+    </section>
+
+  </main>
+
+  <footer style="text-align: center; padding: 2rem; color: #8b949e; font-size: 0.8rem; border-top: 1px solid #30363d; background: #0d1117;">
+    ModaLink — Archivo integrado para importación en Figma vía plugin "HTML to Design" o visualización directa en navegador.
+  </footer>
+
+</body>
+</html>
