@@ -48,7 +48,58 @@
           <h1 class="dashboard-main__title">DASHBOARD</h1>
           <span class="dashboard-main__subtitle">{{ titulo }}</span>
         </div>
-        <h1 class="modalink-main__title">ModaLink</h1>
+        <div class="dashboard-main__header-actions">
+          <VaDropdown v-if="usuario" placement="bottom-end">
+            <template #anchor>
+              <button class="perfil-switcher">
+                <span class="perfil-switcher__avatar">{{ inicialPerfil }}</span>
+                <span class="perfil-switcher__nombre">{{ nombreArtisticoActivo || "Sin perfil activo" }}</span>
+                <span class="material-symbols-outlined">expand_more</span>
+              </button>
+            </template>
+
+            <VaDropdownContent class="perfil-switcher__menu">
+              <div v-if="perfilesCargando" class="perfil-switcher__estado">
+                Cargando perfiles...
+              </div>
+
+              <template v-else>
+                <div class="perfil-switcher__grupo">
+                  <span class="perfil-switcher__titulo">Perfil actual</span>
+                  <div v-if="perfilActual" class="perfil-switcher__actual">
+                    <span class="perfil-switcher__punto"></span>
+                    {{ perfilActual.nombreArtistico }}
+                  </div>
+                  <div v-else class="perfil-switcher__actual perfil-switcher__actual--vacio">
+                    Sin perfil activo
+                  </div>
+                </div>
+
+                <div v-if="perfilesAlternativos.length" class="perfil-switcher__grupo">
+                  <span class="perfil-switcher__titulo">Cambiar a</span>
+                  <VaMenuItem
+                    v-for="perfil in perfilesAlternativos"
+                    :key="perfil.idPerfil"
+                    class="perfil-switcher__item"
+                    :disabled="perfil.estado !== 'Activo'"
+                    @click="cambiarPerfil(perfil)"
+                  >
+                    {{ perfil.nombreArtistico }}
+                  </VaMenuItem>
+                </div>
+
+                <VaMenuItem icon="mso-add" @click="$router.push({ name: 'crear-perfil' })">
+                  Crear nuevo perfil
+                </VaMenuItem>
+                <VaMenuItem icon="mso-logout" class="perfil-switcher__item--peligro" @click="cerrarSesion">
+                  Cerrar sesión
+                </VaMenuItem>
+              </template>
+            </VaDropdownContent>
+          </VaDropdown>
+
+          <h1 class="modalink-main__title">ModaLink</h1>
+        </div>
       </header>
 
       <main class="dashboard-main__content">
@@ -97,7 +148,8 @@
 <script>
 import authService from "../services/authService";
 import usuarioService from "../services/usuarioService";
-import { state, limpiarSesion } from "../services/authState";
+import perfilService from "../services/perfilService";
+import { state, limpiarSesion, setPerfilActivo, idPerfilActivo } from "../services/authState";
 
 export default {
   name: "UserDashboardLayout",
@@ -110,6 +162,9 @@ export default {
   data() {
     return {
       modalBajaVisible: false,
+      perfiles: [],
+      perfilesCargando: false,
+      cambiandoPerfilId: null,
     };
   },
   computed: {
@@ -120,8 +175,58 @@ export default {
       const nombre = this.usuario?.nombre || "";
       return nombre.charAt(0).toUpperCase();
     },
+    idActivo() {
+      return idPerfilActivo();
+    },
+    nombreArtisticoActivo() {
+      return state.usuario?.nombreArtisticoActivo || null;
+    },
+    inicialPerfil() {
+      const nombre = this.nombreArtisticoActivo || "";
+      return nombre.charAt(0).toUpperCase() || "?";
+    },
+    perfilActual() {
+      return this.perfiles.find((p) => p.idPerfil === this.idActivo) || null;
+    },
+    perfilesAlternativos() {
+      return this.perfiles.filter((p) => p.idPerfil !== this.idActivo);
+    },
+  },
+  mounted() {
+    this.cargarPerfiles();
   },
   methods: {
+    async cargarPerfiles() {
+      this.perfilesCargando = true;
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        this.perfiles = response?.data || [];
+      } catch {
+        this.perfiles = [];
+      } finally {
+        this.perfilesCargando = false;
+      }
+    },
+    async cambiarPerfil(perfil) {
+      if (!perfil || perfil.estado !== 'Activo' || perfil.idPerfil === this.idActivo) return;
+      if (this.cambiandoPerfilId) return;
+      this.cambiandoPerfilId = perfil.idPerfil;
+      try {
+        const response = await perfilService.activar(perfil.idPerfil);
+        const activado = response?.data || perfil;
+        setPerfilActivo(activado);
+        await this.cargarPerfiles();
+      } catch (error) {
+        const status = error?.response?.status;
+        let mensaje = "No se pudo cambiar de perfil. Intentá nuevamente.";
+        if (status === 404) mensaje = "El perfil no existe o no te pertenece.";
+        else if (status === 400)
+          mensaje = error?.response?.data?.message || "El perfil está en proceso de baja y no puede activarse.";
+        alert(mensaje);
+      } finally {
+        this.cambiandoPerfilId = null;
+      }
+    },
     async confirmarBaja() {
       try {
         await usuarioService.solicitarBaja();
@@ -360,7 +465,104 @@ font-size: 1.5rem;
 
 .dashboard-main__header-actions {
   display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ── Switcher de perfil activo ── */
+.perfil-switcher {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.perfil-switcher:hover {
+  background: #f3f4f6;
+}
+
+.perfil-switcher__avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-secondary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.perfil-switcher__nombre {
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.perfil-switcher__nombre .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.perfil-switcher__menu {
+  min-width: 220px;
+}
+
+.perfil-switcher__estado {
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.perfil-switcher__grupo {
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.perfil-switcher__titulo {
+  display: block;
+  padding: 0 0.6rem 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.perfil-switcher__actual {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.perfil-switcher__actual--vacio {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.perfil-switcher__punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.perfil-switcher__item--peligro {
+  color: var(--va-danger);
 }
 
 .dashboard-main__icon-btn {

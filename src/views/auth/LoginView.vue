@@ -84,7 +84,7 @@
 <script>
 import authService from "../../services/authService";
 import usuarioService from "../../services/usuarioService";
-import { marcarSesionRestaurada, limpiarSesion } from "../../services/authState";
+import { marcarSesionRestaurada, refrescarSesion, limpiarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
@@ -117,8 +117,13 @@ export default {
 
       try {
         const response = await authService.login(this.credenciales);
-        const usuario = response?.data?.usuario || null;
-        marcarSesionRestaurada(usuario);
+        const usuarioLogin = response?.data?.usuario || null;
+        marcarSesionRestaurada(usuarioLogin);
+
+        // Flujo 1: re-consultar /auth/me para obtener idPerfilActivo autoritativo,
+        // conservando campos del login (ej. estado) que /auth/me podría no exponer.
+        const refrescado = await refrescarSesion();
+        const usuario = { ...usuarioLogin, ...refrescado };
 
         if (usuario?.estado === 'PendienteBaja') {
           this.modalReactivarVisible = true;

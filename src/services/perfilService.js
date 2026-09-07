@@ -25,6 +25,10 @@ const perfilService = {
     return http.post(`/perfiles/${idPerfil}/reactivar`);
   },
 
+  activar(idPerfil) {
+    return http.patch(`/perfiles/${idPerfil}/activar`, {});
+  },
+
   listarProfesiones() {
     return http.get("/profesiones");
   },

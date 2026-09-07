@@ -13,6 +13,19 @@ function clearUsuario() {
   state.usuario = null;
 }
 
+function setPerfilActivo(perfil) {
+  if (!state.usuario) return;
+  state.usuario = {
+    ...state.usuario,
+    idPerfilActivo: perfil?.idPerfil ?? null,
+    nombreArtisticoActivo: perfil?.nombreArtistico ?? null,
+  };
+}
+
+function idPerfilActivo() {
+  return state.usuario?.idPerfilActivo ?? null;
+}
+
 function esAdmin() {
   return state.usuario?.rolGlobal === "Administrador";
 }
@@ -67,10 +80,22 @@ function marcarSesionRestaurada(usuario) {
   restauracionEnCurso = null;
 }
 
+// Re-consulta /auth/me para obtener el estado autoritativo de la sesión,
+// incluidos idPerfilActivo y nombreArtisticoActivo (Flujo 1 de la guía).
+async function refrescarSesion() {
+  try {
+    const response = await authService.obtenerSesion();
+    setUsuario(response?.data || null);
+    return response?.data || null;
+  } catch {
+    return null;
+  }
+}
+
 function limpiarSesion() {
   clearUsuario();
   sesionRestaurada = false;
   restauracionEnCurso = null;
 }
 
-export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, restaurarSesion, marcarSesionRestaurada, limpiarSesion };
+export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion };

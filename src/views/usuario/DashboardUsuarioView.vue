@@ -53,7 +53,7 @@
         </div>
       </div>
 
-      <BaseAlert v-if="mensajeBaja" :message="mensajeBaja" type="success" />
+      <BaseAlert v-if="mensajeExito" :message="mensajeExito" type="success" />
       <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
 
       <div v-if="cargando" class="dashboard-usuario__estado">
@@ -74,9 +74,19 @@
         >
           <div class="perfil-card__header">
             <span class="perfil-card__header-name">{{ perfil.nombreArtistico }}</span>
-            <button class="perfil-card__header-btn">
-              <span class="material-symbols-outlined">add</span>
-            </button>
+            <div class="perfil-card__header-right">
+              <span
+                v-if="perfil.idPerfil === idPerfilActivo"
+                class="perfil-card__header-activo"
+                title="Perfil en sesión"
+              >
+                <span class="material-symbols-outlined">check_circle</span>
+                En sesión
+              </span>
+              <button class="perfil-card__header-btn">
+                <span class="material-symbols-outlined">add</span>
+              </button>
+            </div>
           </div>
 
           <div class="perfil-card__body">
@@ -122,10 +132,20 @@
                 <span class="material-symbols-outlined">edit</span>
               </button>
             </div>
-            <button class="perfil-card__ingresar" @click="verDetalle(perfil)">
-              Ver detalle
-              <span class="material-symbols-outlined">chevron_right</span>
-            </button>
+            <div class="perfil-card__footer-actions">
+              <VaButton
+                v-if="puedeIngresar(perfil)"
+                size="small"
+                :loading="activandoId === perfil.idPerfil"
+                @click="activarPerfil(perfil)"
+              >
+                Ingresar
+              </VaButton>
+              <button class="perfil-card__ingresar" @click="verDetalle(perfil)">
+                Ver detalle
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -344,6 +364,7 @@
 
 <script>
 import perfilService from "../../services/perfilService";
+import { state as authState, setPerfilActivo } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 const ETIQUETAS_CARAC = {
@@ -463,11 +484,15 @@ export default {
       modalEliminarVisible: false,
       perfilAEliminar: null,
       eliminando: false,
-      mensajeBaja: "",
+      mensajeExito: "",
       mensajeError: "",
+      activandoId: null,
     };
   },
   computed: {
+    idPerfilActivo() {
+      return authState.usuario?.idPerfilActivo ?? null;
+    },
     puedeEliminar() {
       return this.perfilSeleccionado?.estado === "Activo";
     },
@@ -519,9 +544,37 @@ export default {
     },
     verDetalle(perfil) {
       this.perfilSeleccionado = perfil;
-      this.mensajeBaja = "";
+      this.mensajeExito = "";
       this.mensajeError = "";
       this.modalPerfilVisible = true;
+    },
+    puedeIngresar(perfil) {
+      return perfil?.estado === "Activo" && perfil?.idPerfil !== this.idPerfilActivo;
+    },
+    async activarPerfil(perfil) {
+      if (!perfil || this.activandoId === perfil.idPerfil) return;
+      this.activandoId = perfil.idPerfil;
+      this.mensajeExito = "";
+      this.mensajeError = "";
+      try {
+        const response = await perfilService.activar(perfil.idPerfil);
+        const activado = response?.data || perfil;
+        setPerfilActivo(activado);
+        this.mensajeExito = `Sesión iniciada en "${activado.nombreArtistico || "el perfil"}".`;
+      } catch (error) {
+        const status = error?.response?.status;
+        if (status === 404) {
+          this.mensajeError = "El perfil no existe o no te pertenece.";
+        } else if (status === 400) {
+          this.mensajeError =
+            error?.response?.data?.message ||
+            "El perfil está en proceso de baja y no puede activarse.";
+        } else {
+          this.mensajeError = "No se pudo iniciar sesión en el perfil. Intentá nuevamente.";
+        }
+      } finally {
+        this.activandoId = null;
+      }
     },
     irAEditar(perfil) {
       this.$router.push({ name: "editar-perfil", params: { id: perfil.idPerfil } });
@@ -538,7 +591,7 @@ export default {
       try {
         const response = await perfilService.eliminar(this.perfilAEliminar.idPerfil);
         const data = response?.data;
-        this.mensajeBaja = data?.mensaje || "Solicitud de baja registrada. Tenés 30 días para activar el perfil.";
+        this.mensajeExito = data?.mensaje || "Solicitud de baja registrada. Tenés 30 días para activar el perfil.";
         this.modalEliminarVisible = false;
         this.modalPerfilVisible = false;
         await this.cargarPerfiles();
@@ -554,7 +607,7 @@ export default {
       this.mensajeError = "";
       try {
         const response = await perfilService.reactivar(perfil.idPerfil);
-        this.mensajeBaja = "Perfil reactivado correctamente.";
+        this.mensajeExito = "Perfil reactivado correctamente.";
         this.modalPerfilVisible = false;
         await this.cargarPerfiles();
       } catch (error) {
@@ -822,6 +875,28 @@ export default {
   font-size: 1rem;
 }
 
+.perfil-card__header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.perfil-card__header-activo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.perfil-card__header-activo .material-symbols-outlined {
+  font-size: 0.9rem;
+}
+
 .perfil-card__body {
   display: flex;
   align-items: center;
@@ -917,6 +992,12 @@ export default {
   justify-content: space-between;
   padding: 0.6rem 1rem;
   border-top: 1px solid #f3f4f6;
+}
+
+.perfil-card__footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .perfil-card__footer-icons {

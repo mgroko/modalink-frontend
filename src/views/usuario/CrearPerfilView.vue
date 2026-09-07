@@ -248,6 +248,7 @@
 
 <script>
 import perfilService from "../../services/perfilService";
+import { refrescarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 const ETIQUETAS_CARACTERISTICAS = {
@@ -529,6 +530,8 @@ export default {
 
       try {
         await perfilService.crear(request);
+        // Flujo 1 (Caso A): si es el primer perfil, el backend lo asigna como activo.
+        await refrescarSesion();
         this.mensajeExito = "Perfil creado correctamente.";
         setTimeout(() => {
           this.$router.push({ name: "dashboard-usuario" });

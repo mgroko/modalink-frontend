@@ -7,15 +7,18 @@ import UserDashboardLayout from "../components/UserDashboardLayout.vue";
 import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
 import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
+import HomeView from "../views/usuario/HomeView.vue";
 import CrearPerfilView from "../views/usuario/CrearPerfilView.vue";
 import EditarPerfilView from "../views/usuario/EditarPerfilView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
+import SeleccionarPerfilView from "../views/usuario/SeleccionarPerfilView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
-import { esAdmin, restaurarSesion } from "../services/authState";
+import { esAdmin, restaurarSesion, idPerfilActivo, state } from "../services/authState";
+import perfilService from "../services/perfilService";
 
 const routes = [
   {
@@ -33,6 +36,12 @@ const routes = [
     name: "registro",
     component: RegistroView,
     meta: { layout: AuthLayout }
+  },
+  {
+    path: "/home",
+    name: "home",
+    component: HomeView,
+    meta: { layout: UserDashboardLayout, titulo: "Inicio" },
   },
   {
     path: "/dashboard-usuario",
@@ -56,7 +65,13 @@ const routes = [
     path: "/dashboard-usuario/crear-perfil",
     name: "crear-perfil",
     component: CrearPerfilView,
-    meta: { layout: UserDashboardLayout, titulo: "Crear perfil" },
+    meta: { layout: UserDashboardLayout, titulo: "Crear perfil", sinPerfilActivo: true },
+  },
+  {
+    path: "/dashboard-usuario/seleccionar-perfil",
+    name: "seleccionar-perfil",
+    component: SeleccionarPerfilView,
+    meta: { layout: UserDashboardLayout, titulo: "Seleccionar perfil", sinPerfilActivo: true },
   },
   {
     path: "/dashboard-usuario/editar-perfil/:id",
@@ -96,13 +111,35 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
-  if (!to.meta.requiereAdmin) return true;
+  if (to.meta.requiereAdmin) {
+    await restaurarSesion();
+    if (esAdmin()) return true;
+    return { name: "login" };
+  }
 
-  await restaurarSesion();
+  if (to.meta.layout === UserDashboardLayout) {
+    await restaurarSesion();
 
-  if (esAdmin()) return true;
+    if (!state.usuario) return { name: "login" };
 
-  return { name: "login" };
+    // Flujo 1: sin perfil activo, resolver a qué pantalla ir.
+    if (!to.meta.sinPerfilActivo && idPerfilActivo() == null) {
+      let perfiles = [];
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        perfiles = response?.data || [];
+      } catch {
+        perfiles = [];
+      }
+
+      if (perfiles.length === 0) {
+        return to.name === "crear-perfil" ? true : { name: "crear-perfil" };
+      }
+      return to.name === "seleccionar-perfil" ? true : { name: "seleccionar-perfil" };
+    }
+  }
+
+  return true;
 });
 
 export default router;
