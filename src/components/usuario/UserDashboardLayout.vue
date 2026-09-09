@@ -19,7 +19,7 @@
         <div class="sidebar__section">
           <span class="sidebar__section-title">Acciones</span>
           <button class="sidebar__action" @click="$router.push({ name: 'dashboard-usuario' })">
-            Inicio
+            Mis perfiles
           </button>
           <button class="sidebar__action" @click="$router.push({ name: 'crear-perfil' })">
             Crear nuevo perfil
@@ -88,10 +88,10 @@
                   </VaMenuItem>
                 </div>
 
-                <VaMenuItem icon="mso-add" @click="$router.push({ name: 'crear-perfil' })">
+                <VaMenuItem class="perfil-switcher__item" icon="mso-add" @click="$router.push({ name: 'crear-perfil' })">
                   Crear nuevo perfil
                 </VaMenuItem>
-                <VaMenuItem icon="mso-logout" class="perfil-switcher__item--peligro" @click="cerrarSesion">
+                <VaMenuItem class="perfil-switcher__item perfil-switcher__item--peligro" icon="mso-logout" @click="cerrarSesion">
                   Cerrar sesión
                 </VaMenuItem>
               </template>
@@ -146,10 +146,10 @@
 </template>
 
 <script>
-import authService from "../services/authService";
-import usuarioService from "../services/usuarioService";
-import perfilService from "../services/perfilService";
-import { state, limpiarSesion, setPerfilActivo, idPerfilActivo } from "../services/authState";
+import authService from "../../services/authService";
+import usuarioService from "../../services/usuarioService";
+import perfilService from "../../services/perfilService";
+import { state, limpiarSesion, setPerfilActivo, idPerfilActivo } from "../../services/authState";
 
 export default {
   name: "UserDashboardLayout",
@@ -514,7 +514,13 @@ font-size: 1.5rem;
 }
 
 .perfil-switcher__menu {
-  min-width: 220px;
+  width: 260px !important;
+  min-width: 260px;
+  max-width: 260px;
+  padding: 0.75rem 0;
+  box-sizing: border-box;
+  overflow: hidden; 
+  border-radius: 16px !important;
 }
 
 .perfil-switcher__estado {
@@ -524,13 +530,13 @@ font-size: 1.5rem;
 }
 
 .perfil-switcher__grupo {
-  padding: 0.5rem 0.25rem;
+  padding: 0.75rem 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .perfil-switcher__titulo {
   display: block;
-  padding: 0 0.6rem 0.35rem;
+  padding: 0 1rem 0.5rem;
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--color-text-muted);
@@ -542,7 +548,7 @@ font-size: 1.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.6rem;
+  padding: 0.5rem 1rem;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text);
@@ -559,6 +565,14 @@ font-size: 1.5rem;
   border-radius: 50%;
   background: #22c55e;
   flex-shrink: 0;
+}
+
+.perfil-switcher__item {
+  padding: 0.65rem 1rem !important; 
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .perfil-switcher__item--peligro {

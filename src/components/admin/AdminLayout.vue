@@ -51,8 +51,8 @@
 </template>
 
 <script>
-import authService from "../services/authService";
-import { state, limpiarSesion } from "../services/authState";
+import authService from "../../services/authService";
+import { state, limpiarSesion } from "../../services/authState";
 
 export default {
   name: "AdminLayout",
