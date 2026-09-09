@@ -1,18 +1,18 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import AuthLayout from "../components/AuthLayout.vue";
-import AdminLayout from "../components/AdminLayout.vue";
-import UserDashboardLayout from "../components/UserDashboardLayout.vue";
+import AdminLayout from "../components/admin/AdminLayout.vue";
+import UserDashboardLayout from "../components/usuario/UserDashboardLayout.vue";
+import HomeLayout from "../components/home/HomeLayout.vue";
 
 import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
 import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
-import HomeView from "../views/usuario/HomeView.vue";
-import CrearPerfilView from "../views/usuario/CrearPerfilView.vue";
-import EditarPerfilView from "../views/usuario/EditarPerfilView.vue";
+import HomeView from "../views/perfil/HomeView.vue";
+import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
+import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
-import SeleccionarPerfilView from "../views/usuario/SeleccionarPerfilView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
@@ -41,25 +41,25 @@ const routes = [
     path: "/home",
     name: "home",
     component: HomeView,
-    meta: { layout: UserDashboardLayout, titulo: "Inicio" },
+    meta: { layout: HomeLayout, titulo: "Inicio", requiresActiveProfile: true },
   },
   {
     path: "/dashboard-usuario",
     name: "dashboard-usuario",
     component: DashboardUsuarioView,
-    meta: { layout: UserDashboardLayout },
+    meta: { layout: UserDashboardLayout, permiteSinPerfil: true },
   },
   {
     path: "/dashboard-usuario/modificar-datos",
     name: "modificar-datos",
     component: ModificarDatosView,
-    meta: { layout: UserDashboardLayout },
+    meta: { layout: UserDashboardLayout, permiteSinPerfil: true },
   },
   {
     path: "/dashboard-usuario/calendario",
     name: "calendario",
     component: CalendarioView,
-    meta: { layout: UserDashboardLayout, titulo: "Calendario" },
+    meta: { layout: UserDashboardLayout, titulo: "Calendario", permiteSinPerfil: true },
   },
   {
     path: "/dashboard-usuario/crear-perfil",
@@ -68,16 +68,10 @@ const routes = [
     meta: { layout: UserDashboardLayout, titulo: "Crear perfil", sinPerfilActivo: true },
   },
   {
-    path: "/dashboard-usuario/seleccionar-perfil",
-    name: "seleccionar-perfil",
-    component: SeleccionarPerfilView,
-    meta: { layout: UserDashboardLayout, titulo: "Seleccionar perfil", sinPerfilActivo: true },
-  },
-  {
     path: "/dashboard-usuario/editar-perfil/:id",
     name: "editar-perfil",
     component: EditarPerfilView,
-    meta: { layout: UserDashboardLayout, titulo: "Editar perfil" },
+    meta: { layout: UserDashboardLayout, titulo: "Editar perfil", permiteSinPerfil: true },
   },
   {
     path: "/recuperar-password",
@@ -117,13 +111,17 @@ router.beforeEach(async (to) => {
     return { name: "login" };
   }
 
-  if (to.meta.layout === UserDashboardLayout) {
+  if (to.meta.layout === UserDashboardLayout || to.meta.layout === HomeLayout) {
     await restaurarSesion();
 
     if (!state.usuario) return { name: "login" };
 
+    if (to.name === "home" && idPerfilActivo() == null) {
+      return { name: "dashboard-usuario" };
+    }
+
     // Flujo 1: sin perfil activo, resolver a qué pantalla ir.
-    if (!to.meta.sinPerfilActivo && idPerfilActivo() == null) {
+    if (!to.meta.sinPerfilActivo && !to.meta.permiteSinPerfil && idPerfilActivo() == null) {
       let perfiles = [];
       try {
         const response = await perfilService.listarMisPerfiles();
@@ -135,7 +133,7 @@ router.beforeEach(async (to) => {
       if (perfiles.length === 0) {
         return to.name === "crear-perfil" ? true : { name: "crear-perfil" };
       }
-      return to.name === "seleccionar-perfil" ? true : { name: "seleccionar-perfil" };
+      return { name: "dashboard-usuario" };
     }
   }
 

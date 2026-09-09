@@ -8,7 +8,6 @@
     </div>
 
     <template v-else-if="perfilActivo">
-      <PerfilActivoWidget :perfil="perfilActivo" />
       <main class="home-view__feed">
         <ProyectosSection :proyectos="proyectos" />
         <PublicacionesFeed :publicaciones="publicaciones" />
@@ -18,18 +17,16 @@
 </template>
 
 <script>
-import homeService from "../../services/homeService";
+import homeService from "../../services/homeService.js";
 import BaseAlert from "../../components/AlertaBase.vue";
-import PerfilActivoWidget from "../../components/home/PerfilActivoWidget.vue";
 import ProyectosSection from "../../components/home/ProyectosSection.vue";
 import PublicacionesFeed from "../../components/home/PublicacionesFeed.vue";
-import { setPerfilActivo } from "../../services/authState";
+import { setPerfilActivo } from "../../services/authState.js";
 
 export default {
   name: "HomeView",
   components: {
     BaseAlert,
-    PerfilActivoWidget,
     ProyectosSection,
     PublicacionesFeed,
   },
@@ -62,7 +59,7 @@ export default {
           : [];
 
         if (!this.perfilActivo) {
-          this.$router.push({ name: "seleccionar-perfil" });
+          this.mensajeError = "Seleccioná un perfil desde el dashboard para ingresar al Home.";
           return;
         }
 
@@ -74,10 +71,6 @@ export default {
             this.perfilActivo = response?.data || null;
             if (this.perfilActivo) setPerfilActivo(this.perfilActivo);
           } catch (perfilError) {
-            if (perfilError?.response?.status === 404) {
-              this.$router.push({ name: "seleccionar-perfil" });
-              return;
-            }
             this.mensajeError = "No se pudo cargar el perfil activo.";
           }
         } else {

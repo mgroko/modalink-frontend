@@ -134,6 +134,8 @@ export default {
 
         if (usuario?.rolGlobal === "Administrador") {
           this.$router.push({ name: "dashboard-admin" });
+        } else if (usuario?.idPerfilActivo != null) {
+          this.$router.push({ name: "home" });
         } else {
           this.$router.push({ name: "dashboard-usuario" });
         }

@@ -71,6 +71,12 @@
           v-for="perfil in perfilesFiltrados"
           :key="perfil.idPerfil"
           class="perfil-card"
+          :style="{ '--perfil-color': colorPorProfesion(perfil) }"
+          role="button"
+          tabindex="0"
+          @click="verDetalle(perfil)"
+          @keydown.enter="verDetalle(perfil)"
+          @keydown.space.prevent="verDetalle(perfil)"
         >
           <div class="perfil-card__header">
             <span class="perfil-card__header-name">{{ perfil.nombreArtistico }}</span>
@@ -83,7 +89,7 @@
                 <span class="material-symbols-outlined">check_circle</span>
                 En sesión
               </span>
-              <button class="perfil-card__header-btn">
+              <button class="perfil-card__header-btn" @click.stop>
                 <span class="material-symbols-outlined">add</span>
               </button>
             </div>
@@ -120,14 +126,14 @@
 
           <div class="perfil-card__footer">
             <div class="perfil-card__footer-icons">
-              <button class="perfil-card__icon-btn" title="Ver detalle" @click="verDetalle(perfil)">
+              <button class="perfil-card__icon-btn" title="Ver detalle" @click.stop="verDetalle(perfil)">
                 <span class="material-symbols-outlined">person</span>
               </button>
               <button
                 v-if="perfil.estado === 'Activo'"
                 class="perfil-card__icon-btn"
                 title="Editar perfil"
-                @click="irAEditar(perfil)"
+                @click.stop="irAEditar(perfil)"
               >
                 <span class="material-symbols-outlined">edit</span>
               </button>
@@ -135,16 +141,24 @@
             <div class="perfil-card__footer-actions">
               <VaButton
                 v-if="puedeIngresar(perfil)"
+                class="perfil-card__iniciar"
+                color="success"
                 size="small"
                 :loading="activandoId === perfil.idPerfil"
-                @click="activarPerfil(perfil)"
+                @click.stop="activarPerfil(perfil)"
               >
                 Ingresar
               </VaButton>
-              <button class="perfil-card__ingresar" @click="verDetalle(perfil)">
-                Ver detalle
-                <span class="material-symbols-outlined">chevron_right</span>
-              </button>
+              <VaButton
+                v-else-if="perfil.idPerfil === idPerfilActivo"
+                class="perfil-card__continuar"
+                color="#C96554"
+                size="small"
+                @click.stop="irAHome"
+              >
+                Ir al inicio
+                <span class="material-symbols-outlined perfil-card__continuar-icon">chevron_right</span>
+              </VaButton>
             </div>
           </div>
         </div>
@@ -307,25 +321,16 @@
 
       <template #footer>
         <div class="detalle-perfil__footer">
-          <VaButton
-            v-if="perfilSeleccionado && perfilSeleccionado.estado === 'PendienteBaja'"
-            preset="secondary"
-            color="success"
-            @click="reactivarPerfil(perfilSeleccionado)"
-          >
-            <span class="material-symbols-outlined detalle-perfil__footer-icono">refresh</span>
-            Reactivar perfil
-          </VaButton>
-          <div class="detalle-perfil__footer-der">
-            <VaButton preset="secondary" @click="modalPerfilVisible = false">Cerrar</VaButton>
+          <div class="detalle-perfil__footer-izq">
+            <VaButton preset="secondary" @click="modalPerfilVisible = false">Cancelar</VaButton>
             <VaButton
-              v-if="perfilSeleccionado && puedeEliminar"
-              color="danger"
-              outline
-              @click="confirmarEliminar(perfilSeleccionado)"
+              v-if="perfilSeleccionado && perfilSeleccionado.estado === 'PendienteBaja'"
+              preset="secondary"
+              color="success"
+              @click="reactivarPerfil(perfilSeleccionado)"
             >
-              <span class="material-symbols-outlined detalle-perfil__footer-icono">delete</span>
-              Eliminar
+              <span class="material-symbols-outlined detalle-perfil__footer-icono">refresh</span>
+              Reactivar perfil
             </VaButton>
             <VaButton
               v-if="perfilSeleccionado && puedeEditar"
@@ -335,7 +340,35 @@
               <span class="material-symbols-outlined detalle-perfil__footer-icono">edit</span>
               Editar
             </VaButton>
+            <VaButton
+            v-if="perfilSeleccionado && puedeEliminar"
+            color="danger"
+            outline
+            @click="confirmarEliminar(perfilSeleccionado)"
+            >
+            <span class="material-symbols-outlined detalle-perfil__footer-icono">delete</span>
+            Eliminar
+            </VaButton>
           </div>
+          <VaButton
+            v-if="perfilSeleccionado && puedeIngresar(perfilSeleccionado)"
+            class="detalle-perfil__ingresar"
+            color="success"
+            :loading="activandoId === perfilSeleccionado.idPerfil"
+            @click="activarPerfil(perfilSeleccionado)"
+          >
+            <span class="material-symbols-outlined detalle-perfil__footer-icono">login</span>
+            Ingresar
+          </VaButton>
+          <VaButton
+            v-else-if="perfilSeleccionado && perfilSeleccionado.estado === 'Activo' && perfilSeleccionado.idPerfil === idPerfilActivo"
+            class="detalle-perfil__continuar"
+            color="#C96554"
+            @click="irAHome"
+          >
+            Ir al inicio
+            <span class="material-symbols-outlined detalle-perfil__continuar-icon">chevron_right</span>
+          </VaButton>
         </div>
       </template>
     </VaModal>
@@ -448,6 +481,8 @@ const TODOS_CODIGOS = [
   ...CODIGOS_CABELLO_TIPO,
 ];
 
+const COLORES_POR_PROFESION = ["#5ca4a9", "#a97b5c", "#765640", "#6866a9", "#494776"];
+
 const UNIDADES_POR_CODIGO = {
   altura: "cm",
   medida_pecho: "cm",
@@ -551,6 +586,21 @@ export default {
     puedeIngresar(perfil) {
       return perfil?.estado === "Activo" && perfil?.idPerfil !== this.idPerfilActivo;
     },
+    irAHome() {
+      this.modalPerfilVisible = false;
+      this.$router.push({ name: "home" });
+    },
+    colorPorProfesion(perfil) {
+      const profesion = perfil?.profesion || perfil?.profesiones?.[0]?.nombre || "sin-profesion";
+      const texto = profesion.toLowerCase().trim();
+      let hash = 0;
+
+      for (let indice = 0; indice < texto.length; indice += 1) {
+        hash = (hash * 31 + texto.charCodeAt(indice)) >>> 0;
+      }
+
+      return COLORES_POR_PROFESION[hash % COLORES_POR_PROFESION.length];
+    },
     async activarPerfil(perfil) {
       if (!perfil || this.activandoId === perfil.idPerfil) return;
       this.activandoId = perfil.idPerfil;
@@ -560,7 +610,8 @@ export default {
         const response = await perfilService.activar(perfil.idPerfil);
         const activado = response?.data || perfil;
         setPerfilActivo(activado);
-        this.mensajeExito = `Sesión iniciada en "${activado.nombreArtistico || "el perfil"}".`;
+        this.modalPerfilVisible = false;
+        await this.$router.push({ name: "home" });
       } catch (error) {
         const status = error?.response?.status;
         if (status === 404) {
@@ -833,18 +884,24 @@ export default {
 /* ── Tarjeta de perfil ── */
 .perfil-card {
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--perfil-color);
   border-radius: 10px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
+}
+
+.perfil-card:focus-visible {
+  outline: 2px solid var(--perfil-color);
+  outline-offset: 2px;
 }
 
 .perfil-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--color-support);
+  background: var(--perfil-color);
   padding: 0.6rem 1rem;
 }
 
@@ -935,7 +992,8 @@ export default {
 
 .perfil-card__profesion {
   font-size: 0.72rem;
-  color: var(--color-text-muted);
+  color: var(--perfil-color);
+  font-weight: 600;
 }
 
 .perfil-card__nombre {
@@ -998,6 +1056,29 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.perfil-card__iniciar {
+  color: #fff !important;
+}
+
+.perfil-card__continuar {
+  --va-background-color: #ffffff !important;
+  --va-background-mask-color: transparent !important;
+  --va-background-mask-opacity: 0 !important;
+  color: #C96554 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0.25rem 0.5rem !important;
+}
+
+.perfil-card__continuar :deep(.va-button__content) {
+  color: #C96554 !important;
+}
+
+.perfil-card__continuar-icon {
+  font-size: 1rem;
+  margin-left: 0.1rem;
 }
 
 .perfil-card__footer-icons {
@@ -1161,10 +1242,9 @@ export default {
   width: 100%;
 }
 
-.detalle-perfil__footer-der {
+.detalle-perfil__footer-izq {
   display: flex;
   align-items: center;
-  margin-left: auto;
   gap: 0.5rem;
 }
 
@@ -1174,6 +1254,32 @@ export default {
 
 .detalle-perfil__footer-icono {
   font-size: 1.1rem;
+}
+
+.detalle-perfil__ingresar {
+  color: #fff !important;
+}
+
+.detalle-perfil__ingresar :deep(.va-button__content) {
+  color: #fff !important;
+}
+
+.detalle-perfil__continuar {
+ --va-background-color: #ffffff !important;
+ --va-background-mask-color: transparent !important;
+ --va-background-mask-opacity: 0 !important;
+ color: #C96554 !important;
+ border: 0 !important;
+ box-shadow: none !important;
+}
+
+.detalle-perfil__continuar :deep(.va-button__content) {
+ color: #C96554 !important;
+}
+
+.detalle-perfil__continuar-icon {
+ font-size: 1rem;
+ margin-left: 0.1rem;
 }
 
 </style>
