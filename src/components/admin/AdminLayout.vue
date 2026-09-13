@@ -7,6 +7,13 @@
         <RouterLink to="/admin/dashboard" class="admin-layout__link">Inicio</RouterLink>
         <RouterLink to="/admin/gestion-usuarios" class="admin-layout__link">Usuarios</RouterLink>
         <RouterLink to="/admin/gestionar-caracteristicas" class="admin-layout__link">Características</RouterLink>
+        <RouterLink
+          v-if="puedeConfigurarScheduler"
+          to="/admin/configuracion-scheduler"
+          class="admin-layout__link"
+        >
+          Scheduler
+        </RouterLink>
 
         <VaDropdown v-if="usuario" placement="bottom-end">
           <template #anchor>
@@ -31,6 +38,15 @@
             >
               Características técnicas
             </VaMenuItem>
+
+            <VaMenuItem
+              v-if="puedeConfigurarScheduler"
+              icon="mso-schedule"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'configuracion-scheduler' })"
+            >
+              Scheduler de deshabilitación
+            </VaMenuItem>
             
             <VaMenuItem
               icon="mso-logout"
@@ -52,13 +68,16 @@
 
 <script>
 import authService from "../../services/authService";
-import { state, limpiarSesion } from "../../services/authState";
+import { state, limpiarSesion, tienePermiso } from "../../services/authState";
 
 export default {
   name: "AdminLayout",
   computed: {
     usuario() {
       return state.usuario;
+    },
+    puedeConfigurarScheduler() {
+      return tienePermiso("ADMINISTRAR_CONFIGURACION");
     },
   },
   methods: {
