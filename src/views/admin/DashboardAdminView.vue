@@ -43,18 +43,40 @@
           <span class="material-symbols-outlined">chevron_right</span>
         </span>
       </button>
+
+      <button
+        v-if="puedeConfigurarScheduler"
+        class="admin-card"
+        @click="$router.push({ name: 'configuracion-scheduler' })"
+      >
+        <div class="admin-card__icon">
+          <span class="material-symbols-outlined">schedule</span>
+        </div>
+        <div class="admin-card__info">
+          <span class="admin-card__titulo">Scheduler de deshabilitación</span>
+          <span class="admin-card__descripcion">
+            Configurar la hora de reactivación automática de cuentas suspendidas.
+          </span>
+        </div>
+        <span class="admin-card__arrow">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </span>
+      </button>
     </div>
   </div>
 </template>
 
 <script>
-import { state } from "../../services/authState";
+import { state, tienePermiso } from "../../services/authState";
 
 export default {
   name: "DashboardAdminView",
   computed: {
     usuario() {
       return state.usuario;
+    },
+    puedeConfigurarScheduler() {
+      return tienePermiso("ADMINISTRAR_CONFIGURACION");
     },
   },
 };

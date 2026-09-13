@@ -17,7 +17,8 @@ import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
-import { esAdmin, restaurarSesion, idPerfilActivo, state } from "../services/authState";
+import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
+import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
 
 const routes = [
@@ -96,6 +97,17 @@ const routes = [
     name: "gestionar-caracteristicas",
     component: GestionarCaracteristicasView,
     meta: { layout: AdminLayout, requiereAdmin: true }
+  },
+  {
+    path: "/admin/configuracion-scheduler",
+    name: "configuracion-scheduler",
+    component: ConfiguracionSchedulerView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Scheduler de deshabilitación",
+    }
   }
 ];
 
@@ -107,8 +119,13 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   if (to.meta.requiereAdmin) {
     await restaurarSesion();
-    if (esAdmin()) return true;
-    return { name: "login" };
+    if (!esAdmin()) return { name: "login" };
+
+    if (to.meta.requierePermiso && !tienePermiso(to.meta.requierePermiso)) {
+      return { name: "dashboard-admin" };
+    }
+
+    return true;
   }
 
   if (to.meta.layout === UserDashboardLayout || to.meta.layout === HomeLayout) {
