@@ -13,7 +13,7 @@ Editarperfilview · VUE
     <div v-else-if="noEncontrado" class="editar-perfil__estado">
       <span class="material-symbols-outlined editar-perfil__estado-icono">error</span>
       No se encontró el perfil solicitado.
-      <VaButton preset="secondary" @click="volver">Volver al dashboard</VaButton>
+      <VaButton preset="secondary" @click="volver">{{ desdeInicio ? 'Volver a mi perfil' : 'Volver al dashboard' }}</VaButton>
     </div>
  
     <template v-else>
@@ -339,6 +339,12 @@ export default {
   components: {
     BaseAlert,
   },
+  props: {
+    desdeInicio: {
+      type: Boolean,
+      default: false,
+    },
+  },
   computed: {
     caracteristicaAltura() {
       return this.caracteristicas.find((c) => normCodigo(c.codigo) === "altura") || null;
@@ -540,7 +546,7 @@ export default {
         await perfilService.editar(this.idPerfil, request);
         this.mensajeExito = "Perfil actualizado correctamente.";
         setTimeout(() => {
-          this.$router.push({ name: "dashboard-usuario" });
+          this.$router.push({ name: this.desdeInicio ? "inicioperfil" : "dashboard-usuario" });
         }, 1200);
       } catch (error) {
         const errores = error?.response?.data?.errores;
@@ -554,7 +560,7 @@ export default {
       }
     },
     volver() {
-      this.$router.push({ name: "dashboard-usuario" });
+      this.$router.push({ name: this.desdeInicio ? "inicioperfil" : "dashboard-usuario" });
     },
   },
 };

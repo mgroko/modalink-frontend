@@ -11,6 +11,7 @@ import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
 import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
 import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
+import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
@@ -43,6 +44,25 @@ const routes = [
     name: "home",
     component: HomeView,
     meta: { layout: HomeLayout, titulo: "Inicio", requiresActiveProfile: true },
+  },
+  {
+    path: "/inicio-perfil",
+    name: "inicioperfil",
+    component: InicioPerfilView,
+    meta: { layout: HomeLayout, titulo: "Mi perfil", requiresActiveProfile: true },
+  },
+  {
+    path: "/perfiles/:id",
+    name: "ver-perfil",
+    component: InicioPerfilView,
+    meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true },
+  },
+  {
+    path: "/inicio-perfil/editar/:id",
+    name: "editar-perfil-inicio",
+    component: EditarPerfilView,
+    props: { desdeInicio: true },
+    meta: { layout: HomeLayout, titulo: "Editar perfil", requiresActiveProfile: true },
   },
   {
     path: "/dashboard-usuario",

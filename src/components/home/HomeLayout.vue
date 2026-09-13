@@ -76,7 +76,13 @@
 
     <div class="home-layout__body">
       <aside class="home-layout__sidebar">
-        <section class="home-layout__profile-card">
+        <section
+          class="home-layout__profile-card home-layout__profile-card--clickeable"
+          role="button"
+          tabindex="0"
+          @click="$router.push({ name: 'inicioperfil' })"
+          @keydown.enter="$router.push({ name: 'inicioperfil' })"
+        >
           <div class="home-layout__profile-summary">
             <span class="home-layout__large-avatar">{{ inicialPerfil }}</span>
             <div>
@@ -92,10 +98,11 @@
         </section>
 
         <nav class="home-layout__quick-links">
+          <button @click="$router.push({ name: 'inicioperfil' })"><span class="material-symbols-outlined">person</span>Mi perfil</button>
           <button @click="$router.push({ name: 'dashboard-usuario' })"><span class="material-symbols-outlined">business_center</span>Proyectos</button>
           <button><span class="material-symbols-outlined">chat_bubble</span>Contactos</button>
           <button @click="$router.push({ name: 'calendario' })"><span class="material-symbols-outlined">calendar_month</span>Calendario</button>
-          <button @click="$router.push({ name: 'dashboard-usuario' })"><span class="material-symbols-outlined">person</span>Dashboard</button>
+          <button @click="$router.push({ name: 'dashboard-usuario' })"><span class="material-symbols-outlined">dashboard</span>Dashboard</button>
         </nav>
 
         <button class="home-layout__logout" @click="cerrarSesion">
@@ -211,7 +218,9 @@ export default {
         espacioSubmenuDerecho >= submenuWidth + margin ? "derecha" : "izquierda";
     },
     verPerfil() {
-      if (this.idActivo) this.$router.push({ name: "editar-perfil", params: { id: this.idActivo } });
+      this.menuAbierto = false;
+      this.perfilesAbiertos = false;
+      this.$router.push({ name: "inicioperfil" });
     },
     async cambiarPerfil(perfil) {
       if (!perfil || perfil.estado !== "Activo" || perfil.idPerfil === this.idActivo) return;
@@ -273,6 +282,8 @@ export default {
 .home-layout__body { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 2.5rem; max-width: 1050px; margin: 2rem auto; padding: 0 1rem; }
 .home-layout__sidebar { display: flex; flex-direction: column; min-height: calc(100vh - 150px); gap: 1.25rem; }
 .home-layout__profile-card, .home-layout__quick-links { padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(35,33,52,.04); }
+.home-layout__profile-card--clickeable { cursor: pointer; transition: box-shadow 0.15s; }
+.home-layout__profile-card--clickeable:hover { box-shadow: 0 4px 12px rgba(35,33,52,.1); }
 .home-layout__profile-summary { display: flex; align-items: center; gap: .6rem; }
 .home-layout__profile-summary div { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
 .home-layout__profile-summary strong { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; }
