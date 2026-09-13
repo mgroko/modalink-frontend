@@ -28,7 +28,7 @@
 
           <VaSelect
             v-model="form.idProfesion"
-            :options="profesiones"
+            :options="profesionesDisponibles"
             value-by="idProfesion"
             :text-by="(option) => capitalizarEtiqueta(option.nombre)"
             :rules="[reglas.requerido]"
@@ -337,6 +337,12 @@ export default {
     BaseAlert,
   },
   computed: {
+    profesionesDisponibles() {
+      return this.profesiones.map((p) => ({
+        ...p,
+        disabled: this.profesionesOcupadas.has(p.idProfesion),
+      }));
+    },
     caracteristicaAltura() {
       return this.caracteristicas.find((c) => normCodigo(c.codigo) === "altura") || null;
     },
@@ -367,6 +373,7 @@ export default {
     return {
       paso: 1,
       profesiones: [],
+      profesionesOcupadas: new Set(),
       cargandoProfesiones: false,
       cargandoCaracteristicas: false,
       caracteristicas: [],
@@ -387,9 +394,47 @@ export default {
     };
   },
   async mounted() {
-    await this.cargarProfesiones();
+    await this.cargarDatosIniciales();
   },
   methods: {
+    async cargarDatosIniciales() {
+      this.cargandoProfesiones = true;
+      try {
+        const [profesionesRes, perfilesRes] = await Promise.allSettled([
+          perfilService.listarProfesiones(),
+          perfilService.listarMisPerfiles(),
+        ]);
+
+        if (profesionesRes.status === "fulfilled") {
+          const datos = profesionesRes.value?.data;
+          this.profesiones = Array.isArray(datos) ? datos : datos?.profesiones || [];
+        } else {
+          this.mensajeError = "No se pudieron cargar las profesiones. Intentá nuevamente.";
+        }
+
+        if (perfilesRes.status === "fulfilled") {
+          const perfiles = Array.isArray(perfilesRes.value?.data)
+            ? perfilesRes.value.data
+            : [];
+          this.profesionesOcupadas = new Set(
+            perfiles
+              .map((p) => {
+                const nombreNorm = normTexto(p.profesion);
+                const encontrada = this.profesiones.find(
+                  (prof) => normTexto(prof.nombre) === nombreNorm
+                );
+                return encontrada?.idProfesion;
+              })
+              .filter((id) => id != null)
+          );
+        }
+      } catch {
+        this.mensajeError = "No se pudieron cargar los datos iniciales.";
+      } finally {
+        this.cargandoProfesiones = false;
+      }
+    },
+
     async cargarProfesiones() {
       this.cargandoProfesiones = true;
       try {
@@ -450,18 +495,7 @@ export default {
     },
 
     async usuarioTienePerfilConProfesion(idProfesion) {
-      const profesion = this.profesiones.find((p) => p.idProfesion === idProfesion);
-      const nombreProfesion = profesion?.nombre;
-      if (!nombreProfesion) return false;
-      const nombreNorm = normTexto(nombreProfesion);
-
-      try {
-        const response = await perfilService.listarMisPerfiles();
-        const perfiles = Array.isArray(response?.data) ? response.data : [];
-        return perfiles.some((p) => normTexto(p.profesion) === nombreNorm);
-      } catch {
-        return false;
-      }
+      return this.profesionesOcupadas.has(idProfesion);
     },
 
     labelCaracteristica(codigo) {

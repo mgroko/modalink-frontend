@@ -480,8 +480,8 @@ const TODOS_CODIGOS = [
   ...CODIGOS_PIEL_OJOS,
   ...CODIGOS_CABELLO_TIPO,
 ];
-
-const COLORES_POR_PROFESION = ["#5ca4a9", "#a97b5c", "#765640", "#6866a9", "#494776"];
+//TODO ver aca que onda los colores!!!!! 
+const COLORES_POR_PROFESION = ["#5ca4a9", "rgb(192, 71, 117)", "#de8b42", "#6866a9", "#86407b"];
 
 const UNIDADES_POR_CODIGO = {
   altura: "cm",

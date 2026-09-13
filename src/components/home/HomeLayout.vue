@@ -261,13 +261,13 @@ export default {
 .home-layout__profile-menu { position: absolute; z-index: 5; top: 48px; width: 255px; padding: .5rem 0; background: #fff; border: 1px solid #ddd; border-radius: 0 0 10px 10px; box-shadow: 0 8px 20px rgba(35,33,52,.12); }
 .home-layout__profile-menu--derecha { left: 0; }
 .home-layout__profile-menu--izquierda { right: 0; }
-.home-layout__profile-menu > button, .home-layout__switcher > button { display: flex; justify-content: space-between; width: 100%; padding: .75rem 1rem; border: 0; background: #fff; color: #232134; text-align: left; cursor: pointer; }
+.home-layout__profile-menu > button, .home-layout__switcher > button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: .75rem 1rem; border: 0; background: #fff; color: #232134; text-align: left; cursor: pointer; font-size: .82rem; }
 .home-layout__profile-menu button:hover { background: #f5f5f8; }
 .home-layout__switcher { position: relative; }
 .home-layout__profiles { position: absolute; top: 0; width: 175px; padding: .5rem; background: #fff; border: 1px solid #ddd; box-shadow: 0 8px 20px rgba(35,33,52,.12); }
 .home-layout__profiles--derecha { left: 100%; border-radius: 0 10px 10px 10px; }
 .home-layout__profiles--izquierda { right: 100%; border-radius: 10px 0 10px 10px; }
-.home-layout__profiles button { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .5rem; border: 0; background: #fff; text-align: left; cursor: pointer; }
+.home-layout__profiles button { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .5rem; border: 0; background: #fff; text-align: left; cursor: pointer; font-size: .8rem; }
 .home-layout__profiles button:disabled { cursor: not-allowed; opacity: .5; }
 .home-layout__empty { display: block; padding: .5rem; color: #767171; font-size: .8rem; }
 .home-layout__body { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 2.5rem; max-width: 1050px; margin: 2rem auto; padding: 0 1rem; }
