@@ -5,6 +5,10 @@ const adminService = {
     return http.get("/admin/usuarios");
   },
 
+  buscarUsuarios(params) {
+    return http.get("/admin/usuarios/buscar", { params });
+  },
+
   detalleUsuario(idUsuario) {
     return http.get(`/admin/usuarios/${idUsuario}`);
   },

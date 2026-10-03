@@ -18,8 +18,8 @@
         </span>
       </div>
       <p class="perfil-hero__profesion">{{ profesionTexto }}</p>
-      <p v-if="!compacto && ubicacionTexto" class="perfil-hero__ubicacion">{{ ubicacionTexto }}</p>
-      <p v-if="!compacto && perfil?.biografia" class="perfil-hero__descripcion">{{ perfil.biografia }}</p>
+      <p v-if="ubicacionTexto" class="perfil-hero__ubicacion">{{ ubicacionTexto }}</p>
+      <p v-if="perfil?.biografia" class="perfil-hero__descripcion">{{ perfil.biografia }}</p>
     </div>
 
     <button
@@ -87,7 +87,7 @@ export default {
 .perfil-hero {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1.25rem;
   padding: 1.5rem;
   background: var(--color-surface);
@@ -130,7 +130,7 @@ export default {
 .perfil-hero__info {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.2rem;
   min-width: 0;
   flex: 1;
 }
@@ -174,15 +174,19 @@ export default {
 
 .perfil-hero__ubicacion {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--color-text-muted);
 }
 
 .perfil-hero__descripcion {
-  margin: 0.4rem 0 0;
+  margin: 0.5rem 0 0;
   font-size: 0.85rem;
   color: var(--color-text-muted);
   line-height: 1.5;
+}
+
+.perfil-hero--compacto .perfil-hero__descripcion {
+  display: none;
 }
 
 .perfil-hero__editar {

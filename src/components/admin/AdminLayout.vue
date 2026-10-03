@@ -6,6 +6,7 @@
       <nav class="admin-layout__nav">
         <RouterLink to="/admin/dashboard" class="admin-layout__link">Inicio</RouterLink>
         <RouterLink to="/admin/gestion-usuarios" class="admin-layout__link">Usuarios</RouterLink>
+        <RouterLink to="/admin/busqueda-usuarios" class="admin-layout__link">Búsqueda</RouterLink>
         <RouterLink to="/admin/gestionar-caracteristicas" class="admin-layout__link">Características</RouterLink>
         <RouterLink
           v-if="puedeConfigurarScheduler"
@@ -37,6 +38,14 @@
               @click="$router.push({ name: 'gestionar-caracteristicas' })"
             >
               Características técnicas
+            </VaMenuItem>
+
+            <VaMenuItem
+              icon="mso-search"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'busqueda-usuarios' })"
+            >
+              Búsqueda de usuarios
             </VaMenuItem>
 
             <VaMenuItem

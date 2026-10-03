@@ -28,6 +28,24 @@
 
       <button
         class="admin-card"
+        @click="$router.push({ name: 'busqueda-usuarios' })"
+      >
+        <div class="admin-card__icon">
+          <span class="material-symbols-outlined">search</span>
+        </div>
+        <div class="admin-card__info">
+          <span class="admin-card__titulo">Búsqueda de usuarios</span>
+          <span class="admin-card__descripcion">
+            Buscar usuarios por nombre, correo, estado, profesión y más.
+          </span>
+        </div>
+        <span class="admin-card__arrow">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </span>
+      </button>
+
+      <button
+        class="admin-card"
         @click="$router.push({ name: 'gestionar-caracteristicas' })"
       >
         <div class="admin-card__icon">

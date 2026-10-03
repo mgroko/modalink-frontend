@@ -60,10 +60,12 @@
             <PerfilHero :perfil="perfil" compacto />
             <section class="inicio-perfil__panel">
               <h2 class="inicio-perfil__panel-titulo">Calendario profesional</h2>
-              <Calendario v-if="esPropio" />
-              <p v-else class="inicio-perfil__vacio">
-                El calendario público de este perfil estará disponible próximamente.
-              </p>
+              <div v-if="esPropio" class="inicio-perfil__calendario-wrap">
+                <CalendarioCompacto />
+              </div>
+              <div v-else class="inicio-perfil__calendario-wrap">
+                <DisponibilidadAjena :id-usuario="perfil.idUsuario || perfil.idPerfil" />
+              </div>
             </section>
           </template>
 
@@ -203,7 +205,8 @@ import homeService from "../../services/homeService";
 import authService from "../../services/authService";
 import { idPerfilActivo, limpiarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
-import Calendario from "../../components/calendario/Calendario.vue";
+import CalendarioCompacto from "../../components/calendario/CalendarioCompacto.vue";
+import DisponibilidadAjena from "../../components/calendario/DisponibilidadAjena.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
@@ -313,7 +316,8 @@ export default {
   name: "InicioPerfilView",
   components: {
     BaseAlert,
-    Calendario,
+    CalendarioCompacto,
+    DisponibilidadAjena,
     PerfilHero,
     PerfilSidebarNav,
     ProximosEventos,
@@ -321,7 +325,6 @@ export default {
   },
   data() {
     return {
-      seccion: "publicaciones",
       perfil: null,
       publicaciones: [],
       resenas: [],
@@ -332,6 +335,11 @@ export default {
     };
   },
   computed: {
+    seccion() {
+      const seccionRuta = this.$route.params.seccion;
+      const validas = ["calendario", "resenas"];
+      return validas.includes(seccionRuta) ? seccionRuta : "publicaciones";
+    },
     esPropio() {
       if (this.perfil?.esPropietario != null) return this.perfil.esPropietario === true;
       return this.perfil?.idPerfil != null && this.perfil.idPerfil === idPerfilActivo();
@@ -373,6 +381,9 @@ export default {
   watch: {
     "$route.params.id"() {
       this.cargarDatos();
+    },
+    "$route.params.seccion"() {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     },
   },
   methods: {
@@ -445,8 +456,12 @@ export default {
       }
     },
     cambiarSeccion(seccion) {
-      this.seccion = seccion;
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const idDeRuta = this.$route.params.id;
+      if (idDeRuta) {
+        this.$router.push({ name: "ver-perfil-seccion", params: { id: idDeRuta, seccion } });
+      } else {
+        this.$router.push({ name: "inicioperfil-seccion", params: { seccion } });
+      }
     },
     navegarRuta(ruta) {
       if (ruta) {
@@ -522,12 +537,14 @@ export default {
 <style scoped>
 .inicio-perfil {
   width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .inicio-perfil__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 1.5rem;
   align-items: start;
 }
 
@@ -677,6 +694,11 @@ export default {
   gap: 1rem;
   width: 100%;
   flex-wrap: wrap;
+}
+
+.inicio-perfil__calendario-wrap {
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 @media (max-width: 900px) {

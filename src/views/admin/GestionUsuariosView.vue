@@ -14,33 +14,64 @@
         placeholder="Buscar por nombre, apellido o correo"
         removable
         class="gestion-usuarios__buscador"
+        @input="programarBusqueda"
+        @keyup.enter="buscarAhora"
       >
         <template #prependInner>
           <VaIcon name="mso-search" color="grey" size="small" />
         </template>
       </VaInput>
 
-      <VaButton
-        preset="secondary"
-        icon="mso-refresh"
-        :loading="cargando"
-        @click="cargarUsuarios"
-      >
-        Actualizar
-      </VaButton>
+      <div class="gestion-usuarios__toolbar-acciones">
+        <VaSelect
+          v-model="estadoFiltro"
+          :options="opcionesEstado"
+          value-by="value"
+          text-by="text"
+          placeholder="Estado"
+          clearable
+          class="gestion-usuarios__select-estado"
+          @update:modelValue="buscarAhora"
+        />
+
+        <VaSelect
+          v-model="tamanoPagina"
+          :options="opcionesTamano"
+          value-by="value"
+          text-by="text"
+          class="gestion-usuarios__select-tamano"
+          @update:modelValue="buscarAhora"
+        />
+
+        <VaButton
+          preset="secondary"
+          icon="mso-refresh"
+          :loading="cargando"
+          @click="recargarActual"
+        >
+          Actualizar
+        </VaButton>
+      </div>
     </div>
 
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
+    <p v-if="!cargando && paginacion.totalElementos > 0" class="gestion-usuarios__resumen">
+      {{ paginacion.totalElementos }} usuario(s) encontrado(s)
+      <template v-if="!esTodos">
+        · Página {{ paginacion.paginaActual + 1 }} de {{ paginacion.totalPaginas }}
+      </template>
+    </p>
+
     <VaDataTable
       class="gestion-usuarios__tabla"
-      :items="usuariosFiltrados"
+      :items="usuariosOrdenados"
       :columns="columnas"
       :loading="cargando"
-      :per-page="10"
       striped
       hoverable
+      no-pagination
     >
       <template #cell(idUsuario)="{ value }">
         <span class="gestion-usuarios__id">{{ value }}</span>
@@ -105,6 +136,27 @@
         </div>
       </template>
     </VaDataTable>
+
+    <div v-if="!esTodos && paginacion.totalPaginas > 1" class="gestion-usuarios__paginacion">
+      <VaButton
+        preset="secondary"
+        size="small"
+        icon="mso-chevron_left"
+        :disabled="paginacion.primera"
+        @click="cambiarPagina(-1)"
+      >
+        Anterior
+      </VaButton>
+      <VaButton
+        preset="secondary"
+        size="small"
+        icon-right="mso-chevron_right"
+        :disabled="paginacion.ultima"
+        @click="cambiarPagina(1)"
+      >
+        Siguiente
+      </VaButton>
+    </div>
 
     <!-- Modal detalle de usuario -->
     <VaModal
@@ -351,6 +403,27 @@ export default {
     return {
       usuarios: [],
       busqueda: "",
+      estadoFiltro: null,
+      tamanoPagina: 20,
+      opcionesEstado: [
+        { text: "Activo", value: "Activo" },
+        { text: "Deshabilitado", value: "Deshabilitado" },
+        { text: "Pendiente de baja", value: "PendienteBaja" },
+        { text: "Baja", value: "Baja" },
+      ],
+      opcionesTamano: [
+        { text: "20 por página", value: 20 },
+        { text: "50 por página", value: 50 },
+        { text: "Ver todos", value: 0 },
+      ],
+      paginacion: {
+        paginaActual: 0,
+        totalPaginas: 1,
+        totalElementos: 0,
+        primera: true,
+        ultima: true,
+      },
+      debounceHandle: null,
       cargando: false,
       procesandoId: null,
       successMessage: "",
@@ -414,17 +487,11 @@ export default {
     idAdmin() {
       return this.obtenerId(state.usuario);
     },
-    usuariosFiltrados() {
-      const texto = this.busqueda.trim().toLowerCase();
-      let lista = this.usuarios;
-      if (texto) {
-        lista = lista.filter((usuario) =>
-          [usuario.nombre, usuario.apellido, usuario.correo].some((campo) =>
-            String(campo || "").toLowerCase().includes(texto)
-          )
-        );
-      }
-      return [...lista].sort((a, b) => {
+    esTodos() {
+      return this.tamanoPagina === 0;
+    },
+    usuariosOrdenados() {
+      return [...this.usuarios].sort((a, b) => {
         const aEsAdmin = this.obtenerId(a) === this.idAdmin;
         const bEsAdmin = this.obtenerId(b) === this.idAdmin;
         if (aEsAdmin && !bEsAdmin) return -1;
@@ -440,6 +507,9 @@ export default {
     }
     await this.cargarUsuarios();
   },
+  beforeUnmount() {
+    clearTimeout(this.debounceHandle);
+  },
   methods: {
     obtenerId(usuario) {
       return usuario.id ?? usuario.idUsuario;
@@ -448,6 +518,7 @@ export default {
     colorEstado(estado) {
       if (estado === "Activo") return "success";
       if (estado === "Deshabilitado") return "danger";
+      if (estado === "PendienteBaja") return "warning";
       if (estado === "Baja") return "backgroundElement";
       return "backgroundBorder";
     },
@@ -478,14 +549,82 @@ export default {
     },
 
     async cargarUsuarios() {
+      return this.buscar(0);
+    },
+
+    programarBusqueda() {
+      clearTimeout(this.debounceHandle);
+      this.debounceHandle = setTimeout(() => this.buscar(0), 300);
+    },
+
+    buscarAhora() {
+      clearTimeout(this.debounceHandle);
+      this.buscar(0);
+    },
+
+    recargarActual() {
+      this.buscar(this.paginacion.paginaActual);
+    },
+
+    cambiarPagina(delta) {
+      const destino = this.paginacion.paginaActual + delta;
+      if (destino < 0 || destino >= this.paginacion.totalPaginas) return;
+      this.buscar(destino);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+
+    buildParams(page) {
+      const params = { page, size: this.tamanoPagina };
+
+      if (this.tamanoPagina === 0) {
+        params.todos = true;
+        delete params.size;
+        delete params.page;
+      }
+
+      const texto = this.busqueda.trim();
+      if (texto.includes("@")) {
+        params.correo = texto;
+      } else if (texto) {
+        params.nombre = texto;
+      }
+      if (this.estadoFiltro) params.estado = this.estadoFiltro;
+
+      return params;
+    },
+
+    async buscar(page = 0) {
       this.cargando = true;
       this.errorMessage = "";
       this.successMessage = "";
 
       try {
-        const response = await adminService.listarUsuarios();
-        const datos = response?.data;
-        this.usuarios = Array.isArray(datos) ? datos : datos?.usuarios || [];
+        const params = this.buildParams(page);
+        let data;
+
+        const response = await adminService.buscarUsuarios(params);
+        data = response?.data || {};
+
+        // Si el texto libre no matcheó como nombre, se reintenta como
+        // apellido y luego como correo (el campo único cubre los tres).
+        if ((data.totalElementos ?? 0) === 0 && params.nombre) {
+          let alt = await adminService.buscarUsuarios({ ...params, apellido: params.nombre, nombre: undefined });
+          let dataAlt = alt?.data || {};
+          if ((dataAlt.totalElementos ?? 0) === 0) {
+            alt = await adminService.buscarUsuarios({ ...params, correo: params.nombre, nombre: undefined });
+            dataAlt = alt?.data || {};
+          }
+          if ((dataAlt.totalElementos ?? 0) > 0) data = dataAlt;
+        }
+
+        this.usuarios = Array.isArray(data.contenido) ? data.contenido : [];
+        this.paginacion = {
+          paginaActual: data.paginaActual ?? 0,
+          totalPaginas: data.totalPaginas ?? 1,
+          totalElementos: data.totalElementos ?? this.usuarios.length,
+          primera: data.primera ?? true,
+          ultima: data.ultima ?? true,
+        };
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message ||
@@ -648,6 +787,34 @@ export default {
   width: 100%;
   height: 1.4rem;
   max-width: 320px;
+}
+
+.gestion-usuarios__toolbar-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.gestion-usuarios__select-estado {
+  min-width: 180px;
+}
+
+.gestion-usuarios__select-tamano {
+  min-width: 150px;
+}
+
+.gestion-usuarios__resumen {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.gestion-usuarios__paginacion {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
 .gestion-usuarios__tabla {

@@ -12,10 +12,12 @@ import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
 import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
+import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
+import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
@@ -49,20 +51,38 @@ const routes = [
     path: "/inicio-perfil",
     name: "inicioperfil",
     component: InicioPerfilView,
-    meta: { layout: HomeLayout, titulo: "Mi perfil", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Mi perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/inicio-perfil/:seccion",
+    name: "inicioperfil-seccion",
+    component: InicioPerfilView,
+    meta: { layout: HomeLayout, titulo: "Mi perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
   },
   {
     path: "/perfiles/:id",
     name: "ver-perfil",
     component: InicioPerfilView,
-    meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/perfiles/:id/:seccion",
+    name: "ver-perfil-seccion",
+    component: InicioPerfilView,
+    meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/buscar-perfiles",
+    name: "buscar-perfiles",
+    component: BuscarPerfilView,
+    meta: { layout: HomeLayout, titulo: "Búsqueda de perfiles", requiresActiveProfile: true },
   },
   {
     path: "/inicio-perfil/editar/:id",
     name: "editar-perfil-inicio",
     component: EditarPerfilView,
     props: { desdeInicio: true },
-    meta: { layout: HomeLayout, titulo: "Editar perfil", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Editar perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
   },
   {
     path: "/dashboard-usuario",
@@ -111,6 +131,12 @@ const routes = [
     name: "gestion-usuarios",
     component: GestionUsuariosView,
     meta: { layout: AdminLayout, requiereAdmin: true }
+  },
+  {
+    path: "/admin/busqueda-usuarios",
+    name: "busqueda-usuarios",
+    component: BusquedaUsuariosView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Búsqueda de usuarios" }
   },
   {
     path: "/admin/gestionar-caracteristicas",

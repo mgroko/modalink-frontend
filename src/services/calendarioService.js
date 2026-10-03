@@ -5,6 +5,10 @@ const calendarioService = {
     return http.get("/calendario");
   },
 
+  obtenerCalendarioPerfil(idPerfil) {
+    return http.get(`/calendario/perfil/${idPerfil}`);
+  },
+
   configurarJornada(request) {
     return http.put("/calendario/jornada", request);
   },

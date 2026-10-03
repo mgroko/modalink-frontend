@@ -8,7 +8,12 @@
 
       <div class="home-layout__search">
         <span class="material-symbols-outlined">search</span>
-        <input v-model="busqueda" type="search" placeholder="Buscar perfil por nombre o profesión..." />
+        <input
+          v-model="busqueda"
+          type="search"
+          placeholder="Buscar perfil por nombre o profesión..."
+          @keyup.enter="irABuscar"
+        />
       </div>
 
       <nav class="home-layout__navigation" aria-label="Navegación principal">
@@ -74,8 +79,8 @@
       </div>
     </header>
 
-    <div class="home-layout__body">
-      <aside class="home-layout__sidebar">
+    <div class="home-layout__body" :class="{ 'home-layout__body--full': $route.meta.sinSidebarPerfil }">
+      <aside v-if="!$route.meta.sinSidebarPerfil" class="home-layout__sidebar">
         <section
           class="home-layout__profile-card home-layout__profile-card--clickeable"
           role="button"
@@ -111,7 +116,10 @@
         </button>
       </aside>
 
-      <main class="home-layout__content">
+      <main
+        class="home-layout__content"
+        :class="{ 'home-layout__content--transparente': $route.meta.sinFondoBlanco }"
+      >
         <slot />
       </main>
     </div>
@@ -222,6 +230,13 @@ export default {
       this.perfilesAbiertos = false;
       this.$router.push({ name: "inicioperfil" });
     },
+    irABuscar() {
+      const texto = this.busqueda.trim();
+      this.$router.push({
+        name: "buscar-perfiles",
+        query: texto ? { q: texto } : {},
+      });
+    },
     async cambiarPerfil(perfil) {
       if (!perfil || perfil.estado !== "Activo" || perfil.idPerfil === this.idActivo) return;
       this.cambiandoPerfilId = perfil.idPerfil;
@@ -280,6 +295,7 @@ export default {
 .home-layout__profiles button:disabled { cursor: not-allowed; opacity: .5; }
 .home-layout__empty { display: block; padding: .5rem; color: #767171; font-size: .8rem; }
 .home-layout__body { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 2.5rem; max-width: 1050px; margin: 2rem auto; padding: 0 1rem; }
+.home-layout__body--full { grid-template-columns: minmax(0, 1fr); }
 .home-layout__sidebar { display: flex; flex-direction: column; min-height: calc(100vh - 150px); gap: 1.25rem; }
 .home-layout__profile-card, .home-layout__quick-links { padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(35,33,52,.04); }
 .home-layout__profile-card--clickeable { cursor: pointer; transition: box-shadow 0.15s; }
@@ -297,6 +313,7 @@ export default {
 .home-layout__quick-links .material-symbols-outlined { font-size: 1.1rem; }
 .home-layout__logout { display: flex; align-items: center; gap: .5rem; margin-top: auto; padding: .5rem 1rem; border: 0; background: transparent; color: #ef4444; cursor: pointer; font-size: .8rem; }
 .home-layout__content { min-height: 530px; padding: 1.5rem; background: #fff; border-radius: 10px; }
+.home-layout__content--transparente { background: transparent; padding: 0; }
 @media (max-width: 900px) {
   .home-layout__topbar { flex-wrap: wrap; gap: 1rem; padding: 1rem; }
   .home-layout__navigation { order: 3; width: 100%; justify-content: space-around; }

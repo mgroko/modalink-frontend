@@ -33,6 +33,10 @@ const perfilService = {
     return http.get("/profesiones");
   },
 
+  buscar(params) {
+    return http.get("/perfiles/buscar", { params });
+  },
+
   caracteristicasPorProfesion(idProfesion) {
     return http.get(`/profesiones/${idProfesion}/caracteristicas-tecnicas`);
   },
