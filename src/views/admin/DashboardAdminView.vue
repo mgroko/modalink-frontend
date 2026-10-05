@@ -46,6 +46,24 @@
 
       <button
         class="admin-card"
+        @click="$router.push({ name: 'gestion-unidades-medida' })"
+      >
+        <div class="admin-card__icon">
+          <span class="material-symbols-outlined">straighten</span>
+        </div>
+        <div class="admin-card__info">
+          <span class="admin-card__titulo">Unidades de medida</span>
+          <span class="admin-card__descripcion">
+            Gestionar unidades de medida (nombre, símbolo, tipo de dato).
+          </span>
+        </div>
+        <span class="admin-card__arrow">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </span>
+      </button>
+
+      <button
+        class="admin-card"
         @click="$router.push({ name: 'gestionar-caracteristicas' })"
       >
         <div class="admin-card__icon">

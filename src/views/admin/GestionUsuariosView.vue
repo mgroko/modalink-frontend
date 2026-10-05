@@ -99,6 +99,10 @@
         {{ value ? formatearFecha(value) : 'No solicitó' }}
       </template>
 
+      <template #cell(genero)="{ value }">
+        {{ textoGenero(value) }}
+      </template>
+
       <template #cell(acciones)="{ rowData }">
         <div class="gestion-usuarios__acciones">
           <VaButton
@@ -468,6 +472,7 @@ export default {
         { key: "correo", label: "Correo", sortable: true },
         { key: "rolGlobal", label: "Rol" },
         { key: "estado", label: "Estado", sortable: true },
+        { key: "genero", label: "Género", sortable: true },
         { key: "deshabilitacion", label: "Deshabilitación" },
         { key: "fechaSolicitudBaja", label: "Solicitud de baja" },
         { key: "acciones", label: "Acciones" },

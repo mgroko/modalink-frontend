@@ -21,6 +21,7 @@ import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
+import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
 
@@ -143,6 +144,18 @@ const routes = [
     name: "gestionar-caracteristicas",
     component: GestionarCaracteristicasView,
     meta: { layout: AdminLayout, requiereAdmin: true }
+  },
+  {
+    path: "/admin/unidades-medida",
+    name: "gestion-unidades-medida",
+    component: GestionUnidadesMedidaView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Unidades de medida" }
+  },
+  {
+    path: "/admin/unidades-medida/:id",
+    name: "editar-unidad-medida",
+    component: GestionUnidadesMedidaView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Detalle de unidad de medida" }
   },
   {
     path: "/admin/configuracion-scheduler",

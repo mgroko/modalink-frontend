@@ -11,7 +11,7 @@
       <VaInput
         v-model="busqueda"
         preset="bordered"
-        placeholder="Buscar por código, unidad o profesión"
+        placeholder="Buscar por nombre, código o profesión"
         removable
         class="gestion-caracteristicas__buscador"
       >
@@ -72,8 +72,12 @@
         <span class="gestion-caracteristicas__id">{{ value }}</span>
       </template>
 
-      <template #cell(codigo)="{ value }">
-        <span :title="value">{{ labelCaracteristica(value) }}</span>
+      <template #cell(nombre)="{ value }">
+        <span :title="value">{{ value || '—' }}</span>
+      </template>
+
+      <template #cell(unidad)="{ rowData }">
+        <span>{{ resolverSimbolo(rowData) }}</span>
       </template>
 
       <template #cell(tipoDato)="{ value }">
@@ -142,10 +146,22 @@
           />
 
           <VaInput
-            v-model="form.unidad"
-            :rules="[reglas.max50]"
-            label="Unidad (opcional)"
-            placeholder="Ej: color, cm, kg"
+            v-model="form.nombre"
+            :rules="[reglas.max100]"
+            label="Nombre"
+            placeholder="Ej: Color de ojos"
+            :disabled="!puedeCrear && !puedeModificar"
+          />
+
+          <VaSelect
+            v-model="form.idUnidad"
+            :options="unidades"
+            value-by="idUnidad"
+            text-by="nombre"
+            label="Unidad de medida (opcional)"
+            placeholder="Seleccioná una unidad"
+            :loading="cargandoUnidades"
+            clearable
             :disabled="!puedeCrear && !puedeModificar"
           />
 
@@ -344,21 +360,11 @@
 
 <script>
 import adminCaracteristicasService from "../../services/adminCaracteristicasService";
+import adminUnidadesMedidaService from "../../services/adminUnidadesMedidaService";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 const TIPOS = ["ENUMERADO", "TEXTO", "NUMERICO"];
-
-const ETIQUETAS_CARACTERISTICAS = {
-  altura: "Altura",
-  peso: "Peso",
-  color_piel: "Color de piel",
-  color_ojos: "Color de ojos",
-  color_cabello: "Color de cabello",
-  talle: "Talle",
-  talle_calzado: "Talle de calzado",
-  medidas: "Medidas",
-};
 
 function etiquetaValor(codigo) {
   const sinonimos = {
@@ -391,15 +397,17 @@ export default {
       cargando: false,
       guardando: false,
       cargandoProfesiones: false,
+      cargandoUnidades: false,
       caracteristicas: [],
       profesiones: [],
+      unidades: [],
       busqueda: "",
       successMessage: "",
       errorMessage: "",
 
       columnas: [
         { key: "idCaracteristica", label: "ID" },
-        { key: "codigo", label: "Código", sortable: true },
+        { key: "nombre", label: "Nombre", sortable: true },
         { key: "unidad", label: "Unidad" },
         { key: "profesion", label: "Profesión", sortable: true },
         { key: "tipoDato", label: "Tipo" },
@@ -422,7 +430,8 @@ export default {
       form: {
         idCaracteristica: null,
         codigo: "",
-        unidad: "",
+        nombre: "",
+        idUnidad: null,
         idProfesion: null,
         tipoDato: null,
         valores: [],
@@ -439,6 +448,7 @@ export default {
       reglas: {
         requerido: (v) => !!v || "Este campo es requerido",
         max50: (v) => !v || String(v).length <= 50 || "Máximo 50 caracteres",
+        max100: (v) => !v || String(v).length <= 100 || "Máximo 100 caracteres",
         hex: (v) => {
           if (!v) return true;
           return /^#[0-9A-Fa-f]{6}$/.test(v) || "Formato inválido (#RRGGBB)";
@@ -463,7 +473,7 @@ export default {
       const texto = this.busqueda.trim().toLowerCase();
       if (!texto) return this.caracteristicas;
       return this.caracteristicas.filter((c) =>
-        [c.codigo, c.unidad, c.profesion].some((v) =>
+        [c.nombre, c.codigo, this.resolverSimbolo(c), c.profesion].some((v) =>
           String(v || "").toLowerCase().includes(texto)
         )
       );
@@ -473,18 +483,17 @@ export default {
     },
   },
   async mounted() {
-    await Promise.all([this.cargarCaracteristicas(), this.cargarProfesiones()]);
+    await Promise.all([
+      this.cargarCaracteristicas(),
+      this.cargarProfesiones(),
+      this.cargarUnidades(),
+    ]);
   },
   methods: {
     colorTipoDato(tipo) {
       if (tipo === "ENUMERADO") return "success";
       if (tipo === "NUMERICO") return "info";
       return "warning";
-    },
-
-    labelCaracteristica(codigo) {
-      if (!codigo) return codigo;
-      return ETIQUETAS_CARACTERISTICAS[codigo] || codigo;
     },
 
     labelValor(codigo) {
@@ -522,13 +531,39 @@ export default {
       }
     },
 
+    async cargarUnidades() {
+      this.cargandoUnidades = true;
+      try {
+        const response = await adminUnidadesMedidaService.listar();
+        const datos = response?.data;
+        this.unidades = Array.isArray(datos) ? datos : datos?.unidades || [];
+      } catch {
+        // el select queda vacío si falla la carga
+      } finally {
+        this.cargandoUnidades = false;
+      }
+    },
+
+    resolverSimbolo(row) {
+      if (row.unidad && typeof row.unidad === "object") {
+        return row.unidad.simbolo || "—";
+      }
+      if (row.idUnidad) {
+        const u = this.unidades.find((x) => x.idUnidad === row.idUnidad);
+        return u?.simbolo || "—";
+      }
+      if (typeof row.unidad === "string") return row.unidad;
+      return "—";
+    },
+
     abrirCrear() {
       this.modoEdicion = false;
       this.esEnumeradoOriginal = false;
       this.form = {
         idCaracteristica: null,
         codigo: "",
-        unidad: "",
+        nombre: "",
+        idUnidad: null,
         idProfesion: null,
         tipoDato: null,
         valores: [],
@@ -544,7 +579,8 @@ export default {
       this.form = {
         idCaracteristica: carac.idCaracteristica,
         codigo: carac.codigo || "",
-        unidad: carac.unidad || "",
+        nombre: carac.nombre || "",
+        idUnidad: carac.idUnidad ?? (carac.unidad?.idUnidad ?? null),
         idProfesion: carac.idProfesion,
         tipoDato: carac.tipoDato,
         valores: (carac.valores || []).map((v) => ({ ...v })),
@@ -557,7 +593,8 @@ export default {
     buildRequest() {
       const request = {
         codigo: this.form.codigo?.trim(),
-        unidad: this.form.unidad?.trim() || null,
+        nombre: this.form.nombre?.trim() || null,
+        idUnidad: this.form.idUnidad,
         idProfesion: this.form.idProfesion,
         tipoDato: this.form.tipoDato,
       };

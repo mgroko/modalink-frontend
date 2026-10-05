@@ -52,6 +52,14 @@
       />
 
       <VaInput
+        v-model="filtros.idProfesion"
+        preset="bordered"
+        placeholder="Profesión ID"
+        class="busqueda-usuarios__campo"
+        @input="programarBusqueda"
+      />
+
+      <VaInput
         v-model="filtros.nombreArtisticoPerfil"
         preset="bordered"
         placeholder="Nombre artístico de perfil"
@@ -106,7 +114,7 @@
     </div>
 
     <VaDataTable
-      v-else
+      v-if="puedeVer"
       class="busqueda-usuarios__tabla"
       :items="usuarios"
       :columns="columnas"
@@ -173,6 +181,11 @@
         </div>
       </template>
     </VaDataTable>
+
+    <div v-else class="busqueda-usuarios__estado">
+      <span class="material-symbols-outlined busqueda-usuarios__estado-icono">lock</span>
+      No tenés permisos para ver usuarios.
+    </div>
 
     <div v-if="!esTodos && paginacion.totalPaginas > 1" class="busqueda-usuarios__paginacion">
       <VaButton
@@ -324,7 +337,7 @@
 <script>
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
-import { state } from "../../services/authState";
+import { state, tienePermiso } from "../../services/authState";
 
 const DEBOUNCE_MS = 300;
 
@@ -350,6 +363,8 @@ export default {
         { text: "Pendiente de baja", value: "PendienteBaja" },
         { text: "Baja", value: "Baja" },
       ],
+      idProfesion: "",
+      opcionesProfesion: [],
       opcionesTamano: [
         { text: "20 por página", value: 20 },
         { text: "50 por página", value: 50 },
@@ -411,6 +426,9 @@ export default {
     },
     esTodos() {
       return this.filtros.tamano === 0;
+    },
+    puedeVer() {
+      return tienePermiso("VER_USUARIOS");
     },
   },
   async mounted() {
@@ -485,6 +503,7 @@ export default {
       if (this.filtros.estado) params.estado = this.filtros.estado;
       if (nombreArtisticoPerfil) params.nombreArtisticoPerfil = nombreArtisticoPerfil;
       if (nombreProfesion) params.nombreProfesion = nombreProfesion;
+      if (this.filtros.idProfesion) params.idProfesion = this.filtros.idProfesion;
 
       return params;
     },
