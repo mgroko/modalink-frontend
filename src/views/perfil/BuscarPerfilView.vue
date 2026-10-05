@@ -228,7 +228,9 @@ export default {
       return String(valor || "?").charAt(0).toUpperCase();
     },
     ubicacionTexto(perfil) {
-      return [perfil?.localidad, perfil?.provincia].filter(Boolean).join(", ");
+      const localidad = perfil?.ciudad?.nombre || perfil?.localidad;
+      const provincia = perfil?.ciudad?.provincia?.nombre || perfil?.provincia;
+      return [localidad, provincia].filter(Boolean).join(", ");
     },
     habilidadesVisibles(perfil) {
       const lista = Array.isArray(perfil?.habilidades) ? perfil.habilidades : [];

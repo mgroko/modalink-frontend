@@ -1,5 +1,7 @@
 import http from "./http";
 
+let cacheProfesiones = null;
+
 const perfilService = {
   listarMisPerfiles() {
     return http.get("/usuarios/me/perfiles");
@@ -29,10 +31,39 @@ const perfilService = {
     return http.patch(`/perfiles/${idPerfil}/activar`, {});
   },
 
-  listarProfesiones() {
-    return http.get("/profesiones");
+  subirFoto(idPerfil, archivo) {
+    const formData = new FormData();
+    formData.append("archivo", archivo);
+    return http.post(`/perfiles/${idPerfil}/foto`, formData);
   },
 
+  eliminarFoto(idPerfil) {
+    return http.delete(`/perfiles/${idPerfil}/foto`);
+  },
+
+  listarProfesiones({ forzarRecarga = false } = {}) {
+    if (cacheProfesiones && !forzarRecarga) {
+      return Promise.resolve(cacheProfesiones);
+    }
+    return http.get("/profesiones").then((response) => {
+      cacheProfesiones = response;
+      return response;
+    });
+  },
+
+  /**
+   * GET /perfiles/buscar — todos los parámetros son opcionales y combinables.
+   * Paginación: page (0-indexed, default 0), size (default 20), todos (default false).
+   * Filtros: nombreArtistico, nombre, apellido,
+   *   idProfesion (prioridad sobre profesion), profesion,
+   *   idGenero (prioridad sobre genero), genero (código exacto, ej. "FEM"),
+   *   idUbicacion (idCiudad), localidad, provincia,
+   *   idsHabilidades (array: idsHabilidades=1&idsHabilidades=3),
+   *   idCaracteristica (requerido para valorCaracteristica / idValorCaracteristica),
+   *   valorCaracteristica, idValorCaracteristica (prioridad sobre valorCaracteristica).
+   * Respuesta: PaginaResponse { contenido, paginaActual, tamanoPagina,
+   *   totalElementos, totalPaginas, primera, ultima }.
+   */
   buscar(params) {
     return http.get("/perfiles/buscar", { params });
   },

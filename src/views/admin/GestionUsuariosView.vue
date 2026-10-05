@@ -213,7 +213,7 @@
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Fecha de nacimiento</span>
-              <span>{{ usuarioDetalle.fechaNacimiento ? formatearFecha(usuarioDetalle.fechaNacimiento) : '—' }}</span>
+              <span>{{ usuarioDetalle.fechaNacimiento ? formatearFechaCorta(usuarioDetalle.fechaNacimiento) : '—' }}</span>
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Género</span>
@@ -397,6 +397,7 @@
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { state } from "../../services/authState";
+import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 
 export default {
   name: "GestionUsuariosView",
@@ -546,12 +547,8 @@ export default {
       return codigos[genero] || genero;
     },
 
-    formatearFecha(fecha) {
-      if (!fecha) return "—";
-      const partes = fecha.split("T")[0].split("-");
-      if (partes.length !== 3) return fecha;
-      return `${partes[2]}-${partes[1]}-${partes[0]}`;
-    },
+    formatearFecha,
+    formatearFechaCorta,
 
     async cargarUsuarios() {
       return this.buscar(0);

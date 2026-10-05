@@ -31,9 +31,7 @@
         icon="mso-warning"
       >
         <div class="inicio-perfil__alerta-baja-contenido">
-          <span>
-            Este perfil tiene una solicitud de baja pendiente. Podés reactivarlo antes de que se elimine definitivamente.
-          </span>
+          <span>{{ mensajeBaja }}</span>
           <VaButton
             size="small"
             color="success"
@@ -211,106 +209,20 @@ import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
 import ResenasCard from "../../components/perfil/ResenasCard.vue";
-
-const ETIQUETAS_CARAC = {
-  color_piel: "Color de piel",
-  piel: "Color de piel",
-  color_ojos: "Color de ojos",
-  ojos: "Color de ojos",
-  color_cabello: "Color de cabello",
-  cabello: "Color de cabello",
-  pelo: "Color de cabello",
-  tipo_cabello: "Tipo de cabello",
-  tipo_de_cabello: "Tipo de cabello",
-  tipo_cabello_2: "Tipo de cabello",
-  altura: "Altura",
-  medida_pecho: "Pecho",
-  pecho: "Pecho",
-  busto: "Pecho",
-  medida_cintura: "Cintura",
-  cintura: "Cintura",
-  medida_cadera: "Cadera",
-  cadera: "Cadera",
-};
-
-const ETIQUETAS_VALORES = {
-  marron: "Marrón",
-  marrón: "Marrón",
-  negro: "Negro",
-  caoba: "Caoba",
-  castanio: "Castaño",
-  castano: "Castaño",
-  castaño: "Castaño",
-  rubio: "Rubio",
-  rubia: "Rubia",
-  pelirrojo: "Pelirrojo",
-  pelirroja: "Pelirroja",
-  otto: "Otro",
-  otro: "Otro",
-  celeste: "Celeste",
-  verde: "Verde",
-  azul: "Azul",
-  gris: "Gris",
-  blanco: "Blanco",
-  avellana: "Avellana",
-  miel: "Miel",
-  clara: "Clara",
-  media: "Media",
-  oscura: "Oscura",
-  muy_clara: "Muy clara",
-  muy_oscura: "Muy oscura",
-};
-
-const ORDEN_CARAC = {
-  color_piel: 10,
-  piel: 10,
-  color_ojos: 20,
-  ojos: 20,
-  color_cabello: 30,
-  cabello: 30,
-  pelo: 30,
-  tipo_cabello: 40,
-  tipo_de_cabello: 40,
-  tipo_cabello_2: 40,
-  altura: 100,
-  medida_pecho: 200,
-  pecho: 200,
-  busto: 200,
-  medida_cintura: 210,
-  cintura: 210,
-  medida_cadera: 220,
-  cadera: 220,
-};
-
-const CODIGOS_ALTURA = ["altura"];
-const CODIGOS_MEDIDAS = ["medida_pecho", "pecho", "busto", "medida_cintura", "cintura", "medida_cadera", "cadera"];
-const CODIGOS_PIEL_OJOS = ["color_piel", "piel", "color_ojos", "ojos"];
-const CODIGOS_CABELLO_TIPO = ["color_cabello", "cabello", "pelo", "tipo_cabello", "tipo_de_cabello", "tipo_cabello_2"];
-const TODOS_CODIGOS = [
-  ...CODIGOS_ALTURA,
-  ...CODIGOS_MEDIDAS,
-  ...CODIGOS_PIEL_OJOS,
-  ...CODIGOS_CABELLO_TIPO,
-];
-
-const UNIDADES_POR_CODIGO = {
-  altura: "cm",
-  medida_pecho: "cm",
-  pecho: "cm",
-  busto: "cm",
-  medida_cintura: "cm",
-  cintura: "cm",
-  medida_cadera: "cm",
-  cadera: "cm",
-};
-
-function normCodigo(codigo) {
-  return (codigo || "").toLowerCase().trim();
-}
-
-function inLista(codigo, lista) {
-  return lista.some((c) => normCodigo(c) === normCodigo(codigo));
-}
+import {
+  ETIQUETAS_CARAC,
+  ETIQUETAS_VALORES,
+  ORDEN_CARAC,
+  CODIGOS_ALTURA,
+  CODIGOS_MEDIDAS,
+  CODIGOS_PIEL_OJOS,
+  CODIGOS_CABELLO_TIPO,
+  TODOS_CODIGOS,
+  UNIDADES_POR_CODIGO,
+  normCodigo,
+  inLista,
+} from "../../utils/perfilConstants.js";
+import { diasRestantesBaja, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
 
 export default {
   name: "InicioPerfilView",
@@ -332,6 +244,8 @@ export default {
       noEncontrado: false,
       reactivando: false,
       mensajeError: "",
+      contadorBaja: { expiracion: null, restante: null },
+      intervaloContador: null,
     };
   },
   computed: {
@@ -345,10 +259,31 @@ export default {
       return this.perfil?.idPerfil != null && this.perfil.idPerfil === idPerfilActivo();
     },
     ubicacion() {
+      const ciudad = this.perfil?.ciudad;
+      if (ciudad) {
+        return {
+          localidad: ciudad.nombre,
+          provincia: ciudad.provincia?.nombre || null,
+        };
+      }
       const localidad = this.perfil?.localidad;
       const provincia = this.perfil?.provincia;
       if (!localidad && !provincia) return null;
       return { localidad, provincia };
+    },
+    mensajeBaja() {
+      const { expiracion, restante } = this.contadorBaja;
+      const base = "Este perfil tiene una solicitud de baja pendiente.";
+      if (!expiracion) {
+        return `${base} Podés reactivarlo antes de que se elimine definitivamente.`;
+      }
+      const plazo =
+        restante == null
+          ? "El plazo de reactivación venció."
+          : restante === 1
+            ? "Queda 1 día para reactivarlo."
+            : `Quedan ${restante} días para reactivarlo.`;
+      return `${base} Se eliminará el ${expiracion}. ${plazo}`;
     },
     habilidades() {
       const lista = Array.isArray(this.perfil?.habilidades) ? this.perfil.habilidades : [];
@@ -377,6 +312,10 @@ export default {
   },
   async mounted() {
     await this.cargarDatos();
+    this.intervaloContador = setInterval(() => this.actualizarContadorBaja(), 60 * 60 * 1000);
+  },
+  beforeUnmount() {
+    if (this.intervaloContador) clearInterval(this.intervaloContador);
   },
   watch: {
     "$route.params.id"() {
@@ -407,6 +346,7 @@ export default {
           this.noEncontrado = true;
           return;
         }
+        this.actualizarContadorBaja();
 
         // Las publicaciones del feed propio solo se cargan cuando el perfil
         // consultado pertenece al usuario en sesión.
@@ -440,6 +380,14 @@ export default {
       } finally {
         this.cargando = false;
       }
+    },
+    actualizarContadorBaja() {
+      const iso = this.perfil?.fechaSolicitudBaja;
+      const expira = fechaExpiracionBaja(iso);
+      this.contadorBaja = {
+        expiracion: expira ? formatearFecha(expira) : null,
+        restante: diasRestantesBaja(iso),
+      };
     },
     async reactivarPerfil() {
       if (!this.perfil?.idPerfil) return;

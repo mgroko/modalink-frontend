@@ -164,6 +164,7 @@ import calendarioService from "../../services/calendarioService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ConfigurarJornada from "./ConfigurarJornada.vue";
 import CrearBloqueo from "./CrearBloqueo.vue";
+import { fechaLarga, formatearRangoEvento, rangoSemana } from "../../utils/fechas.js";
 
 const NOMBRES_DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -226,11 +227,7 @@ export default {
       if (!this.semanaInicio) return "";
       const fin = new Date(this.semanaInicio);
       fin.setDate(this.semanaInicio.getDate() + 6);
-      const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-      if (this.semanaInicio.getMonth() === fin.getMonth()) {
-        return `${this.semanaInicio.getDate()} – ${fin.getDate()} ${meses[fin.getMonth()]} ${fin.getFullYear()}`;
-      }
-      return `${this.semanaInicio.getDate()} ${meses[this.semanaInicio.getMonth()]} – ${fin.getDate()} ${meses[fin.getMonth()]} ${fin.getFullYear()}`;
+      return rangoSemana(this.semanaInicio, fin);
     },
     slotsHorario() {
       const { horaInicio, horaFin } = this.ventanaHoraria;
@@ -254,10 +251,7 @@ export default {
     },
     fechaDetalle() {
       if (!this.diaSeleccionado) return "—";
-      const d = this.diaSeleccionado;
-      const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-      const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-      return `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+      return fechaLarga(this.diaSeleccionado);
     },
     bloqueosDelDia() {
       if (!this.diaSeleccionado || !this.calendario) return [];
@@ -406,15 +400,7 @@ export default {
       this.diaSeleccionado = dia.fecha;
     },
     rango(item) {
-      return `${this.fechaCorta(item.fechaHoraInicio)} – ${this.horaCorta(item.fechaHoraFin)}`;
-    },
-    fechaCorta(dt) {
-      const f = new Date(dt);
-      return `${pad(f.getDate())}/${pad(f.getMonth() + 1)} ${pad(f.getHours())}:${pad(f.getMinutes())}`;
-    },
-    horaCorta(dt) {
-      const f = new Date(dt);
-      return `${pad(f.getHours())}:${pad(f.getMinutes())}`;
+      return formatearRangoEvento(item.fechaHoraInicio, item.fechaHoraFin);
     },
     abrirJornada() {
       this.modalJornadaVisible = true;

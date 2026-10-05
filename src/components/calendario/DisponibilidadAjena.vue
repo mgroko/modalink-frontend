@@ -129,7 +129,7 @@
             <span class="disponibilidad__evento-mes">{{ evento.mes }}</span>
           </div>
           <div class="disponibilidad__evento-info">
-            <span class="disponibilidad__evento-hora">{{ evento.hora }}</span>
+            <span class="disponibilidad__evento-rango">{{ evento.rango }}</span>
             <span class="disponibilidad__evento-nombre">{{ evento.nombre }}</span>
           </div>
           <span
@@ -146,6 +146,7 @@
 
 <script>
 import calendarioService from "../../services/calendarioService";
+import { formatearRangoEvento, rangoSemana } from "../../utils/fechas.js";
 
 const NOMBRES_DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -224,10 +225,7 @@ export default {
       if (!this.semanaInicio) return "";
       const fin = new Date(this.semanaInicio);
       fin.setDate(this.semanaInicio.getDate() + 6);
-      if (this.semanaInicio.getMonth() === fin.getMonth()) {
-        return `${this.semanaInicio.getDate()} – ${fin.getDate()} ${MESES_CORTOS[fin.getMonth()]} ${fin.getFullYear()}`;
-      }
-      return `${this.semanaInicio.getDate()} ${MESES_CORTOS[this.semanaInicio.getMonth()]} – ${fin.getDate()} ${MESES_CORTOS[fin.getMonth()]} ${fin.getFullYear()}`;
+      return rangoSemana(this.semanaInicio, fin);
     },
     disponibles() {
       return this.diasSemana.filter((d) => d.estado === "disponible").length;
@@ -278,7 +276,7 @@ export default {
             fecha: inicio,
             dia: pad(inicio.getDate()),
             mes: MESES_CORTOS[inicio.getMonth()],
-            hora: `${pad(inicio.getHours())}:${pad(inicio.getMinutes())}`,
+            rango: formatearRangoEvento(inicio, fin),
             nombre: a.nombre || "Actividad",
           });
         }
@@ -294,7 +292,7 @@ export default {
             fecha: inicio,
             dia: pad(inicio.getDate()),
             mes: MESES_CORTOS[inicio.getMonth()],
-            hora: `${pad(inicio.getHours())}:${pad(inicio.getMinutes())}`,
+            rango: formatearRangoEvento(inicio, fin),
             nombre: "No disponible",
           });
         }
@@ -816,7 +814,7 @@ export default {
   min-width: 0;
 }
 
-.disponibilidad__evento-hora {
+.disponibilidad__evento-rango {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text);

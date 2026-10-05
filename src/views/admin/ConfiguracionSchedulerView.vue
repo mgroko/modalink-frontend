@@ -98,6 +98,7 @@
 import adminConfiguracionService from "../../services/adminConfiguracionService";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import { formatearFecha as formatearFechaHora } from "../../utils/fechas.js";
 
 export default {
   name: "ConfiguracionSchedulerView",
@@ -219,7 +220,7 @@ export default {
 
     formatearFecha(iso) {
       if (!iso) return "No calculada";
-      return new Date(iso).toLocaleString();
+      return formatearFechaHora(iso);
     },
   },
 };

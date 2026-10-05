@@ -244,7 +244,7 @@
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Fecha de nacimiento</span>
-              <span>{{ usuarioDetalle.fechaNacimiento ? formatearFecha(usuarioDetalle.fechaNacimiento) : '—' }}</span>
+              <span>{{ usuarioDetalle.fechaNacimiento ? formatearFechaCorta(usuarioDetalle.fechaNacimiento) : '—' }}</span>
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">DNI</span>
@@ -338,6 +338,7 @@
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { state, tienePermiso } from "../../services/authState";
+import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 
 const DEBOUNCE_MS = 300;
 
@@ -445,12 +446,8 @@ export default {
       if (estado === "Baja") return "backgroundElement";
       return "backgroundBorder";
     },
-    formatearFecha(fecha) {
-      if (!fecha) return "—";
-      const partes = fecha.split("T")[0].split("-");
-      if (partes.length !== 3) return fecha;
-      return `${partes[2]}-${partes[1]}-${partes[0]}`;
-    },
+    formatearFecha,
+    formatearFechaCorta,
     estaProcesando(usuario) {
       return this.procesandoId === this.obtenerId(usuario);
     },

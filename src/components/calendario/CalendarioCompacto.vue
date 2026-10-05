@@ -105,10 +105,9 @@
 
 <script>
 import calendarioService from "../../services/calendarioService";
+import { fechaLarga, rangoSemana } from "../../utils/fechas.js";
 
 const NOMBRES_DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-const NOMBRES_DIAS_COMPLETOS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -166,18 +165,13 @@ export default {
       if (!this.semanaInicio) return "";
       const fin = new Date(this.semanaInicio);
       fin.setDate(this.semanaInicio.getDate() + 6);
-      const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-      if (this.semanaInicio.getMonth() === fin.getMonth()) {
-        return `${this.semanaInicio.getDate()} – ${fin.getDate()} ${meses[fin.getMonth()]} ${fin.getFullYear()}`;
-      }
-      return `${this.semanaInicio.getDate()} ${meses[this.semanaInicio.getMonth()]} – ${fin.getDate()} ${meses[fin.getMonth()]} ${fin.getFullYear()}`;
+      return rangoSemana(this.semanaInicio, fin);
     },
     diaSeleccionadoNombre() {
       if (!this.diaSeleccionadoKey) return "—";
       const [ano, mes, dia] = this.diaSeleccionadoKey.split("-").map(Number);
       const fecha = new Date(ano, mes - 1, dia);
-      const nombreDia = NOMBRES_DIAS_COMPLETOS[fecha.getDay()];
-      return `${nombreDia} ${dia} de ${MESES[fecha.getMonth()]} de ${ano}`;
+      return fechaLarga(fecha);
     },
     jornadaDelDia() {
       if (!this.diaSeleccionadoKey || !this.calendario) return null;

@@ -20,8 +20,8 @@ Editarperfilview · VUE
       <div class="editar-perfil__panel">
         <div class="editar-perfil__foto">
           <img
-            v-if="perfil.fotoUrl"
-            :src="perfil.fotoUrl"
+            v-if="fotoVisible"
+            :src="fotoVisible"
             :alt="perfil.nombreArtistico || 'Foto de perfil'"
             class="editar-perfil__foto-img"
           />
@@ -30,7 +30,32 @@ Editarperfilview · VUE
           </div>
           <div class="editar-perfil__foto-info">
             <span class="editar-perfil__nombre-artistico">{{ perfil.nombreArtistico || "Sin nombre" }}</span>
-            <span class="editar-perfil__foto-aviso">La foto de perfil no se edita desde este formulario.</span>
+            <span v-if="fotoPreview" class="editar-perfil__foto-aviso">Nueva foto lista: se sube al guardar los cambios.</span>
+            <span v-else-if="!perfil.fotoUrl" class="editar-perfil__foto-aviso">Todavía no tenés una foto de perfil.</span>
+            <div class="editar-perfil__foto-acciones">
+              <input
+                ref="inputFoto"
+                type="file"
+                accept="image/*"
+                class="editar-perfil__foto-input"
+                @change="seleccionarFoto"
+              />
+              <VaButton preset="secondary" size="small" icon="mso-photo_camera" @click="$refs.inputFoto.click()">
+                {{ fotoPreview ? "Cambiar foto" : "Elegir foto" }}
+              </VaButton>
+              <VaButton v-if="fotoPreview" preset="secondary" size="small" color="danger" @click="limpiarFoto">
+                Quitar selección
+              </VaButton>
+              <VaButton
+                v-else-if="perfil.fotoUrl"
+                preset="secondary"
+                size="small"
+                color="danger"
+                @click="modalEliminarFoto = true"
+              >
+                Eliminar foto
+              </VaButton>
+            </div>
           </div>
         </div>
 
@@ -38,7 +63,7 @@ Editarperfilview · VUE
           <div class="editar-perfil__campos">
             <VaInput
               v-model="form.nombreArtistico"
-              :rules="[reglas.requerido, reglas.min2]"
+              :rules="[reglas.requerido, reglas.min2, reglas.max50]"
               label="Nombre artístico"
               type="text"
               placeholder="Ej: Lía Stylist"
@@ -246,6 +271,24 @@ Editarperfilview · VUE
           </div>
         </VaForm>
       </div>
+
+      <VaModal
+        v-model="modalEliminarFoto"
+        size="small"
+        close-button
+        hide-default-actions
+      >
+        <template #header>
+          <h3 class="va-h5">Eliminar foto de perfil</h3>
+        </template>
+        <p>¿Querés eliminar la foto de tu perfil? Podés subir una nueva en cualquier momento.</p>
+        <template #footer>
+          <div class="editar-perfil__modal-acciones">
+            <VaButton preset="secondary" @click="modalEliminarFoto = false">Cancelar</VaButton>
+            <VaButton color="danger" :loading="eliminandoFoto" @click="eliminarFoto">Eliminar foto</VaButton>
+          </div>
+        </template>
+      </VaModal>
     </template>
  
     
@@ -255,86 +298,14 @@ Editarperfilview · VUE
 <script>
 import perfilService from "../../services/perfilService.js";
 import BaseAlert from "../../components/AlertaBase.vue";
- 
-const ETIQUETAS_CARACTERISTICAS = {
-  altura: "Altura",
-  peso: "Peso",
-  medida_pecho: "Medida de pecho",
-  pecho: "Medida de pecho",
-  busto: "Medida de pecho",
-  medida_cintura: "Medida de cintura",
-  cintura: "Medida de cintura",
-  medida_cadera: "Medida de cadera",
-  cadera: "Medida de cadera",
-  color_piel: "Color de piel",
-  piel: "Color de piel",
-  color_cabello: "Color de cabello",
-  cabello: "Color de cabello",
-  pelo: "Color de cabello",
-  color_ojos: "Color de ojos",
-  ojos: "Color de ojos",
-  talle: "Talle",
-  talle_calzado: "Talle de calzado",
-};
- 
-const ETIQUETAS_VALORES = {
-  marron: "Marrón",
-  marrón: "Marrón",
-  negro: "Negro",
-  caoba: "Caoba",
-  castanio: "Castaño",
-  castano: "Castaño",
-  castaño: "Castaño",
-  rubio: "Rubio",
-  rubia: "Rubia",
-  pelirrojo: "Pelirrojo",
-  pelirroja: "Pelirroja",
-  otto: "Otro",
-  otro: "Otro",
-  celeste: "Celeste",
-  verde: "Verde",
-  azul: "Azul",
-  gris: "Gris",
-  blanco: "Blanco",
-  avellana: "Avellana",
-  miel: "Miel",
-  clara: "Clara",
-  media: "Media",
-  oscura: "Oscura",
-  muy_clara: "Muy clara",
-  muy_oscura: "Muy oscura",
-};
- 
-const ORDEN_PRIORIDAD = {
-  altura: 10,
-  medida_pecho: 20,
-  pecho: 20,
-  busto: 20,
-  medida_cintura: 21,
-  cintura: 21,
-  medida_cadera: 22,
-  cadera: 22,
-  color_piel: 30,
-  piel: 30,
-  color_cabello: 31,
-  cabello: 31,
-  pelo: 31,
-  color_ojos: 32,
-  ojos: 32,
-};
- 
-function normCodigo(codigo) {
-  return (codigo || "").toLowerCase().trim();
-}
- 
-function normTexto(texto) {
-  return (texto || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
+import {
+  ETIQUETAS_CARACTERISTICAS,
+  ETIQUETAS_VALORES,
+  ORDEN_PRIORIDAD,
+  normCodigo,
+  normTexto,
+} from "../../utils/perfilConstants.js";
+import { reglasPerfil } from "../../utils/reglas.js";
  
 export default {
   name: "EditarPerfilView",
@@ -348,6 +319,9 @@ export default {
     },
   },
   computed: {
+    fotoVisible() {
+      return this.fotoPreview || this.perfil?.fotoUrl || null;
+    },
     caracteristicaAltura() {
       return this.caracteristicas.find((c) => normCodigo(c.codigo) === "altura") || null;
     },
@@ -392,16 +366,19 @@ export default {
       cargando: false,
       mensajeExito: "",
       mensajeError: "",
-      reglas: {
-        requerido: (v) => !!v || "Este campo es requerido",
-        min2: (v) => !v || v.length >= 2 || "Debe tener al menos 2 caracteres",
-        max500: (v) => !v || v.length <= 500 || "La biografía no puede superar los 500 caracteres",
-      },
+      fotoArchivo: null,
+      fotoPreview: null,
+      modalEliminarFoto: false,
+      eliminandoFoto: false,
+      reglas: reglasPerfil,
     };
   },
   async mounted() {
     this.idPerfil = this.$route.params.id;
     await this.cargarPerfil();
+  },
+  beforeUnmount() {
+    this.liberarPreview();
   },
   methods: {
     async cargarPerfil() {
@@ -514,6 +491,53 @@ export default {
       if (idValor == null || !carac || !Array.isArray(carac.valores)) return null;
       return carac.valores.find((v) => v.idValor === idValor) || null;
     },
+    seleccionarFoto(event) {
+      const archivo = event.target.files?.[0];
+      if (!archivo) return;
+      this.mensajeError = "";
+      if (!archivo.type.startsWith("image/")) {
+        this.mensajeError = "La foto debe ser una imagen (JPG, PNG, WEBP...).";
+        event.target.value = "";
+        return;
+      }
+      if (archivo.size > 10 * 1024 * 1024) {
+        this.mensajeError = "La imagen no puede superar los 10 MB.";
+        event.target.value = "";
+        return;
+      }
+      this.liberarPreview();
+      this.fotoArchivo = archivo;
+      this.fotoPreview = URL.createObjectURL(archivo);
+    },
+
+    limpiarFoto() {
+      this.fotoArchivo = null;
+      this.liberarPreview();
+      if (this.$refs.inputFoto) this.$refs.inputFoto.value = "";
+    },
+
+    liberarPreview() {
+      if (this.fotoPreview) {
+        URL.revokeObjectURL(this.fotoPreview);
+        this.fotoPreview = null;
+      }
+    },
+
+    async eliminarFoto() {
+      this.eliminandoFoto = true;
+      try {
+        await perfilService.eliminarFoto(this.idPerfil);
+        this.perfil.fotoUrl = null;
+        this.modalEliminarFoto = false;
+        this.mensajeExito = "Foto eliminada correctamente.";
+      } catch (error) {
+        this.mensajeError =
+          error?.response?.data?.message || "No se pudo eliminar la foto.";
+      } finally {
+        this.eliminandoFoto = false;
+      }
+    },
+
     async guardar() {
       const isValid = this.$refs.form.validate();
       if (!isValid) return;
@@ -546,7 +570,21 @@ export default {
  
       try {
         await perfilService.editar(this.idPerfil, request);
-        this.mensajeExito = "Perfil actualizado correctamente.";
+
+        if (this.fotoArchivo) {
+          try {
+            await perfilService.subirFoto(this.idPerfil, this.fotoArchivo);
+            this.mensajeExito = "Perfil y foto actualizados correctamente.";
+            const res = await perfilService.obtener(this.idPerfil).catch(() => null);
+            if (res?.data) this.perfil = res.data;
+          } catch {
+            this.mensajeExito = "Perfil actualizado, pero no se pudo subir la foto. Intentá nuevamente.";
+          }
+          this.limpiarFoto();
+        } else {
+          this.mensajeExito = "Perfil actualizado correctamente.";
+        }
+
         setTimeout(() => {
           this.$router.push({ name: this.desdeInicio ? "inicioperfil" : "dashboard-usuario" });
         }, 1200);
@@ -637,6 +675,23 @@ export default {
 .editar-perfil__foto-aviso {
   font-size: 0.8rem;
   color: var(--color-text-muted);
+}
+
+.editar-perfil__foto-acciones {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.editar-perfil__foto-input {
+  display: none;
+}
+
+.editar-perfil__modal-acciones {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
 }
 
 .editar-perfil__form {

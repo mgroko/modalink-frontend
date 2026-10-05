@@ -384,7 +384,8 @@
       </template>
       <p>¿Estás seguro que querés solicitar la baja del perfil
         <strong>{{ perfilAEliminar?.nombreArtistico }}</strong>?
-        Tendrás 30 días para reactivarlo antes de que se elimine definitivamente.</p>
+        Tendrás 30 días para reactivarlo: la eliminación definitiva sería el
+        <strong>{{ fechaLimiteBaja }}</strong>.</p>
       <template #footer>
         <div class="detalle-perfil__footer detalle-perfil__footer--der">
           <VaButton preset="secondary" @click="modalEliminarVisible = false">Cancelar</VaButton>
@@ -399,108 +400,23 @@
 import perfilService from "../../services/perfilService";
 import { state as authState, setPerfilActivo } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import {
+  ETIQUETAS_CARAC,
+  ETIQUETAS_VALORES,
+  ORDEN_CARAC,
+  CODIGOS_ALTURA,
+  CODIGOS_MEDIDAS,
+  CODIGOS_PIEL_OJOS,
+  CODIGOS_CABELLO_TIPO,
+  TODOS_CODIGOS,
+  UNIDADES_POR_CODIGO,
+  normCodigo,
+  inLista,
+} from "../../utils/perfilConstants.js";
+import { fechaExpiracionBaja, formatearFecha as formatearFechaHora } from "../../utils/fechas.js";
 
-const ETIQUETAS_CARAC = {
-  color_piel: "Color de piel",
-  piel: "Color de piel",
-  color_ojos: "Color de ojos",
-  ojos: "Color de ojos",
-  color_cabello: "Color de cabello",
-  cabello: "Color de cabello",
-  pelo: "Color de cabello",
-  tipo_cabello: "Tipo de cabello",
-  tipo_de_cabello: "Tipo de cabello",
-  tipo_cabello_2: "Tipo de cabello",
-  altura: "Altura",
-  medida_pecho: "Pecho",
-  pecho: "Pecho",
-  busto: "Pecho",
-  medida_cintura: "Cintura",
-  cintura: "Cintura",
-  medida_cadera: "Cadera",
-  cadera: "Cadera",
-};
-
-const ETIQUETAS_VALORES = {
-  marron: "Marrón",
-  marrón: "Marrón",
-  negro: "Negro",
-  caoba: "Caoba",
-  castanio: "Castaño",
-  castano: "Castaño",
-  castaño: "Castaño",
-  rubio: "Rubio",
-  rubia: "Rubia",
-  pelirrojo: "Pelirrojo",
-  pelirroja: "Pelirroja",
-  otto: "Otro",
-  otro: "Otro",
-  celeste: "Celeste",
-  verde: "Verde",
-  azul: "Azul",
-  gris: "Gris",
-  blanco: "Blanco",
-  avellana: "Avellana",
-  miel: "Miel",
-  clara: "Clara",
-  media: "Media",
-  oscura: "Oscura",
-  muy_clara: "Muy clara",
-  muy_oscura: "Muy oscura",
-};
-
-const ORDEN_CARAC = {
-  color_piel: 10,
-  piel: 10,
-  color_ojos: 20,
-  ojos: 20,
-  color_cabello: 30,
-  cabello: 30,
-  pelo: 30,
-  tipo_cabello: 40,
-  tipo_de_cabello: 40,
-  tipo_cabello_2: 40,
-  altura: 100,
-  medida_pecho: 200,
-  pecho: 200,
-  busto: 200,
-  medida_cintura: 210,
-  cintura: 210,
-  medida_cadera: 220,
-  cadera: 220,
-};
-
-const CODIGOS_ALTURA = ["altura"];
-const CODIGOS_MEDIDAS = ["medida_pecho", "pecho", "busto", "medida_cintura", "cintura", "medida_cadera", "cadera"];
-const CODIGOS_PIEL_OJOS = ["color_piel", "piel", "color_ojos", "ojos"];
-const CODIGOS_CABELLO_TIPO = ["color_cabello", "cabello", "pelo", "tipo_cabello", "tipo_de_cabello", "tipo_cabello_2"];
-const TODOS_CODIGOS = [
-  ...CODIGOS_ALTURA,
-  ...CODIGOS_MEDIDAS,
-  ...CODIGOS_PIEL_OJOS,
-  ...CODIGOS_CABELLO_TIPO,
-];
-//TODO ver aca que onda los colores!!!!! 
+//TODO ver aca que onda los colores!!!!!
 const COLORES_POR_PROFESION = ["#5ca4a9", "rgb(192, 71, 117)", "#de8b42", "#6866a9", "#86407b"];
-
-const UNIDADES_POR_CODIGO = {
-  altura: "cm",
-  medida_pecho: "cm",
-  pecho: "cm",
-  busto: "cm",
-  medida_cintura: "cm",
-  cintura: "cm",
-  medida_cadera: "cm",
-  cadera: "cm",
-};
-
-function normCodigo(codigo) {
-  return (codigo || "").toLowerCase().trim();
-}
-
-function inLista(codigo, lista) {
-  return lista.some((c) => normCodigo(c) === normCodigo(codigo));
-}
 
 export default {
   name: "DashboardUsuarioView",
@@ -530,6 +446,10 @@ export default {
     },
     puedeEliminar() {
       return this.perfilSeleccionado?.estado === "Activo";
+    },
+    fechaLimiteBaja() {
+      const expira = fechaExpiracionBaja(new Date());
+      return expira ? formatearFechaHora(expira) : "";
     },
     puedeEditar() {
       return this.perfilSeleccionado?.estado === "Activo";
@@ -676,10 +596,7 @@ export default {
       return "backgroundBorder";
     },
     formatearFecha(fecha) {
-      if (!fecha) return "—";
-      const partes = fecha.split("T")[0].split("-");
-      if (partes.length !== 3) return fecha;
-      return `${partes[2]}-${partes[1]}-${partes[0]}`;
+      return formatearFechaHora(fecha);
     },
     _ordenarCarac(codigos) {
       const caracs = this.perfilSeleccionado?.caracteristicas || [];

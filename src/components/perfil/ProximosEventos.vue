@@ -33,6 +33,7 @@
 
 <script>
 import calendarioService from "../../services/calendarioService";
+import { formatearRangoEvento } from "../../utils/fechas.js";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
@@ -98,11 +99,7 @@ export default {
       return MESES[fecha.getMonth()];
     },
     rangoHorario(evento) {
-      const ini = evento.fecha;
-      const fin = evento.fechaFin;
-      const iniStr = `${pad(ini.getHours())}:${pad(ini.getMinutes())}`;
-      const finStr = `${pad(fin.getHours())}:${pad(fin.getMinutes())}`;
-      return `${iniStr} – ${finStr}`;
+      return formatearRangoEvento(evento.fecha, evento.fechaFin);
     },
   },
 };

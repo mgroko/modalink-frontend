@@ -20,7 +20,7 @@
         <div class="crear-perfil__campos">
           <VaInput
             v-model="form.nombreArtistico"
-            :rules="[reglas.requerido, reglas.min2]"
+            :rules="[reglas.requerido, reglas.min2, reglas.max50]"
             label="Nombre artístico"
             type="text"
             placeholder="Ej: Lía Stylist"
@@ -36,6 +36,37 @@
             placeholder="Seleccioná una profesión"
             :loading="cargandoProfesiones"
           />
+        </div>
+
+        <div class="crear-perfil__foto">
+          <img
+            v-if="fotoPreview"
+            :src="fotoPreview"
+            alt="Vista previa de la foto de perfil"
+            class="crear-perfil__foto-img"
+          />
+          <div v-else class="crear-perfil__foto-img crear-perfil__foto-img--placeholder">
+            <span class="material-symbols-outlined">person</span>
+          </div>
+          <div class="crear-perfil__foto-info">
+            <span class="crear-perfil__foto-titulo">Foto de perfil</span>
+            <span class="crear-perfil__foto-aviso">Opcional. Podés subirla ahora o más tarde desde editar perfil.</span>
+            <div class="crear-perfil__foto-acciones">
+              <input
+                ref="inputFoto"
+                type="file"
+                accept="image/*"
+                class="crear-perfil__foto-input"
+                @change="seleccionarFoto"
+              />
+              <VaButton preset="secondary" size="small" icon="mso-photo_camera" @click="$refs.inputFoto.click()">
+                {{ fotoPreview ? "Cambiar foto" : "Elegir foto" }}
+              </VaButton>
+              <VaButton v-if="fotoPreview" preset="secondary" size="small" color="danger" @click="limpiarFoto">
+                Quitar
+              </VaButton>
+            </div>
+          </div>
         </div>
       </template>
 
@@ -250,86 +281,14 @@
 import perfilService from "../../services/perfilService.js";
 import { refrescarSesion } from "../../services/authState.js";
 import BaseAlert from "../../components/AlertaBase.vue";
-
-const ETIQUETAS_CARACTERISTICAS = {
-  altura: "Altura",
-  peso: "Peso",
-  medida_pecho: "Medida de pecho",
-  pecho: "Medida de pecho",
-  busto: "Medida de pecho",
-  medida_cintura: "Medida de cintura",
-  cintura: "Medida de cintura",
-  medida_cadera: "Medida de cadera",
-  cadera: "Medida de cadera",
-  color_piel: "Color de piel",
-  piel: "Color de piel",
-  color_cabello: "Color de cabello",
-  cabello: "Color de cabello",
-  pelo: "Color de cabello",
-  color_ojos: "Color de ojos",
-  ojos: "Color de ojos",
-  talle: "Talle",
-  talle_calzado: "Talle de calzado",
-};
-
-const ETIQUETAS_VALORES = {
-  marron: "Marrón",
-  marrón: "Marrón",
-  negro: "Negro",
-  caoba: "Caoba",
-  castanio: "Castaño",
-  castano: "Castaño",
-  castaño: "Castaño",
-  rubio: "Rubio",
-  rubia: "Rubia",
-  pelirrojo: "Pelirrojo",
-  pelirroja: "Pelirroja",
-  otto: "Otro",
-  otro: "Otro",
-  celeste: "Celeste",
-  verde: "Verde",
-  azul: "Azul",
-  gris: "Gris",
-  blanco: "Blanco",
-  avellana: "Avellana",
-  miel: "Miel",
-  clara: "Clara",
-  media: "Media",
-  oscura: "Oscura",
-  muy_clara: "Muy clara",
-  muy_oscura: "Muy oscura",
-};
-
-const ORDEN_PRIORIDAD = {
-  altura: 10,
-  medida_pecho: 20,
-  pecho: 20,
-  busto: 20,
-  medida_cintura: 21,
-  cintura: 21,
-  medida_cadera: 22,
-  cadera: 22,
-  color_piel: 30,
-  piel: 30,
-  color_cabello: 31,
-  cabello: 31,
-  pelo: 31,
-  color_ojos: 32,
-  ojos: 32,
-};
-
-function normCodigo(codigo) {
-  return (codigo || "").toLowerCase().trim();
-}
-
-function normTexto(texto) {
-  return (texto || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
+import {
+  ETIQUETAS_CARACTERISTICAS,
+  ETIQUETAS_VALORES,
+  ORDEN_PRIORIDAD,
+  normCodigo,
+  normTexto,
+} from "../../utils/perfilConstants.js";
+import { reglasPerfil } from "../../utils/reglas.js";
 
 export default {
   name: "CrearPerfilView",
@@ -386,15 +345,16 @@ export default {
       cargando: false,
       mensajeExito: "",
       mensajeError: "",
-      reglas: {
-        requerido: (v) => !!v || "Este campo es requerido",
-        min2: (v) => !v || v.length >= 2 || "Debe tener al menos 2 caracteres",
-        max500: (v) => !v || v.length <= 500 || "La biografía no puede superar los 500 caracteres",
-      },
+      fotoArchivo: null,
+      fotoPreview: null,
+      reglas: reglasPerfil,
     };
   },
   async mounted() {
     await this.cargarDatosIniciales();
+  },
+  beforeUnmount() {
+    this.liberarPreview();
   },
   methods: {
     async cargarDatosIniciales() {
@@ -531,6 +491,51 @@ export default {
       return carac.valores.find((v) => v.idValor === idValor) || null;
     },
 
+    seleccionarFoto(event) {
+      const archivo = event.target.files?.[0];
+      if (!archivo) return;
+      this.mensajeError = "";
+      if (!archivo.type.startsWith("image/")) {
+        this.mensajeError = "La foto debe ser una imagen (JPG, PNG, WEBP...).";
+        event.target.value = "";
+        return;
+      }
+      if (archivo.size > 10 * 1024 * 1024) {
+        this.mensajeError = "La imagen no puede superar los 10 MB.";
+        event.target.value = "";
+        return;
+      }
+      this.liberarPreview();
+      this.fotoArchivo = archivo;
+      this.fotoPreview = URL.createObjectURL(archivo);
+    },
+
+    limpiarFoto() {
+      this.fotoArchivo = null;
+      this.liberarPreview();
+      if (this.$refs.inputFoto) this.$refs.inputFoto.value = "";
+    },
+
+    liberarPreview() {
+      if (this.fotoPreview) {
+        URL.revokeObjectURL(this.fotoPreview);
+        this.fotoPreview = null;
+      }
+    },
+
+    async resolverIdNuevoPerfil(dataCruda, nombreArtistico) {
+      if (typeof dataCruda === "number") return dataCruda;
+      if (dataCruda?.idPerfil != null) return dataCruda.idPerfil;
+      if (dataCruda?.id != null) return dataCruda.id;
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        const perfiles = Array.isArray(response?.data) ? response.data : [];
+        return perfiles.find((p) => p.nombreArtistico === nombreArtistico)?.idPerfil ?? null;
+      } catch {
+        return null;
+      }
+    },
+
     async guardar() {
       const isValid = this.$refs.form.validate();
       if (!isValid) return;
@@ -563,10 +568,26 @@ export default {
       };
 
       try {
-        await perfilService.crear(request);
+        const response = await perfilService.crear(request);
         // Flujo 1 (Caso A): si es el primer perfil, el backend lo asigna como activo.
         await refrescarSesion();
-        this.mensajeExito = "Perfil creado correctamente.";
+
+        let avisoFoto = "";
+        if (this.fotoArchivo) {
+          const idNuevo = await this.resolverIdNuevoPerfil(response?.data, request.nombreArtistico);
+          if (idNuevo != null) {
+            try {
+              await perfilService.subirFoto(idNuevo, this.fotoArchivo);
+            } catch {
+              avisoFoto = " No se pudo subir la foto; podés reintentarlo desde editar perfil.";
+            }
+          } else {
+            avisoFoto = " No se pudo asociar la foto; subila desde editar perfil.";
+          }
+          this.limpiarFoto();
+        }
+
+        this.mensajeExito = `Perfil creado correctamente.${avisoFoto}`;
         setTimeout(() => {
           this.$router.push({ name: "dashboard-usuario" });
         }, 1200);
@@ -673,6 +694,60 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+}
+
+.crear-perfil__foto {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.crear-perfil__foto-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.crear-perfil__foto-img--placeholder {
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.crear-perfil__foto-img--placeholder .material-symbols-outlined {
+  font-size: 2.2rem;
+}
+
+.crear-perfil__foto-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.crear-perfil__foto-titulo {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.crear-perfil__foto-aviso {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.crear-perfil__foto-acciones {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.crear-perfil__foto-input {
+  display: none;
 }
 
 .crear-perfil__campo-caracteristica :deep(.va-input-wrapper__field) {
