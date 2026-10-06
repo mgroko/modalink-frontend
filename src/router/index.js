@@ -21,6 +21,7 @@ import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
+import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
@@ -137,7 +138,12 @@ const routes = [
     path: "/admin/busqueda-usuarios",
     name: "busqueda-usuarios",
     component: BusquedaUsuariosView,
-    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Búsqueda de usuarios" }
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "VER_USUARIOS",
+      titulo: "Búsqueda de usuarios",
+    }
   },
   {
     path: "/admin/gestionar-caracteristicas",
@@ -166,6 +172,17 @@ const routes = [
       requiereAdmin: true,
       requierePermiso: "ADMINISTRAR_CONFIGURACION",
       titulo: "Scheduler de deshabilitación",
+    }
+  },
+  {
+    path: "/admin/configuracion-scheduler/baja",
+    name: "configuracion-scheduler-baja",
+    component: ConfiguracionSchedulerBajaView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Scheduler de bajas",
     }
   }
 ];

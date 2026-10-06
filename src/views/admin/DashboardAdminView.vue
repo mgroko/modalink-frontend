@@ -98,6 +98,25 @@
           <span class="material-symbols-outlined">chevron_right</span>
         </span>
       </button>
+
+      <button
+        v-if="puedeConfigurarScheduler"
+        class="admin-card"
+        @click="$router.push({ name: 'configuracion-scheduler-baja' })"
+      >
+        <div class="admin-card__icon">
+          <span class="material-symbols-outlined">event_available</span>
+        </div>
+        <div class="admin-card__info">
+          <span class="admin-card__titulo">Scheduler de bajas</span>
+          <span class="admin-card__descripcion">
+            Configurar la hora y el plazo de expiración de bajas (UC-07).
+          </span>
+        </div>
+        <span class="admin-card__arrow">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </span>
+      </button>
     </div>
   </div>
 </template>

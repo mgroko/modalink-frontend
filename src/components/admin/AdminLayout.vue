@@ -16,6 +16,13 @@
         >
           Scheduler
         </RouterLink>
+        <RouterLink
+          v-if="puedeConfigurarScheduler"
+          to="/admin/configuracion-scheduler/baja"
+          class="admin-layout__link"
+        >
+          Scheduler bajas
+        </RouterLink>
 
         <VaDropdown v-if="usuario" placement="bottom-end">
           <template #anchor>
@@ -64,6 +71,15 @@
               @click="$router.push({ name: 'configuracion-scheduler' })"
             >
               Scheduler de deshabilitación
+            </VaMenuItem>
+
+            <VaMenuItem
+              v-if="puedeConfigurarScheduler"
+              icon="mso-event_available"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'configuracion-scheduler-baja' })"
+            >
+              Scheduler de bajas
             </VaMenuItem>
             
             <VaMenuItem

@@ -96,6 +96,12 @@
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
+    <div v-if="puedeReintentar && !cargando" class="busqueda-usuarios__reintento">
+      <VaButton preset="primary" icon="mso-refresh" @click="reintentar">
+        Reintentar
+      </VaButton>
+    </div>
+
     <p v-if="!cargando && paginacion.totalElementos > 0" class="busqueda-usuarios__resumen">
       {{ paginacion.totalElementos }} usuario(s) encontrado(s)
       <template v-if="!esTodos">
@@ -108,13 +114,16 @@
       Buscando usuarios...
     </div>
 
-    <div v-else-if="usuarios.length === 0" class="busqueda-usuarios__estado">
+    <div
+      v-else-if="usuarios.length === 0 && !accesoDenegado"
+      class="busqueda-usuarios__estado"
+    >
       <span class="material-symbols-outlined busqueda-usuarios__estado-icono">search_off</span>
       No se encontraron usuarios con los filtros aplicados.
     </div>
 
     <VaDataTable
-      v-if="puedeVer"
+      v-if="puedeVer && !accesoDenegado"
       class="busqueda-usuarios__tabla"
       :items="usuarios"
       :columns="columnas"
@@ -130,8 +139,21 @@
         <VaBadge :text="value || '—'" color="info" />
       </template>
 
-      <template #cell(estado)="{ value }">
-        <VaBadge :text="value" :color="colorEstado(value)" outline />
+      <template #cell(estado)="{ rowData }">
+        <VaPopover
+          v-if="popoverEstado(rowData)"
+          trigger="hover"
+          placement="top"
+          :message="popoverEstado(rowData)"
+        >
+          <VaBadge :text="rowData.estado" :color="colorEstado(rowData.estado)" text-color="white" />
+        </VaPopover>
+        <VaBadge
+          v-else
+          :text="rowData.estado"
+          :color="colorEstado(rowData.estado)"
+          text-color="white"
+        />
       </template>
 
       <template #cell(deshabilitacion)="{ rowData }">
@@ -240,7 +262,7 @@
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Estado</span>
-              <VaBadge :text="usuarioDetalle.estado" :color="colorEstado(usuarioDetalle.estado)" outline />
+              <VaBadge :text="usuarioDetalle.estado" :color="colorEstado(usuarioDetalle.estado)" text-color="white" />
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Fecha de nacimiento</span>
@@ -274,7 +296,7 @@
                   <span class="detalle-usuario__perfil-nombre">{{ perfil.nombreArtistico || '—' }}</span>
                   <span class="detalle-usuario__texto-muted">{{ perfil.profesion || '—' }}</span>
                 </div>
-                <VaBadge :text="perfil.estado" :color="colorEstado(perfil.estado)" outline />
+                <VaBadge :text="perfil.estado" :color="colorEstado(perfil.estado)" text-color="white" />
               </div>
             </div>
           </section>
@@ -339,6 +361,7 @@ import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { state, tienePermiso } from "../../services/authState";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
+import { useToast } from "vuestic-ui";
 
 const DEBOUNCE_MS = 300;
 
@@ -346,6 +369,9 @@ export default {
   name: "BusquedaUsuariosView",
   components: {
     BaseAlert,
+  },
+  setup() {
+    return { toast: useToast() };
   },
   data() {
     return {
@@ -356,16 +382,15 @@ export default {
         estado: null,
         nombreArtisticoPerfil: "",
         nombreProfesion: "",
+        idProfesion: "",
         tamano: 20,
       },
       opcionesEstado: [
-        { text: "Activo", value: "Activo" },
-        { text: "Deshabilitado", value: "Deshabilitado" },
-        { text: "Pendiente de baja", value: "PendienteBaja" },
-        { text: "Baja", value: "Baja" },
+        { text: "Activo", value: "ACTIVO" },
+        { text: "Deshabilitado", value: "DESHABILITADO" },
+        { text: "Pendiente de baja", value: "PENDIENTE_BAJA" },
+        { text: "Baja", value: "BAJA" },
       ],
-      idProfesion: "",
-      opcionesProfesion: [],
       opcionesTamano: [
         { text: "20 por página", value: 20 },
         { text: "50 por página", value: 50 },
@@ -382,6 +407,8 @@ export default {
       cargando: false,
       successMessage: "",
       errorMessage: "",
+      accesoDenegado: false,
+      puedeReintentar: false,
       procesandoId: null,
       debounceHandle: null,
 
@@ -440,11 +467,24 @@ export default {
       return usuario.id ?? usuario.idUsuario;
     },
     colorEstado(estado) {
-      if (estado === "Activo") return "success";
-      if (estado === "Deshabilitado") return "danger";
-      if (estado === "PendienteBaja") return "warning";
-      if (estado === "Baja") return "backgroundElement";
-      return "backgroundBorder";
+      if (estado === "Activo") return "#2e7d32";
+      if (estado === "Deshabilitado") return "#c62828";
+      if (estado === "PendienteBaja") return "#ef6c00";
+      if (estado === "Baja") return "#757575";
+      return "#9e9e9e";
+    },
+    popoverEstado(usuario) {
+      if (usuario.estado === "Deshabilitado") {
+        const motivo = usuario.motivoDeshabilitacion || "Sin motivo informado";
+        const hasta = usuario.fechaHastaDeshabilitacion
+          ? `Hasta ${formatearFecha(usuario.fechaHastaDeshabilitacion)}`
+          : "Indefinida";
+        return `${motivo} · ${hasta}`;
+      }
+      if (usuario.estado === "PendienteBaja" && usuario.fechaSolicitudBaja) {
+        return `Solicitud de baja: ${formatearFecha(usuario.fechaSolicitudBaja)}`;
+      }
+      return "";
     },
     formatearFecha,
     formatearFechaCorta,
@@ -474,6 +514,7 @@ export default {
         estado: null,
         nombreArtisticoPerfil: "",
         nombreProfesion: "",
+        idProfesion: "",
         tamano: 20,
       };
       this.buscarAhora();
@@ -509,6 +550,8 @@ export default {
       this.cargando = true;
       this.errorMessage = "";
       this.successMessage = "";
+      this.accesoDenegado = false;
+      this.puedeReintentar = false;
 
       try {
         const response = await adminService.buscarUsuarios(this.buildParams(page));
@@ -528,13 +571,31 @@ export default {
         if (status === 401) {
           this.$router.push({ name: "login", query: { redirect: this.$route.fullPath } });
         } else if (status === 403) {
-          this.errorMessage = "No tenés permisos para buscar usuarios.";
+          this.accesoDenegado = true;
+          this.errorMessage = "No tenés permisos para buscar usuarios (permiso VER_USUARIOS).";
+        } else if (status === 400) {
+          this.errorMessage =
+            "Parámetros de búsqueda inválidos. Corregí los filtros aplicados (no se reintentará automáticamente).";
+        } else if (!status || status >= 500) {
+          this.puedeReintentar = true;
+          this.errorMessage = "Ocurrió un error en el servidor. Intentalo nuevamente.";
+          this.toast.init({
+            title: "Error del servidor",
+            message: "No se pudieron cargar los usuarios. Usá el botón de reintento.",
+            color: "danger",
+            position: "top-right",
+            duration: 6000,
+          });
         } else {
           this.errorMessage = "Ocurrió un error al buscar usuarios. Intentalo nuevamente.";
         }
       } finally {
         this.cargando = false;
       }
+    },
+
+    reintentar() {
+      this.buscar(this.paginacion.paginaActual);
     },
 
     async abrirDetalle(usuario) {
@@ -735,6 +796,12 @@ export default {
   justify-content: center;
   gap: 0.75rem;
   margin-top: 1.25rem;
+}
+
+.busqueda-usuarios__reintento {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem 0 1rem;
 }
 
 .busqueda-usuarios__estado {
