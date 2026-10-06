@@ -137,7 +137,28 @@ export const UNIDADES_POR_CODIGO = {
 };
 
 export function normCodigo(codigo) {
-  return (codigo || "").toLowerCase().trim();
+  return String(codigo ?? "").toLowerCase().trim();
+}
+
+export function simboloUnidad(unidad) {
+  if (!unidad) return "";
+  if (typeof unidad === "string") return unidad;
+  if (typeof unidad !== "object") return String(unidad);
+  return unidad.simbolo || unidad.nombre || "";
+}
+
+export function esUnidadColor(unidad) {
+  const candidatos =
+    unidad && typeof unidad === "object" ? [unidad.simbolo, unidad.nombre] : [unidad];
+  return candidatos.some((c) => {
+    const n = normCodigo(c);
+    return n === "color" || n === "colour" || n === "colores";
+  });
+}
+
+export function tipoDatoUnidad(unidad) {
+  if (!unidad || typeof unidad !== "object") return "";
+  return String(unidad.tipoDatoPermitido ?? "").toUpperCase();
 }
 
 export function normTexto(texto) {

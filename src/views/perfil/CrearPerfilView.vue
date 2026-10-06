@@ -88,7 +88,7 @@
               <VaInput
                 v-if="!esEnumerado(caracteristicaAltura)"
                 v-model="form.caracteristicas[caracteristicaAltura.idCaracteristica].valor"
-                :rules="[reglas.requerido]"
+                :rules="reglasCampo(caracteristicaAltura)"
                 :label="etiquetaCaracteristica(caracteristicaAltura)"
                 :type="esNumerico(caracteristicaAltura) ? 'number' : 'text'"
                 :placeholder="`${labelCaracteristica(caracteristicaAltura.codigo)} ...`"
@@ -152,7 +152,7 @@
                   <VaInput
                     v-else
                     v-model="form.caracteristicas[carac.idCaracteristica].valor"
-                    :rules="[reglas.requerido]"
+                    :rules="reglasCampo(carac)"
                     :label="etiquetaCaracteristica(carac)"
                     :type="esNumerico(carac) ? 'number' : 'text'"
                     :placeholder="`V${labelCaracteristica(carac.codigo)} ...`"
@@ -193,7 +193,7 @@
               <VaInput
                 v-else
                 v-model="form.caracteristicas[carac.idCaracteristica].valor"
-                :rules="[reglas.requerido]"
+                :rules="reglasCampo(carac)"
                 :label="etiquetaCaracteristica(carac)"
                 :type="esNumerico(carac) ? 'number' : 'text'"
                 :placeholder="`${labelCaracteristica(carac.codigo)} ...`"
@@ -232,7 +232,7 @@
               <VaInput
                 v-else
                 v-model="form.caracteristicas[carac.idCaracteristica].valor"
-                :rules="[reglas.requerido]"
+                :rules="reglasCampo(carac)"
                 :label="etiquetaCaracteristica(carac)"
                 :type="esNumerico(carac) ? 'number' : 'text'"
                 :placeholder="`${labelCaracteristica(carac.codigo)} ...`"
@@ -287,6 +287,9 @@ import {
   ORDEN_PRIORIDAD,
   normCodigo,
   normTexto,
+  simboloUnidad,
+  esUnidadColor,
+  tipoDatoUnidad,
 } from "../../utils/perfilConstants.js";
 import { reglasPerfil } from "../../utils/reglas.js";
 
@@ -439,8 +442,10 @@ export default {
         this.$nextTick(() => {
           this.$refs.form?.resetValidation?.();
         });
-      } catch {
-        this.mensajeError = "No se pudieron cargar las características de la profesión.";
+      } catch (error) {
+        this.mensajeError =
+          error?.response?.data?.message ||
+          "No se pudieron cargar las características de la profesión.";
       } finally {
         this.cargandoCaracteristicas = false;
       }
@@ -452,6 +457,15 @@ export default {
 
     esNumerico(carac) {
       return carac.tipoDato === "NUMERICO";
+    },
+
+    reglasCampo(carac) {
+      const lista = [this.reglas.requerido];
+      const permitido = tipoDatoUnidad(carac?.unidad);
+      if (this.esNumerico(carac) && (permitido === "" || permitido === "NUMERICO")) {
+        lista.push(this.reglas.numerico);
+      }
+      return lista;
     },
 
     async usuarioTienePerfilConProfesion(idProfesion) {
@@ -480,10 +494,12 @@ export default {
 
     etiquetaCaracteristica(carac) {
       const base = this.labelCaracteristica(carac.codigo);
-      if (!carac.unidad) return base;
-      const unidadNorm = normCodigo(carac.unidad);
-      if (unidadNorm === "color" || unidadNorm === "colour") return base;
-      return `${base} (${carac.unidad.toLowerCase()})`;
+      const unidad = carac?.unidad;
+      if (!unidad) return base;
+      if (esUnidadColor(unidad)) return base;
+      const simbolo = simboloUnidad(unidad);
+      if (!simbolo) return base;
+      return `${base} (${simbolo})`;
     },
 
     getValorById(carac, idValor) {

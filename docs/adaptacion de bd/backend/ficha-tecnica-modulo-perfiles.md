@@ -55,7 +55,43 @@ Módulo de gestión de perfiles de usuario en la plataforma. Proporciona funcion
 
 | Método | Endpoint | Descripción | Parámetros |
 |--------|----------|-------------|------------|
-| GET | `/profesiones/{id}/caracteristicas-tecnicas` | Buscar características por profesión | `idProfesion` (obligatorio), `codigo`, `unidad` (opcionales) |
+| GET | `/profesiones/{id}/caracteristicas-tecnicas` | Buscar características por profesión | `idProfesion` (path, obligatorio), `codigo`, `unidad` (query, opcionales - filtro `contains`) |
+
+**Respuesta (200 OK):** **array plano** de `CaracteristicaTecnicaResponse` (sin envoltorio ni
+paginación). Si la profesión no tiene características responde `[]`.
+
+```json
+[
+  {
+    "idCaracteristica": 1,
+    "codigo": "ALTURA",
+    "nombre": "Altura",
+    "unidad": { "idUnidad": 1, "nombre": "Centímetro", "simbolo": "cm", "tipoDatoPermitido": "NUMERICO" },
+    "idProfesion": 2,
+    "profesion": "Modelo",
+    "tipoDato": "NUMERICO",
+    "valores": []
+  },
+  {
+    "idCaracteristica": 5,
+    "codigo": "COLOR_OJOS",
+    "nombre": "Color de Ojos",
+    "unidad": null,
+    "idProfesion": 2,
+    "profesion": "Modelo",
+    "tipoDato": "ENUMERADO",
+    "valores": [ { "idValor": 1, "codigo": "Marrón", "colorHex": "#6B4226" } ]
+  }
+]
+```
+
+- `unidad`: **objeto de la tabla `unidad_medida`** o `null`. No es un string: el frontend debe
+  resolver `simbolo`/`nombre` de forma defensiva (objeto | string | null).
+- `tipoDato`: `NUMERICO` | `ENUMERADO` (determina input numérico vs select con `valores`).
+- `valores[].codigo` trae la **etiqueta visible** (ej. "Marrón"), no un código normalizado.
+- **Errores:** `400 {"message": "Profesión no encontrada: 999"}` si no existe la profesión;
+  cualquier excepción no mapeada responde `500` con el body genérico de Spring
+  (`{timestamp, status, error, path}`) - en ese caso revisar la consola del backend.
 
 ## 3. Modelos de Datos para Frontend
 
@@ -112,13 +148,21 @@ Igual estructura a PerfilDetalleResponse pero para listados paginados.
 - `nombre` (String - nombre descriptivo)
 - `descripcion` (String - descripción opcional)
 
-### 3.5 CaracteristicaResponse
+### 3.5 CaracteristicaResponse (valor guardado en el perfil)
+Presente en `PerfilResponse.caracteristicas` y `PerfilDetalleResponse.caracteristicas`. **No incluye
+`unidad` ni `tipoDato`**: la unidad mostrada debe resolverse aparte (hoy el frontend usa el
+diccionario `UNIDADES_POR_CODIGO` por código).
 - `idCaracteristica` (Long)
 - `codigo` (String - código identificador, ej. "VOZ", "GÉNERO")
-- `valor` (String - valor actual del perfil, ej. "SOPRANO", "MASCULINO")
-- `idValor` (Long - ID del valor en catálogo)
-- `codigoValor` (String - código del valor, ej. "SOPR", "HOMBRE")
+- `valor` (String - valor actual del perfil, ej. "175", "SOPRANO")
+- `idValor` (Long, opcional - ID del valor en catálogo; nulo para valores numéricos)
+- `codigoValor` (String, opcional - código del valor, ej. "SOPR", "HOMBRE")
 - `colorHex` (String - formato #RRGGBB, opcional)
+
+### 3.5.1 CaracteristicaTecnicaResponse (catálogo por profesión)
+Shape de `GET /profesiones/{id}/caracteristicas-tecnicas` (ver §2.4). A diferencia de 3.5 trae
+`nombre`, `tipoDato`, `unidad` (objeto `unidad_medida` o null), `idProfesion`, `profesion` y
+`valores[{idValor, codigo, colorHex}]`. **Son dos formas distintas: no intercambiar.**
 
 ### 3.6 CaracteristicaPerfilRequest
 - `idCaracteristica` (Long, obligatorio - ID del catálogo)
