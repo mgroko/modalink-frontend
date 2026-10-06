@@ -100,4 +100,49 @@ function limpiarSesion() {
   restauracionEnCurso = null;
 }
 
-export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion };
+// Termina la sesión completa: invalida la cookie JWT en el backend
+// (POST /auth/logout) y limpia el estado local. El logout es best-effort:
+// si falla la red o no hay sesión, el estado local igual se limpia.
+async function finalizarSesion() {
+  try {
+    await authService.cerrarSesion();
+  } catch {
+
+  } finally {
+    limpiarSesion();
+  }
+}
+
+const CLAVE_BAJA_CUENTA = "modalink.cuentaBaja";
+
+function guardarBajaCuenta({ mensaje, fechaLimite } = {}) {
+  try {
+    localStorage.setItem(
+      CLAVE_BAJA_CUENTA,
+      JSON.stringify({ mensaje: mensaje || null, fechaLimite: fechaLimite || null })
+    );
+  } catch {
+
+  }
+}
+
+function consumirAvisoBajaCuenta() {
+  try {
+    const crudo = localStorage.getItem(CLAVE_BAJA_CUENTA);
+    if (!crudo) return null;
+    localStorage.removeItem(CLAVE_BAJA_CUENTA);
+    return JSON.parse(crudo);
+  } catch {
+    return null;
+  }
+}
+
+function limpiarBajaCuenta() {
+  try {
+    localStorage.removeItem(CLAVE_BAJA_CUENTA);
+  } catch {
+    // ignorar
+  }
+}
+
+export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion, finalizarSesion, guardarBajaCuenta, consumirAvisoBajaCuenta, limpiarBajaCuenta };

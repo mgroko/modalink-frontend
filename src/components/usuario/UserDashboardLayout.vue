@@ -30,7 +30,11 @@
           <button class="sidebar__action" @click="$router.push({ name: 'calendario' })">
             Calendario
           </button>
-          <button class="sidebar__action" @click="modalBajaVisible = true">
+          <button
+            v-if="!esCuentaPendienteBaja"
+            class="sidebar__action"
+            @click="modalBajaVisible = true"
+          >
             Solicitar baja del sistema
           </button>
         </div>
@@ -146,10 +150,15 @@
 </template>
 
 <script>
-import authService from "../../services/authService";
 import usuarioService from "../../services/usuarioService";
 import perfilService from "../../services/perfilService";
-import { state, limpiarSesion, setPerfilActivo, idPerfilActivo } from "../../services/authState";
+import {
+  state,
+  setPerfilActivo,
+  idPerfilActivo,
+  finalizarSesion,
+  guardarBajaCuenta,
+} from "../../services/authState";
 
 export default {
   name: "UserDashboardLayout",
@@ -180,6 +189,10 @@ export default {
     },
     nombreArtisticoActivo() {
       return state.usuario?.nombreArtisticoActivo || null;
+    },
+  
+    esCuentaPendienteBaja() {
+      return this.usuario?.estado === "PENDIENTE_BAJA";
     },
     inicialPerfil() {
       const nombre = this.nombreArtisticoActivo || "";
@@ -229,8 +242,12 @@ export default {
     },
     async confirmarBaja() {
       try {
-        await usuarioService.solicitarBaja();
-        limpiarSesion();
+        const response = await usuarioService.solicitarBaja();
+        const data = response?.data || {};
+        // Se persiste antes de cerrar sesión para mostrar la respuesta
+        // (mensaje + fecha límite) en la vista de login (ficha §4.2).
+        guardarBajaCuenta({ mensaje: data.mensaje, fechaLimite: data.fechaLimite });
+        await finalizarSesion();
         this.$router.push({ name: "login" });
       } catch (error) {
         const mensaje = error.response?.data?.message || "Error al solicitar la baja. Intentá nuevamente.";
@@ -238,14 +255,8 @@ export default {
       }
     },
     async cerrarSesion() {
-      try {
-        await authService.cerrarSesion();
-      } catch {
-        // ignore
-      } finally {
-        limpiarSesion();
-        this.$router.push({ name: "login" });
-      }
+      await finalizarSesion();
+      this.$router.push({ name: "login" });
     },
   },
 };

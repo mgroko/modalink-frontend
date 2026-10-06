@@ -51,11 +51,13 @@
       hide-default-actions
     >
       <h3 class="va-h5">Tu cuenta está pendiente de baja</h3>
-      <p class="mt-2">
-        Tu cuenta está programada para ser eliminada en los próximos 30 días. Si reactivas tu cuenta, se cancelará la solicitud de baja y todo volverá a la normalidad.
+      <p class="mt-2">{{ textoBajaModal }}</p>
+      <p class="mt-2" v-if="diasBajaModal != null">
+        Quedan <strong>{{ diasBajaModal }} días</strong> para reactivarla. Si reactivás tu cuenta,
+        se cancelará la solicitud de baja y todo volverá a la normalidad.
       </p>
       <p class="mt-2">
-        Si preferís no continuar, podés cerrar sesión.
+        Si preferís no continuar, cerrá este mensaje y volvé cuando quieras.
       </p>
 
       <template #footer>
@@ -63,13 +65,14 @@
           <VaButton 
             preset="secondary" 
             color="primary" 
-            @click="cerrarSesion"
+            :disabled="reactivando"
+            @click="cancelarReactivacion"
           >
-            Cerrar sesión
+            Cancelar
           </VaButton>
           <VaButton 
             color="primary" 
-            ok-text="Reactivar cuenta"
+            :loading="reactivando"
             @click="reactivarCuenta"
           >
             Reactivar cuenta
@@ -83,9 +86,14 @@
 
 <script>
 import authService from "../../services/authService";
-import usuarioService from "../../services/usuarioService";
-import { marcarSesionRestaurada, refrescarSesion, limpiarSesion } from "../../services/authState";
+import {
+  marcarSesionRestaurada,
+  refrescarSesion,
+  consumirAvisoBajaCuenta,
+  limpiarBajaCuenta,
+} from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import { formatearFecha, diasRestantes } from "../../utils/fechas";
 
 export default {
   name: "LoginView",
@@ -101,11 +109,31 @@ export default {
       successMessage: "",
       errorMessage: "",
       modalReactivarVisible: false,
+      bajaPendiente: null,
+      reactivando: false,
       reglas: {
         requerido: (v) => !!v || 'Este campo es requerido',
         email: (v) => /.+@.+\..+/.test(v) || 'El correo debe ser válido',
       }
     };
+  },
+  computed: {
+    textoBajaModal() {
+      const baja = this.bajaPendiente;
+      if (baja?.message) return baja.message;
+      if (baja?.fechaLimite) {
+        return `Tu cuenta está pendiente de baja. Reactívala antes del ${formatearFecha(baja.fechaLimite)} para poder iniciar sesión.`;
+      }
+      return "Tu cuenta está pendiente de baja. Reactívala para poder iniciar sesión.";
+    },
+    diasBajaModal() {
+      const baja = this.bajaPendiente;
+      if (baja?.diasRestantes != null) return baja.diasRestantes;
+      return diasRestantes(baja?.fechaLimite);
+    },
+  },
+  mounted() {
+    this.mostrarAvisoBajaCuenta();
   },
   methods: {
     async iniciarSesion() {
@@ -121,44 +149,79 @@ export default {
         marcarSesionRestaurada(usuarioLogin);
 
         // Flujo 1: re-consultar /auth/me para obtener idPerfilActivo autoritativo,
-        // conservando campos del login (ej. estado) que /auth/me podría no exponer.
+        // conservando campos del login que /auth/me podría no exponer.
         const refrescado = await refrescarSesion();
-        const usuario = { ...usuarioLogin, ...refrescado };
 
-        if (usuario?.estado === 'PendienteBaja') {
+        this.successMessage = "Inicio de sesión exitoso.";
+        this.entrarSegun({ ...usuarioLogin, ...refrescado });
+      } catch (error) {
+        const data = error?.response?.data;
+        if (error?.response?.status === 403 && data?.codigo === "CUENTA_PENDIENTE_BAJA") {
+          this.bajaPendiente = {
+            message: data?.message || null,
+            fechaLimite: data?.fechaLimite || null,
+            diasRestantes: data?.diasRestantes ?? null,
+          };
           this.modalReactivarVisible = true;
           return;
         }
-
-        this.successMessage = "Inicio de sesión exitoso.";
-
-        if (usuario?.rolGlobal === "Administrador") {
-          this.$router.push({ name: "dashboard-admin" });
-        } else if (usuario?.idPerfilActivo != null) {
-          this.$router.push({ name: "home" });
-        } else {
-          this.$router.push({ name: "dashboard-usuario" });
-        }
-      } catch (error) {
         this.errorMessage =
-          error?.response?.data?.message || "No se pudo iniciar sesión. Verificá los datos ingresados.";
+          data?.message || "No se pudo iniciar sesión. Verificá los datos ingresados.";
+      }
+    },
+    entrarSegun(usuario) {
+      if (usuario?.rolGlobal === "Administrador") {
+        this.$router.push({ name: "dashboard-admin" });
+      } else if (usuario?.idPerfilActivo != null) {
+        this.$router.push({ name: "home" });
+      } else {
+        this.$router.push({ name: "dashboard-usuario" });
       }
     },
     async reactivarCuenta() {
+      if (this.reactivando) return;
+      this.reactivando = true;
+      this.errorMessage = "";
+
       try {
-        await usuarioService.reactivarCuenta();
+        // Sin sesión previa (el login 403 no emite cookie): se reenvían credenciales.
+        const response = await authService.reactivarCuentaDesdeLogin(this.credenciales);
+        const usuarioLogin = response?.data?.usuario || null;
+
+        limpiarBajaCuenta();
         this.modalReactivarVisible = false;
-        this.$router.push({ name: "dashboard-usuario" });
+        this.bajaPendiente = null;
+        marcarSesionRestaurada(usuarioLogin);
+        const refrescado = await refrescarSesion();
+
+        this.successMessage = "Cuenta reactivada. Tu solicitud de baja fue cancelada.";
+        this.entrarSegun({ ...usuarioLogin, ...refrescado });
       } catch (error) {
-        this.modalReactivarVisible = false;
-        this.errorMessage =
-          error?.response?.data?.message || "No se pudo reactivar la cuenta.";
+        const data = error?.response?.data;
+        if (error?.response?.status === 409) {
+          this.modalReactivarVisible = false;
+          this.bajaPendiente = null;
+          this.errorMessage =
+            data?.message || "El plazo para reactivar la cuenta ha expirado.";
+        } else {
+          this.errorMessage = data?.message || "No se pudo reactivar la cuenta.";
+        }
+      } finally {
+        this.reactivando = false;
       }
     },
-    async cerrarSesion() {
+    cancelarReactivacion() {
       this.modalReactivarVisible = false;
-      limpiarSesion();
-      this.$router.push({ name: "login" });
+      this.bajaPendiente = null;
+    },
+    mostrarAvisoBajaCuenta() {
+      const aviso = consumirAvisoBajaCuenta();
+      if (!aviso) return;
+      let texto = aviso.mensaje || "Solicitud de baja registrada.";
+      if (aviso.fechaLimite) {
+        texto += ` Podés reactivarla antes del ${formatearFecha(aviso.fechaLimite)}.`;
+      }
+      this.successMessage = texto;
     },
   },
 };
