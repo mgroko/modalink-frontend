@@ -66,8 +66,10 @@ const perfilService = {
    * Paginación: page (0-indexed, default 0), size (default 20), todos (default false).
    * Filtros: nombreArtistico, nombre, apellido,
    *   idProfesion (prioridad sobre profesion), profesion,
-   *   idGenero (prioridad sobre genero), genero (código exacto, ej. "FEM"),
-   *   idUbicacion (idCiudad), localidad, provincia,
+   *   idGenero (prioridad sobre genero), genero (código exacto, ej. "MUJER"),
+   *   idUbicacion = ciudad.idCiudad (Long) — NO es ubicacion.idUbicacion,
+   *   localidad (contains sobre ciudad.nombre, case-insensitive),
+   *   provincia (contains sobre provincia.nombre, case-insensitive),
    *   idsHabilidades (array: idsHabilidades=1&idsHabilidades=3),
    *   idCaracteristica (requerido para valorCaracteristica / idValorCaracteristica),
    *   valorCaracteristica, idValorCaracteristica (prioridad sobre valorCaracteristica).

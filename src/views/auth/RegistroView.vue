@@ -67,10 +67,10 @@ export default {
         password: "",
       },
       opcionesGenero: [
-        { text: "Mujer", value: "mujer" },
-        { text: "Hombre", value: "hombre" },
-        { text: "No binario", value: "no_binario" },
-        { text: "Prefiero no decirlo", value: "no_decirlo" }
+        { text: "Mujer", value: "MUJER" },
+        { text: "Hombre", value: "HOMBRE" },
+        { text: "No binario", value: "NO_BINARIO" },
+        { text: "Prefiero no decirlo", value: "NO_DECIRLO" }
       ],
       successMessage: "",
       errorMessage: "",

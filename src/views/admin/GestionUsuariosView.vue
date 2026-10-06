@@ -536,10 +536,10 @@ export default {
     textoGenero(genero) {
       if (!genero) return "—";
       const codigos = {
-        mujer: "Mujer",
-        hombre: "Hombre",
-        no_binario: "No binario",
-        no_decirlo: "Prefiero no decirlo",
+        MUJER: "Mujer",
+        HOMBRE: "Hombre",
+        NO_BINARIO: "No binario",
+        NO_DECIRLO: "Prefiero no decirlo",
       };
       if (typeof genero === "object") {
         return codigos[genero.codigo] || genero.codigo || "—";

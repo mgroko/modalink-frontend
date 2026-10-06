@@ -34,14 +34,12 @@
 </template>
 
 <script>
+import { formatUbicacion } from "../../utils/ubicacion.js";
+
 export default {
   name: "PerfilHero",
   props: {
     perfil: {
-      type: Object,
-      default: null,
-    },
-    ubicacion: {
       type: Object,
       default: null,
     },
@@ -72,12 +70,7 @@ export default {
       return valor != null && valor !== "" ? valor : null;
     },
     ubicacionTexto() {
-      const ubicacion = this.ubicacion || this.perfil?.ubicacion;
-      if (!ubicacion) return "";
-      const texto = [ubicacion.localidad?.nombre || ubicacion.localidad, ubicacion.provincia?.nombre || ubicacion.provincia]
-        .filter(Boolean)
-        .join(", ");
-      return texto;
+      return formatUbicacion(this.perfil) || "";
     },
   },
 };

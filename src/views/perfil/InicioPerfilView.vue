@@ -48,7 +48,6 @@
           <PerfilHero
             v-if="seccion !== 'calendario'"
             :perfil="perfil"
-            :ubicacion="ubicacion"
             :es-propio="esPropio"
             @editar="irAEditar"
           />
@@ -257,19 +256,6 @@ export default {
     esPropio() {
       if (this.perfil?.esPropietario != null) return this.perfil.esPropietario === true;
       return this.perfil?.idPerfil != null && this.perfil.idPerfil === idPerfilActivo();
-    },
-    ubicacion() {
-      const ciudad = this.perfil?.ciudad;
-      if (ciudad) {
-        return {
-          localidad: ciudad.nombre,
-          provincia: ciudad.provincia?.nombre || null,
-        };
-      }
-      const localidad = this.perfil?.localidad;
-      const provincia = this.perfil?.provincia;
-      if (!localidad && !provincia) return null;
-      return { localidad, provincia };
     },
     mensajeBaja() {
       const { expiracion, restante } = this.contadorBaja;

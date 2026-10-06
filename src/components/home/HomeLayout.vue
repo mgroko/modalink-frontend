@@ -131,6 +131,7 @@ import authService from "../../services/authService";
 import perfilService from "../../services/perfilService";
 import usuarioService from "../../services/usuarioService";
 import { state, limpiarSesion, setPerfilActivo, idPerfilActivo } from "../../services/authState";
+import { formatUbicacion } from "../../utils/ubicacion.js";
 import { nextTick } from "vue";
 
 export default {
@@ -167,11 +168,7 @@ export default {
       return this.inicialDe(this.nombreArtisticoActivo || this.perfilActual?.nombreArtistico || "?");
     },
     ubicacionTexto() {
-      const ubicacion = this.ubicacion;
-      if (!ubicacion) return "Ubicación no definida";
-      return [ubicacion.localidad?.nombre || ubicacion.localidad, ubicacion.provincia?.nombre || ubicacion.provincia]
-        .filter(Boolean)
-        .join(", ") || "Ubicación no definida";
+      return formatUbicacion(this.ubicacion) || "Ubicación no definida";
     },
   },
   mounted() {

@@ -9,7 +9,7 @@
       <VaInput
         v-model="filtros.q"
         class="buscar-perfil__campo buscar-perfil__campo--texto"
-        placeholder="Nombre artístico o profesión"
+        placeholder="Nombre, profesión o ubicación"
         @keyup.enter="buscarAhora"
         @input="programarBusqueda"
       >
@@ -168,7 +168,9 @@
 
 <script>
 import perfilService from "../../services/perfilService";
+import usuarioService from "../../services/usuarioService";
 import BaseAlert from "../../components/AlertaBase.vue";
+import { formatUbicacion, resolverUbicacionTexto } from "../../utils/ubicacion.js";
 
 const DEBOUNCE_MS = 350;
 
@@ -228,9 +230,7 @@ export default {
       return String(valor || "?").charAt(0).toUpperCase();
     },
     ubicacionTexto(perfil) {
-      const localidad = perfil?.ciudad?.nombre || perfil?.localidad;
-      const provincia = perfil?.ciudad?.provincia?.nombre || perfil?.provincia;
-      return [localidad, provincia].filter(Boolean).join(", ");
+      return formatUbicacion(perfil);
     },
     habilidadesVisibles(perfil) {
       const lista = Array.isArray(perfil?.habilidades) ? perfil.habilidades : [];
@@ -289,8 +289,9 @@ export default {
         delete params.page;
       }
 
-      // El texto libre se interpreta principalmente como nombre artístico;
-      // si no arroja resultados se reintenta como profesión (ver buscar()).
+      // El texto libre se interpreta primero contra el catálogo Georef
+      // (provincia o localidad); si no coincide, como nombre artístico.
+      // Si arroja 0 resultados se reintenta como profesión (ver buscar()).
       const texto = this.filtros.q.trim();
       if (texto) {
         params.nombreArtistico = texto;
@@ -310,14 +311,55 @@ export default {
         ultima: data.ultima ?? true,
       };
     },
+    /**
+     * Decide si el texto libre corresponde al catálogo Georef.
+     * Prioridad: provincia > localidad; si no coincide o el catálogo
+     * falla, devuelve null y el texto se busca por nombre artístico.
+     */
+    async resolverFiltroUbicacion(texto) {
+      try {
+        const provResponse = await usuarioService.listarProvincias();
+        const provincias = Array.isArray(provResponse?.data) ? provResponse.data : [];
+
+        const porProvincia = resolverUbicacionTexto(texto, provincias);
+        if (porProvincia) return porProvincia;
+
+        const locResponse = await usuarioService.listarLocalidades({ nombre: texto });
+        const localidades = Array.isArray(locResponse?.data) ? locResponse.data : [];
+        return resolverUbicacionTexto(texto, provincias, localidades);
+      } catch {
+        return null;
+      }
+    },
     async buscar(page = 0) {
       this.cargando = true;
       this.mensajeError = "";
 
       try {
         const params = this.buildParams(page);
+
+        // Cadena de interpretación del texto libre:
+        // catálogo Georef (provincia/localidad) → nombre artístico → profesión.
+        let filtroUbicacion = null;
+        if (params.nombreArtistico) {
+          filtroUbicacion = await this.resolverFiltroUbicacion(params.nombreArtistico);
+          if (filtroUbicacion) {
+            params[filtroUbicacion.tipo] = filtroUbicacion.valor;
+            delete params.nombreArtistico;
+          }
+        }
+
         let response = await perfilService.buscar(params);
         let data = response?.data || {};
+
+        // Ubicación sin resultados: se reintenta el texto como nombre artístico.
+        if (filtroUbicacion && (data.totalElementos ?? 0) === 0) {
+          params.nombreArtistico = filtroUbicacion.valor;
+          delete params[filtroUbicacion.tipo];
+          filtroUbicacion = null;
+          const resNombre = await perfilService.buscar(params);
+          data = resNombre?.data || {};
+        }
 
         // Sin resultados por nombre artístico y sin filtro de profesión:
         // se reintenta interpretando el texto como nombre de profesión.

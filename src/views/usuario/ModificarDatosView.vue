@@ -41,7 +41,19 @@ Modificardatosview · VUE
         />
  
         <div class="modificar-datos__bloque-ubicacion">
-          <p class="modificar-datos__bloque-titulo">Ubicación</p>
+          <div class="modificar-datos__bloque-titulo-fila">
+            <p class="modificar-datos__bloque-titulo">Ubicación</p>
+            <button
+              v-if="ubicacionGuardada"
+              type="button"
+              class="modificar-datos__quitar-ubicacion"
+              :disabled="cargando"
+              @click="modalEliminarUbicacionVisible = true"
+            >
+              <span class="material-symbols-outlined">location_off</span>
+              Quitar ubicación
+            </button>
+          </div>
           <div class="modificar-datos__campos">
             <VaInput
               :model-value="pais"
@@ -109,6 +121,21 @@ Modificardatosview · VUE
         </div>
       </template>
     </VaModal>
+
+    <VaModal v-model="modalEliminarUbicacionVisible" hide-default-actions blur>
+      <h3 class="va-h5">¿Quitar tu ubicación?</h3>
+      <p>Tu cuenta va a quedar sin ubicación asociada.</p>
+      <template #footer>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; width: 100%; margin-top: 1rem;">
+          <VaButton preset="secondary" @click="modalEliminarUbicacionVisible = false">
+            Cancelar
+          </VaButton>
+          <VaButton color="danger" @click="eliminarUbicacion">
+            Quitar
+          </VaButton>
+        </div>
+      </template>
+    </VaModal>
   </div>
 </template>
  
@@ -130,22 +157,22 @@ export default {
         genero: "",
         fechaNacimiento: "",
       },
-      pais: "Argentina",
+      ubicacionGuardada: null,
       provincias: [],
       localidades: [],
       provinciaSeleccionada: null,
       localidadSeleccionada: null,
-      localidadIdOriginal: null,
       cargandoProvincias: false,
       cargandoLocalidades: false,
       opcionesGenero: [
-        { text: "Mujer", value: "mujer" },
-        { text: "Hombre", value: "hombre" },
-        { text: "No binario", value: "no_binario" },
-        { text: "Prefiero no decirlo", value: "no_decirlo" },
+        { text: "Mujer", value: "MUJER" },
+        { text: "Hombre", value: "HOMBRE" },
+        { text: "No binario", value: "NO_BINARIO" },
+        { text: "Prefiero no decirlo", value: "NO_DECIRLO" },
       ],
       cargando: false,
       modalSinUbicacionVisible: false,
+      modalEliminarUbicacionVisible: false,
       mensajeExito: "",
       mensajeError: "",
       reglas: {
@@ -170,7 +197,13 @@ export default {
   async mounted() {
     await restaurarSesion();
     this.cargarDatos();
-    await Promise.all([this.cargarProvincias(), this.precargarUbicacion()]);
+    await this.cargarProvincias();
+    await this.precargarUbicacion();
+  },
+  computed: {
+    pais() {
+      return this.ubicacionGuardada?.ciudad?.provincia?.pais?.nombre || "Argentina";
+    },
   },
   methods: {
     cargarDatos() {
@@ -196,31 +229,30 @@ export default {
     async precargarUbicacion() {
       try {
         const response = await usuarioService.obtenerUbicacion();
-        const ubicacion = response?.data;
-        if (!ubicacion?.localidadId) return;
- 
-        this.localidadIdOriginal = ubicacion.localidadId;
-        const provinciaId = this.provinciaIdDesdeLocalidad(ubicacion.localidadId);
- 
+        // 200 con cuerpo vacío = sin ubicación (estado válido, no es error)
+        const ubicacion = response?.data || null;
+        const localidadId = ubicacion?.ciudad?.idExterno || null;
+        if (!localidadId) {
+          this.ubicacionGuardada = null;
+          return;
+        }
+
+        this.ubicacionGuardada = ubicacion;
+        const provinciaId = ubicacion?.ciudad?.provincia?.idExterno || null;
         const provincia = this.provincias.find((p) => p.id === provinciaId);
         if (!provincia) return;
         this.provinciaSeleccionada = provincia.id;
- 
+
         await this.cargarLocalidades(provincia.id);
-        this.localidadSeleccionada = ubicacion.localidadId;
+        this.localidadSeleccionada = localidadId;
       } catch (error) {
-        // Sin ubicación o error de lectura: se deja sin selección.
+        // Error de lectura: se deja sin selección.
         this.mensajeError =
           error?.response?.data?.message || "No se pudo obtener tu ubicación.";
       }
     },
-    provinciaIdDesdeLocalidad(localidadId) {
-      if (typeof localidadId !== "string" || localidadId.length < 2) return null;
-      return localidadId.slice(0, 2);
-    },
     async onProvinciaCambio(provinciaId) {
       this.localidadSeleccionada = null;
-      this.localidadIdOriginal = null;
       if (!provinciaId) {
         this.localidades = [];
         return;
@@ -293,17 +325,40 @@ export default {
           apellido: this.datos.apellido,
           fechaNacimiento: this.datos.fechaNacimiento,
           genero: this.datos.genero,
-          localidadId: this.localidadSeleccionada || null,
+          // Id Georef: siempre string (un "02" numérico perdería los ceros)
+          localidadId:
+            this.localidadSeleccionada != null ? String(this.localidadSeleccionada) : null,
         };
         const response = await usuarioService.actualizarDatosPersonales(payload);
         const usuarioActualizado = response?.data;
         if (usuarioActualizado) {
           setUsuario({ ...state.usuario, ...usuarioActualizado });
+          this.ubicacionGuardada = usuarioActualizado.ubicacion || null;
         }
         this.mensajeExito = "Datos actualizados correctamente.";
       } catch (error) {
         this.mensajeError =
           error?.response?.data?.message || "No se pudieron guardar los cambios. Intentá nuevamente.";
+      } finally {
+        this.cargando = false;
+      }
+    },
+    async eliminarUbicacion() {
+      this.modalEliminarUbicacionVisible = false;
+      this.mensajeExito = "";
+      this.mensajeError = "";
+      this.cargando = true;
+
+      try {
+        await usuarioService.eliminarUbicacion();
+        this.ubicacionGuardada = null;
+        this.provinciaSeleccionada = null;
+        this.localidadSeleccionada = null;
+        this.localidades = [];
+        this.mensajeExito = "Ubicación eliminada.";
+      } catch (error) {
+        this.mensajeError =
+          error?.response?.data?.message || "No se pudo quitar la ubicación. Intentá nuevamente.";
       } finally {
         this.cargando = false;
       }
@@ -349,6 +404,38 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+ 
+.modificar-datos__bloque-titulo-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+ 
+.modificar-datos__quitar-ubicacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.78rem;
+  color: #b91c1c;
+  cursor: pointer;
+}
+ 
+.modificar-datos__quitar-ubicacion:hover:not(:disabled) {
+  text-decoration: underline;
+}
+ 
+.modificar-datos__quitar-ubicacion:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+ 
+.modificar-datos__quitar-ubicacion .material-symbols-outlined {
+  font-size: 1rem;
 }
  
 .modificar-datos__bloque-titulo {
