@@ -384,8 +384,8 @@
       </template>
       <p>¿Estás seguro que querés solicitar la baja del perfil
         <strong>{{ perfilAEliminar?.nombreArtistico }}</strong>?
-        Tendrás 30 días para reactivarlo: la eliminación definitiva sería el
-        <strong>{{ fechaLimiteBaja }}</strong>.</p>
+        Tendrás el plazo configurado para reactivarlo (30 días por defecto):
+        el <strong>{{ fechaLimiteBaja }}</strong> pasará al estado Baja y quedará inaccesible para la comunidad.</p>
       <template #footer>
         <div class="detalle-perfil__footer detalle-perfil__footer--der">
           <VaButton preset="secondary" @click="modalEliminarVisible = false">Cancelar</VaButton>
@@ -448,7 +448,8 @@ export default {
       return this.perfilSeleccionado?.estado === "Activo";
     },
     fechaLimiteBaja() {
-      const expira = fechaExpiracionBaja(new Date());
+      const fechaLimite = this.perfilAEliminar?.fechaLimite;
+      const expira = fechaLimite || fechaExpiracionBaja(new Date());
       return expira ? formatearFechaHora(expira) : "";
     },
     puedeEditar() {
@@ -562,7 +563,11 @@ export default {
       try {
         const response = await perfilService.eliminar(this.perfilAEliminar.idPerfil);
         const data = response?.data;
-        this.mensajeExito = data?.mensaje || "Solicitud de baja registrada. Tenés 30 días para activar el perfil.";
+        this.mensajeExito =
+          data?.mensaje ||
+          (data?.fechaLimite
+            ? `Solicitud de baja registrada. Reactivá el perfil antes del ${formatearFechaHora(data.fechaLimite)}.`
+            : "Solicitud de baja registrada.");
         this.modalEliminarVisible = false;
         this.modalPerfilVisible = false;
         await this.cargarPerfiles();
@@ -582,8 +587,12 @@ export default {
         this.modalPerfilVisible = false;
         await this.cargarPerfiles();
       } catch (error) {
+        const status = error?.response?.status;
         this.mensajeError =
-          error?.response?.data?.message || "No se pudo reactivar el perfil.";
+          error?.response?.data?.message ||
+          (status === 409
+            ? "El plazo de reactivación venció: el perfil ya está en estado Baja."
+            : "No se pudo reactivar el perfil.");
       } finally {
         this.cargando = false;
       }

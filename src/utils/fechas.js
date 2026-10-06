@@ -110,10 +110,10 @@ export function fechaExpiracionBaja(valor, dias = DIAS_REACTIVACION) {
   return new Date(p.anio, p.mes - 1, p.dia + dias, p.hora, p.minuto);
 }
 
-export function diasRestantesBaja(valor, dias = DIAS_REACTIVACION) {
-  const expira = fechaExpiracionBaja(valor, dias);
-  if (!expira) return null;
-  const restante = expira.getTime() - Date.now();
+export function diasRestantes(fecha) {
+  const p = aPartes(fecha);
+  if (!p) return null;
+  const restante = aFecha(p).getTime() - Date.now();
   if (restante <= 0) return null;
   return Math.ceil(restante / MS_POR_DIA);
 }

@@ -19,10 +19,20 @@ const perfilService = {
     return http.put(`/perfiles/${idPerfil}`, request);
   },
 
+  /**
+   * Solicita la baja de un perfil (estado PendienteBaja).
+   * @returns {Promise<{data: {mensaje: string, fechaLimite: string}}>} fechaLimite
+   * calculada por el backend con el diasBaja vigente.
+   */
   eliminar(idPerfil) {
     return http.delete(`/perfiles/${idPerfil}`);
   },
 
+  /**
+   * Reactiva un perfil en PendienteBaja.
+   * Responde 409 si el plazo ya venció (el scheduler lo marcó como Baja).
+   * @returns {Promise<{data: object}>} PerfilResponse con estado "Activo" y fechaLimite null
+   */
   reactivar(idPerfil) {
     return http.post(`/perfiles/${idPerfil}/reactivar`);
   },

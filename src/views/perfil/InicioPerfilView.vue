@@ -222,7 +222,7 @@ import {
   normCodigo,
   inLista,
 } from "../../utils/perfilConstants.js";
-import { diasRestantesBaja, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
+import { diasRestantes, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
 
 export default {
   name: "InicioPerfilView",
@@ -275,15 +275,15 @@ export default {
       const { expiracion, restante } = this.contadorBaja;
       const base = "Este perfil tiene una solicitud de baja pendiente.";
       if (!expiracion) {
-        return `${base} Podés reactivarlo antes de que se elimine definitivamente.`;
+        return `${base} Podés reactivarlo mientras el plazo esté vigente.`;
       }
       const plazo =
         restante == null
-          ? "El plazo de reactivación venció."
+          ? "El plazo venció: el perfil quedará en estado Baja."
           : restante === 1
             ? "Queda 1 día para reactivarlo."
             : `Quedan ${restante} días para reactivarlo.`;
-      return `${base} Se eliminará el ${expiracion}. ${plazo}`;
+      return `${base} El ${expiracion} pasará al estado Baja y quedará inaccesible para la comunidad. ${plazo}`;
     },
     habilidades() {
       const lista = Array.isArray(this.perfil?.habilidades) ? this.perfil.habilidades : [];
@@ -382,11 +382,12 @@ export default {
       }
     },
     actualizarContadorBaja() {
+      const fechaLimite = this.perfil?.fechaLimite;
       const iso = this.perfil?.fechaSolicitudBaja;
-      const expira = fechaExpiracionBaja(iso);
+      const expira = fechaLimite || (iso ? fechaExpiracionBaja(iso) : null);
       this.contadorBaja = {
         expiracion: expira ? formatearFecha(expira) : null,
-        restante: diasRestantesBaja(iso),
+        restante: expira ? diasRestantes(expira) : null,
       };
     },
     async reactivarPerfil() {
@@ -397,8 +398,12 @@ export default {
         await perfilService.reactivar(this.perfil.idPerfil);
         await this.cargarDatos();
       } catch (error) {
+        const status = error?.response?.status;
         this.mensajeError =
-          error?.response?.data?.message || "No se pudo reactivar el perfil.";
+          error?.response?.data?.message ||
+          (status === 409
+            ? "El plazo de reactivación venció: el perfil ya está en estado Baja."
+            : "No se pudo reactivar el perfil.");
       } finally {
         this.reactivando = false;
       }
