@@ -55,21 +55,7 @@
     </section>
 
     <section v-if="mostrarAvanzado" class="buscar-perfil__filtros">
-      <VaInput
-        v-model="filtros.nombre"
-        class="buscar-perfil__campo"
-        placeholder="Nombre"
-        @keyup.enter="buscarAhora"
-        @input="programarBusqueda"
-      />
-
-      <VaInput
-        v-model="filtros.apellido"
-        class="buscar-perfil__campo"
-        placeholder="Apellido"
-        @keyup.enter="buscarAhora"
-        @input="programarBusqueda"
-      />
+    
 
       <VaSelect
         v-model="filtros.idCaracteristica"
