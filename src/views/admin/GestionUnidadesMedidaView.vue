@@ -94,6 +94,7 @@
             size="small"
             preset="primary"
             icon="mso-edit"
+            :loading="precargando && filaEditando === rowData.idUnidad"
             @click="abrirEditar(rowData)"
           >
             Modificar
@@ -119,22 +120,32 @@
       hide-default-actions
       size="medium"
     >
+      <BaseAlert :message="errorMessage" type="error" />
+
       <VaForm ref="formUnidad" @submit.prevent="guardarUnidad">
         <div class="gestion-unidades__form">
           <VaInput
+            ref="inputNombre"
             v-model="form.nombre"
             :rules="[reglas.requerido, reglas.max50]"
+            :error="errorCampo('nombre')"
+            :error-messages="mensajeCampo('nombre')"
             label="Nombre"
             placeholder="Ej: Kilogramos"
-            :disabled="!puedeCrear && !puedeModificar"
+            :disabled="modoEdicion ? !puedeModificar : !puedeCrear"
+            @update:modelValue="limpiarErrorCampo('nombre')"
           />
 
           <VaInput
+            ref="inputSimbolo"
             v-model="form.simbolo"
             :rules="[reglas.requerido, reglas.max50]"
+            :error="errorCampo('simbolo')"
+            :error-messages="mensajeCampo('simbolo')"
             label="Símbolo"
             placeholder="Ej: kg"
-            :disabled="!puedeCrear && !puedeModificar"
+            :disabled="modoEdicion ? !puedeModificar : !puedeCrear"
+            @update:modelValue="limpiarErrorCampo('simbolo')"
           />
 
           <VaSelect
@@ -143,9 +154,12 @@
             value-by="value"
             text-by="text"
             :rules="[reglas.requerido]"
+            :error="errorCampo('tipoDatoPermitido')"
+            :error-messages="mensajeCampo('tipoDatoPermitido')"
             label="Tipo de dato permitido"
             placeholder="Seleccioná el tipo de dato"
-            :disabled="!puedeCrear && !puedeModificar"
+            :disabled="modoEdicion ? !puedeModificar : !puedeCrear"
+            @update:modelValue="limpiarErrorCampo('tipoDatoPermitido')"
           />
         </div>
       </VaForm>
@@ -154,7 +168,7 @@
         <div class="gestion-unidades__modal-footer">
           <VaButton preset="secondary" @click="modalVisible = false">Cancelar</VaButton>
           <VaButton
-            v-if="puedeCrear || puedeModificar"
+            v-if="modoEdicion ? puedeModificar : puedeCrear"
             color="primary"
             :loading="guardando"
             @click="guardarUnidad"
@@ -202,9 +216,11 @@
 <script>
 import adminUnidadesMedidaService from "../../services/adminUnidadesMedidaService";
 import { tienePermiso } from "../../services/authState";
+import { mensajeErrorApi } from "../../utils/apiError";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 const TIPOS_DATO = ["NUMERICO", "TEXTO"];
+const CAMPOS_FORM = ["nombre", "simbolo", "tipoDatoPermitido"];
 
 export default {
   name: "GestionUnidadesMedidaView",
@@ -234,6 +250,9 @@ export default {
 
       modalVisible: false,
       modoEdicion: false,
+      precargando: false,
+      filaEditando: null,
+      erroresBackend: {},
       form: {
         idUnidad: null,
         nombre: "",
@@ -276,6 +295,14 @@ export default {
   async mounted() {
     await this.cargarUnidades();
   },
+  watch: {
+    modalVisible(abierto) {
+      if (!abierto) {
+        this.erroresBackend = {};
+        this.errorMessage = "";
+      }
+    },
+  },
   methods: {
     async cargarUnidades() {
       if (!this.puedeVer) return;
@@ -288,8 +315,7 @@ export default {
         const datos = response?.data;
         this.unidades = Array.isArray(datos) ? datos : datos?.unidades || [];
       } catch (error) {
-        this.errorMessage =
-          error?.response?.data?.message || "No se pudieron cargar las unidades de medida.";
+        this.errorMessage = mensajeErrorApi(error, "No se pudieron cargar las unidades de medida.");
       } finally {
         this.cargando = false;
       }
@@ -303,22 +329,39 @@ export default {
         simbolo: "",
         tipoDatoPermitido: null,
       };
+      this.erroresBackend = {};
       this.successMessage = "";
       this.errorMessage = "";
       this.modalVisible = true;
     },
 
-    abrirEditar(unidad) {
-      this.modoEdicion = true;
-      this.form = {
-        idUnidad: unidad.idUnidad,
-        nombre: unidad.nombre || "",
-        simbolo: unidad.simbolo || "",
-        tipoDatoPermitido: unidad.tipoDatoPermitido || null,
-      };
+    async abrirEditar(unidad) {
+      this.precargando = true;
+      this.filaEditando = unidad.idUnidad;
       this.successMessage = "";
       this.errorMessage = "";
-      this.modalVisible = true;
+      try {
+        const response = await adminUnidadesMedidaService.obtener(unidad.idUnidad);
+        const detalle = response?.data || {};
+        this.modoEdicion = true;
+        this.form = {
+          idUnidad: detalle.idUnidad ?? unidad.idUnidad,
+          nombre: detalle.nombre || "",
+          simbolo: detalle.simbolo || "",
+          tipoDatoPermitido: detalle.tipoDatoPermitido || null,
+        };
+        this.erroresBackend = {};
+        this.modalVisible = true;
+      } catch (error) {
+        const mensaje = mensajeErrorApi(error, "No se pudo cargar la unidad de medida.");
+        if (error?.response?.status === 404) {
+          await this.cargarUnidades();
+        }
+        this.errorMessage = mensaje;
+      } finally {
+        this.precargando = false;
+        this.filaEditando = null;
+      }
     },
 
     buildRequest() {
@@ -336,25 +379,90 @@ export default {
       this.guardando = true;
       this.successMessage = "";
       this.errorMessage = "";
+      this.erroresBackend = {};
       try {
-        if (this.modoEdicion) {
+        const enModoEdicion = this.modoEdicion;
+        if (enModoEdicion) {
           await adminUnidadesMedidaService.actualizar(this.form.idUnidad, this.buildRequest());
-          this.successMessage = "Unidad de medida actualizada correctamente.";
         } else {
           await adminUnidadesMedidaService.crear(this.buildRequest());
-          this.successMessage = "Unidad de medida creada correctamente.";
         }
         this.modalVisible = false;
         await this.cargarUnidades();
+        this.successMessage = enModoEdicion
+          ? "Unidad de medida actualizada correctamente."
+          : "Unidad de medida creada correctamente.";
       } catch (error) {
-        this.errorMessage = this.mensajeError(error, "No se pudo guardar la unidad de medida.");
+        await this.manejarErrorGuardado(error);
       } finally {
         this.guardando = false;
       }
     },
 
+    async manejarErrorGuardado(error) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
+      if (status === 400 && this.mapearErroresCampo(data?.errores)) {
+        return;
+      }
+
+      if (status === 409) {
+        this.errorMessage = data?.message || "Ya existe una unidad de medida con esos datos.";
+        this.enfocarCampoDuplicado(data?.message);
+        return;
+      }
+
+      const mensaje = mensajeErrorApi(error, "No se pudo guardar la unidad de medida.");
+      if (status === 404) {
+        this.modalVisible = false;
+        await this.cargarUnidades();
+      }
+      this.errorMessage = mensaje;
+    },
+
+    mapearErroresCampo(errores) {
+      if (!errores || typeof errores !== "object") return false;
+      const relevantes = {};
+      for (const campo of CAMPOS_FORM) {
+        if (errores[campo]) relevantes[campo] = errores[campo];
+      }
+      if (Object.keys(relevantes).length === 0) return false;
+      this.erroresBackend = relevantes;
+      return true;
+    },
+
+    enfocarCampoDuplicado(mensaje) {
+      const texto = String(mensaje || "").toLowerCase();
+      let ref = null;
+      if (texto.includes("símbolo") || texto.includes("simbolo")) {
+        ref = this.$refs.inputSimbolo;
+      } else if (texto.includes("nombre")) {
+        ref = this.$refs.inputNombre;
+      }
+      if (ref) this.$nextTick(() => ref.focus());
+    },
+
+    errorCampo(campo) {
+      return !!this.erroresBackend[campo] || undefined;
+    },
+
+    mensajeCampo(campo) {
+      return this.erroresBackend[campo] || undefined;
+    },
+
+    limpiarErrorCampo(campo) {
+      if (this.erroresBackend[campo]) {
+        const errores = { ...this.erroresBackend };
+        delete errores[campo];
+        this.erroresBackend = errores;
+      }
+    },
+
     confirmarEliminar(unidad) {
       this.unidadSeleccionada = unidad;
+      this.successMessage = "";
+      this.errorMessage = "";
       this.modalEliminarVisible = true;
     },
 
@@ -365,31 +473,25 @@ export default {
       this.errorMessage = "";
       try {
         await adminUnidadesMedidaService.eliminar(this.unidadSeleccionada.idUnidad);
-        this.successMessage = `La unidad "${this.unidadSeleccionada.nombre}" fue eliminada.`;
         this.modalEliminarVisible = false;
         this.unidadSeleccionada = null;
         await this.cargarUnidades();
+        this.successMessage = "La unidad de medida fue eliminada.";
       } catch (error) {
-        this.errorMessage = this.mensajeError(error, "No se pudo eliminar la unidad de medida.");
+        const status = error?.response?.status;
+        const mensaje = mensajeErrorApi(error, "No se pudo eliminar la unidad de medida.");
+        if (status === 404) {
+          this.modalEliminarVisible = false;
+          this.unidadSeleccionada = null;
+          await this.cargarUnidades();
+        } else if (status === 409) {
+          this.modalEliminarVisible = false;
+          this.unidadSeleccionada = null;
+        }
+        this.errorMessage = mensaje;
       } finally {
         this.eliminando = false;
       }
-    },
-
-    mensajeError(error, fallback) {
-      const status = error?.response?.status;
-      const data = error?.response?.data;
-      if (status === 409) {
-        return data?.message ||
-          "No se puede eliminar o modificar: la unidad está asociada a una característica técnica.";
-      }
-      if (status === 400) {
-        return data?.message || "Datos inválidos. Verificá los campos del formulario.";
-      }
-      if (status === 404) {
-        return data?.message || "La unidad de medida no existe.";
-      }
-      return data?.message || fallback;
     },
   },
 };

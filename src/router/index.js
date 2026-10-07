@@ -158,12 +158,6 @@ const routes = [
     meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Unidades de medida" }
   },
   {
-    path: "/admin/unidades-medida/:id",
-    name: "editar-unidad-medida",
-    component: GestionUnidadesMedidaView,
-    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Detalle de unidad de medida" }
-  },
-  {
     path: "/admin/configuracion-scheduler",
     name: "configuracion-scheduler",
     component: ConfiguracionSchedulerView,
