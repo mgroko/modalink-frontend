@@ -99,8 +99,8 @@
         {{ value ? formatearFecha(value) : 'No solicitó' }}
       </template>
 
-      <template #cell(genero)="{ value }">
-        {{ textoGenero(value) }}
+      <template #cell(genero)="{ source }">
+        {{ textoGenero(source) }}
       </template>
 
       <template #cell(acciones)="{ rowData }">
@@ -474,7 +474,15 @@ export default {
         { key: "correo", label: "Correo", sortable: true },
         { key: "rolGlobal", label: "Rol" },
         { key: "estado", label: "Estado", sortable: true },
-        { key: "genero", label: "Género", sortable: true },
+        {
+          key: "genero",
+          label: "Género",
+          sortable: true,
+          sortingFn: (a, b) =>
+            String(a?.nombre ?? a?.codigo ?? "").localeCompare(
+              String(b?.nombre ?? b?.codigo ?? ""),
+            ),
+        },
         { key: "deshabilitacion", label: "Deshabilitación" },
         { key: "fechaSolicitudBaja", label: "Solicitud de baja" },
         { key: "acciones", label: "Acciones" },
@@ -540,15 +548,15 @@ export default {
 
     textoGenero(genero) {
       if (!genero) return "—";
+      if (typeof genero === "object") {
+        return genero.nombre || genero.codigo || "—";
+      }
       const codigos = {
         MUJER: "Mujer",
         HOMBRE: "Hombre",
         NO_BINARIO: "No binario",
         NO_DECIRLO: "Prefiero no decirlo",
       };
-      if (typeof genero === "object") {
-        return codigos[genero.codigo] || genero.codigo || "—";
-      }
       return codigos[genero] || genero;
     },
 
