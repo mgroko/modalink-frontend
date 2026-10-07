@@ -7,6 +7,11 @@
       Cargando...
     </div>
 
+    <div v-else-if="mensajeError" class="proximos-eventos__estado">
+      <span class="material-symbols-outlined">error</span>
+      {{ mensajeError }}
+    </div>
+
     <div v-else-if="eventos.length === 0" class="proximos-eventos__vacio">
       No hay eventos próximos.
     </div>
@@ -34,6 +39,7 @@
 <script>
 import calendarioService from "../../services/calendarioService";
 import { formatearRangoEvento } from "../../utils/fechas.js";
+import { mensajeErrorApi } from "../../utils/apiError";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
@@ -47,6 +53,7 @@ export default {
     return {
       cargando: true,
       eventos: [],
+      mensajeError: "",
     };
   },
   async mounted() {
@@ -55,6 +62,7 @@ export default {
   methods: {
     async cargar() {
       this.cargando = true;
+      this.mensajeError = "";
       try {
         const response = await calendarioService.obtenerCalendario();
         const data = response?.data || {};
@@ -86,8 +94,9 @@ export default {
           .filter((e) => e.fecha >= ahora)
           .sort((a, b) => a.fecha - b.fecha)
           .slice(0, 5);
-      } catch {
+      } catch (error) {
         this.eventos = [];
+        this.mensajeError = mensajeErrorApi(error, "No se pudieron cargar los próximos eventos.");
       } finally {
         this.cargando = false;
       }

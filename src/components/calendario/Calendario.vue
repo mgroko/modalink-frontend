@@ -165,6 +165,8 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import ConfigurarJornada from "./ConfigurarJornada.vue";
 import CrearBloqueo from "./CrearBloqueo.vue";
 import { fechaLarga, formatearRangoEvento, rangoSemana } from "../../utils/fechas.js";
+import { horaCorta, aMinutos, aHora } from "../../utils/horas";
+import { mensajeErrorApi } from "../../utils/apiError";
 
 const NOMBRES_DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -237,8 +239,8 @@ export default {
       let min = "09:00";
       let max = "18:00";
       (this.calendario?.jornada?.dias || []).forEach((d) => {
-        const inicio = d.horarioInicioManiana || d.horaInicio;
-        const fin = d.horarioFinTarde || d.horaFin;
+        const inicio = d.horaInicioManana;
+        const fin = d.horaFinTarde;
         if (inicio && inicio.slice(0, 5) < min) min = inicio.slice(0, 5);
         if (fin && fin.slice(0, 5) > max) max = fin.slice(0, 5);
       });
@@ -281,8 +283,7 @@ export default {
         this.calendario = response.data;
         this.diaSeleccionado = new Date();
       } catch (error) {
-        this.mensajeError =
-          error?.response?.data?.message || "No se pudo cargar el calendario.";
+        this.mensajeError = mensajeErrorApi(error, "No se pudo cargar el calendario.");
       } finally {
         this.cargando = false;
       }
@@ -313,10 +314,10 @@ export default {
       const jornada = this.jornadaPorDia(diaSemana);
       if (!jornada) return false;
 
-      const iniManiana = (jornada.horarioInicioManiana || jornada.horaInicio || "").slice(0, 5);
-      const finManiana = (jornada.horarioFinManiana || "").slice(0, 5);
-      const iniTarde = (jornada.horarioInicioTarde || "").slice(0, 5);
-      const finTarde = (jornada.horarioFinTarde || jornada.horaFin || "").slice(0, 5);
+      const iniManiana = horaCorta(jornada.horaInicioManana);
+      const finManiana = horaCorta(jornada.horaFinManana);
+      const iniTarde = horaCorta(jornada.horaInicioTarde);
+      const finTarde = horaCorta(jornada.horaFinTarde);
 
       if (!finManiana || !iniTarde) {
         // Jornada corrida: entre iniManiana y finTarde
@@ -328,24 +329,14 @@ export default {
       const enTarde = slotInicio >= iniTarde && slotFin <= finTarde;
       return enManiana || enTarde;
     },
-    horaAMinutos(hora) {
-      const h = hora.split(":")[0];
-      const m = hora.split(":")[1];
-      return parseInt(h, 10) * 60 + parseInt(m, 10);
-    },
-    minutosAHora(minutos) {
-      const h = Math.floor(minutos / 60);
-      const m = minutos % 60;
-      return `${pad(h)}:${pad(m)}`;
-    },
     generarSlots(horaInicio, horaFin) {
       const slots = [];
-      const inicio = this.horaAMinutos(horaInicio);
-      const fin = this.horaAMinutos(horaFin);
+      const inicio = aMinutos(horaInicio);
+      const fin = aMinutos(horaFin);
       for (let t = inicio; t < fin; t += 60) {
         const h = Math.floor(t / 60);
         const etiqueta = `${pad(h)}:00`;
-        slots.push({ hora: t, etiqueta, inicio: this.minutosAHora(t), fin: this.minutosAHora(t + 60) });
+        slots.push({ hora: t, etiqueta, inicio: aHora(t), fin: aHora(t + 60) });
       }
       return slots;
     },
@@ -435,8 +426,7 @@ export default {
         this.mensajeExito = "Bloqueo eliminado. Horario marcado como disponible.";
         await this.cargarCalendario();
       } catch (error) {
-        this.mensajeError =
-          error?.response?.data?.message || "No se pudo eliminar el bloqueo.";
+        this.mensajeError = mensajeErrorApi(error, "No se pudo eliminar el bloqueo.");
         this.modalEliminarVisible = false;
       } finally {
         this.eliminando = false;

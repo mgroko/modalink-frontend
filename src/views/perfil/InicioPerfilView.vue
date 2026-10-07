@@ -222,6 +222,7 @@ import {
   inLista,
 } from "../../utils/perfilConstants.js";
 import { diasRestantes, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
+import { mensajeErrorApi } from "../../utils/apiError";
 
 export default {
   name: "InicioPerfilView",
@@ -353,15 +354,8 @@ export default {
         const status = error?.response?.status;
         if (status === 404) {
           this.noEncontrado = true;
-        } else if (status === 401) {
-          this.$router.push({
-            name: "login",
-            query: { redirect: this.$route.fullPath },
-          });
-          return;
         } else {
-          this.mensajeError =
-            error?.response?.data?.message || "No se pudo cargar el perfil. Intentá nuevamente.";
+          this.mensajeError = mensajeErrorApi(error, "No se pudo cargar el perfil. Intentá nuevamente.");
         }
       } finally {
         this.cargando = false;

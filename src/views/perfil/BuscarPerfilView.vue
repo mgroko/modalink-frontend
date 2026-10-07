@@ -267,6 +267,7 @@ import usuarioService from "../../services/usuarioService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { useToast } from "vuestic-ui";
 import { formatUbicacion, resolverUbicacionTexto } from "../../utils/ubicacion.js";
+import { mensajeErrorApi } from "../../utils/apiError";
 import {
   ETIQUETAS_CARAC,
   ETIQUETAS_VALORES,
@@ -789,12 +790,9 @@ export default {
         const status = error?.response?.status;
         this.perfiles = [];
         if (status === 401) {
-          this.$router.push({
-            name: "login",
-            query: { redirect: this.$route.fullPath },
-          });
+          this.mensajeError = mensajeErrorApi(error, "Tu cuenta no se encuentra habilitada.");
         } else if (status === 403) {
-          this.mensajeError = "Tu cuenta no se encuentra habilitada para realizar búsquedas.";
+          this.mensajeError = mensajeErrorApi(error, "No se pudo completar la búsqueda.");
         } else if (!status || status >= 500) {
           this.puedeReintentar = true;
           this.mensajeError = "Ocurrió un error al buscar perfiles. Inténtalo nuevamente.";

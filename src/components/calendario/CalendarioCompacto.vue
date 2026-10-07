@@ -5,6 +5,11 @@
       Cargando calendario...
     </div>
 
+    <div v-else-if="mensajeError" class="cal-semana__estado">
+      <span class="material-symbols-outlined">error</span>
+      {{ mensajeError }}
+    </div>
+
     <template v-else-if="calendario">
       <!-- Navegación de semana -->
       <div class="cal-semana__nav">
@@ -106,6 +111,8 @@
 <script>
 import calendarioService from "../../services/calendarioService";
 import { fechaLarga, rangoSemana } from "../../utils/fechas.js";
+import { horaCorta, aMinutos } from "../../utils/horas";
+import { mensajeErrorApi } from "../../utils/apiError";
 
 const NOMBRES_DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -121,11 +128,6 @@ function aDate(localDateTime) {
   return new Date(localDateTime);
 }
 
-function horaAMinutos(hora) {
-  const [h, m] = hora.split(":").map(Number);
-  return h * 60 + m;
-}
-
 export default {
   name: "CalendarioCompacto",
   emits: ["ver-completo"],
@@ -135,6 +137,7 @@ export default {
       calendario: null,
       semanaInicio: null,
       diaSeleccionadoKey: null,
+      mensajeError: "",
     };
   },
   computed: {
@@ -181,10 +184,10 @@ export default {
       const jornada = this.jornadaPorDia(diaSemana);
       if (!jornada) return null;
 
-      const iniManiana = (jornada.horarioInicioManiana || jornada.horaInicio || "").slice(0, 5);
-      const finManiana = (jornada.horarioFinManiana || "").slice(0, 5);
-      const iniTarde = (jornada.horarioInicioTarde || "").slice(0, 5);
-      const finTarde = (jornada.horarioFinTarde || jornada.horaFin || "").slice(0, 5);
+      const iniManiana = horaCorta(jornada.horaInicioManana);
+      const finManiana = horaCorta(jornada.horaFinManana);
+      const iniTarde = horaCorta(jornada.horaInicioTarde);
+      const finTarde = horaCorta(jornada.horaFinTarde);
 
       if (finManiana && iniTarde) {
         return `${iniManiana} – ${finManiana} / ${iniTarde} – ${finTarde}`;
@@ -244,11 +247,13 @@ export default {
   methods: {
     async cargarCalendario() {
       this.cargando = true;
+      this.mensajeError = "";
       try {
         const response = await calendarioService.obtenerCalendario();
         this.calendario = response.data;
-      } catch {
+      } catch (error) {
         this.calendario = null;
+        this.mensajeError = mensajeErrorApi(error, "No se pudo cargar el calendario.");
       } finally {
         this.cargando = false;
       }
@@ -302,22 +307,22 @@ export default {
         return [{ tipo: "descanso", ancho: 100, titulo: "Día no laborable" }];
       }
 
-      const iniManiana = (jornada.horarioInicioManiana || jornada.horaInicio || "09:00").slice(0, 5);
-      const finTarde = (jornada.horarioFinTarde || jornada.horaFin || "18:00").slice(0, 5);
-      const totalMinutos = horaAMinutos(finTarde) - horaAMinutos(iniManiana);
+      const iniManiana = horaCorta(jornada.horaInicioManana) || "09:00";
+      const finTarde = horaCorta(jornada.horaFinTarde) || "18:00";
+      const totalMinutos = aMinutos(finTarde) - aMinutos(iniManiana);
 
       if (totalMinutos <= 0) {
         return [{ tipo: "descanso", ancho: 100, titulo: "Sin jornada definida" }];
       }
 
       const segmentos = [];
-      let cursorMinutos = horaAMinutos(iniManiana);
+      let cursorMinutos = aMinutos(iniManiana);
 
       const bloquesOrdenados = bloques
         .map((b) => ({
           tipo: b.tipo,
-          inicio: Math.max(horaAMinutos(this.horaCorta(b.ini)), horaAMinutos(iniManiana)),
-          fin: Math.min(horaAMinutos(this.horaCorta(b.fin)), horaAMinutos(finTarde)),
+          inicio: Math.max(aMinutos(this.horaDeFecha(b.ini)), aMinutos(iniManiana)),
+          fin: Math.min(aMinutos(this.horaDeFecha(b.fin)), aMinutos(finTarde)),
         }))
         .filter((b) => b.fin > b.inicio)
         .sort((a, b) => a.inicio - b.inicio);
@@ -340,8 +345,8 @@ export default {
         cursorMinutos = bloque.fin;
       }
 
-      if (cursorMinutos < horaAMinutos(finTarde)) {
-        const duracion = horaAMinutos(finTarde) - cursorMinutos;
+      if (cursorMinutos < aMinutos(finTarde)) {
+        const duracion = aMinutos(finTarde) - cursorMinutos;
         segmentos.push({
           tipo: "disponible",
           ancho: (duracion / totalMinutos) * 100,
@@ -365,7 +370,7 @@ export default {
       const tipos = bloques.map((b) => (b.tipo === "actividad" ? "actividad" : "bloqueo"));
       return `${tipos.length} evento(s): ${tipos.join(", ")}`;
     },
-    horaCorta(fecha) {
+    horaDeFecha(fecha) {
       return `${pad(fecha.getHours())}:${pad(fecha.getMinutes())}`;
     },
     seleccionarDia(dia) {

@@ -35,11 +35,12 @@
       <div class="crear-bloqueo__campo">
         <VaInput
           v-model="motivo"
-          label="Motivo (opcional)"
+          label="Motivo"
           type="text"
           placeholder="Ej: Vacaciones, compromiso personal..."
+          :rules="[reglas.requerido, reglas.motivoMax]"
           maxlength="200"
-          hint="Máximo 200 caracteres."
+          hint="Obligatorio, máximo 200 caracteres. Este motivo será visible en tu perfil profesional."
         />
       </div>
     </VaForm>
@@ -56,6 +57,7 @@
 <script>
 import calendarioService from "../../services/calendarioService";
 import BaseAlert from "../../components/AlertaBase.vue";
+import { mensajeErrorApi } from "../../utils/apiError";
 
 export default {
   name: "CrearBloqueo",
@@ -78,6 +80,7 @@ export default {
       mensajeError: "",
       reglas: {
         requerido: (v) => !!v || "Campo requerido.",
+        motivoMax: (v) => !v || v.length <= 200 || "El motivo no puede superar los 200 caracteres.",
       },
     };
   },
@@ -115,18 +118,20 @@ export default {
         await calendarioService.crearBloqueo({
           fechaHoraInicio: inicio,
           fechaHoraFin: fin,
-          motivo: this.motivo || null,
+          motivo: this.motivo.trim(),
         });
         this.$emit("creado");
       } catch (error) {
-        this.mensajeError =
-          error?.response?.data?.message || "No se pudo crear el bloqueo.";
+        this.mensajeError = mensajeErrorApi(error, "No se pudo crear el bloqueo.");
       } finally {
         this.creando = false;
       }
     },
     parseFecha(valor) {
       if (!valor) return null;
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(valor)) {
+        return `${valor}:00`;
+      }
       return valor;
     },
   },

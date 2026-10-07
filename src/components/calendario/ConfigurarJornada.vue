@@ -54,16 +54,16 @@
             <!-- Modalidad Corrida -->
             <div v-if="!curso.partida" class="configurar-jornada__bloque-horarios">
               <VaInput
-                v-model="curso.horarioInicioManiana"
+                v-model="curso.horaInicioManana"
                 type="time"
                 label="Inicio de jornada"
                 :rules="[reglas.requerido]"
               />
               <VaInput
-                v-model="curso.horarioFinTarde"
+                v-model="curso.horaFinTarde"
                 type="time"
                 label="Fin de jornada"
-                :rules="[reglas.requerido, (v) => reglas.finPosteriorAInicio(curso.horarioInicioManiana, v)]"
+                :rules="[reglas.requerido, (v) => reglas.finPosteriorAInicio(curso.horaInicioManana, v)]"
               />
             </div>
 
@@ -73,16 +73,16 @@
                 <span class="configurar-jornada__seccion-titulo">Mañana</span>
                 <div class="configurar-jornada__bloque-horarios">
                   <VaInput
-                    v-model="curso.horarioInicioManiana"
+                    v-model="curso.horaInicioManana"
                     type="time"
                     label="Inicio mañana"
                     :rules="[reglas.requerido]"
                   />
                   <VaInput
-                    v-model="curso.horarioFinManiana"
+                    v-model="curso.horaFinManana"
                     type="time"
                     label="Fin mañana"
-                    :rules="[reglas.requerido, (v) => reglas.finPosteriorAInicio(curso.horarioInicioManiana, v, 'El fin de la mañana debe ser posterior a su inicio.')]"
+                    :rules="[reglas.requerido, (v) => reglas.finPosteriorAInicio(curso.horaInicioManana, v, 'El fin de la mañana debe ser posterior a su inicio.')]"
                   />
                 </div>
               </div>
@@ -91,16 +91,16 @@
                 <span class="configurar-jornada__seccion-titulo">Tarde</span>
                 <div class="configurar-jornada__bloque-horarios">
                   <VaInput
-                    v-model="curso.horarioInicioTarde"
+                    v-model="curso.horaInicioTarde"
                     type="time"
                     label="Inicio tarde"
-                    :rules="[reglas.requerido, (v) => reglas.finPosteriorAInicio(curso.horarioFinManiana, v, 'La tarde debe iniciar después del fin de la mañana.')]"
+                    :rules="[reglas.requerido, (v) => reglas.finPosteriorAInicio(curso.horaFinManana, v, 'El bloque de la tarde debe comenzar después del fin del bloque de la mañana.')]"
                   />
                   <VaInput
-                    v-model="curso.horarioFinTarde"
+                    v-model="curso.horaFinTarde"
                     type="time"
                     label="Fin tarde"
-                    :rules="[reglas.requerido, (v) => reglas.finPosteriorAInicio(curso.horarioInicioTarde, v, 'El fin de la tarde debe ser posterior a su inicio.')]"
+                    :rules="[reglas.requerido, (v) => reglas.finPosteriorAInicio(curso.horaInicioTarde, v, 'El fin de la tarde debe ser posterior a su inicio.')]"
                   />
                 </div>
               </div>
@@ -124,6 +124,8 @@
 <script>
 import calendarioService from "../../services/calendarioService";
 import BaseAlert from "../../components/AlertaBase.vue";
+import { horaCorta, normalizarHoraEnvio } from "../../utils/horas";
+import { mensajeErrorApi } from "../../utils/apiError";
 
 const NOMBRES_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -145,7 +147,7 @@ export default {
   },
   data() {
     return {
-      margen: 60,
+      margen: 30,
       dias: [],
       guardando: false,
       mensajeError: "",
@@ -154,7 +156,7 @@ export default {
         margenMinimo: (v) => (v == null || v === "" || parseInt(v, 10) >= 0) || "Debe ser un número mayor o igual a 0.",
         finPosteriorAInicio: (inicio, fin, mensajePersonalizado) => {
           if (!fin || !inicio) return true;
-          return fin > inicio || (mensajePersonalizado || "El horario de fin debe ser posterior al de inicio.");
+          return fin > inicio || (mensajePersonalizado || "El horario de fin debe ser posterior al horario de inicio.");
         },
       },
     };
@@ -165,10 +167,6 @@ export default {
     },
   },
   methods: {
-    aHoraCorta(hora) {
-      if (!hora) return "";
-      return hora.slice(0, 5);
-    },
     inicializar() {
       this.mensajeError = "";
       const diasGuardados = (this.jornada?.dias || []).reduce((acc, d) => {
@@ -176,22 +174,22 @@ export default {
         return acc;
       }, {});
 
-      this.margen = this.jornada?.margenActividadMinutos ?? 60;
+      this.margen = this.jornada?.margenActividadMinutos ?? 30;
 
       this.dias = NOMBRES_DIAS.map((nombre, i) => {
         const diaSemana = i + 1;
         const guardado = diasGuardados[diaSemana];
-        const esPartida = !!(guardado?.horarioFinManiana && guardado?.horarioInicioTarde);
+        const esPartida = !!(guardado?.horaFinManana && guardado?.horaInicioTarde);
 
         return {
           diaSemana,
           nombre,
           habilitado: !!guardado,
           partida: esPartida,
-          horarioInicioManiana: this.aHoraCorta(guardado?.horarioInicioManiana) || "09:00",
-          horarioFinManiana: this.aHoraCorta(guardado?.horarioFinManiana) || "13:00",
-          horarioInicioTarde: this.aHoraCorta(guardado?.horarioInicioTarde) || "15:00",
-          horarioFinTarde: this.aHoraCorta(guardado?.horarioFinTarde) || "18:00",
+          horaInicioManana: horaCorta(guardado?.horaInicioManana) || "09:00",
+          horaFinManana: horaCorta(guardado?.horaFinManana) || "13:00",
+          horaInicioTarde: horaCorta(guardado?.horaInicioTarde) || "15:00",
+          horaFinTarde: horaCorta(guardado?.horaFinTarde) || "18:00",
         };
       });
     },
@@ -201,39 +199,33 @@ export default {
     togglePartida(curso, valor) {
       curso.partida = valor;
       if (valor) {
-        if (!curso.horarioFinManiana) curso.horarioFinManiana = "13:00";
-        if (!curso.horarioInicioTarde) curso.horarioInicioTarde = "15:00";
+        if (!curso.horaFinManana) curso.horaFinManana = "13:00";
+        if (!curso.horaInicioTarde) curso.horaInicioTarde = "15:00";
       }
-    },
-    normalizarHora(hora) {
-      if (!hora) return null;
-      const partes = hora.split(":");
-      if (partes.length === 2) return `${hora}:00`;
-      return hora;
     },
     validarDiaPartida(d) {
-      const { horarioInicioManiana, horarioFinManiana, horarioInicioTarde, horarioFinTarde } = d;
-      if (!horarioInicioManiana || !horarioFinManiana || !horarioInicioTarde || !horarioFinTarde) {
-        return "Para una jornada partida se deben completar los 4 horarios.";
+      const { horaInicioManana, horaFinManana, horaInicioTarde, horaFinTarde } = d;
+      if (!horaInicioManana || !horaFinManana || !horaInicioTarde || !horaFinTarde) {
+        return "Para una jornada partida se deben informar el fin del bloque de la mañana y el inicio del bloque de la tarde; para una jornada de corrido, ninguno de los dos.";
       }
-      if (horarioFinManiana <= horarioInicioManiana) {
+      if (horaFinManana <= horaInicioManana) {
         return `En ${d.nombre}: El fin de la mañana debe ser posterior a su inicio.`;
       }
-      if (horarioInicioTarde <= horarioFinManiana) {
-        return `En ${d.nombre}: El bloque de la tarde debe comenzar después del fin de la mañana.`;
+      if (horaInicioTarde <= horaFinManana) {
+        return `En ${d.nombre}: El bloque de la tarde debe comenzar después del fin del bloque de la mañana.`;
       }
-      if (horarioFinTarde <= horarioInicioTarde) {
+      if (horaFinTarde <= horaInicioTarde) {
         return `En ${d.nombre}: El fin de la tarde debe ser posterior a su inicio.`;
       }
       return null;
     },
     validarDiaCorrido(d) {
-      const { horarioInicioManiana, horarioFinTarde } = d;
-      if (!horarioInicioManiana || !horarioFinTarde) {
+      const { horaInicioManana, horaFinTarde } = d;
+      if (!horaInicioManana || !horaFinTarde) {
         return `En ${d.nombre}: Los horarios de inicio y fin son obligatorios.`;
       }
-      if (horarioFinTarde <= horarioInicioManiana) {
-        return `En ${d.nombre}: El horario de fin debe ser posterior al de inicio.`;
+      if (horaFinTarde <= horaInicioManana) {
+        return `En ${d.nombre}: El horario de fin debe ser posterior al horario de inicio.`;
       }
       return null;
     },
@@ -257,10 +249,10 @@ export default {
 
       const dias = diasHabilitados.map((d) => ({
         diaSemana: d.diaSemana,
-        horarioInicioManiana: this.normalizarHora(d.horarioInicioManiana),
-        horarioFinManiana: d.partida ? this.normalizarHora(d.horarioFinManiana) : null,
-        horarioInicioTarde: d.partida ? this.normalizarHora(d.horarioInicioTarde) : null,
-        horarioFinTarde: this.normalizarHora(d.horarioFinTarde),
+        horaInicioManana: normalizarHoraEnvio(d.horaInicioManana),
+        horaFinManana: d.partida ? normalizarHoraEnvio(d.horaFinManana) : null,
+        horaInicioTarde: d.partida ? normalizarHoraEnvio(d.horaInicioTarde) : null,
+        horaFinTarde: normalizarHoraEnvio(d.horaFinTarde),
       }));
 
       if (new Set(dias.map((d) => d.diaSemana)).size !== dias.length) {
@@ -277,8 +269,7 @@ export default {
         });
         this.$emit("guardada");
       } catch (error) {
-        this.mensajeError =
-          error?.response?.data?.message || "No se pudo guardar la jornada.";
+        this.mensajeError = mensajeErrorApi(error, "No se pudo guardar la jornada.");
       } finally {
         this.guardando = false;
       }

@@ -33,6 +33,10 @@
             'disponibilidad__dia--hoy': dia.esHoy,
             'disponibilidad__dia--descanso': dia.estado === 'descanso',
           }"
+          role="button"
+          tabindex="0"
+          @click="abrirDetalleDia(dia)"
+          @keydown.enter="abrirDetalleDia(dia)"
         >
           <span class="disponibilidad__dia-nombre">{{ dia.nombre }}</span>
           <span class="disponibilidad__dia-numero">{{ dia.numero }}</span>
@@ -141,12 +145,71 @@
         </div>
       </div>
     </template>
+
+    <!-- Modal: detalle del día -->
+    <VaModal
+      v-model="modalDetalleVisible"
+      size="small"
+      close-button
+      hide-default-actions
+    >
+      <template #header>
+        <h3 class="va-h5">Detalle del día</h3>
+      </template>
+
+      <p class="disponibilidad__detalle-fecha">{{ fechaDetalle }}</p>
+
+      <template v-if="diaDetalle && diaDetalle.estado === 'descanso'">
+        <p class="disponibilidad__detalle-vacio">Día no laborable.</p>
+      </template>
+
+      <template v-else-if="detalleDelDia">
+        <template v-if="detalleDelDia.bloqueos.length">
+          <span class="disponibilidad__detalle-subtitulo">Bloqueos manuales</span>
+          <div
+            v-for="b in detalleDelDia.bloqueos"
+            :key="b.idBloqueo"
+            class="disponibilidad__detalle-item disponibilidad__detalle-item--bloqueo"
+          >
+            <span class="disponibilidad__detalle-rango">{{ rangoEvento(b) }}</span>
+            <span class="disponibilidad__detalle-motivo">{{ b.motivo }}</span>
+          </div>
+        </template>
+
+        <template v-if="detalleDelDia.actividades.length">
+          <span class="disponibilidad__detalle-subtitulo">Actividades de proyecto</span>
+          <div
+            v-for="a in detalleDelDia.actividades"
+            :key="a.idActividad"
+            class="disponibilidad__detalle-item disponibilidad__detalle-item--actividad"
+          >
+            <span class="disponibilidad__detalle-rango">{{ rangoEvento(a) }}</span>
+            <span class="disponibilidad__detalle-motivo">{{ a.nombre }}</span>
+          </div>
+        </template>
+
+        <p
+          v-if="!detalleDelDia.bloqueos.length && !detalleDelDia.actividades.length"
+          class="disponibilidad__detalle-vacio"
+        >
+          Sin bloqueos ni actividades este día.
+        </p>
+      </template>
+
+      <template #footer>
+        <div class="disponibilidad__detalle-footer">
+          <VaButton preset="secondary" @click="modalDetalleVisible = false">Cerrar</VaButton>
+        </div>
+      </template>
+    </VaModal>
   </div>
 </template>
 
 <script>
 import calendarioService from "../../services/calendarioService";
-import { formatearRangoEvento, rangoSemana } from "../../utils/fechas.js";
+import { fechaLarga, formatearRangoEvento, rangoSemana } from "../../utils/fechas.js";
+import { horaCorta } from "../../utils/horas";
+import { mensajeErrorApi } from "../../utils/apiError";
 
 const NOMBRES_DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -177,6 +240,8 @@ export default {
       error: "",
       calendario: null,
       semanaInicio: null,
+      modalDetalleVisible: false,
+      diaDetalle: null,
     };
   },
   computed: {
@@ -226,6 +291,18 @@ export default {
       const fin = new Date(this.semanaInicio);
       fin.setDate(this.semanaInicio.getDate() + 6);
       return rangoSemana(this.semanaInicio, fin);
+    },
+    fechaDetalle() {
+      if (!this.diaDetalle) return "";
+      return fechaLarga(this.diaDetalle.fecha);
+    },
+    detalleDelDia() {
+      if (!this.diaDetalle || !this.calendario) return null;
+      const key = this.diaDetalle.fechaKey;
+      return {
+        bloqueos: (this.calendario.bloqueosManuales || []).filter((b) => this.itemEnFecha(b, key)),
+        actividades: (this.calendario.actividades || []).filter((a) => this.itemEnFecha(a, key)),
+      };
     },
     disponibles() {
       return this.diasSemana.filter((d) => d.estado === "disponible").length;
@@ -293,7 +370,7 @@ export default {
             dia: pad(inicio.getDate()),
             mes: MESES_CORTOS[inicio.getMonth()],
             rango: formatearRangoEvento(inicio, fin),
-            nombre: "No disponible",
+            nombre: b.motivo || "No disponible",
           });
         }
       });
@@ -318,10 +395,8 @@ export default {
         const status = err?.response?.status;
         if (status === 404) {
           this.error = "Este perfil no tiene una agenda configurada.";
-        } else if (status === 401) {
-          this.error = "Debes iniciar sesión para ver la disponibilidad.";
         } else {
-          this.error = "No se pudo cargar la disponibilidad. Intentá nuevamente.";
+          this.error = mensajeErrorApi(err, "No se pudo cargar la disponibilidad. Intentá nuevamente.");
         }
       } finally {
         this.cargando = false;
@@ -358,19 +433,27 @@ export default {
     },
     tieneBloqueo(fecha) {
       const key = toFechaKey(fecha);
-      return (this.calendario?.bloqueosManuales || []).some((b) => {
-        const ini = aDate(b.fechaHoraInicio);
-        const fin = aDate(b.fechaHoraFin);
-        const iniDia = new Date(`${key}T00:00:00`);
-        const finDia = new Date(`${key}T23:59:59`);
-        return ini < finDia && fin > iniDia;
-      });
+      return (this.calendario?.bloqueosManuales || []).some((b) => this.itemEnFecha(b, key));
+    },
+    itemEnFecha(item, fechaKey) {
+      const ini = aDate(item.fechaHoraInicio);
+      const fin = aDate(item.fechaHoraFin);
+      const iniDia = new Date(`${fechaKey}T00:00:00`);
+      const finDia = new Date(`${fechaKey}T23:59:59`);
+      return ini < finDia && fin > iniDia;
+    },
+    abrirDetalleDia(dia) {
+      this.diaDetalle = dia;
+      this.modalDetalleVisible = true;
+    },
+    rangoEvento(item) {
+      return formatearRangoEvento(item.fechaHoraInicio, item.fechaHoraFin);
     },
     formatearHorario(jornada) {
-      const ini = (jornada.horarioInicioManiana || "").slice(0, 5);
-      const finM = (jornada.horarioFinManiana || "").slice(0, 5);
-      const iniT = (jornada.horarioInicioTarde || "").slice(0, 5);
-      const fin = (jornada.horarioFinTarde || "").slice(0, 5);
+      const ini = horaCorta(jornada.horaInicioManana);
+      const finM = horaCorta(jornada.horaFinManana);
+      const iniT = horaCorta(jornada.horaInicioTarde);
+      const fin = horaCorta(jornada.horaFinTarde);
 
       if (!finM && !iniT) {
         return `${ini} – ${fin}`;
@@ -510,6 +593,7 @@ export default {
   background: var(--color-surface);
   border: 1px solid #e5e7eb;
   transition: transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
 }
 
 .disponibilidad__dia:hover {
@@ -872,5 +956,68 @@ export default {
   .disponibilidad__evento-badge {
     display: none;
   }
+}
+/* Detalle del día (modal) */
+.disponibilidad__detalle-fecha {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.disponibilidad__detalle-subtitulo {
+  display: block;
+  margin: 0.75rem 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.disponibilidad__detalle-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 0.4rem;
+}
+
+.disponibilidad__detalle-item--bloqueo {
+  background: #fff5f5;
+  border-color: #fecaca;
+}
+
+.disponibilidad__detalle-item--actividad {
+  background: #f3f2fa;
+  border-color: var(--color-secondary);
+}
+
+.disponibilidad__detalle-rango {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.disponibilidad__detalle-motivo {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.disponibilidad__detalle-vacio {
+  margin: 0.5rem 0 0;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.disponibilidad__detalle-footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
 }
 </style>

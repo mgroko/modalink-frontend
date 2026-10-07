@@ -361,6 +361,7 @@ import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { state, tienePermiso } from "../../services/authState";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
+import { mensajeErrorApi } from "../../utils/apiError";
 import { useToast } from "vuestic-ui";
 
 const DEBOUNCE_MS = 300;
@@ -569,10 +570,12 @@ export default {
         const status = error?.response?.status;
         this.usuarios = [];
         if (status === 401) {
-          this.$router.push({ name: "login", query: { redirect: this.$route.fullPath } });
-        } else if (status === 403) {
+          this.errorMessage = mensajeErrorApi(error, "Tu cuenta no se encuentra activa.");
+        } else if (status === 403 && error._esPermiso) {
           this.accesoDenegado = true;
           this.errorMessage = "No tenés permisos para buscar usuarios (permiso VER_USUARIOS).";
+        } else if (status === 403) {
+          this.errorMessage = mensajeErrorApi(error, "No se pudo completar la búsqueda.");
         } else if (status === 400) {
           this.errorMessage =
             "Parámetros de búsqueda inválidos. Corregí los filtros aplicados (no se reintentará automáticamente).";
