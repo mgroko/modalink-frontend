@@ -1,17 +1,26 @@
 <template>
   <div class="inicio-perfil">
-    <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
-
-    <div v-if="cargando" class="inicio-perfil__estado">
-      <span class="material-symbols-outlined inicio-perfil__estado-icono">hourglass_empty</span>
-      Cargando perfil...
+    <BaseAlert v-if="mensajeExito" :message="mensajeExito" type="success" />
+    <div v-if="mensajeError" class="inicio-perfil__error">
+      <BaseAlert :message="mensajeError" type="error" />
+      <VaButton
+        v-if="errorCarga"
+        size="small"
+        preset="secondary"
+        icon="mso-refresh"
+        @click="cargarDatos"
+      >
+        Reintentar
+      </VaButton>
     </div>
+
+    <SkeletonPerfil v-if="cargando" />
 
     <div v-else-if="noEncontrado" class="inicio-perfil__estado">
       <span class="material-symbols-outlined inicio-perfil__estado-icono">person_off</span>
-      El perfil que buscas no está disponible o ha sido dado de baja.
-      <VaButton preset="secondary" @click="$router.push({ name: 'home' })">
-        Volver al inicio
+      {{ mensajeNoEncontrado || "El perfil que buscas no está disponible o ha sido dado de baja." }}
+      <VaButton preset="secondary" @click="$router.push({ name: 'buscar-perfiles' })">
+        Volver a la búsqueda
       </VaButton>
     </div>
 
@@ -41,6 +50,16 @@
             Reactivar perfil
           </VaButton>
         </div>
+      </VaAlert>
+
+      <VaAlert
+        v-if="esPropio && perfil.estado === 'Deshabilitado'"
+        color="danger"
+        class="inicio-perfil__alerta-baja"
+        icon="mso-lock"
+      >
+        Tu perfil está deshabilitado. Podés verlo y editarlo, pero no será visible para la
+        comunidad.
       </VaAlert>
 
       <div class="inicio-perfil__layout">
@@ -185,13 +204,19 @@
               :seccion-activa="seccion"
               @cambiar-seccion="cambiarSeccion"
               @navegar-ruta="navegarRuta"
-              @conectar="proximamente"
-              @mensaje="proximamente"
+              @contactar="proximamente"
+              @reportar="modalReporte = true"
             />
             <ResenasCard :resenas="resenas" />
           </template>
         </aside>
       </div>
+
+      <ReportarPerfilModal
+        v-model="modalReporte"
+        :perfil="perfil"
+        @reportado="alReportar"
+      />
     </template>
   </div>
 </template>
@@ -208,9 +233,10 @@ import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
 import ResenasCard from "../../components/perfil/ResenasCard.vue";
+import ReportarPerfilModal from "../../components/perfil/ReportarPerfilModal.vue";
+import SkeletonPerfil from "../../components/perfil/SkeletonPerfil.vue";
 import {
   ETIQUETAS_CARAC,
-  ETIQUETAS_VALORES,
   ORDEN_CARAC,
   CODIGOS_ALTURA,
   CODIGOS_MEDIDAS,
@@ -233,7 +259,9 @@ export default {
     PerfilHero,
     PerfilSidebarNav,
     ProximosEventos,
+    ReportarPerfilModal,
     ResenasCard,
+    SkeletonPerfil,
   },
   data() {
     return {
@@ -242,6 +270,10 @@ export default {
       resenas: [],
       cargando: true,
       noEncontrado: false,
+      mensajeNoEncontrado: "",
+      errorCarga: false,
+      mensajeExito: "",
+      modalReporte: false,
       reactivando: false,
       mensajeError: "",
       contadorBaja: { expiracion: null, restante: null },
@@ -316,7 +348,10 @@ export default {
     async cargarDatos() {
       this.cargando = true;
       this.mensajeError = "";
+      this.mensajeExito = "";
       this.noEncontrado = false;
+      this.mensajeNoEncontrado = "";
+      this.errorCarga = false;
 
       const idDeRuta = this.$route.params.id;
       const id = idDeRuta != null ? Number(idDeRuta) : idPerfilActivo();
@@ -327,7 +362,23 @@ export default {
       }
 
       try {
-        const perfilRes = await perfilService.obtener(id);
+        // Paralelismo (UC-14 §7): el resumen del feed solo hace falta si el
+        // perfil es propio. "¿Es mío?" se resuelve antes de lanzar las
+        // peticiones con el perfil activo en sesión (mismo criterio del
+        // computed esPropio) para no serializar los dos round-trips.
+        const esMio = idDeRuta == null || id === idPerfilActivo();
+
+        const perfilPromise = perfilService.obtener(id);
+        const resumenPromise = esMio
+          ? // best-effort: un fallo del resumen no debe romper la carga del perfil
+            homeService.obtenerResumen().catch(() => null)
+          : Promise.resolve(null);
+
+        const [perfilRes, resumenInicial] = await Promise.all([
+          perfilPromise,
+          resumenPromise,
+        ]);
+
         this.perfil = perfilRes?.data || null;
         if (!this.perfil) {
           this.noEncontrado = true;
@@ -335,26 +386,36 @@ export default {
         }
         this.actualizarContadorBaja();
 
-        // Las publicaciones del feed propio solo se cargan cuando el perfil
-        // consultado pertenece al usuario en sesión.
-        if (this.perfil.esPropietario === true) {
-          try {
-            const resumenRes = await homeService.obtenerResumen();
-            const resumen = resumenRes?.data || {};
-            this.publicaciones = Array.isArray(resumen.publicacionesRecientes)
-              ? resumen.publicacionesRecientes
-              : [];
-          } catch {
-            this.publicaciones = [];
-          }
-        } else {
-          this.publicaciones = [];
+        // Caso raro: el backend marca esPropietario pero el id no coincidía
+        // con el perfil activo al disparar las peticiones → traer el resumen
+        // en este punto (ya de forma secuencial).
+        let resumenRes = resumenInicial;
+        if (this.perfil.esPropietario === true && resumenRes == null) {
+          resumenRes = await homeService.obtenerResumen().catch(() => null);
         }
+
+        // Las publicaciones del feed propio solo se muestran cuando el perfil
+        // consultado pertenece al usuario en sesión.
+        const resumen = resumenRes?.data || null;
+        this.publicaciones =
+          this.perfil.esPropietario === true && Array.isArray(resumen?.publicacionesRecientes)
+            ? resumen.publicacionesRecientes
+            : [];
       } catch (error) {
         const status = error?.response?.status;
+        if (status === 401) {
+          // Spec UC-14 §6: sesión inválida o cuenta inactiva → volver al login
+          // conservando la ruta de origen para regresar tras re-autenticarse.
+          this.$router.push({ name: "login", query: { redirect: this.$route.fullPath } });
+          return;
+        }
         if (status === 404) {
           this.noEncontrado = true;
+          this.mensajeNoEncontrado =
+            error?.response?.data?.message ||
+            "El perfil que buscas no está disponible o ha sido dado de baja.";
         } else {
+          this.errorCarga = true;
           this.mensajeError = mensajeErrorApi(error, "No se pudo cargar el perfil. Intentá nuevamente.");
         }
       } finally {
@@ -362,6 +423,10 @@ export default {
       }
     },
     actualizarContadorBaja() {
+      // Prioriza la fecha exacta del backend (fechaLimite) si el endpoint la
+      // incluye. El contrato actual (UC-14 §2) solo envía fechaSolicitudBaja,
+      // por lo que la expiración se calcula con DIAS_REACTIVACION (debe
+      // coincidir con la configuración diasBaja del backend).
       const fechaLimite = this.perfil?.fechaLimite;
       const iso = this.perfil?.fechaSolicitudBaja;
       const expira = fechaLimite || (iso ? fechaExpiracionBaja(iso) : null);
@@ -406,6 +471,9 @@ export default {
     proximamente() {
       alert("Funcionalidad próximamente disponible.");
     },
+    alReportar() {
+      this.mensajeExito = "Reporte enviado. Gracias por ayudarnos a mantener la comunidad.";
+    },
     nuevaPublicacion() {
       this.proximamente();
     },
@@ -445,11 +513,11 @@ export default {
       return this.capitalizar(codigo) || "—";
     },
     valorCarac(carac) {
-      const raw = carac.codigoValor || carac.valor;
-      if (raw == null || raw === "") return "—";
-      const n = normCodigo(raw);
-      if (ETIQUETAS_VALORES[n]) return ETIQUETAS_VALORES[n];
-      return this.capitalizar(raw) || raw;
+      // Spec UC-14 §2/§7.3: codigoValor ya es la etiqueta visible de BD y
+      // valor es texto libre; se muestran tal cual, sin re-mapear.
+      if (carac.codigoValor) return carac.codigoValor;
+      if (carac.valor) return carac.valor;
+      return "—";
     },
     unidadCarac(carac) {
       const unidad = UNIDADES_POR_CODIGO[normCodigo(carac.codigo)];
@@ -614,6 +682,13 @@ export default {
   font-size: 0.8rem;
   padding: 0.3rem 0.75rem;
   border-radius: 999px;
+}
+
+.inicio-perfil__error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 
 .inicio-perfil__alerta-baja {

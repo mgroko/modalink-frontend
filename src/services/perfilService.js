@@ -1,5 +1,77 @@
 import http from "./http";
 
+/*
+ * Contrato JSON de GET /perfiles/{idPerfil} (ficha UC-14 §3).
+ * Tipos JSDoc puro: documentan el shape para el editor, sin tooling TS.
+ */
+
+/**
+ * @typedef {Object} PaisResponse
+ * @property {number} idPais
+ * @property {string} idExterno
+ * @property {string} fuenteApi
+ * @property {string} nombre
+ */
+
+/**
+ * @typedef {Object} ProvinciaResponse
+ * @property {number} idProvincia
+ * @property {string} idExterno
+ * @property {string} fuenteApi
+ * @property {string} nombre
+ * @property {PaisResponse} pais
+ */
+
+/**
+ * @typedef {Object} CiudadResponse
+ * @property {number} idCiudad
+ * @property {string} idExterno
+ * @property {string} fuenteApi
+ * @property {string} nombre
+ * @property {ProvinciaResponse} provincia
+ */
+
+/**
+ * @typedef {Object} CaracteristicaResponse
+ * @property {number} idCaracteristica
+ * @property {string} codigo ej. "ALTURA", "COLOR_OJOS"
+ * @property {string|null} valor texto libre; null si el valor es predefinido
+ * @property {number|null} idValor id del valor predefinido; null si es texto libre
+ * @property {string|null} codigoValor etiqueta visible del valor predefinido (campo
+ *           etiqueta de BD, no un código corto); null si es texto libre
+ * @property {string|null} colorHex color en formato #RRGGBB; null si no aplica
+ */
+
+/**
+ * @typedef {"Activo"|"PendienteBaja"|"Deshabilitado"|"Baja"} EstadoPerfil
+ *   Solo "Baja" es inaccesible desde esta vista (404).
+ */
+
+/**
+ * @typedef {Object} PerfilDetalleResponse
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string} biografia
+ * @property {EstadoPerfil} estado
+ * @property {string|null} fechaSolicitudBaja ISO 8601 si estado === "PendienteBaja";
+ *           null en caso contrario
+ * @property {number} idProfesion
+ * @property {string} profesion
+ * @property {number|null} idImagen
+ * @property {string|null} fotoUrl ruta relativa p. ej. "/uploads/perfiles/foto.jpg"
+ *           (resolver con resolverFotoUrl de utils/fotos.js)
+ * @property {number} idUsuario
+ * @property {string} nombreUsuario
+ * @property {string} apellidoUsuario
+ * @property {string|null} genero
+ * @property {CiudadResponse|null} ciudad null si no hay ubicación registrada;
+ *           no existen campos planos localidad/provincia
+ * @property {string[]} habilidades
+ * @property {CaracteristicaResponse[]} caracteristicas
+ * @property {boolean} esPropietario true solo si el perfil pertenece al
+ *           usuario autenticado (define los CTAs de la vista)
+ */
+
 let cacheProfesiones = null;
 
 const perfilService = {
@@ -11,6 +83,13 @@ const perfilService = {
     return http.post("/perfiles", request);
   },
 
+  /**
+   * GET /perfiles/{idPerfil} — detalle completo del perfil (UC-14).
+   * Acceso (VerPerfilService): 401 si la sesión/cuenta no permite acceso;
+   * 404 si el perfil no existe o el estado/propiedad no permite verlo.
+   * @param {number} idPerfil
+   * @returns {Promise<{data: PerfilDetalleResponse}>}
+   */
   obtener(idPerfil) {
     return http.get(`/perfiles/${idPerfil}`);
   },

@@ -293,7 +293,7 @@
         <div class="detalle-perfil__header">
           <img
             v-if="perfilDetalle.fotoUrl"
-            :src="perfilDetalle.fotoUrl"
+            :src="resolverFoto(perfilDetalle.fotoUrl)"
             :alt="perfilDetalle.nombreArtistico || 'Foto de perfil'"
             class="detalle-perfil__foto"
           />
@@ -398,6 +398,7 @@ import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { state } from "../../services/authState";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 
 export default {
   name: "GestionUsuariosView",
@@ -519,6 +520,10 @@ export default {
   methods: {
     obtenerId(usuario) {
       return usuario.id ?? usuario.idUsuario;
+    },
+
+    resolverFoto(url) {
+      return resolverFotoUrl(url);
     },
 
     colorEstado(estado) {

@@ -2,8 +2,8 @@
   <section class="perfil-activo-widget">
     <div class="perfil-activo-widget__avatar">
       <img
-        v-if="perfil.urlFoto || perfil.fotoPerfil || perfil.fotoUrl"
-        :src="perfil.urlFoto || perfil.fotoPerfil || perfil.fotoUrl"
+        v-if="fotoResuelta"
+        :src="fotoResuelta"
         :alt="perfil.nombreArtistico"
       />
       <span v-else class="material-symbols-outlined">person</span>
@@ -23,12 +23,21 @@
 </template>
 
 <script>
+import { resolverFotoUrl } from "../../utils/fotos.js";
+
 export default {
   name: "PerfilActivoWidget",
   props: {
     perfil: {
       type: Object,
       required: true,
+    },
+  },
+  computed: {
+    fotoResuelta() {
+      return resolverFotoUrl(
+        this.perfil.urlFoto || this.perfil.fotoPerfil || this.perfil.fotoUrl
+      );
     },
   },
 };

@@ -309,6 +309,7 @@ import {
   tipoDatoUnidad,
 } from "../../utils/perfilConstants.js";
 import { reglasPerfil } from "../../utils/reglas.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
  
 export default {
   name: "EditarPerfilView",
@@ -323,7 +324,7 @@ export default {
   },
   computed: {
     fotoVisible() {
-      return this.fotoPreview || this.perfil?.fotoUrl || null;
+      return this.fotoPreview || resolverFotoUrl(this.perfil?.fotoUrl);
     },
     caracteristicaAltura() {
       return this.caracteristicas.find((c) => normCodigo(c.codigo) === "altura") || null;

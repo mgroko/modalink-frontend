@@ -1,5 +1,14 @@
 <template>
   <div class="perfil-nav">
+    <VaButton
+      v-if="esPropio"
+      block
+      icon="mso-calendar_month"
+      @click="$emit('cambiar-seccion', 'calendario')"
+    >
+      Gestionar agenda
+    </VaButton>
+
     <nav class="perfil-nav__menu">
       <button
         v-for="item in itemsVisibles"
@@ -22,14 +31,26 @@
       </button>
     </nav>
 
-    <div v-if="!esPropio" class="perfil-nav__acciones">
-      <VaButton color="success" icon="mso-person_add" @click="$emit('conectar')">
-        Conectar
-      </VaButton>
-      <VaButton color="primary" icon="mso-chat_bubble" @click="$emit('mensaje')">
-        Mensaje
-      </VaButton>
-    </div>
+    <VaButton
+      v-if="!esPropio"
+      color="success"
+      block
+      icon="mso-handshake"
+      @click="$emit('contactar')"
+    >
+      Contactar / Colaborar
+    </VaButton>
+
+    <VaButton
+      v-if="!esPropio"
+      color="danger"
+      size="small"
+      block
+      icon="mso-flag"
+      @click="$emit('reportar')"
+    >
+      Reportar perfil
+    </VaButton>
   </div>
 </template>
 
@@ -46,7 +67,7 @@ export default {
       default: "publicaciones",
     },
   },
-  emits: ["cambiar-seccion", "navegar-ruta", "cerrar-sesion", "conectar", "mensaje"],
+  emits: ["cambiar-seccion", "navegar-ruta", "cerrar-sesion", "contactar", "reportar"],
   computed: {
     itemsVisibles() {
       const itemsPropio = [
@@ -145,11 +166,5 @@ export default {
 
 .perfil-nav__item--peligro:hover {
   background: #fef2f2;
-}
-
-.perfil-nav__acciones {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
 }
 </style>

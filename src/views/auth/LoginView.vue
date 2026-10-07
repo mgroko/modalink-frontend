@@ -170,6 +170,13 @@ export default {
       }
     },
     entrarSegun(usuario) {
+      // Destino guardado (?redirect=...) para volver a la ruta de origen
+      // tras re-autenticarse (ej. ver un perfil con sesión expirada).
+      const destino = this.destinoSeguro();
+      if (destino) {
+        this.$router.push(destino);
+        return;
+      }
       if (usuario?.rolGlobal === "Administrador") {
         this.$router.push({ name: "dashboard-admin" });
       } else if (usuario?.idPerfilActivo != null) {
@@ -177,6 +184,14 @@ export default {
       } else {
         this.$router.push({ name: "dashboard-usuario" });
       }
+    },
+    destinoSeguro() {
+      const redirect = this.$route.query?.redirect;
+      if (typeof redirect !== "string") return null;
+      // Solo rutas internas (mismo origin): evita open redirects.
+      if (!redirect.startsWith("/") || redirect.startsWith("//")) return null;
+      if (redirect.startsWith("/login")) return null;
+      return redirect;
     },
     async reactivarCuenta() {
       if (this.reactivando) return;

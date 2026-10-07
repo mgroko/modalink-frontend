@@ -154,7 +154,7 @@
           <div class="perfil-busqueda__foto">
             <img
               v-if="perfil.fotoUrl"
-              :src="perfil.fotoUrl"
+              :src="fotoDe(perfil)"
               :alt="perfil.nombreArtistico"
             />
             <span v-else class="perfil-busqueda__inicial">
@@ -268,6 +268,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import { useToast } from "vuestic-ui";
 import { formatUbicacion, resolverUbicacionTexto } from "../../utils/ubicacion.js";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
   ETIQUETAS_CARAC,
   ETIQUETAS_VALORES,
@@ -388,6 +389,9 @@ export default {
     },
     ubicacionTexto(perfil) {
       return formatUbicacion(perfil);
+    },
+    fotoDe(perfil) {
+      return resolverFotoUrl(perfil?.fotoUrl);
     },
     habilidadesVisibles(perfil) {
       const lista = Array.isArray(perfil?.habilidades) ? perfil.habilidades : [];

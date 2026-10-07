@@ -99,7 +99,7 @@
             <div class="perfil-card__avatar">
               <img
                 v-if="perfil.fotoUrl"
-                :src="perfil.fotoUrl"
+                :src="resolverFoto(perfil.fotoUrl)"
                 :alt="perfil.nombreArtistico"
                 class="perfil-card__foto"
               />
@@ -188,7 +188,7 @@
         <div class="detalle-perfil__header">
           <img
             v-if="perfilSeleccionado.fotoUrl"
-            :src="perfilSeleccionado.fotoUrl"
+            :src="resolverFoto(perfilSeleccionado.fotoUrl)"
             :alt="perfilSeleccionado.nombreArtistico || 'Foto de perfil'"
             class="detalle-perfil__foto"
           />
@@ -414,6 +414,7 @@ import {
   inLista,
 } from "../../utils/perfilConstants.js";
 import { fechaExpiracionBaja, formatearFecha as formatearFechaHora } from "../../utils/fechas.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 
 //TODO ver aca que onda los colores!!!!!
 const COLORES_POR_PROFESION = ["#5ca4a9", "rgb(192, 71, 117)", "#de8b42", "#6866a9", "#86407b"];
@@ -487,6 +488,9 @@ export default {
     this.cargarPerfiles();
   },
   methods: {
+    resolverFoto(url) {
+      return resolverFotoUrl(url);
+    },
     async cargarPerfiles() {
       this.cargando = true;
       try {

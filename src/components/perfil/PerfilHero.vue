@@ -35,6 +35,7 @@
 
 <script>
 import { formatUbicacion } from "../../utils/ubicacion.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 
 export default {
   name: "PerfilHero",
@@ -55,7 +56,9 @@ export default {
   emits: ["editar"],
   computed: {
     fotoUrl() {
-      return this.perfil?.fotoUrl || this.perfil?.urlFoto || this.perfil?.fotoPerfil || null;
+      return resolverFotoUrl(
+        this.perfil?.fotoUrl || this.perfil?.urlFoto || this.perfil?.fotoPerfil
+      );
     },
     profesionTexto() {
       return (

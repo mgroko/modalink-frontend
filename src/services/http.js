@@ -18,8 +18,10 @@ function esRutaAuth(url = "") {
   return url.startsWith("/auth");
 }
 
+export const API_BASE_URL = "http://localhost:8080";
+
 const http = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
