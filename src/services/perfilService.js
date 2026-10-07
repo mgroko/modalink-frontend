@@ -75,9 +75,11 @@ const perfilService = {
    *   valorCaracteristica, idValorCaracteristica (prioridad sobre valorCaracteristica).
    * Respuesta: PaginaResponse { contenido, paginaActual, tamanoPagina,
    *   totalElementos, totalPaginas, primera, ultima }.
+   * @param {object} params query params de la búsqueda
+   * @param {AbortSignal} [signal] señal opcional para cancelar la petición
    */
-  buscar(params) {
-    return http.get("/perfiles/buscar", { params });
+  buscar(params, signal) {
+    return http.get("/perfiles/buscar", { params, signal });
   },
 
   caracteristicasPorProfesion(idProfesion) {

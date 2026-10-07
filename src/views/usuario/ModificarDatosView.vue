@@ -325,7 +325,6 @@ export default {
           apellido: this.datos.apellido,
           fechaNacimiento: this.datos.fechaNacimiento,
           genero: this.datos.genero,
-          // Id Georef: siempre string (un "02" numérico perdería los ceros)
           localidadId:
             this.localidadSeleccionada != null ? String(this.localidadSeleccionada) : null,
         };
