@@ -5,6 +5,10 @@ const adminService = {
     return http.get("/admin/usuarios");
   },
 
+  buscarUsuarios(params) {
+    return http.get("/admin/usuarios/buscar", { params });
+  },
+
   detalleUsuario(idUsuario) {
     return http.get(`/admin/usuarios/${idUsuario}`);
   },
@@ -17,8 +21,8 @@ const adminService = {
     return http.patch(`/admin/usuarios/${idUsuario}/habilitar`);
   },
 
-  deshabilitarUsuario(idUsuario) {
-    return http.patch(`/admin/usuarios/${idUsuario}/deshabilitar`);
+  deshabilitarUsuario(idUsuario, datos) {
+    return http.patch(`/admin/usuarios/${idUsuario}/deshabilitar`, datos);
   },
 };
 

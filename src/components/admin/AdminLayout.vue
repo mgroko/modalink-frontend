@@ -5,6 +5,24 @@
 
       <nav class="admin-layout__nav">
         <RouterLink to="/admin/dashboard" class="admin-layout__link">Inicio</RouterLink>
+        <RouterLink to="/admin/gestion-usuarios" class="admin-layout__link">Usuarios</RouterLink>
+        <RouterLink to="/admin/busqueda-usuarios" class="admin-layout__link">Búsqueda</RouterLink>
+        <RouterLink to="/admin/unidades-medida" class="admin-layout__link">Unidades</RouterLink>
+        <RouterLink to="/admin/gestionar-caracteristicas" class="admin-layout__link">Características</RouterLink>
+        <RouterLink
+          v-if="puedeConfigurarScheduler"
+          to="/admin/configuracion-scheduler"
+          class="admin-layout__link"
+        >
+          Scheduler
+        </RouterLink>
+        <RouterLink
+          v-if="puedeConfigurarScheduler"
+          to="/admin/configuracion-scheduler/baja"
+          class="admin-layout__link"
+        >
+          Scheduler bajas
+        </RouterLink>
 
         <VaDropdown v-if="usuario" placement="bottom-end">
           <template #anchor>
@@ -20,6 +38,48 @@
               @click="$router.push({ name: 'gestion-usuarios' })"
             >
               Gestión de usuarios
+            </VaMenuItem>
+
+            <VaMenuItem
+              icon="mso-tune"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'gestionar-caracteristicas' })"
+            >
+              Características técnicas
+            </VaMenuItem>
+
+            <VaMenuItem
+              icon="mso-search"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'busqueda-usuarios' })"
+            >
+              Búsqueda de usuarios
+            </VaMenuItem>
+
+            <VaMenuItem
+              icon="mso-straighten"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'gestion-unidades-medida' })"
+            >
+              Unidades de medida
+            </VaMenuItem>
+
+            <VaMenuItem
+              v-if="puedeConfigurarScheduler"
+              icon="mso-schedule"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'configuracion-scheduler' })"
+            >
+              Scheduler de deshabilitación
+            </VaMenuItem>
+
+            <VaMenuItem
+              v-if="puedeConfigurarScheduler"
+              icon="mso-event_available"
+              class="admin-dropdown__item"
+              @click="$router.push({ name: 'configuracion-scheduler-baja' })"
+            >
+              Scheduler de bajas
             </VaMenuItem>
             
             <VaMenuItem
@@ -41,14 +101,17 @@
 </template>
 
 <script>
-import authService from "../services/authService";
-import { state, limpiarSesion } from "../services/authState";
+import authService from "../../services/authService";
+import { state, limpiarSesion, tienePermiso } from "../../services/authState";
 
 export default {
   name: "AdminLayout",
   computed: {
     usuario() {
       return state.usuario;
+    },
+    puedeConfigurarScheduler() {
+      return tienePermiso("ADMINISTRAR_CONFIGURACION");
     },
   },
   methods: {
@@ -71,7 +134,7 @@ export default {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--va-background-secondary, #ffffe7);
+  background: var(--va-background-secondary, #F5F5F8);
 }
 
 .admin-layout__header {
@@ -80,7 +143,7 @@ export default {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 2rem;
-  background: #fff;
+  background: var(--color-surface);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -90,7 +153,7 @@ export default {
   letter-spacing: 0.15em;
   text-decoration: none;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #ff512f 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -103,14 +166,14 @@ export default {
 }
 
 .admin-layout__link {
-  color: #6a7385;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .admin-layout__link:hover {
-  color: #374151;
+  color: var(--color-text);
   text-decoration: underline;
 }
 
@@ -128,14 +191,14 @@ export default {
 }
 
 .admin-dropdown__item {
-  color: rgb(56, 56, 56);
+  color: var(--color-text);
   font-size: 0.8rem;     
   padding: 0.5rem 1.25rem; 
 }
 
 
 .text-danger {
-  color: #d90429 !important;
+  color: var(--va-danger) !important;
 }
 
 

@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+/* Paleta de colores: fuente única de verdad.
+   Tailwind v4 expone estos tokens como variables CSS en :root,
+   por lo que se pueden usar como var(--color-primary) en estilos normales
+   y como clases (text-primary, bg-accent, etc.). */
+@theme {
+  --color-primary: #494776;
+  --color-primary-dark: #3E3C64;
+  --color-primary-light: #6D6C91;
+  --color-secondary: #6866A9;
+  --color-secondary-dark: #585790;
+  --color-accent: #A97B5C;
+  --color-accent-dark: #90694E;
+  --color-support: #5CA4A9;
+  --color-neutral-dark: #765640;
+  --color-text: #232134;
+  --color-text-muted: #6B6980;
+  --color-bg: #F5F5F8;
+  --color-surface: #FFFFFF;
+}
+
 body {
   font-family: 'Inter', sans-serif;
 }

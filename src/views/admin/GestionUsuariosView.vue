@@ -14,33 +14,64 @@
         placeholder="Buscar por nombre, apellido o correo"
         removable
         class="gestion-usuarios__buscador"
+        @input="programarBusqueda"
+        @keyup.enter="buscarAhora"
       >
         <template #prependInner>
           <VaIcon name="mso-search" color="grey" size="small" />
         </template>
       </VaInput>
 
-      <VaButton
-        preset="secondary"
-        icon="mso-refresh"
-        :loading="cargando"
-        @click="cargarUsuarios"
-      >
-        Actualizar
-      </VaButton>
+      <div class="gestion-usuarios__toolbar-acciones">
+        <VaSelect
+          v-model="estadoFiltro"
+          :options="opcionesEstado"
+          value-by="value"
+          text-by="text"
+          placeholder="Estado"
+          clearable
+          class="gestion-usuarios__select-estado"
+          @update:modelValue="buscarAhora"
+        />
+
+        <VaSelect
+          v-model="tamanoPagina"
+          :options="opcionesTamano"
+          value-by="value"
+          text-by="text"
+          class="gestion-usuarios__select-tamano"
+          @update:modelValue="buscarAhora"
+        />
+
+        <VaButton
+          preset="secondary"
+          icon="mso-refresh"
+          :loading="cargando"
+          @click="recargarActual"
+        >
+          Actualizar
+        </VaButton>
+      </div>
     </div>
 
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
+    <p v-if="!cargando && paginacion.totalElementos > 0" class="gestion-usuarios__resumen">
+      {{ paginacion.totalElementos }} usuario(s) encontrado(s)
+      <template v-if="!esTodos">
+        · Página {{ paginacion.paginaActual + 1 }} de {{ paginacion.totalPaginas }}
+      </template>
+    </p>
+
     <VaDataTable
       class="gestion-usuarios__tabla"
-      :items="usuariosFiltrados"
+      :items="usuariosOrdenados"
       :columns="columnas"
       :loading="cargando"
-      :per-page="10"
       striped
       hoverable
+      no-pagination
     >
       <template #cell(idUsuario)="{ value }">
         <span class="gestion-usuarios__id">{{ value }}</span>
@@ -54,8 +85,22 @@
         <VaBadge :text="value" :color="colorEstado(value)" outline />
       </template>
 
+      <template #cell(deshabilitacion)="{ rowData }">
+        <div v-if="rowData.estado === 'Deshabilitado'" class="gestion-usuarios__deshabilitacion">
+          <span class="gestion-usuarios__deshabilitacion-motivo">{{ rowData.motivoDeshabilitacion || '—' }}</span>
+          <span class="gestion-usuarios__deshabilitacion-hasta">
+            {{ rowData.fechaHastaDeshabilitacion ? `Hasta ${formatearFecha(rowData.fechaHastaDeshabilitacion)}` : 'Indefinido' }}
+          </span>
+        </div>
+        <span v-else class="gestion-usuarios__deshabilitacion-vacio">—</span>
+      </template>
+
       <template #cell(fechaSolicitudBaja)="{ value }">
         {{ value ? formatearFecha(value) : 'No solicitó' }}
+      </template>
+
+      <template #cell(genero)="{ source }">
+        {{ textoGenero(source) }}
       </template>
 
       <template #cell(acciones)="{ rowData }">
@@ -95,6 +140,27 @@
         </div>
       </template>
     </VaDataTable>
+
+    <div v-if="!esTodos && paginacion.totalPaginas > 1" class="gestion-usuarios__paginacion">
+      <VaButton
+        preset="secondary"
+        size="small"
+        icon="mso-chevron_left"
+        :disabled="paginacion.primera"
+        @click="cambiarPagina(-1)"
+      >
+        Anterior
+      </VaButton>
+      <VaButton
+        preset="secondary"
+        size="small"
+        icon-right="mso-chevron_right"
+        :disabled="paginacion.ultima"
+        @click="cambiarPagina(1)"
+      >
+        Siguiente
+      </VaButton>
+    </div>
 
     <!-- Modal detalle de usuario -->
     <VaModal
@@ -138,9 +204,16 @@
               <span class="detalle-usuario__label">Estado</span>
               <VaBadge :text="usuarioDetalle.estado" :color="colorEstado(usuarioDetalle.estado)" outline />
             </div>
+            <div v-if="usuarioDetalle.estado === 'Deshabilitado'" class="detalle-usuario__campo">
+              <span class="detalle-usuario__label">Deshabilitación</span>
+              <span>{{ usuarioDetalle.motivoDeshabilitacion || '—' }}</span>
+              <span class="detalle-usuario__texto-muted">
+                {{ usuarioDetalle.fechaHastaDeshabilitacion ? `Hasta ${formatearFecha(usuarioDetalle.fechaHastaDeshabilitacion)}` : 'Indefinido' }}
+              </span>
+            </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Fecha de nacimiento</span>
-              <span>{{ usuarioDetalle.fechaNacimiento ? formatearFecha(usuarioDetalle.fechaNacimiento) : '—' }}</span>
+              <span>{{ usuarioDetalle.fechaNacimiento ? formatearFechaCorta(usuarioDetalle.fechaNacimiento) : '—' }}</span>
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Género</span>
@@ -220,7 +293,7 @@
         <div class="detalle-perfil__header">
           <img
             v-if="perfilDetalle.fotoUrl"
-            :src="perfilDetalle.fotoUrl"
+            :src="resolverFoto(perfilDetalle.fotoUrl)"
             :alt="perfilDetalle.nombreArtistico || 'Foto de perfil'"
             class="detalle-perfil__foto"
           />
@@ -262,11 +335,8 @@
     <!-- Modal deshabilitar -->
     <VaModal
       v-model="modalDeshabilitarVisible"
-      ok-text="Deshabilitar"
-      cancel-text="Cancelar"
-      ok-color="danger"
+      hide-default-actions
       blur
-      @ok="deshabilitarSeleccionado"
     >
       <h3 class="va-h5">¿Deshabilitar cuenta?</h3>
       <p class="mt-2">
@@ -274,6 +344,51 @@
         <strong>{{ usuarioSeleccionado?.correo }}</strong>
         no podrá iniciar sesión hasta que lo habilites nuevamente.
       </p>
+
+      <VaForm ref="formDeshabilitar" :immediate="false" class="deshabilitar-form">
+        <VaTextarea
+          v-model="motivoDeshabilitacion"
+          :rules="[reglasDeshabilitar.motivoRequerido, reglasDeshabilitar.motivoMax]"
+          label="Motivo"
+          placeholder="Ej: Incumplimiento de normas"
+          :max-length="200"
+          counter
+          :rows="3"
+        />
+
+        <div class="deshabilitar-form__duracion">
+          <span class="deshabilitar-form__label">Duración</span>
+          <VaRadio
+            v-model="duracionIndefinida"
+            :options="opcionesDuracion"
+            text-by="text"
+            value-by="value"
+            class="deshabilitar-form__radio"
+          />
+          <VaInput
+            v-if="!duracionIndefinida"
+            v-model="duracionDias"
+            :rules="[reglasDeshabilitar.duracionValida]"
+            type="number"
+            min="1"
+            label="Días"
+            class="deshabilitar-form__dias"
+          />
+        </div>
+      </VaForm>
+
+      <template #footer>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; width: 100%; margin-top: 1rem;">
+          <VaButton preset="secondary" @click="modalDeshabilitarVisible = false">Cancelar</VaButton>
+          <VaButton
+            color="danger"
+            :loading="procesandoId !== null"
+            @click="deshabilitarSeleccionado"
+          >
+            Deshabilitar
+          </VaButton>
+        </div>
+      </template>
     </VaModal>
   </div>
 </template>
@@ -282,6 +397,8 @@
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { state } from "../../services/authState";
+import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 
 export default {
   name: "GestionUsuariosView",
@@ -292,6 +409,27 @@ export default {
     return {
       usuarios: [],
       busqueda: "",
+      estadoFiltro: null,
+      tamanoPagina: 20,
+      opcionesEstado: [
+        { text: "Activo", value: "Activo" },
+        { text: "Deshabilitado", value: "Deshabilitado" },
+        { text: "Pendiente de baja", value: "PendienteBaja" },
+        { text: "Baja", value: "Baja" },
+      ],
+      opcionesTamano: [
+        { text: "20 por página", value: 20 },
+        { text: "50 por página", value: 50 },
+        { text: "Ver todos", value: 0 },
+      ],
+      paginacion: {
+        paginaActual: 0,
+        totalPaginas: 1,
+        totalElementos: 0,
+        primera: true,
+        ultima: true,
+      },
+      debounceHandle: null,
       cargando: false,
       procesandoId: null,
       successMessage: "",
@@ -312,6 +450,21 @@ export default {
       // Deshabilitar
       modalDeshabilitarVisible: false,
       usuarioSeleccionado: null,
+      motivoDeshabilitacion: "",
+      duracionIndefinida: true,
+      duracionDias: "",
+      opcionesDuracion: [
+        { text: "Indefinida", value: true },
+        { text: "Días", value: false },
+      ],
+      reglasDeshabilitar: {
+        motivoRequerido: (v) => (!!v && v.trim().length > 0) || "El motivo es obligatorio.",
+        motivoMax: (v) => !v || v.length <= 200 || "El motivo no puede superar los 200 caracteres.",
+        duracionValida: (v) => {
+          if (this.duracionIndefinida) return true;
+          return (!!v && parseInt(v, 10) > 0) || "Ingresá una duración mayor a 0 días.";
+        },
+      },
 
       columnas: [
         { key: "idUsuario", label: "ID", sortable: true },
@@ -321,6 +474,16 @@ export default {
         { key: "correo", label: "Correo", sortable: true },
         { key: "rolGlobal", label: "Rol" },
         { key: "estado", label: "Estado", sortable: true },
+        {
+          key: "genero",
+          label: "Género",
+          sortable: true,
+          sortingFn: (a, b) =>
+            String(a?.nombre ?? a?.codigo ?? "").localeCompare(
+              String(b?.nombre ?? b?.codigo ?? ""),
+            ),
+        },
+        { key: "deshabilitacion", label: "Deshabilitación" },
         { key: "fechaSolicitudBaja", label: "Solicitud de baja" },
         { key: "acciones", label: "Acciones" },
       ],
@@ -339,17 +502,11 @@ export default {
     idAdmin() {
       return this.obtenerId(state.usuario);
     },
-    usuariosFiltrados() {
-      const texto = this.busqueda.trim().toLowerCase();
-      let lista = this.usuarios;
-      if (texto) {
-        lista = lista.filter((usuario) =>
-          [usuario.nombre, usuario.apellido, usuario.correo].some((campo) =>
-            String(campo || "").toLowerCase().includes(texto)
-          )
-        );
-      }
-      return [...lista].sort((a, b) => {
+    esTodos() {
+      return this.tamanoPagina === 0;
+    },
+    usuariosOrdenados() {
+      return [...this.usuarios].sort((a, b) => {
         const aEsAdmin = this.obtenerId(a) === this.idAdmin;
         const bEsAdmin = this.obtenerId(b) === this.idAdmin;
         if (aEsAdmin && !bEsAdmin) return -1;
@@ -365,14 +522,22 @@ export default {
     }
     await this.cargarUsuarios();
   },
+  beforeUnmount() {
+    clearTimeout(this.debounceHandle);
+  },
   methods: {
     obtenerId(usuario) {
       return usuario.id ?? usuario.idUsuario;
     },
 
+    resolverFoto(url) {
+      return resolverFotoUrl(url);
+    },
+
     colorEstado(estado) {
       if (estado === "Activo") return "success";
       if (estado === "Deshabilitado") return "danger";
+      if (estado === "PendienteBaja") return "warning";
       if (estado === "Baja") return "backgroundElement";
       return "backgroundBorder";
     },
@@ -383,34 +548,98 @@ export default {
 
     textoGenero(genero) {
       if (!genero) return "—";
-      const codigos = {
-        mujer: "Mujer",
-        hombre: "Hombre",
-        no_binario: "No binario",
-        no_decirlo: "Prefiero no decirlo",
-      };
       if (typeof genero === "object") {
-        return codigos[genero.codigo] || genero.codigo || "—";
+        return genero.nombre || genero.codigo || "—";
       }
+      const codigos = {
+        MUJER: "Mujer",
+        HOMBRE: "Hombre",
+        NO_BINARIO: "No binario",
+        NO_DECIRLO: "Prefiero no decirlo",
+      };
       return codigos[genero] || genero;
     },
 
-    formatearFecha(fecha) {
-      if (!fecha) return "—";
-      const partes = fecha.split("T")[0].split("-");
-      if (partes.length !== 3) return fecha;
-      return `${partes[2]}-${partes[1]}-${partes[0]}`;
-    },
+    formatearFecha,
+    formatearFechaCorta,
 
     async cargarUsuarios() {
+      return this.buscar(0);
+    },
+
+    programarBusqueda() {
+      clearTimeout(this.debounceHandle);
+      this.debounceHandle = setTimeout(() => this.buscar(0), 300);
+    },
+
+    buscarAhora() {
+      clearTimeout(this.debounceHandle);
+      this.buscar(0);
+    },
+
+    recargarActual() {
+      this.buscar(this.paginacion.paginaActual);
+    },
+
+    cambiarPagina(delta) {
+      const destino = this.paginacion.paginaActual + delta;
+      if (destino < 0 || destino >= this.paginacion.totalPaginas) return;
+      this.buscar(destino);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+
+    buildParams(page) {
+      const params = { page, size: this.tamanoPagina };
+
+      if (this.tamanoPagina === 0) {
+        params.todos = true;
+        delete params.size;
+        delete params.page;
+      }
+
+      const texto = this.busqueda.trim();
+      if (texto.includes("@")) {
+        params.correo = texto;
+      } else if (texto) {
+        params.nombre = texto;
+      }
+      if (this.estadoFiltro) params.estado = this.estadoFiltro;
+
+      return params;
+    },
+
+    async buscar(page = 0) {
       this.cargando = true;
       this.errorMessage = "";
       this.successMessage = "";
 
       try {
-        const response = await adminService.listarUsuarios();
-        const datos = response?.data;
-        this.usuarios = Array.isArray(datos) ? datos : datos?.usuarios || [];
+        const params = this.buildParams(page);
+        let data;
+
+        const response = await adminService.buscarUsuarios(params);
+        data = response?.data || {};
+
+        // Si el texto libre no matcheó como nombre, se reintenta como
+        // apellido y luego como correo (el campo único cubre los tres).
+        if ((data.totalElementos ?? 0) === 0 && params.nombre) {
+          let alt = await adminService.buscarUsuarios({ ...params, apellido: params.nombre, nombre: undefined });
+          let dataAlt = alt?.data || {};
+          if ((dataAlt.totalElementos ?? 0) === 0) {
+            alt = await adminService.buscarUsuarios({ ...params, correo: params.nombre, nombre: undefined });
+            dataAlt = alt?.data || {};
+          }
+          if ((dataAlt.totalElementos ?? 0) > 0) data = dataAlt;
+        }
+
+        this.usuarios = Array.isArray(data.contenido) ? data.contenido : [];
+        this.paginacion = {
+          paginaActual: data.paginaActual ?? 0,
+          totalPaginas: data.totalPaginas ?? 1,
+          totalElementos: data.totalElementos ?? this.usuarios.length,
+          primera: data.primera ?? true,
+          ultima: data.ultima ?? true,
+        };
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message ||
@@ -463,13 +692,24 @@ export default {
     // Deshabilitar
     solicitarDeshabilitar(usuario) {
       this.usuarioSeleccionado = usuario;
+      this.motivoDeshabilitacion = "";
+      this.duracionIndefinida = true;
+      this.duracionDias = "";
+      this.errorMessage = "";
       this.modalDeshabilitarVisible = true;
     },
 
     deshabilitarSeleccionado() {
-      if (this.usuarioSeleccionado) {
-        this.deshabilitar(this.usuarioSeleccionado);
+      const isValid = this.$refs.formDeshabilitar?.validate();
+      if (isValid === false) return;
+      if (!this.usuarioSeleccionado) return;
+
+      const payload = { motivo: this.motivoDeshabilitacion.trim() };
+      if (!this.duracionIndefinida) {
+        payload.duracionDias = parseInt(this.duracionDias, 10);
       }
+
+      this.deshabilitar(this.usuarioSeleccionado, payload);
     },
 
     async habilitar(usuario) {
@@ -481,6 +721,8 @@ export default {
       try {
         await adminService.habilitarUsuario(id);
         usuario.estado = "Activo";
+        usuario.motivoDeshabilitacion = null;
+        usuario.fechaHastaDeshabilitacion = null;
         this.successMessage = `La cuenta de ${usuario.correo} fue habilitada.`;
       } catch (error) {
         this.errorMessage =
@@ -491,25 +733,35 @@ export default {
       }
     },
 
-    async deshabilitar(usuario) {
+    async deshabilitar(usuario, payload) {
       const id = this.obtenerId(usuario);
       this.procesandoId = id;
       this.errorMessage = "";
       this.successMessage = "";
 
       try {
-        await adminService.deshabilitarUsuario(id);
+        const response = await adminService.deshabilitarUsuario(id, payload);
+        const datos = response?.data;
         usuario.estado = "Deshabilitado";
+        usuario.motivoDeshabilitacion = datos?.motivoDeshabilitacion ?? null;
+        usuario.fechaHastaDeshabilitacion = datos?.fechaHastaDeshabilitacion ?? null;
         this.successMessage = `La cuenta de ${usuario.correo} fue deshabilitada.`;
       } catch (error) {
-        this.errorMessage =
-          error?.response?.data?.message ||
-          "No se pudo deshabilitar el usuario.";
+        this.errorMessage = this.mensajeErrorDeshabilitar(error);
       } finally {
         this.procesandoId = null;
         this.modalDeshabilitarVisible = false;
         this.usuarioSeleccionado = null;
       }
+    },
+
+    mensajeErrorDeshabilitar(error) {
+      const data = error?.response?.data;
+      if (data?.errores) {
+        const errores = Object.values(data.errores).filter(Boolean).join(" ");
+        if (errores) return errores;
+      }
+      return data?.message || "No se pudo deshabilitar el usuario.";
     },
   },
 };
@@ -525,7 +777,7 @@ export default {
 .gestion-usuarios__encabezado h1 {
   font-size: 2.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ff512f 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -534,7 +786,7 @@ export default {
 .gestion-usuarios__subtitulo {
   margin-top: 0.25rem;
   font-size: 0.95rem;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .gestion-usuarios__toolbar {
@@ -552,6 +804,34 @@ export default {
   max-width: 320px;
 }
 
+.gestion-usuarios__toolbar-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.gestion-usuarios__select-estado {
+  min-width: 180px;
+}
+
+.gestion-usuarios__select-tamano {
+  min-width: 150px;
+}
+
+.gestion-usuarios__resumen {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.gestion-usuarios__paginacion {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
 .gestion-usuarios__tabla {
   --va-table-padding: 0.5rem;
 }
@@ -559,13 +839,64 @@ export default {
 .gestion-usuarios__id {
   font-family: monospace;
   font-size: 0.85rem;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .gestion-usuarios__acciones {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.gestion-usuarios__deshabilitacion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 220px;
+}
+
+.gestion-usuarios__deshabilitacion-motivo {
+  font-size: 0.82rem;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gestion-usuarios__deshabilitacion-hasta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.gestion-usuarios__deshabilitacion-vacio {
+  color: var(--color-text-muted);
+}
+
+.deshabilitar-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.deshabilitar-form__duracion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.deshabilitar-form__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.deshabilitar-form__radio {
+  margin-bottom: 0.25rem;
+}
+
+.deshabilitar-form__dias {
+  max-width: 160px;
 }
 
 /* Detalle usuario */
@@ -588,7 +919,7 @@ export default {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6a7385;
+  color: var(--color-text-muted);
 }
 
 .detalle-usuario__perfiles {
@@ -602,7 +933,7 @@ export default {
 }
 
 .detalle-usuario__texto-muted {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -650,11 +981,11 @@ export default {
 .detalle-perfil__biografia p {
   margin-top: 0.35rem;
   white-space: pre-wrap;
-  color: #374151;
+  color: var(--color-text);
 }
 
 .detalle-perfil__texto-muted {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 </style>

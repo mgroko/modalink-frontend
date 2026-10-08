@@ -47,7 +47,7 @@
 <script>
 
 import authService from "../../services/authService";
-import { setUsuario } from "../../services/authState";
+import { marcarSesionRestaurada } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
@@ -67,10 +67,10 @@ export default {
         password: "",
       },
       opcionesGenero: [
-        { text: "Mujer", value: "mujer" },
-        { text: "Hombre", value: "hombre" },
-        { text: "No binario", value: "no_binario" },
-        { text: "Prefiero no decirlo", value: "no_decirlo" }
+        { text: "Mujer", value: "MUJER" },
+        { text: "Hombre", value: "HOMBRE" },
+        { text: "No binario", value: "NO_BINARIO" },
+        { text: "Prefiero no decirlo", value: "NO_DECIRLO" }
       ],
       successMessage: "",
       errorMessage: "",
@@ -96,10 +96,15 @@ export default {
       try {
         const response = await authService.registrar(this.datosUsuario);
         const usuario = response?.data?.usuario || null;
-        setUsuario(usuario);
+        marcarSesionRestaurada(usuario);
         console.log("Usuario registrado/autenticado:", usuario);
         this.successMessage = "Registro exitoso.";
-        // this.$router.push({ name: 'dashboard' })
+
+        if (usuario?.rolGlobal === "Administrador") {
+          this.$router.push({ name: "dashboard-admin" });
+        } else {
+          this.$router.push({ name: "dashboard-usuario" });
+        }
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message || "No se pudo completar el registro. Verificá los datos ingresados.";
@@ -120,7 +125,7 @@ export default {
   font-size: 2.5rem;
   font-weight: 800;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #FF512F 0%, #b865a4 50%, #240b36 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 2px;
