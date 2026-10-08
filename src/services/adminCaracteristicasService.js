@@ -21,12 +21,15 @@ const adminCaracteristicasService = {
     return http.post(`/admin/caracteristicas-tecnicas/${idCaracteristica}/valores`, valor);
   },
 
-  actualizarValor(idValor, valor) {
-    return http.put(`/admin/caracteristicas-tecnicas/valores/${idValor}`, valor);
+  actualizarValor(idCaracteristica, idValor, valor) {
+    return http.put(
+      `/admin/caracteristicas-tecnicas/${idCaracteristica}/valores/${idValor}`,
+      valor
+    );
   },
 
-  eliminarValor(idValor) {
-    return http.delete(`/admin/caracteristicas-tecnicas/valores/${idValor}`);
+  eliminarValor(idCaracteristica, idValor) {
+    return http.delete(`/admin/caracteristicas-tecnicas/${idCaracteristica}/valores/${idValor}`);
   },
 
   listarProfesiones() {

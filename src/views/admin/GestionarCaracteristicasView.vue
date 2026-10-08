@@ -88,6 +88,15 @@
         <span>{{ (rowData.valores || []).length }}</span>
       </template>
 
+      <template #cell(enUso)="{ rowData }">
+        <VaBadge
+          v-if="rowData.enUso === true"
+          text="En uso"
+          color="warning"
+        />
+        <span v-else class="gestion-caracteristicas__texto-muted">—</span>
+      </template>
+
       <template #cell(acciones)="{ rowData }">
         <div class="gestion-caracteristicas__acciones">
           <div class="gestion-caracteristicas__acciones-col">
@@ -118,6 +127,8 @@
               size="small"
               color="danger"
               icon="mso-delete"
+              :disabled="rowData.enUso === true"
+              :title="rowData.enUso === true ? 'En uso por perfiles o requerimientos: no se puede eliminar' : 'Eliminar'"
               @click="confirmarEliminar(rowData)"
             >
               Eliminar
@@ -137,12 +148,16 @@
     >
       <VaForm ref="formCaracteristica" @submit.prevent="guardarCaracteristica">
         <div class="gestion-caracteristicas__form">
+          <VaAlert v-if="formEnUso" color="warning">
+            En uso por perfiles o requerimientos — sólo editable el nombre.
+          </VaAlert>
+
           <VaInput
             v-model="form.codigo"
             :rules="[reglas.requerido, reglas.max50]"
             label="Código"
-            placeholder="Ej: color_ojos"
-            :disabled="!puedeCrear && !puedeModificar"
+            placeholder="Ej: COLOR_OJOS"
+            :disabled="formEnUso || (!puedeCrear && !puedeModificar)"
           />
 
           <VaInput
@@ -162,7 +177,7 @@
             placeholder="Seleccioná una unidad"
             :loading="cargandoUnidades"
             clearable
-            :disabled="!puedeCrear && !puedeModificar"
+            :disabled="formEnUso || (!puedeCrear && !puedeModificar)"
           />
 
           <VaSelect
@@ -174,7 +189,7 @@
             label="Profesión"
             placeholder="Seleccioná una profesión"
             :loading="cargandoProfesiones"
-            :disabled="!puedeCrear && !puedeModificar"
+            :disabled="formEnUso || (!puedeCrear && !puedeModificar)"
           />
 
           <VaSelect
@@ -185,7 +200,7 @@
             :rules="[reglas.requerido]"
             label="Tipo de dato"
             placeholder="Seleccioná el tipo de dato"
-            :disabled="!puedeCrear && !puedeModificar"
+            :disabled="formEnUso || (!puedeCrear && !puedeModificar)"
           />
 
           <VaAlert
@@ -412,6 +427,7 @@ export default {
         { key: "profesion", label: "Profesión", sortable: true },
         { key: "tipoDato", label: "Tipo" },
         { key: "cantValores", label: "Cant." },
+        { key: "enUso", label: "Estado" },
         { key: "acciones", label: "ACCIONES" },
       ],
 
@@ -427,6 +443,7 @@ export default {
       modalCaracteristicaVisible: false,
       modoEdicion: false,
       esEnumeradoOriginal: false,
+      formEnUso: false,
       form: {
         idCaracteristica: null,
         codigo: "",
@@ -559,6 +576,7 @@ export default {
     abrirCrear() {
       this.modoEdicion = false;
       this.esEnumeradoOriginal = false;
+      this.formEnUso = false;
       this.form = {
         idCaracteristica: null,
         codigo: "",
@@ -576,6 +594,7 @@ export default {
     abrirEditar(carac) {
       this.modoEdicion = true;
       this.esEnumeradoOriginal = carac.tipoDato === "ENUMERADO";
+      this.formEnUso = carac.enUso === true;
       this.form = {
         idCaracteristica: carac.idCaracteristica,
         codigo: carac.codigo || "",
@@ -592,13 +611,16 @@ export default {
 
     buildRequest() {
       const request = {
-        codigo: this.form.codigo?.trim(),
+        codigo: (this.form.codigo || "").trim().toUpperCase(),
         nombre: this.form.nombre?.trim() || null,
-        idUnidad: this.form.idUnidad,
+        idUnidad: this.form.idUnidad ?? null,
         idProfesion: this.form.idProfesion,
         tipoDato: this.form.tipoDato,
       };
-      if (!this.modoEdicion && this.form.tipoDato === "ENUMERADO") {
+      if (this.modoEdicion) {
+        // el PUT es completo; "valores" se ignora del lado del backend
+        request.valores = [];
+      } else if (this.form.tipoDato === "ENUMERADO") {
         request.valores = this.form.valores
           .filter((v) => v.codigo && v.codigo.trim())
           .map((v) => ({
@@ -620,19 +642,38 @@ export default {
       try {
         if (this.modoEdicion) {
           await adminCaracteristicasService.actualizar(this.form.idCaracteristica, this.buildRequest());
-          this.successMessage = "Característica actualizada correctamente.";
         } else {
           await adminCaracteristicasService.crear(this.buildRequest());
-          this.successMessage = "Característica creada correctamente.";
         }
         this.modalCaracteristicaVisible = false;
         await this.cargarCaracteristicas();
+        this.successMessage = this.modoEdicion
+          ? "Característica actualizada correctamente."
+          : "Característica creada correctamente.";
       } catch (error) {
-        this.errorMessage =
-          error?.response?.data?.message ||
-          "No se pudo guardar la característica.";
+        const status = error?.response?.status;
+        const mensaje = error?.response?.data?.message;
+        if (status === 409 && this.modoEdicion) {
+          // enUso es un snapshot: re-fetch y resync del form (fuente de verdad: backend)
+          await this.cargarCaracteristicas();
+          this.resincronizarEnUso();
+          this.errorMessage =
+            mensaje ||
+            "La característica está en uso: sólo puede modificarse el nombre.";
+        } else {
+          this.errorMessage = mensaje || "No se pudo guardar la característica.";
+        }
       } finally {
         this.guardando = false;
+      }
+    },
+
+    resincronizarEnUso() {
+      const id = this.form.idCaracteristica;
+      if (id == null) return;
+      const actualizada = this.caracteristicas.find((c) => c.idCaracteristica === id);
+      if (actualizada) {
+        this.formEnUso = actualizada.enUso === true;
       }
     },
 
@@ -646,15 +687,19 @@ export default {
       this.errorMessage = "";
       try {
         await adminCaracteristicasService.eliminar(carac.idCaracteristica);
-        this.successMessage = "Característica eliminada.";
         await this.cargarCaracteristicas();
+        this.successMessage = "Característica eliminada.";
       } catch (error) {
         const status = error?.response?.status;
-        const mensaje =
-          status === 409
-            ? "No se puede eliminar: la característica está en uso por uno o más perfiles."
-            : error?.response?.data?.message || "No se pudo eliminar la característica.";
-        this.errorMessage = mensaje;
+        if (status === 409) {
+          // en uso (perfiles o requerimientos): refresca el estado y muestra el message del back
+          await this.cargarCaracteristicas();
+        }
+        this.errorMessage =
+          error?.response?.data?.message ||
+          (status === 409
+            ? "No se puede eliminar: la característica está en uso por perfiles o requerimientos."
+            : "No se pudo eliminar la característica.");
       }
     },
 
@@ -690,14 +735,15 @@ export default {
       this.guardandoValor = true;
       this.errorValores = "";
       try {
+        const idCaracteristica = this.caracteristicaValores?.idCaracteristica;
         if (this.valorEditandoId) {
-          await adminCaracteristicasService.actualizarValor(this.valorEditandoId, {
+          await adminCaracteristicasService.actualizarValor(idCaracteristica, this.valorEditandoId, {
             idValor: null,
             codigo: this.valorForm.codigo.trim(),
             colorHex,
           });
         } else {
-          await adminCaracteristicasService.agregarValor(this.caracteristicaValores.idCaracteristica, {
+          await adminCaracteristicasService.agregarValor(idCaracteristica, {
             idValor: null,
             codigo: this.valorForm.codigo.trim(),
             colorHex,
@@ -709,9 +755,10 @@ export default {
       } catch (error) {
         const status = error?.response?.status;
         const mensaje =
-          status === 409
+          error?.response?.data?.message ||
+          (status === 409
             ? "No se pudo guardar: el código ya existe o el valor está en uso."
-            : error?.response?.data?.message || "No se pudo guardar el valor.";
+            : "No se pudo guardar el valor.");
         this.errorValores = mensaje;
       } finally {
         this.guardandoValor = false;
@@ -738,15 +785,19 @@ export default {
     async eliminarValor(valor) {
       this.errorValores = "";
       try {
-        await adminCaracteristicasService.eliminarValor(valor.idValor);
+        await adminCaracteristicasService.eliminarValor(
+          this.caracteristicaValores?.idCaracteristica,
+          valor.idValor
+        );
         await this.cargarCaracteristicas();
         await this.recargarValoresModal();
       } catch (error) {
         const status = error?.response?.status;
         const mensaje =
-          status === 409
+          error?.response?.data?.message ||
+          (status === 409
             ? "No se puede eliminar: el valor está en uso por uno o más perfiles."
-            : error?.response?.data?.message || "No se pudo eliminar el valor.";
+            : "No se pudo eliminar el valor.");
         this.errorValores = mensaje;
       }
     },
