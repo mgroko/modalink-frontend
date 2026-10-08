@@ -26,41 +26,81 @@ src/
 ├── style.css                   # Tailwind + tokens de color
 ├── assets/auth/                # Imágenes de autenticación
 ├── components/
-│   ├── AuthLayout.vue          # Layout login/registro
-│   ├── AdminLayout.vue         # Layout panel admin
-│   ├── UserDashboardLayout.vue # Layout panel usuario
 │   ├── AlertaBase.vue          # Alerta reutilizable
-│   └── calendario/             # Componentes de calendario
-├── router/index.js             # Definición de rutas
-├── services/                   # Capa de acceso HTTP
-│   ├── http.js                 # Instancia Axios + interceptor CSRF
+│   ├── AuthLayout.vue          # Layout login/registro/recuperar
+│   ├── admin/AdminLayout.vue   # Layout panel admin
+│   ├── usuario/UserDashboardLayout.vue  # Layout panel usuario
+│   ├── home/HomeLayout.vue     # Layout del home (con sidebar de perfil)
+│   │   ├── PerfilActivoWidget.vue
+│   │   ├── ProyectosSection.vue
+│   │   └── PublicacionesFeed.vue
+│   ├── perfil/                 # Hero, sidebar, reseñas, eventos, reportes, skeletons
+│   └── calendario/             # Calendario, compacto, jornada, bloqueos, disponibilidad
+├── router/index.js             # Rutas + guards (admin, permisos, perfil activo)
+├── services/                   # Capa de acceso HTTP (sin Axios directo en vistas)
+│   ├── http.js                 # Instancia Axios + interceptores (CSRF, 401/403)
 │   ├── authService.js          # Login/logout/session
-│   ├── authState.js            # Estado de sesión (reactive)
+│   ├── authState.js            # Estado de sesión (reactive) + permisos
 │   ├── usuarioService.js       # Endpoints de usuario
+│   ├── perfilService.js        # Endpoints de perfiles
+│   ├── calendarioService.js    # Endpoints de calendario
+│   ├── homeService.js          # Endpoints del home
+│   ├── reporteService.js       # Reportes de perfil
 │   ├── adminService.js         # Endpoints admin
-│   └── ...                     # Otros servicios por recurso
-├── styles/
-│   └── vuestic-overrides.css   # Overrides de Vuestic UI
+│   ├── adminCaracteristicasService.js
+│   ├── adminConfiguracionService.js    # Scheduler (deshabilitación/bajas)
+│   ├── adminUnidadesMedidaService.js
+│   └── vuestic-ui/icons-config.js
+├── styles/vuestic-overrides.css
+├── utils/
+│   ├── apiError.js             # Normalización de errores de API
+│   ├── fechas.js / horas.js    # Formateo de fechas y horas
+│   ├── fotos.js                # Utilidades de imágenes
+│   ├── perfilConstants.js      # Constantes y catálogos de perfil
+│   ├── reglas.js               # Reglas de validación
+│   └── ubicacion.js            # Mapeo de ubicación del sistema
 └── views/
     ├── auth/                   # Login, Registro, Recuperar Password
-    ├── usuario/                # Dashboard, Perfiles, Calendario
-    └── admin/                  # Gestión de usuarios y características
+    ├── perfil/                 # Home, Inicio/Ver perfil, Buscar, Crear, Editar
+    ├── usuario/                # Dashboard, Modificar datos, Calendario
+    └── admin/                  # Dashboard, Usuarios, Búsqueda, Características,
+                                # Unidades de medida, Schedulers
 ```
 
 ## Rutas principales
 
-| Ruta | Descripción | Acceso |
-|------|-------------|--------|
-| `/login` | Inicio de sesión | Público |
-| `/registro` | Registro de cuenta | Público |
-| `/recuperar-password` | Recuperación de contraseña | Público |
-| `/dashboard-usuario` | Panel de usuario | Autenticado |
-| `/dashboard-usuario/crear-perfil` | Crear perfil de proyecto | Autenticado |
-| `/dashboard-usuario/modificar-datos` | Modificar datos personales | Autenticado |
-| `/dashboard-usuario/calendario` | Calendario de actividades | Autenticado |
-| `/admin/dashboard` | Panel administrativo | Admin |
-| `/admin/gestion-usuarios` | Gestión de usuarios | Admin |
-| `/admin/gestionar-caracteristicas` | Gestión de características | Admin |
+### Públicas
+| Ruta | Descripción |
+|------|-------------|
+| `/` | Redirige a `/login` |
+| `/login` | Inicio de sesión |
+| `/registro` | Registro de cuenta |
+| `/recuperar-password` | Recuperación de contraseña |
+
+### Autenticadas (requieren sesión; algunas requieren perfil activo)
+| Ruta | Descripción | Perfil activo |
+|------|-------------|---------------|
+| `/home` | Home con feed, proyectos y perfil activo | Sí |
+| `/inicio-perfil` · `/inicio-perfil/:seccion` | Mi perfil (secciones) | Sí |
+| `/perfiles/:id` · `/perfiles/:id/:seccion` | Ver perfil de otro usuario (UC-16) | Sí |
+| `/buscar-perfiles` | Búsqueda de perfiles | Sí |
+| `/inicio-perfil/editar/:id` | Editar perfil desde el home | Sí |
+| `/dashboard-usuario` | Panel de usuario | No |
+| `/dashboard-usuario/crear-perfil` | Crear perfil de proyecto | Sin perfil activo |
+| `/dashboard-usuario/editar-perfil/:id` | Editar perfil | No |
+| `/dashboard-usuario/modificar-datos` | Modificar datos personales | No |
+| `/dashboard-usuario/calendario` | Calendario, jornada y bloqueos | No |
+
+### Admin (`requiereAdmin`)
+| Ruta | Descripción | Permiso |
+|------|-------------|---------|
+| `/admin/dashboard` | Panel administrativo | — |
+| `/admin/gestion-usuarios` | Gestión de usuarios (bajas, reactivación) | — |
+| `/admin/busqueda-usuarios` | Búsqueda de usuarios | `VER_USUARIOS` |
+| `/admin/gestionar-caracteristicas` | Gestión de características | — |
+| `/admin/unidades-medida` | Gestión de unidades de medida | — |
+| `/admin/configuracion-scheduler` | Scheduler de deshabilitación | `ADMINISTRAR_CONFIGURACION` |
+| `/admin/configuracion-scheduler/baja` | Scheduler de bajas (`diasBaja`) | `ADMINISTRAR_CONFIGURACION` |
 
 ## Requisitos previos
 
@@ -89,20 +129,32 @@ npm run preview
 
 ## Variables de entorno
 
-El archivo `.env` no se versiona. Crear un archivo `.env` en la raíz con:
+No se requiere archivo `.env`: la URL del backend está definida en `src/services/http.js` (`API_BASE_URL = "http://localhost:8080"`).
 
-```
-VITE_API_URL=http://localhost:8080
-```
+> **Nota:** se recomienda migrar a `import.meta.env.VITE_API_URL` para no editar código fuente al cambiar de entorno.
 
-> **Nota:** Actualmente la URL del backend está hardcodeada en `src/services/http.js`. Se recomienda migrar a `import.meta.env.VITE_API_URL`.
+## Autenticación y autorización
 
-## Autenticación
+- JWT almacenado en cookies (HttpOnly) con `withCredentials: true`
+- Tokens CSRF gestionados automáticamente por el interceptor de Axios (`X-XSRF-TOKEN`), con reintento automático ante un 403 en métodos mutantes
+- La sesión se restaura al cargar la app vía `/auth/me` (`restaurarSesion()`)
+- Manejo de errores centralizado en `src/services/http.js`:
+  - `401` → cuenta no activa (ej. `PENDIENTE_BAJA`)
+  - `403` → sin sesión (redirige a `/login?redirect=...`), permiso faltante o CSRF inválido
+- Guards en `src/router/index.js`:
+  - `requiereAdmin` → solo rol `Administrador`
+  - `requierePermiso` → permisos derivados del rol (`VER_USUARIOS`, `ADMINISTRAR_CONFIGURACION`, …)
+  - Flujo de perfil activo → sin perfil redirige a `crear-perfil` o `dashboard-usuario`
+- `App.vue` remonta la vista al cambiar el perfil activo para recargar datos contextuales
 
-- JWT almacenado en cookies (HttpOnly)
-- Tokens CSRF gestionados automáticamente por el interceptor de Axios (`X-XSRF-TOKEN`)
-- La sesión se restaura al cargar la app vía `/auth/me`
-- Rutas admin protegidas por `beforeEach` guard en el router
+## Documentación
+
+Bajo `docs/` se encuentran las fichas técnicas y guías de integración con el backend:
+
+- `docs/backend/` — fichas técnicas por caso de uso (buscar perfil, ver perfil, búsqueda de usuarios, unidades de medida, jornada partida) y guías de integración (home, perfil activo)
+- `docs/adaptacion de bd/backend/` — fichas técnicas de los módulos admin, calendario, perfiles, ubicación y usuario
+- `docs/estado/` — estado del proyecto (V.0.1) y del home (V.0.2)
+- `docs/pantallas/` — referencia visual (Figma export)
 
 ## Paleta de colores
 
@@ -121,5 +173,6 @@ VITE_API_URL=http://localhost:8080
 - Componentes en **PascalCase**, un componente por archivo
 - Vistas en `src/views/`, componentes reutilizables en `src/components/`
 - Llamadas HTTP centralizadas en `src/services/` — nunca Axios directo desde componentes
+- Constantes y helpers compartidos en `src/utils/`
 - Nombres en español para conceptos de dominio, inglés para genéricos de UI
 - Estilos vía Tailwind CSS (clases utility-first) + Vuestic UI
