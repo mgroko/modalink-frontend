@@ -59,15 +59,16 @@
       No hay características técnicas registradas.
     </div>
 
-    <VaDataTable
-      v-else
-      class="gestion-caracteristicas__tabla"
-      :items="caracteristicasFiltradas"
-      :columns="columnas"
-      :per-page="10"
-      striped
-      hoverable
-    >
+    <template v-else>
+      <VaDataTable
+        class="gestion-caracteristicas__tabla"
+        :items="caracteristicasFiltradas"
+        :columns="columnas"
+        :per-page="porPaginaCaracteristicas"
+        :current-page="paginaCaracteristicas"
+        striped
+        hoverable
+      >
       <template #cell(idCaracteristica)="{ value }">
         <span class="gestion-caracteristicas__id">{{ value }}</span>
       </template>
@@ -136,7 +137,23 @@
           </div>
         </div>
       </template>
-    </VaDataTable>
+      </VaDataTable>
+
+      <div v-if="caracteristicasFiltradas.length > 0" class="gestion-caracteristicas__paginacion">
+        <span class="gestion-caracteristicas__paginacion-info">
+          {{ caracteristicasPaginadasInfo }}
+        </span>
+        <VaPagination
+          v-model="paginaCaracteristicas"
+          :total="caracteristicasFiltradas.length"
+          :page-size="porPaginaCaracteristicas"
+          :visible-pages="5"
+          boundary-links
+          direction-links
+          hide-on-single-page
+        />
+      </div>
+    </template>
 
     <!-- Modal crear / editar característica -->
     <VaModal
@@ -334,7 +351,8 @@
         v-else
         :items="caracteristicaValores.valores"
         :columns="columnasValores"
-        :per-page="10"
+        :per-page="porPaginaValores"
+        :current-page="paginaValores"
         striped
         hoverable
       >
@@ -369,6 +387,21 @@
           </div>
         </template>
       </VaDataTable>
+
+      <div v-if="valoresTotal > 0" class="gestion-caracteristicas__paginacion">
+        <span class="gestion-caracteristicas__paginacion-info">
+          {{ valoresPaginadosInfo }}
+        </span>
+        <VaPagination
+          v-model="paginaValores"
+          :total="valoresTotal"
+          :page-size="porPaginaValores"
+          :visible-pages="5"
+          boundary-links
+          direction-links
+          hide-on-single-page
+        />
+      </div>
     </VaModal>
   </div>
 </template>
@@ -419,6 +452,8 @@ export default {
       busqueda: "",
       successMessage: "",
       errorMessage: "",
+      porPaginaCaracteristicas: 10,
+      paginaCaracteristicas: 1,
 
       columnas: [
         { key: "idCaracteristica", label: "ID" },
@@ -461,6 +496,8 @@ export default {
       valorEditandoId: null,
       valorForm: { codigo: "", colorHex: "" },
       guardandoValor: false,
+      porPaginaValores: 10,
+      paginaValores: 1,
 
       reglas: {
         requerido: (v) => !!v || "Este campo es requerido",
@@ -498,6 +535,28 @@ export default {
     esEnumeradoOriginalYConValores() {
       return this.esEnumeradoOriginal && (this.form.valores || []).length > 0;
     },
+    valoresTotal() {
+      return (this.caracteristicaValores?.valores || []).length;
+    },
+    valoresPaginadosInfo() {
+      const total = this.valoresTotal;
+      if (!total) return "";
+      const desde = (this.paginaValores - 1) * this.porPaginaValores + 1;
+      const hasta = Math.min(this.paginaValores * this.porPaginaValores, total);
+      return `Mostrando ${desde}–${hasta} de ${total} valores`;
+    },
+    caracteristicasPaginadasInfo() {
+      const total = this.caracteristicasFiltradas.length;
+      if (!total) return "";
+      const desde = (this.paginaCaracteristicas - 1) * this.porPaginaCaracteristicas + 1;
+      const hasta = Math.min(this.paginaCaracteristicas * this.porPaginaCaracteristicas, total);
+      return `Mostrando ${desde}–${hasta} de ${total} características`;
+    },
+  },
+  watch: {
+    busqueda() {
+      this.paginaCaracteristicas = 1;
+    },
   },
   async mounted() {
     await Promise.all([
@@ -527,6 +586,7 @@ export default {
         const response = await adminCaracteristicasService.listar();
         const datos = response?.data;
         this.caracteristicas = Array.isArray(datos) ? datos : datos?.caracteristicas || [];
+        this.ajustarPaginaCaracteristicas();
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message || "No se pudieron cargar las características.";
@@ -558,6 +618,16 @@ export default {
         // el select queda vacío si falla la carga
       } finally {
         this.cargandoUnidades = false;
+      }
+    },
+
+    ajustarPaginaCaracteristicas() {
+      const ultimaPagina = Math.max(
+        1,
+        Math.ceil(this.caracteristicasFiltradas.length / this.porPaginaCaracteristicas)
+      );
+      if (this.paginaCaracteristicas > ultimaPagina) {
+        this.paginaCaracteristicas = ultimaPagina;
       }
     },
 
@@ -708,6 +778,7 @@ export default {
       this.caracteristicaValores = { ...carac, valores: (carac.valores || []).map((v) => ({ ...v })) };
       this.errorValores = "";
       this.valorFormVisible = false;
+      this.paginaValores = 1;
       this.modalValoresVisible = true;
     },
 
@@ -774,6 +845,11 @@ export default {
           ...actualizada,
           valores: (actualizada.valores || []).map((v) => ({ ...v })),
         };
+      }
+      // si se eliminó el último valor de la última página, volver a la última válida
+      const ultimaPagina = Math.max(1, Math.ceil(this.valoresTotal / this.porPaginaValores));
+      if (this.paginaValores > ultimaPagina) {
+        this.paginaValores = ultimaPagina;
       }
     },
 
@@ -948,6 +1024,20 @@ export default {
 }
 
 /* Gestor de valores */
+.gestion-caracteristicas__paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.gestion-caracteristicas__paginacion-info {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
 .gestion-caracteristicas__valor-edicion {
   display: flex;
   align-items: center;

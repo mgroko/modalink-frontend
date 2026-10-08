@@ -13,6 +13,8 @@ import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
 import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
+import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
+import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
@@ -78,6 +80,18 @@ const routes = [
     name: "buscar-perfiles",
     component: BuscarPerfilView,
     meta: { layout: HomeLayout, titulo: "Búsqueda de perfiles", requiresActiveProfile: true },
+  },
+  {
+    path: "/crear-proyecto",
+    name: "crear-proyecto",
+    component: CrearProyectoView,
+    meta: { layout: HomeLayout, titulo: "Crear proyecto", requiresActiveProfile: true },
+  },
+  {
+    path: "/proyectos/:id",
+    name: "dashboard-proyecto",
+    component: DashboardProyectoView,
+    meta: { layout: HomeLayout, titulo: "Proyecto", requiresActiveProfile: true },
   },
   {
     path: "/inicio-perfil/editar/:id",

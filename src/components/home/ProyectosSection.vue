@@ -2,6 +2,14 @@
   <section class="home-section">
     <div class="home-section__encabezado">
       <h2>Proyectos destacados</h2>
+      <VaButton
+        size="small"
+        preset="primary"
+        icon="mso-add"
+        @click="$router.push({ name: 'crear-proyecto' })"
+      >
+        Crear proyecto
+      </VaButton>
     </div>
 
     <div v-if="proyectos.length" class="home-section__grid">
@@ -34,8 +42,16 @@ export default {
   border-radius: 12px;
 }
 
+.home-section__encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 .home-section__encabezado h2 {
-  margin: 0 0 1rem;
+  margin: 0;
   color: var(--color-text);
   font-size: 1rem;
 }
