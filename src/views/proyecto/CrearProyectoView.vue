@@ -172,6 +172,8 @@
         </p>
         <MoodboardSeccion
           v-model="form.moodboard"
+          v-model:imagenes="imagenesMoodboard"
+          v-model:procesando="procesandoMoodboard"
           :mostrar-encabezado="false"
           :error="errorCampo('moodboard.descripcion')"
           :error-messages="mensajeCampo('moodboard.descripcion')"
@@ -211,7 +213,11 @@
     <ModalExitoProyecto
       v-model="modalExito"
       :proyecto="proyectoCreado"
+      :advertencia="advertenciaSubidaImagenes"
+      :cargando-reintento="cargandoReintento"
       @ir-al-proyecto="irAlProyecto"
+      @reintentar="reintentarSubidaImagenes"
+      @continuar-sin-imagenes="continuarSinImagenes"
     />
 
     <ModalCancelarCreacion v-model="modalCancelar" @confirmar="descartarCreacion" />
@@ -237,8 +243,9 @@ import {
   mapearErroresBackend,
   raizConocida,
 } from "../../utils/validacionesProyecto.js";
-import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
+import { clasificarErrorProyecto, clasificarErrorImagenesMoodboard } from "../../utils/erroresProyecto.js";
 import { mensajeErrorApi } from "../../utils/apiError.js";
+import { revocarPreviews } from "../../utils/moodboardImagenes.js";
 import { refrescarSesion } from "../../services/authState.js";
 
 /*
@@ -280,6 +287,8 @@ export default {
         requerimientosGral: [],
         moodboard: "",
       },
+      imagenesMoodboard: [],
+      procesandoMoodboard: false,
       hoy: hoyISO(),
       profesiones: [],
       habilidades: [],
@@ -294,6 +303,8 @@ export default {
       modalExito: false,
       modalCancelar: false,
       proyectoCreado: null,
+      advertenciaSubidaImagenes: "",
+      cargandoReintento: false,
       siguienteUid: 0,
       reglas: reglasProyecto,
     };
@@ -303,6 +314,9 @@ export default {
   },
   mounted() {
     this.cargarCatalogos();
+  },
+  beforeUnmount() {
+    revocarPreviews(this.imagenesMoodboard);
   },
   methods: {
     async cargarCatalogos() {
@@ -469,6 +483,11 @@ export default {
       this.mensajeExito = "";
       this.mensajeError = "";
 
+      if (this.procesandoMoodboard) {
+        this.mensajeError = "Esperá a que terminen de validarse las imágenes.";
+        return;
+      }
+
       const valido = this.$refs.form.validate();
       if (!valido) {
         this.mensajeError = "Revisá los campos marcados antes de continuar.";
@@ -496,19 +515,118 @@ export default {
         const response = await proyectoService.crear(this.buildRequest());
         const proyecto = response?.data;
 
-        if (proyecto?.idProyecto != null) {
-          this.proyectoCreado = proyecto;
-          this.modalExito = true;
-          this.reiniciarFormulario();
+        if (proyecto?.idProyecto == null) {
+          this.mensajeExito = `Proyecto "${proyecto?.nombre || this.form.nombre}" creado correctamente. Estado inicial: ${proyecto?.estado || "Borrador"}.`;
+          this.$refs.form.resetValidation();
           return;
         }
-        this.mensajeExito = `Proyecto "${proyecto?.nombre || this.form.nombre}" creado correctamente. Estado inicial: ${proyecto?.estado || "Borrador"}.`;
-        this.$refs.form.resetValidation();
+
+        this.proyectoCreado = proyecto;
+
+        // §7.1: las imágenes no viajan en POST /proyectos; se suben después.
+        if (this.imagenesMoodboard.length > 0) {
+          const subidaOk = await this.subirImagenesDelMoodboard(proyecto.idProyecto);
+          if (!subidaOk) return;
+        }
+
+        this.modalExito = true;
+        this.reiniciarFormulario();
       } catch (error) {
         await this.manejarError(error);
       } finally {
         this.cargando = false;
       }
+    },
+
+    /**
+     * Segunda llamada del flujo de creación (§7.1): sube los archivos
+     * retenidos. Si falla, el proyecto YA existe: sólo se abre el modal en
+     * modo advertencia con Reintentar / Continuar sin imágenes — nunca se
+     * repite POST /proyectos (§7.5.4).
+     * @param {number} idProyecto
+     * @returns {Promise<boolean>} true si las imágenes se subieron
+     */
+    async subirImagenesDelMoodboard(idProyecto) {
+      try {
+        await proyectoService.subirImagenesMoodboard(
+          idProyecto,
+          this.imagenesMoodboard.map((imagen) => imagen.archivo)
+        );
+        return true;
+      } catch (error) {
+        this.advertenciaSubidaImagenes = this.mensajeFalloSubidaImagenes(error);
+        this.modalExito = true;
+        return false;
+      }
+    },
+
+    /** Reintenta SÓLO el POST de imágenes con el idProyecto existente (§7.5.4). */
+    async reintentarSubidaImagenes() {
+      if (this.cargandoReintento) return;
+      const idProyecto = this.proyectoCreado?.idProyecto;
+      if (idProyecto == null) return;
+
+      this.cargandoReintento = true;
+      try {
+        const subidaOk = await this.subirImagenesDelMoodboard(idProyecto);
+        if (subidaOk) {
+          this.advertenciaSubidaImagenes = "";
+          this.reiniciarFormulario();
+        }
+      } finally {
+        this.cargandoReintento = false;
+      }
+    },
+
+    /** El usuario descartó las imágenes: el proyecto queda creado sin ellas. */
+    continuarSinImagenes() {
+      this.advertenciaSubidaImagenes = "";
+      this.reiniciarFormulario();
+    },
+
+    /**
+     * Mensaje del modal en modo advertencia (§7.4): traduce la clasificación
+     * del fallo a una acción concreta para el usuario.
+     * @param {Error} error error Axios del POST de imágenes
+     * @returns {string}
+     */
+    mensajeFalloSubidaImagenes(error) {
+      const base =
+        "El proyecto se creó, pero no se pudieron subir las imágenes del moodboard.";
+
+      if (
+        error?._esSesionExpirada ||
+        error?._esCuentaNoActiva ||
+        error?._esCsrf
+      ) {
+        return `${base} ${mensajeErrorApi(error, "Intentá nuevamente.")}`;
+      }
+
+      const clasificacion = clasificarErrorImagenesMoodboard(error);
+      const detallePorTipo = {
+        limite:
+          "El moodboard ya tiene 10 imágenes: quitá algunas antes de reintentar.",
+        formato:
+          "Verificá que sean JPG, PNG o WEBP de hasta 10 MB cada una.",
+        vacio: "No se enviaron archivos: volvé a agregarlos.",
+        "tamano-peticion":
+          "El lote supera el peso permitido: subí menos imágenes por vez.",
+        dimensiones:
+          "Alguna imagen supera el tamaño máximo (8000 px o 24 megapíxeles).",
+        permiso: "Tu perfil no tiene permiso para modificar este proyecto.",
+        "proyecto-no-encontrado":
+          "El proyecto ya no existe: no se puede reintentar la subida.",
+        "perfil-activo": "No hay un perfil activo seleccionado en la sesión.",
+      };
+
+      if (!clasificacion) {
+        return `${base} ${mensajeErrorApi(error, "Intentá nuevamente.")}`;
+      }
+      const detalle =
+        detallePorTipo[clasificacion.tipo] ||
+        clasificacion.mensaje ||
+        "Intentá nuevamente.";
+      return `${base} ${detalle}`;
     },
 
     reiniciarFormulario() {
@@ -523,6 +641,11 @@ export default {
         requerimientosGral: [],
         moodboard: "",
       };
+      revocarPreviews(this.imagenesMoodboard);
+      this.imagenesMoodboard = [];
+      this.procesandoMoodboard = false;
+      this.advertenciaSubidaImagenes = "";
+      this.cargandoReintento = false;
       this.erroresBackend = {};
       this.seccionErrores = {};
       this.mensajeExito = "";

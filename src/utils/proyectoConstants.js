@@ -127,6 +127,21 @@ export const LIMITES_PROYECTO = {
   MOODBOARD_DESCRIPCION: 200,
 };
 
+/*
+ * Imágenes del moodboard (ficha UC-24 §7.2): espejo cliente de los límites
+ * del backend para rechazar en el dropzone lo que la subida rechazaría
+ * en Finalizar. `MAX_BYTES_PETICION` limita la petición completa (§7.4).
+ */
+export const MOODBOARD_IMAGENES = {
+  MAX_IMAGENES: 10,
+  MAX_BYTES: 10 * 1024 * 1024,
+  MAX_BYTES_PETICION: 110 * 1024 * 1024,
+  MAX_LADO_PX: 8000,
+  MAX_MEGAPIXELES: 24,
+  FORMATOS: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+  EXTENSIONES: ["jpg", "jpeg", "png", "webp"],
+};
+
 export function esNumerico(tipoDato) {
   return String(tipoDato || "").toUpperCase() === TIPOS_DATO_CARACTERISTICA.NUMERICO;
 }

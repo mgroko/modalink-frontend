@@ -96,10 +96,20 @@ import http from "./http";
  */
 
 /**
+ * @typedef {Object} ImagenMoodboardResponse
+ * @property {number} idImagen
+ * @property {string} url ruta relativa, ej.
+ *           "/uploads/perfiles/moodboard_<UUID>.webp" (resolver con
+ *           resolverFotoUrl antes de usarla en <img>)
+ */
+
+/**
  * @typedef {Object} MoodboardResponse
  * @property {number} idMoodboard
  * @property {string|null} descripcion
  * @property {string} fechaCreacion ISO 8601
+ * @property {ImagenMoodboardResponse[]} imagenes ordenadas por idImagen
+ *           ascendente (= orden de subida)
  */
 
 /**
@@ -206,6 +216,41 @@ const proyectoService = {
    */
   crear(request) {
     return http.post("/proyectos", request);
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/moodboard/imagenes — sube 1 a 10 archivos
+   * en una sola petición multipart (ficha UC-24 §7.2). El nombre del campo
+   * debe ser exactamente `archivos`. Las imágenes NO viajan en `crear()`: se
+   * ejecuta después, sólo si hay archivos retenidos. Si el proyecto se creó
+   * sin moodboard, el backend lo crea al subir (descripcion queda null).
+   *
+   * Límites: JPG/PNG/WEBP; ≤ 10 MB por imagen; ≤ 10 imágenes en total;
+   * ≤ 110 MB por petición; lado ≤ 8000 px o ≤ 24 megapíxeles.
+   *
+   * Errores (matriz UC-24 §7.4):
+   * - 400 LimiteImagenesMoodboardExcedidoException (existentes + nuevas > 10)
+   * - 400 FormatoImagenInvalidoException (> 10 MB, formato no admitido o
+   *   contenido no válido)
+   * - 400 ArchivoVacioException (sin archivos o archivo vacío)
+   * - 400 MaxUploadSizeExceededException (petición > 110 MB)
+   * - 400 DimensionesImagenExcedidasException (lado > 8000 px o > 24 MP)
+   * - 403 AccesoDenegadoProyectoException (perfil sin MODIFICAR_PROYECTO)
+   * - 404 ProyectoNoEncontradoException / PerfilActivoNoSeleccionadoException
+   *
+   * Si esta llamada falla, el proyecto ya existe: reintentar sólo ésta con el
+   * idProyecto existente, sin repetir `crear()` (§7.1 / §7.5.4).
+   * @param {number} idProyecto
+   * @param {File[]} archivos 1 a 10 archivos retenidos en el wizard
+   * @returns {Promise<{data: MoodboardResponse}>} 200 OK con el moodboard
+   *          completo (descripcion + imagenes ya subidas)
+   */
+  subirImagenesMoodboard(idProyecto, archivos) {
+    const formData = new FormData();
+    for (const archivo of archivos) {
+      formData.append("archivos", archivo);
+    }
+    return http.post(`/proyectos/${idProyecto}/moodboard/imagenes`, formData);
   },
 };
 

@@ -69,3 +69,61 @@ export function clasificarErrorProyecto(error) {
 
   return null;
 }
+
+/**
+ * @typedef {Object} ErrorImagenesMoodboardClasificado
+ * @property {"limite"|"formato"|"vacio"|"tamano-peticion"|"dimensiones"|
+ *           "permiso"|"proyecto-no-encontrado"|"perfil-activo"|
+ *           "generico"} tipo
+ * @property {string} [mensaje] message del backend
+ */
+
+/*
+ * Clasificación de errores de POST /proyectos/{id}/moodboard/imagenes
+ * (matriz UC-24 §7.4). Misma heurística conservadora que
+ * clasificarErrorProyecto: el backend sólo envía { message }, sin el nombre
+ * de la excepción, así que se clasifica por palabras clave del mensaje y
+ * ante la duda se devuelve "generico".
+ */
+export function clasificarErrorImagenesMoodboard(error) {
+  const status = error?.response?.status;
+  const data = error?.response?.data;
+  const mensaje = data?.message || "";
+
+  if (status === 400) {
+    // El orden importa: "110 MB" contiene el substring "10 MB", así que el
+    // límite de la petición se chequea antes que el formato/peso por archivo.
+    if (/dimensi|8000|megap[ií]xel|p[ií]xel/i.test(mensaje)) {
+      return { tipo: "dimensiones", mensaje };
+    }
+    if (/110|tama[ñn]o (?:m[áa]ximo de la )?petici[óo]n|demasiado grande/i.test(mensaje)) {
+      return { tipo: "tamano-peticion", mensaje };
+    }
+    if (/formato|jpg|jpeg|png|webp|10\s*MB|contenido/i.test(mensaje)) {
+      return { tipo: "formato", mensaje };
+    }
+    if (/vac[ií]o|sin archivos|no (?:se )?(?:recibieron|enviaron)/i.test(mensaje)) {
+      return { tipo: "vacio", mensaje };
+    }
+    if (/l[íi]mite|excedid|10 (?:im[áa]genes|archivos)|m[áa]ximo de 10/i.test(mensaje)) {
+      return { tipo: "limite", mensaje };
+    }
+    return { tipo: "generico", mensaje };
+  }
+
+  if (status === 403) {
+    return { tipo: "permiso", mensaje };
+  }
+
+  if (status === 404) {
+    if (/perfil\s*activo/i.test(mensaje)) {
+      return { tipo: "perfil-activo", mensaje };
+    }
+    if (/proyecto/i.test(mensaje)) {
+      return { tipo: "proyecto-no-encontrado", mensaje };
+    }
+    return null;
+  }
+
+  return null;
+}
