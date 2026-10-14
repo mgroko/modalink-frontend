@@ -31,15 +31,25 @@
       </button>
     </nav>
 
-    <VaButton
-      v-if="!esPropio"
-      color="success"
-      block
-      icon="mso-handshake"
-      @click="$emit('contactar')"
-    >
-      Contactar / Colaborar
-    </VaButton>
+    <div v-if="!esPropio" class="perfil-nav__acciones">
+      <VaButton
+        class="perfil-nav__accion"
+        color="#5CA4A9"
+        icon="mso-person_add"
+        @click="$emit('conectar')"
+      >
+        Conectar
+      </VaButton>
+      <VaButton
+        class="perfil-nav__accion"
+        preset="secondary"
+        color="primary"
+        icon="mso-chat_bubble"
+        @click="$emit('mensaje')"
+      >
+        Mensaje
+      </VaButton>
+    </div>
 
     <VaButton
       v-if="!esPropio"
@@ -67,7 +77,7 @@ export default {
       default: "publicaciones",
     },
   },
-  emits: ["cambiar-seccion", "navegar-ruta", "cerrar-sesion", "contactar", "reportar"],
+  emits: ["cambiar-seccion", "navegar-ruta", "cerrar-sesion", "conectar", "mensaje", "reportar"],
   computed: {
     itemsVisibles() {
       const itemsPropio = [
@@ -166,5 +176,14 @@ export default {
 
 .perfil-nav__item--peligro:hover {
   background: #fef2f2;
+}
+
+.perfil-nav__acciones {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.perfil-nav__accion {
+  flex: 1;
 }
 </style>

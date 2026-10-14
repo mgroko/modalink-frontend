@@ -14,17 +14,17 @@
       </button>
     </div>
 
-    <Calendario />
+    <CalendarioProfesional mostrar-acciones />
   </div>
 </template>
 
 <script>
-import Calendario from "../../components/calendario/Calendario.vue";
+import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 
 export default {
   name: "CalendarioView",
   components: {
-    Calendario,
+    CalendarioProfesional,
   },
 };
 </script>

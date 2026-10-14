@@ -77,10 +77,13 @@
             <section class="inicio-perfil__panel">
               <h2 class="inicio-perfil__panel-titulo">Calendario profesional</h2>
               <div v-if="esPropio" class="inicio-perfil__calendario-wrap">
-                <CalendarioCompacto />
+                <CalendarioProfesional mostrar-acciones @actualizado="refrescarEventos" />
               </div>
               <div v-else class="inicio-perfil__calendario-wrap">
-                <DisponibilidadAjena :id-usuario="perfil.idUsuario || perfil.idPerfil" />
+                <CalendarioProfesional
+                  :id-usuario="perfil.idUsuario || perfil.idPerfil"
+                  solo-lectura
+                />
               </div>
             </section>
           </template>
@@ -189,7 +192,7 @@
 
         <aside class="inicio-perfil__sidebar">
           <template v-if="esPropio">
-            <ProximosEventos />
+            <ProximosEventos ref="proximosEventos" />
             <PerfilSidebarNav
               es-propio
               :seccion-activa="seccion"
@@ -203,9 +206,10 @@
               :es-propio="false"
               :seccion-activa="seccion"
               @cambiar-seccion="cambiarSeccion"
-              @navegar-ruta="navegarRuta"
-              @contactar="proximamente"
-              @reportar="modalReporte = true"
+            @navegar-ruta="navegarRuta"
+            @conectar="proximamente"
+            @mensaje="proximamente"
+            @reportar="modalReporte = true"
             />
             <ResenasCard :resenas="resenas" />
           </template>
@@ -227,8 +231,7 @@ import homeService from "../../services/homeService";
 import authService from "../../services/authService";
 import { idPerfilActivo, limpiarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
-import CalendarioCompacto from "../../components/calendario/CalendarioCompacto.vue";
-import DisponibilidadAjena from "../../components/calendario/DisponibilidadAjena.vue";
+import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
@@ -254,8 +257,7 @@ export default {
   name: "InicioPerfilView",
   components: {
     BaseAlert,
-    CalendarioCompacto,
-    DisponibilidadAjena,
+    CalendarioProfesional,
     PerfilHero,
     PerfilSidebarNav,
     ProximosEventos,
@@ -467,6 +469,9 @@ export default {
       } else {
         this.proximamente();
       }
+    },
+    refrescarEventos() {
+      this.$refs.proximosEventos?.cargar();
     },
     proximamente() {
       alert("Funcionalidad próximamente disponible.");
