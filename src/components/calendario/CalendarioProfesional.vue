@@ -103,7 +103,13 @@
             :class="`calendario__evento--${item.tipo}`"
           >
             <div class="calendario__evento-cabecera">
-              <span class="calendario__evento-rango">{{ item.rango }}</span>
+              <span class="calendario__evento-rango">
+                <span
+                  v-for="(parte, i) in item.rango"
+                  :key="i"
+                  :class="`calendario__evento-${parte.clase}`"
+                >{{ parte.texto }}</span>
+              </span>
               <span v-if="item.proyecto" class="calendario__evento-badge">{{ item.proyecto }}</span>
               <button
                 v-if="item.tipo === 'bloqueo' && !soloLectura"
@@ -157,7 +163,7 @@ import calendarioService from "../../services/calendarioService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ConfigurarJornada from "./ConfigurarJornada.vue";
 import CrearBloqueo from "./CrearBloqueo.vue";
-import { rangoSemana } from "../../utils/fechas.js";
+import { rangoSemana, formatearFechaCorta } from "../../utils/fechas.js";
 import { horaCorta, aMinutos, aHora } from "../../utils/horas";
 import { mensajeErrorApi } from "../../utils/apiError";
 
@@ -190,10 +196,17 @@ function aDate(localDateTime) {
   return new Date(localDateTime);
 }
 
-function rangoHorario(inicio, fin) {
+function rangoFechaHora(inicio, fin) {
   const ini = aDate(inicio);
   const termino = aDate(fin);
-  return `${pad(ini.getHours())}:${pad(ini.getMinutes())} – ${pad(termino.getHours())}:${pad(termino.getMinutes())}`;
+  const hora = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return [
+    { texto: formatearFechaCorta(ini), clase: "fecha" },
+    { texto: hora(ini), clase: "hora" },
+    { texto: "\u2013", clase: "sep" },
+    { texto: formatearFechaCorta(termino), clase: "fecha" },
+    { texto: hora(termino), clase: "hora" },
+  ];
 }
 
 export default {
@@ -293,7 +306,7 @@ export default {
         items.push({
           id: `bloqueo-${b.idBloqueo}`,
           tipo: "bloqueo",
-          rango: rangoHorario(b.fechaHoraInicio, b.fechaHoraFin),
+          rango: rangoFechaHora(b.fechaHoraInicio, b.fechaHoraFin),
           descripcion: `Bloqueo manual: ${b.motivo || "Sin motivo"}`,
           proyecto: null,
           orden: aDate(b.fechaHoraInicio).getTime(),
@@ -306,7 +319,7 @@ export default {
         items.push({
           id: `actividad-${a.idActividad}`,
           tipo: "actividad",
-          rango: rangoHorario(a.fechaHoraInicio, a.fechaHoraFin),
+          rango: rangoFechaHora(a.fechaHoraInicio, a.fechaHoraFin),
           descripcion: a.nombre || "Actividad de proyecto",
           proyecto: a.proyectoNombre || (a.idProyecto ? `Proyecto #${a.idProyecto}` : null),
           orden: aDate(a.fechaHoraInicio).getTime(),
@@ -793,9 +806,16 @@ export default {
 }
 
 .calendario__evento-rango {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--color-text);
+}
+
+.calendario__evento-fecha {
+  color: #6b6978;
 }
 
 .calendario__evento-badge {

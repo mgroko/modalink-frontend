@@ -35,8 +35,8 @@
         :max-length="100"
         counter
         :rules="[reglas.requerido, reglas.max100]"
-        :error="!!errorDe(i, 'nombre')"
-        :error-messages="errorDe(i, 'nombre')"
+        :error="errorDe(i, 'nombre') ? true : undefined"
+        :error-messages="errorDe(i, 'nombre') || undefined"
       />
 
       <VaTextarea
@@ -47,8 +47,8 @@
         counter
         :rows="2"
         :rules="[reglas.max300]"
-        :error="!!errorDe(i, 'descripcion')"
-        :error-messages="errorDe(i, 'descripcion')"
+        :error="errorDe(i, 'descripcion') ? true : undefined"
+        :error-messages="errorDe(i, 'descripcion') || undefined"
       />
     </div>
   </div>

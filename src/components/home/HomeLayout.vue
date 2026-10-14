@@ -19,7 +19,7 @@
       <nav class="home-layout__navigation" aria-label="Navegación principal">
         <button
           class="home-layout__nav-item"
-          :class="{ 'home-layout__nav-item--active': $route.name === 'home' }"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'inicio' }"
           @click.stop="$router.push({ name: 'home' })"
         >
           <span class="material-symbols-outlined">home</span>
@@ -27,7 +27,7 @@
         </button>
         <button
           class="home-layout__nav-item"
-          :class="{ 'home-layout__nav-item--active': esRutaProyectos }"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'proyectos' }"
           @click.stop="$router.push({ name: 'proyectos-inicio' })"
         >
           <span class="material-symbols-outlined">business_center</span>
@@ -175,8 +175,8 @@ export default {
     inicialPerfil() {
       return this.inicialDe(this.nombreArtisticoActivo || this.perfilActual?.nombreArtistico || "?");
     },
-    esRutaProyectos() {
-      return this.$route.name === "proyectos-inicio";
+    navActiva() {
+      return this.$route.meta.navActiva || "inicio";
     },
     ubicacionTexto() {
       return formatUbicacion(this.ubicacion) || "Ubicación no definida";

@@ -17,8 +17,8 @@
       :loading="loading"
       :disabled="disabled"
       :no-options-text="textoSinOpciones"
-      :error="error"
-      :error-messages="errorMessage"
+      :error="error || undefined"
+      :error-messages="errorMessage || undefined"
       @update:model-value="onCambio"
     />
     <p v-if="!loading && options.length === 0" class="multi-habilidades__aviso">

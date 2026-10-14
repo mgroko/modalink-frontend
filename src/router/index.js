@@ -50,7 +50,7 @@ const routes = [
     path: "/home",
     name: "home",
     component: HomeView,
-    meta: { layout: HomeLayout, titulo: "Inicio", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Inicio", requiresActiveProfile: true, navActiva: "inicio" },
   },
   {
     path: "/inicio-perfil",
@@ -86,19 +86,19 @@ const routes = [
     path: "/crear-proyecto",
     name: "crear-proyecto",
     component: CrearProyectoView,
-    meta: { layout: HomeLayout, titulo: "Crear proyecto", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Crear proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
     path: "/proyectos",
     name: "proyectos-inicio",
     component: ProyectosInicioView,
-    meta: { layout: HomeLayout, titulo: "Proyectos / Inicio", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Proyectos / Inicio", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
     path: "/proyectos/:id",
     name: "dashboard-proyecto",
     component: DashboardProyectoView,
-    meta: { layout: HomeLayout, titulo: "Proyecto", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
     path: "/inicio-perfil/editar/:id",

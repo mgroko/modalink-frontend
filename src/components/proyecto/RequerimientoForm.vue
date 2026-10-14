@@ -22,8 +22,8 @@
         label="Cantidad de personas*"
         placeholder="Ej: 2"
         :rules="[reglas.requerido, reglas.cantidadPositiva]"
-        :error="!!errores.cantidad"
-        :error-messages="errores.cantidad"
+        :error="errores.cantidad ? true : undefined"
+        :error-messages="errores.cantidad || undefined"
       />
 
       <VaSelect
@@ -34,8 +34,8 @@
         label="Profesión*"
         placeholder="Ej: Modelo"
         :rules="[reglas.requerido]"
-        :error="!!errores.idProfesion"
-        :error-messages="errores.idProfesion"
+        :error="errores.idProfesion ? true : undefined"
+        :error-messages="errores.idProfesion || undefined"
       />
     </div>
 
@@ -133,8 +133,8 @@
       :options="habilidades"
       :loading="cargandoHabilidades"
       :ayuda="ayudaHabilidades"
-      :error="!!errores.habilidades"
-      :error-message="errores.habilidades"
+      :error="errores.habilidades ? true : undefined"
+      :error-message="errores.habilidades || undefined"
     />
 
     <VaInput

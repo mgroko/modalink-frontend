@@ -2,7 +2,7 @@
   <div class="proyectos-inicio">
     <header class="proyectos-inicio__header">
       <h1 class="proyectos-inicio__titulo">Proyectos / Inicio</h1>
-      <VaButton color="#5CA4A9" icon="mso-add" @click="irACrearProyecto">
+      <VaButton color="#5CA4A9" text-color="#fff" icon="mso-add" @click="irACrearProyecto">
         Crear proyecto
       </VaButton>
     </header>

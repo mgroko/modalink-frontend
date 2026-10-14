@@ -186,7 +186,7 @@
       <div class="crear-proyecto__acciones">
         <span class="crear-proyecto__nota">Los campos marcados con (*) son obligatorios</span>
 
-        <div class="crear-proyecto__acciones-derecha">
+        <div class="crear-proyecto__acciones-pie">
           <VaButton
             preset="secondary"
             class="crear-proyecto__btn-texto"
@@ -195,12 +195,15 @@
           >
             Cancelar
           </VaButton>
-          <VaButton v-if="paso > 1" preset="secondary" :disabled="cargando" @click="anterior">
-            Atrás
-          </VaButton>
-          <VaButton type="submit" :loading="cargando">
-            {{ paso === pasos.length ? "Finalizar" : "Siguiente" }}
-          </VaButton>
+
+          <div class="crear-proyecto__acciones-derecha">
+            <VaButton v-if="paso > 1" preset="secondary" :disabled="cargando" @click="anterior">
+              Atrás
+            </VaButton>
+            <VaButton type="submit" :loading="cargando">
+              {{ paso === pasos.length ? "Finalizar" : "Siguiente" }}
+            </VaButton>
+          </div>
         </div>
       </div>
     </VaForm>
@@ -356,11 +359,16 @@ export default {
       this.catalogosPorProfesion[idProfesion] = caracteristicas;
     },
 
+    /**
+     * `undefined` (y no `false`) cuando no hay error propio: si el prop llega
+     * con valor definido, Vuestic lo toma en lugar de su estado interno y la
+     * validación de `rules` queda anulada en el campo.
+     */
     errorCampo(campo) {
-      return !!this.erroresBackend[campo];
+      return this.erroresBackend[campo] ? true : undefined;
     },
     mensajeCampo(campo) {
-      return this.erroresBackend[campo] || "";
+      return this.erroresBackend[campo] || undefined;
     },
     limpiarError(campo) {
       if (this.erroresBackend[campo]) {
@@ -393,7 +401,12 @@ export default {
       this.mensajeError = "";
 
       const valido = this.$refs.form.validate();
-      if (!valido) return false;
+      if (!valido) {
+        // El form no valida: acá no llega `validarProyecto`, así que hay que
+        // avisar igual (los mensajes inline los pinta cada campo).
+        this.mensajeError = "Revisá los campos marcados antes de continuar.";
+        return false;
+      }
 
       const { campos, secciones } = validarProyecto(
         this.form,
@@ -457,7 +470,10 @@ export default {
       this.mensajeError = "";
 
       const valido = this.$refs.form.validate();
-      if (!valido) return;
+      if (!valido) {
+        this.mensajeError = "Revisá los campos marcados antes de continuar.";
+        return;
+      }
 
       const { campos, secciones } = validarProyecto(
         this.form,
@@ -879,17 +895,29 @@ export default {
   display: none;
 }
 
+/*
+ * Pie del wizard: la leyenda va en su propia fila y los botones debajo,
+ * con Cancelar a la izquierda y Atrás/Siguiente a la derecha
+ * (mockup CrearProyecto - Objetivos.png).
+ */
 .crear-proyecto__acciones {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding-top: 0.5rem;
 }
 
 .crear-proyecto__nota {
+  padding-left: 1.25rem;
   font-size: 0.78rem;
   color: var(--color-text-muted);
+}
+
+.crear-proyecto__acciones-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .crear-proyecto__acciones-derecha {
