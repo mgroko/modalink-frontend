@@ -49,7 +49,15 @@
 
       <div class="home-layout__profile-wrapper" @click.stop>
         <button class="home-layout__profile-trigger" @click="alternarMenu">
-          <span class="home-layout__avatar">{{ inicialPerfil }}</span>
+          <span class="home-layout__avatar">
+            <img
+              v-if="fotoPerfilActiva && !fotoRota"
+              :src="fotoPerfilActiva"
+              :alt="nombreArtisticoActivo || 'Perfil activo'"
+              @error="fotoRota = true"
+            />
+            <template v-else>{{ inicialPerfil }}</template>
+          </span>
           <span>{{ nombreArtisticoActivo || "Perfil" }}</span>
           <span class="material-symbols-outlined">expand_more</span>
         </button>
@@ -97,7 +105,15 @@
           @keydown.enter="$router.push({ name: 'inicioperfil' })"
         >
           <div class="home-layout__profile-summary">
-            <span class="home-layout__large-avatar">{{ inicialPerfil }}</span>
+            <span class="home-layout__large-avatar">
+              <img
+                v-if="fotoPerfilActiva && !fotoRota"
+                :src="fotoPerfilActiva"
+                :alt="perfilActual?.nombreArtistico || nombreArtisticoActivo || 'Perfil activo'"
+                @error="fotoRota = true"
+              />
+              <template v-else>{{ inicialPerfil }}</template>
+            </span>
             <div>
               <strong>{{ perfilActual?.nombreArtistico || nombreArtisticoActivo || "Perfil activo" }}</strong>
               <span>{{ perfilActual?.profesion || perfilActual?.profesiones?.[0]?.nombre || "Profesión" }}</span>
@@ -140,6 +156,7 @@ import perfilService from "../../services/perfilService";
 import usuarioService from "../../services/usuarioService";
 import { state, limpiarSesion, setPerfilActivo, idPerfilActivo } from "../../services/authState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 import { nextTick } from "vue";
 
 export default {
@@ -151,6 +168,7 @@ export default {
       perfilesAbiertos: false,
       perfiles: [],
       ubicacion: null,
+      fotoRota: false,
       cambiandoPerfilId: null,
       direccionMenu: "izquierda",
       direccionSubmenu: "derecha",
@@ -175,11 +193,20 @@ export default {
     inicialPerfil() {
       return this.inicialDe(this.nombreArtisticoActivo || this.perfilActual?.nombreArtistico || "?");
     },
+    fotoPerfilActiva() {
+      const perfil = this.perfilActual;
+      return resolverFotoUrl(perfil?.urlFoto || perfil?.fotoPerfil || perfil?.fotoUrl);
+    },
     navActiva() {
       return this.$route.meta.navActiva || "inicio";
     },
     ubicacionTexto() {
       return formatUbicacion(this.ubicacion) || "Ubicación no definida";
+    },
+  },
+  watch: {
+    fotoPerfilActiva() {
+      this.fotoRota = false;
     },
   },
   mounted() {
@@ -286,7 +313,8 @@ export default {
 .home-layout__nav-item--active { border-bottom: 2px solid #494776; color: #494776; }
 .home-layout__profile-wrapper { position: relative; }
 .home-layout__profile-trigger { display: flex; align-items: center; gap: .45rem; border: 0; background: transparent; color: #232134; cursor: pointer; }
-.home-layout__avatar, .home-layout__large-avatar, .home-layout__mini-avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #6866a9; color: #fff; font-weight: 600; }
+.home-layout__avatar, .home-layout__large-avatar, .home-layout__mini-avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #6866a9; color: #fff; font-weight: 600; overflow: hidden; }
+.home-layout__avatar img, .home-layout__large-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .home-layout__avatar { width: 36px; height: 36px; }
 .home-layout__large-avatar { width: 42px; height: 42px; flex-shrink: 0; }
 .home-layout__mini-avatar { width: 28px; height: 28px; font-size: .75rem; }
