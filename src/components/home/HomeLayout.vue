@@ -291,7 +291,7 @@ export default {
 .home-layout__profiles button { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .5rem; border: 0; background: #fff; text-align: left; cursor: pointer; font-size: .8rem; }
 .home-layout__profiles button:disabled { cursor: not-allowed; opacity: .5; }
 .home-layout__empty { display: block; padding: .5rem; color: #767171; font-size: .8rem; }
-.home-layout__body { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 2.5rem; max-width: 1050px; margin: 2rem auto; padding: 0 1rem; }
+.home-layout__body { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 2.5rem; max-width: 1280px; margin: 2rem auto; padding: 0 1.5rem; }
 .home-layout__body--full { grid-template-columns: minmax(0, 1fr); }
 .home-layout__sidebar { display: flex; flex-direction: column; min-height: calc(100vh - 150px); gap: 1.25rem; }
 .home-layout__profile-card, .home-layout__quick-links { padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(35,33,52,.04); }
