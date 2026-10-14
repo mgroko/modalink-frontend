@@ -32,7 +32,7 @@ export function clasificarErrorProyecto(error) {
       return { tipo: "campos", errores: data.errores };
     }
     if (/fecha/i.test(mensaje)) {
-      return { tipo: "campo", campo: "fechaFinEstipulada", mensaje };
+      return { tipo: "campo", campo: "fechaEntregaEstipulada", mensaje };
     }
     if (/requerimiento|caracter|rango|numer|enumer|cantidad|habilidad|valores/i.test(mensaje)) {
       return { tipo: "seccion", seccion: "requerimientosGral", mensaje };

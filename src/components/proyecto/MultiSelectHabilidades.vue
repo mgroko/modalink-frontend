@@ -1,5 +1,9 @@
 <template>
   <div class="multi-habilidades">
+    <template v-if="ayuda">
+      <p class="multi-habilidades__label">{{ label }}</p>
+      <p class="multi-habilidades__ayuda-texto">{{ ayuda }}</p>
+    </template>
     <VaSelect
       :model-value="modelValue"
       :options="options"
@@ -8,8 +12,8 @@
       multiple
       clearable
       allow-search
-      :label="label"
-      placeholder="Seleccioná habilidades"
+      :label="ayuda ? '' : label"
+      placeholder="Seleccionar habilidades"
       :loading="loading"
       :disabled="disabled"
       :no-options-text="textoSinOpciones"
@@ -38,6 +42,10 @@ export default {
     label: {
       type: String,
       default: "Habilidades",
+    },
+    ayuda: {
+      type: String,
+      default: "",
     },
     loading: {
       type: Boolean,
@@ -71,6 +79,19 @@ export default {
 </script>
 
 <style scoped>
+.multi-habilidades__label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--va-text-primary);
+}
+
+.multi-habilidades__ayuda-texto {
+  margin: 0.1rem 0 0.35rem;
+  font-size: 0.75rem;
+  color: var(--va-secondary);
+}
+
 .multi-habilidades__aviso {
   margin: 0.3rem 0 0;
   font-size: 0.75rem;

@@ -17,12 +17,12 @@
       :options="localidades"
       value-by="id"
       text-by="nombre"
-      label="Localidad"
-      placeholder="Seleccioná una localidad"
+      label="Ciudad"
+      placeholder="Seleccioná una ciudad"
       :loading="cargandoLocalidades"
       :disabled="disabled || !provinciaId"
       allow-search
-      search-placeholder="Buscá una localidad..."
+      search-placeholder="Buscá una ciudad..."
       no-options-text="No hay localidades para esta provincia"
       @update:model-value="onLocalidad"
     />

@@ -1,20 +1,20 @@
 <template>
   <div class="segmentado-privacidad">
     <span class="segmentado-privacidad__label">{{ label }}</span>
-    <VaButtonGroup class="segmentado-privacidad__grupo">
-      <VaButton
-        v-for="opcion in opciones"
-        :key="opcion.value"
-        :preset="modelValue === opcion.value ? 'default' : 'secondary'"
-        size="small"
-        :disabled="disabled"
-        :aria-pressed="modelValue === opcion.value"
-        @click="onCambio(opcion.value)"
-      >
-        {{ opcion.label }}
-      </VaButton>
-    </VaButtonGroup>
-    <p class="segmentado-privacidad__ayuda">Elegí quién puede ver el proyecto.</p>
+    <VaRadio
+      :model-value="modelValue"
+      :options="opciones"
+      text-by="label"
+      value-by="value"
+      :vertical="false"
+      :disabled="disabled"
+      class="segmentado-privacidad__radio"
+      @update:model-value="onCambio"
+    />
+    <ul class="segmentado-privacidad__ayuda">
+      <li>*Un proyecto público es visible para toda la comunidad</li>
+      <li>*Un proyecto privado es visible únicamente para tus contactos</li>
+    </ul>
   </div>
 </template>
 
@@ -67,18 +67,18 @@ export default {
   color: var(--va-text-primary);
 }
 
-.segmentado-privacidad__grupo {
-  align-self: flex-start;
-}
-
-.segmentado-privacidad__grupo :deep(.va-button--pressed),
-.segmentado-privacidad__grupo :deep(.va-button[aria-pressed="true"]) {
-  font-weight: 600;
+.segmentado-privacidad__radio {
+  gap: 1.5rem !important;
 }
 
 .segmentado-privacidad__ayuda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
   margin: 0;
-  font-size: 0.75rem;
-  color: var(--va-secondary);
+  padding: 0;
+  list-style: none;
+  font-size: 0.72rem;
+  color: var(--color-text-muted, #6b6980);
 }
 </style>

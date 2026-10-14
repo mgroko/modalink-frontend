@@ -1,11 +1,5 @@
 <template>
   <div class="dashboard-proyecto">
-    <BaseAlert
-      v-if="proyecto"
-      message="Proyecto creado correctamente. Estado inicial: Borrador."
-      type="success"
-    />
-
     <section class="dashboard-proyecto__hero">
       <div class="dashboard-proyecto__hero-icono">
         <span class="material-symbols-outlined">folder_open</span>
@@ -19,7 +13,7 @@
           {{ proyecto.descripcion }}
         </p>
       </div>
-      <VaBadge :text="proyecto?.estado || 'Borrador'" color="info" />
+      <EstadoProyectoBadge :estado="proyecto?.estado" />
     </section>
 
     <section v-if="proyecto" class="dashboard-proyecto__datos">
@@ -28,8 +22,8 @@
         <span class="dashboard-proyecto__dato-valor">{{ formatearFechaCorta(proyecto.fechaInicio) }}</span>
       </div>
       <div class="dashboard-proyecto__dato">
-        <span class="dashboard-proyecto__dato-label">Fecha de fin estimada</span>
-        <span class="dashboard-proyecto__dato-valor">{{ formatearFechaCorta(proyecto.fechaFinEstipulada) }}</span>
+        <span class="dashboard-proyecto__dato-label">Fecha de entrega</span>
+        <span class="dashboard-proyecto__dato-valor">{{ formatearFechaCorta(proyecto.fechaEntregaEstipulada) }}</span>
       </div>
       <div class="dashboard-proyecto__dato">
         <span class="dashboard-proyecto__dato-label">Privacidad</span>
@@ -75,13 +69,13 @@
 </template>
 
 <script>
-import BaseAlert from "../../components/AlertaBase.vue";
+import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.vue";
 import { ETIQUETAS_PRIVACIDAD } from "../../utils/proyectoConstants.js";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 
 export default {
   name: "DashboardProyectoView",
-  components: { BaseAlert },
+  components: { EstadoProyectoBadge },
   data() {
     return {
       ETIQUETAS_PRIVACIDAD,

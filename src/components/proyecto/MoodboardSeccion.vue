@@ -1,19 +1,21 @@
 <template>
   <div class="moodboard">
-    <p class="moodboard__titulo">Moodboard</p>
-    <p class="moodboard__ayuda">
-      Describí la estética general del proyecto: paleta, materiales, inspiración (opcional).
-    </p>
+    <template v-if="mostrarEncabezado">
+      <p class="moodboard__titulo">Moodboard</p>
+      <p class="moodboard__ayuda">
+        Describí la estética general del proyecto: paleta, materiales, inspiración (opcional).
+      </p>
+    </template>
     <VaTextarea
       :model-value="modelValue"
-      label="Descripción del moodboard (opcional)"
-      placeholder="Ej: Paleta fría, telas de lino, inspiración nórdica."
+      label="Descripción (opcional)"
+      placeholder="Descripción del tablero..."
       :max-length="200"
       counter
       :rows="3"
       :rules="[reglas.max200]"
       :error="!!error"
-      :error-messages="errorMessage"
+      :error-messages="errorMessages"
       @update:model-value="$emit('update:modelValue', $event)"
     />
   </div>
@@ -33,9 +35,13 @@ export default {
       type: Boolean,
       default: false,
     },
-    errorMessage: {
-      type: String,
+    errorMessages: {
+      type: [String, Array],
       default: "",
+    },
+    mostrarEncabezado: {
+      type: Boolean,
+      default: true,
     },
   },
   emits: ["update:modelValue"],

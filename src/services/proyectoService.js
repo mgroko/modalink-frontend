@@ -49,9 +49,10 @@ import http from "./http";
  * @typedef {Object} CrearProyectoRequest
  * @property {string} nombre máx. 50; no blanco; único para el perfil director activo
  * @property {string} descripcion máx. 200; no blanco
- * @property {"PUBLICO"|"PRIVADO"|"OCULTO"} privacidad en mayúsculas
- * @property {string} fechaInicio formato ISO "YYYY-MM-DD"
- * @property {string} [fechaFinEstipulada] "YYYY-MM-DD", ≥ fechaInicio
+ * @property {"PUBLICO"|"PRIVADO"} privacidad en mayúsculas
+ * @property {string} [fechaEntregaEstipulada] "YYYY-MM-DD"; si se envía no puede
+ *           ser anterior a hoy. `fechaInicio` no se envía: la calcula el backend
+ *           a partir de la planificación y responde null hasta entonces.
  * @property {boolean} [aceptaPostulacionGral] default false
  * @property {UbicacionProyectoRequest} [ubicacion] si se envía, localidadId no puede ir en blanco
  * @property {ObjetivoProyectoRequest[]} [objetivos] lista dinámica
@@ -106,10 +107,11 @@ import http from "./http";
  * @property {number} idProyecto
  * @property {string} nombre
  * @property {string} descripcion
- * @property {string} fechaInicio "YYYY-MM-DD"
- * @property {string|null} fechaFinEstipulada "YYYY-MM-DD"
+ * @property {string|null} fechaInicio "YYYY-MM-DD"; null hasta que la
+ *           planificación del proyecto defina las actividades
+ * @property {string|null} fechaEntregaEstipulada "YYYY-MM-DD"
  * @property {string} estado estado inicial tras la creación: "Borrador"
- * @property {"PUBLICO"|"PRIVADO"|"OCULTO"} privacidad
+ * @property {"PUBLICO"|"PRIVADO"} privacidad
  * @property {boolean} aceptaPostulacionGral
  * @property {UbicacionProyectoResponse|null} ubicacion
  * @property {number} idDirector
@@ -126,7 +128,7 @@ const proyectoService = {
    *
    * Errores (matriz UC-24 §5):
    * - 400 MethodArgumentNotValidException → body { errores: { campo: msg } }
-   * - 400 RangoFechasProyectoInvalidoException / RequerimientoInvalidoException /
+   * - 400 FechaEntregaInvalidaException / RequerimientoInvalidoException /
    *   DataIntegrityViolation → body { message }
    * - 403 PerfilEnBajaException
    * - 404 PerfilActivoNoSeleccionadoException / PerfilNoEncontradoException /

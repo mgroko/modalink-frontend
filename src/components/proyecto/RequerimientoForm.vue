@@ -19,7 +19,7 @@
       <VaInput
         v-model="modelValue.cantidad"
         type="number"
-        label="Cantidad de personas"
+        label="Cantidad de personas*"
         placeholder="Ej: 2"
         :rules="[reglas.requerido, reglas.cantidadPositiva]"
         :error="!!errores.cantidad"
@@ -31,46 +31,40 @@
         :options="profesiones"
         value-by="idProfesion"
         :text-by="(o) => capitalizar(o.nombre)"
-        label="Profesión"
-        placeholder="Seleccioná una profesión"
+        label="Profesión*"
+        placeholder="Ej: Modelo"
         :rules="[reglas.requerido]"
         :error="!!errores.idProfesion"
         :error-messages="errores.idProfesion"
       />
-
-      <VaInput
-        v-model="modelValue.descripcion"
-        label="Descripción (opcional)"
-        placeholder="Ej: Modelos para pasarela"
-        :max-length="200"
-        counter
-        :rules="[reglas.max200]"
-      />
     </div>
 
     <div class="requerimiento__seccion">
-      <p class="requerimiento__seccion-titulo">
-        Características
-        <span class="requerimiento__seccion-ayuda">Se filtran por la profesión seleccionada.</span>
+      <p class="requerimiento__seccion-titulo">Características técnicas</p>
+      <p class="requerimiento__seccion-ayuda">
+        Preferencias técnicas por profesión (opcional, no excluyentes)
       </p>
 
-      <p v-if="!modelValue.idProfesion" class="requerimiento__hint">
-        Seleccioná una profesión para poder agregar características.
-      </p>
+      <div class="requerimiento__bloque">
+        <p v-if="!modelValue.idProfesion" class="requerimiento__hint">
+          Las características se filtran por profesión. Seleccioná una para poder agregar
+          características.
+        </p>
 
-      <VaSelect
-        v-else
-        v-model="caracteristicaAAgregar"
-        :options="caracteristicasDisponibles"
-        value-by="idCaracteristica"
-        :text-by="etiquetaCaracteristica"
-        label="Agregar característica"
-        placeholder="Elegí una característica"
-        :loading="cargandoCaracteristicas"
-        no-options-text="Todas las características ya fueron agregadas"
-        clearable
-        @update:model-value="agregarCaracteristica"
-      />
+        <VaSelect
+          v-else
+          v-model="caracteristicaAAgregar"
+          :options="caracteristicasDisponibles"
+          value-by="idCaracteristica"
+          :text-by="etiquetaCaracteristica"
+          label="Agregar característica"
+          placeholder="Elegí una característica"
+          :loading="cargandoCaracteristicas"
+          no-options-text="Todas las características ya fueron agregadas"
+          clearable
+          @update:model-value="agregarCaracteristica"
+        />
+      </div>
 
       <div
         v-for="(carac, i) in modelValue.caracteristicas"
@@ -138,8 +132,18 @@
       v-model="modelValue.habilidades"
       :options="habilidades"
       :loading="cargandoHabilidades"
+      :ayuda="ayudaHabilidades"
       :error="!!errores.habilidades"
       :error-message="errores.habilidades"
+    />
+
+    <VaInput
+      v-model="modelValue.descripcion"
+      label="Descripción"
+      placeholder="Descripción de la vacante..."
+      :max-length="200"
+      counter
+      :rules="[reglas.max200]"
     />
   </div>
 </template>
@@ -188,6 +192,7 @@ export default {
   data() {
     return {
       reglas: reglasProyecto,
+      ayudaHabilidades: "Destrezas que valorás en los postulantes",
       caracteristicasCatalogo: [],
       cargandoCaracteristicas: false,
       caracteristicaAAgregar: null,
@@ -309,9 +314,7 @@ export default {
 .requerimiento__titulo {
   font-size: 0.9rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--va-secondary);
+  color: var(--va-text-primary);
 }
 
 .requerimiento__fila {
@@ -334,10 +337,20 @@ export default {
 }
 
 .requerimiento__seccion-ayuda {
-  margin-left: 0.5rem;
-  font-size: 0.78rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
   font-weight: 400;
   color: var(--va-secondary);
+}
+
+.requerimiento__bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--va-background-border);
+  border-radius: 8px;
+  background: var(--va-background-element);
 }
 
 .requerimiento__hint {

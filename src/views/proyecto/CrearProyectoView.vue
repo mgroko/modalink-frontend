@@ -1,18 +1,42 @@
 <template>
   <div class="crear-proyecto">
-    <h1 class="crear-proyecto__titulo">Crear proyecto</h1>
+    <h1 class="crear-proyecto__titulo">Proyectos / Crear proyecto</h1>
     <p class="crear-proyecto__subtitulo">
       Completá los datos para crear un nuevo proyecto con tu perfil activo.
     </p>
 
-    <VaForm ref="form" :immediate="false" @submit.prevent="guardar" class="crear-proyecto__form">
-      <section class="crear-proyecto__seccion">
+    <div class="crear-proyecto__stepper" aria-label="Pasos de creación del proyecto">
+      <template v-for="(nombrePaso, i) in pasos" :key="nombrePaso">
+        <div
+          v-if="i > 0"
+          class="crear-proyecto__paso-linea"
+          :class="{ 'crear-proyecto__paso-linea--activa': paso > i }"
+          aria-hidden="true"
+        />
+        <div
+          class="crear-proyecto__paso"
+          :class="{ 'crear-proyecto__paso--activo': paso === i + 1 }"
+          :aria-current="paso === i + 1 ? 'step' : undefined"
+        >
+          <span class="crear-proyecto__paso-numero">{{ i + 1 }}</span>
+          <span class="crear-proyecto__paso-nombre">{{ nombrePaso }}</span>
+        </div>
+      </template>
+    </div>
+
+    <VaForm
+      ref="form"
+      :immediate="false"
+      class="crear-proyecto__form"
+      @submit.prevent="paso === pasos.length ? guardar() : siguiente()"
+    >
+      <section v-if="paso === 1" class="crear-proyecto__seccion">
         <h2 class="crear-proyecto__seccion-titulo">Datos generales</h2>
 
         <VaInput
           v-model="form.nombre"
-          label="Nombre del proyecto"
-          placeholder="Ej: Colección Primavera-Verano"
+          label="Nombre del proyecto*"
+          placeholder="Ej: Colección Madoka"
           :max-length="50"
           counter
           :rules="[reglas.requerido, reglas.noBlanco, reglas.max50]"
@@ -23,7 +47,7 @@
 
         <VaTextarea
           v-model="form.descripcion"
-          label="Descripción"
+          label="Descripción*"
           placeholder="Contá de qué se trata el proyecto..."
           :max-length="200"
           counter
@@ -35,59 +59,73 @@
         />
 
         <div class="crear-proyecto__fila">
-          <SegmentadoPrivacidad v-model="form.privacidad" />
-
-          <VaSwitch
-            v-model="form.aceptaPostulacionGral"
-            label="Acepta postulaciones abiertas"
-          />
+          <SegmentadoPrivacidad v-model="form.privacidad" label="Privacidad*" />
         </div>
 
-        <div class="crear-proyecto__fila">
+        <div class="crear-proyecto__campo-fecha">
           <VaInput
-            v-model="form.fechaInicio"
+            v-model="form.fechaEntregaEstipulada"
             type="date"
-            label="Fecha de inicio"
-            :rules="[reglas.requerido]"
-            :error="errorCampo('fechaInicio')"
-            :error-messages="mensajeCampo('fechaInicio')"
-            @update:model-value="limpiarError('fechaInicio')"
+            label="Fecha de entrega"
+            :min="hoy"
+            :rules="[reglas.fechaEntregaNoPasada(hoy)]"
+            :error="errorCampo('fechaEntregaEstipulada')"
+            :error-messages="mensajeCampo('fechaEntregaEstipulada')"
+            @update:model-value="limpiarError('fechaEntregaEstipulada')"
           />
-          <VaInput
-            v-model="form.fechaFinEstipulada"
-            type="date"
-            label="Fecha de fin estimada (opcional)"
-            :min="form.fechaInicio || undefined"
-            :rules="[reglas.fechaFinNoAnterior(form.fechaInicio)]"
-            :error="errorCampo('fechaFinEstipulada')"
-            :error-messages="mensajeCampo('fechaFinEstipulada')"
-            @update:model-value="limpiarError('fechaFinEstipulada')"
-          />
+          <p class="crear-proyecto__seccion-ayuda">
+            Fecha límite para finalizar el proyecto. Se usa para estimar su duración y
+            calcular los caminos críticos.
+          </p>
+        </div>
+
+        <div class="crear-proyecto__subseccion">
+          <p class="crear-proyecto__subseccion-titulo">Ubicación</p>
+          <p class="crear-proyecto__seccion-ayuda">
+            Opcional. Ayuda a visibilizar el proyecto.
+          </p>
+          <SelectorUbicacion v-model="form.ubicacion" />
         </div>
       </section>
 
-      <section class="crear-proyecto__seccion">
-        <h2 class="crear-proyecto__seccion-titulo">Ubicación</h2>
-        <p class="crear-proyecto__seccion-ayuda">Opcional. Ayuda a visibilizar el proyecto.</p>
-        <SelectorUbicacion v-model="form.ubicacion" />
+      <section v-else-if="paso === 2" class="crear-proyecto__seccion">
+        <h2 class="crear-proyecto__seccion-titulo">Objetivos</h2>
+        <p class="crear-proyecto__seccion-ayuda">
+          Definí qué objetivos querés lograr con el proyecto (opcional)
+        </p>
+
+        <VaButton
+          preset="secondary"
+          size="small"
+          icon="mso-add"
+          class="crear-proyecto__agregar"
+          @click="agregarObjetivo"
+        >
+          Agregar objetivo
+        </VaButton>
+
+        <ListaDinamicaObjetivos
+          v-model="form.objetivos"
+          :errores="erroresBackend"
+          :mostrar-encabezado="false"
+        />
       </section>
 
-      <section class="crear-proyecto__seccion">
-        <ListaDinamicaObjetivos v-model="form.objetivos" :errores="erroresBackend" />
-      </section>
+      <section v-else-if="paso === 3" class="crear-proyecto__seccion">
+        <h2 class="crear-proyecto__seccion-titulo">Requerimiento de personal</h2>
+        <p class="crear-proyecto__seccion-ayuda">
+          Definí qué perfil necesitás para el proyecto (opcional)
+        </p>
 
-      <section class="crear-proyecto__seccion">
-        <div class="crear-proyecto__seccion-encabezado">
-          <div>
-            <h2 class="crear-proyecto__seccion-titulo">Requerimientos de personal</h2>
-            <p class="crear-proyecto__seccion-ayuda">
-              Perfiles que necesitás para el proyecto (opcional).
-            </p>
-          </div>
-          <VaButton preset="secondary" icon="mso-add" @click="agregarRequerimiento">
-            Agregar requerimiento
-          </VaButton>
-        </div>
+        <VaButton
+          preset="secondary"
+          size="small"
+          icon="mso-add"
+          class="crear-proyecto__agregar"
+          @click="agregarRequerimiento"
+        >
+          Agregar requerimiento
+        </VaButton>
 
         <p v-if="form.requerimientosGral.length === 0" class="crear-proyecto__vacio">
           <span class="material-symbols-outlined">groups</span>
@@ -114,11 +152,27 @@
         >
           <li v-for="(msg, i) in seccionErrores.requerimientosGral" :key="i">{{ msg }}</li>
         </ul>
+
+        <div class="crear-proyecto__postulaciones">
+          <VaSwitch
+            v-model="form.aceptaPostulacionGral"
+            label="Acepta postulaciones abiertas"
+          />
+          <p class="crear-proyecto__seccion-ayuda">
+            Cualquier persona que pueda ver el proyecto podrá postularse a estos
+            requerimientos. Si lo dejás desactivado, solo se cubrirán por invitación.
+          </p>
+        </div>
       </section>
 
-      <section class="crear-proyecto__seccion">
+      <section v-else class="crear-proyecto__seccion">
+        <h2 class="crear-proyecto__seccion-titulo">Moodboard</h2>
+        <p class="crear-proyecto__seccion-ayuda">
+          Definí la inspiración del proyecto (opcional)
+        </p>
         <MoodboardSeccion
           v-model="form.moodboard"
+          :mostrar-encabezado="false"
           :error="errorCampo('moodboard.descripcion')"
           :error-messages="mensajeCampo('moodboard.descripcion')"
         />
@@ -130,10 +184,34 @@
       </div>
 
       <div class="crear-proyecto__acciones">
-        <VaButton preset="secondary" :disabled="cargando" @click="cancelar">Cancelar</VaButton>
-        <VaButton type="submit" :loading="cargando">Crear proyecto</VaButton>
+        <span class="crear-proyecto__nota">Los campos marcados con (*) son obligatorios</span>
+
+        <div class="crear-proyecto__acciones-derecha">
+          <VaButton
+            preset="secondary"
+            class="crear-proyecto__btn-texto"
+            :disabled="cargando"
+            @click="cancelar"
+          >
+            Cancelar
+          </VaButton>
+          <VaButton v-if="paso > 1" preset="secondary" :disabled="cargando" @click="anterior">
+            Atrás
+          </VaButton>
+          <VaButton type="submit" :loading="cargando">
+            {{ paso === pasos.length ? "Finalizar" : "Siguiente" }}
+          </VaButton>
+        </div>
       </div>
     </VaForm>
+
+    <ModalExitoProyecto
+      v-model="modalExito"
+      :proyecto="proyectoCreado"
+      @ir-al-proyecto="irAlProyecto"
+    />
+
+    <ModalCancelarCreacion v-model="modalCancelar" @confirmar="descartarCreacion" />
   </div>
 </template>
 
@@ -147,7 +225,9 @@ import SelectorUbicacion from "../../components/proyecto/SelectorUbicacion.vue";
 import ListaDinamicaObjetivos from "../../components/proyecto/ListaDinamicaObjetivos.vue";
 import RequerimientoForm from "../../components/proyecto/RequerimientoForm.vue";
 import MoodboardSeccion from "../../components/proyecto/MoodboardSeccion.vue";
-import { reglasProyecto } from "../../utils/reglas.js";
+import ModalExitoProyecto from "../../components/proyecto/ModalExitoProyecto.vue";
+import ModalCancelarCreacion from "../../components/proyecto/ModalCancelarCreacion.vue";
+import { reglasProyecto, hoyISO } from "../../utils/reglas.js";
 import { PRIVACIDADES } from "../../utils/proyectoConstants.js";
 import {
   validarProyecto,
@@ -158,6 +238,18 @@ import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import { mensajeErrorApi } from "../../utils/apiError.js";
 import { refrescarSesion } from "../../services/authState.js";
 
+/*
+ * Raíz de cada clave del formulario (claves planas de `erroresBackend`) → paso
+ * del wizard que la contiene. Sirve para validar de a un paso y para volver al
+ * paso correspondiente cuando el backend responde 400/409 con errores de campo.
+ */
+const RAICES_PASO = {
+  1: ["nombre", "descripcion", "privacidad", "fechaEntregaEstipulada", "ubicacion"],
+  2: ["objetivos"],
+  3: ["requerimientosGral", "aceptaPostulacionGral"],
+  4: ["moodboard"],
+};
+
 export default {
   name: "CrearProyectoView",
   components: {
@@ -167,21 +259,25 @@ export default {
     ListaDinamicaObjetivos,
     RequerimientoForm,
     MoodboardSeccion,
+    ModalExitoProyecto,
+    ModalCancelarCreacion,
   },
   data() {
     return {
+      pasos: ["Datos generales", "Objetivos", "Personal", "Moodboard"],
+      paso: 1,
       form: {
         nombre: "",
         descripcion: "",
         privacidad: PRIVACIDADES.PUBLICO,
-        fechaInicio: "",
-        fechaFinEstipulada: "",
+        fechaEntregaEstipulada: "",
         aceptaPostulacionGral: false,
         ubicacion: null,
         objetivos: [],
         requerimientosGral: [],
         moodboard: "",
       },
+      hoy: hoyISO(),
       profesiones: [],
       habilidades: [],
       cargandoProfesiones: false,
@@ -192,6 +288,9 @@ export default {
       cargando: false,
       mensajeExito: "",
       mensajeError: "",
+      modalExito: false,
+      modalCancelar: false,
+      proyectoCreado: null,
       siguienteUid: 0,
       reglas: reglasProyecto,
     };
@@ -281,6 +380,78 @@ export default {
       return relativos;
     },
 
+    agregarObjetivo() {
+      this.form.objetivos = [...this.form.objetivos, { nombre: "", descripcion: "" }];
+    },
+
+    /**
+     * Valida el paso actual (reglas de los campos visibles + validación de
+     * cruce sólo para las raíces de este paso) y avanza si no hay errores.
+     */
+    siguiente() {
+      this.mensajeExito = "";
+      this.mensajeError = "";
+
+      const valido = this.$refs.form.validate();
+      if (!valido) return false;
+
+      const { campos, secciones } = validarProyecto(
+        this.form,
+        this.catalogosPorProfesion,
+        this.hoy
+      );
+      const raices = RAICES_PASO[this.paso] || [];
+
+      const camposPaso = {};
+      for (const [clave, msg] of Object.entries(campos)) {
+        if (raices.includes(clave.split(".")[0])) camposPaso[clave] = msg;
+      }
+      const seccionesPaso = {};
+      if (raices.includes("requerimientosGral") && secciones.requerimientosGral) {
+        seccionesPaso.requerimientosGral = secciones.requerimientosGral;
+      }
+
+      if (Object.keys(camposPaso).length > 0 || Object.keys(seccionesPaso).length > 0) {
+        this.erroresBackend = { ...this.erroresBackend, ...camposPaso };
+        this.seccionErrores = { ...this.seccionErrores, ...seccionesPaso };
+        this.mensajeError = "Revisá los datos marcados antes de continuar.";
+        return false;
+      }
+
+      this.irAPaso(this.paso + 1);
+      return true;
+    },
+
+    anterior() {
+      if (this.paso <= 1) return;
+      this.mensajeError = "";
+      this.irAPaso(this.paso - 1);
+    },
+
+    irAPaso(paso) {
+      this.paso = Math.min(Math.max(paso, 1), this.pasos.length);
+      this.$nextTick(() => {
+        this.$refs.form?.resetValidation?.();
+      });
+    },
+
+    /** Paso que contiene una clave de error ("objetivos.0.nombre" → 2). */
+    pasoDeClave(clave) {
+      const raiz = String(clave || "").split(".")[0];
+      const encontrado = Object.entries(RAICES_PASO).find(([, raices]) =>
+        raices.includes(raiz)
+      );
+      return encontrado ? Number(encontrado[0]) : 1;
+    },
+
+    /** Tras un error del backend, lleva al paso donde está el campo malo. */
+    irAlPasoDeErrores(claves) {
+      const pasos = (claves || []).map((c) => this.pasoDeClave(c));
+      if (pasos.length === 0) return;
+      const destino = Math.min(...pasos);
+      if (destino !== this.paso) this.irAPaso(destino);
+    },
+
     async guardar() {
       this.mensajeExito = "";
       this.mensajeError = "";
@@ -288,11 +459,19 @@ export default {
       const valido = this.$refs.form.validate();
       if (!valido) return;
 
-      const { campos, secciones } = validarProyecto(this.form, this.catalogosPorProfesion);
+      const { campos, secciones } = validarProyecto(
+        this.form,
+        this.catalogosPorProfesion,
+        this.hoy
+      );
       this.erroresBackend = campos;
       this.seccionErrores = secciones;
       if (Object.keys(campos).length > 0 || Object.keys(secciones).length > 0) {
         this.mensajeError = "Revisá los datos marcados antes de continuar.";
+        this.irAlPasoDeErrores([
+          ...Object.keys(campos),
+          ...(secciones.requerimientosGral ? ["requerimientosGral"] : []),
+        ]);
         return;
       }
 
@@ -300,22 +479,54 @@ export default {
       try {
         const response = await proyectoService.crear(this.buildRequest());
         const proyecto = response?.data;
-        this.mensajeExito = `Proyecto "${proyecto?.nombre || this.form.nombre}" creado correctamente. Estado inicial: ${proyecto?.estado || "Borrador"}.`;
 
         if (proyecto?.idProyecto != null) {
-          this.$router.push({
-            name: "dashboard-proyecto",
-            params: { id: proyecto.idProyecto },
-            state: { proyecto },
-          });
+          this.proyectoCreado = proyecto;
+          this.modalExito = true;
+          this.reiniciarFormulario();
           return;
         }
+        this.mensajeExito = `Proyecto "${proyecto?.nombre || this.form.nombre}" creado correctamente. Estado inicial: ${proyecto?.estado || "Borrador"}.`;
         this.$refs.form.resetValidation();
       } catch (error) {
         await this.manejarError(error);
       } finally {
         this.cargando = false;
       }
+    },
+
+    reiniciarFormulario() {
+      this.form = {
+        nombre: "",
+        descripcion: "",
+        privacidad: PRIVACIDADES.PUBLICO,
+        fechaEntregaEstipulada: "",
+        aceptaPostulacionGral: false,
+        ubicacion: null,
+        objetivos: [],
+        requerimientosGral: [],
+        moodboard: "",
+      };
+      this.erroresBackend = {};
+      this.seccionErrores = {};
+      this.mensajeExito = "";
+      this.mensajeError = "";
+      this.paso = 1;
+      this.agregarRequerimiento();
+      this.$refs.form?.resetValidation();
+    },
+
+    irAlProyecto() {
+      const proyecto = this.proyectoCreado;
+      if (proyecto?.idProyecto != null) {
+        this.$router.push({
+          name: "dashboard-proyecto",
+          params: { id: proyecto.idProyecto },
+          state: { proyecto },
+        });
+        return;
+      }
+      this.$router.push({ name: "home" });
     },
 
     buildRequest() {
@@ -336,13 +547,12 @@ export default {
         nombre: this.form.nombre.trim(),
         descripcion: this.form.descripcion.trim(),
         privacidad: this.form.privacidad,
-        fechaInicio: this.form.fechaInicio,
         aceptaPostulacionGral: !!this.form.aceptaPostulacionGral,
         requerimientosGral,
       };
 
-      if (this.form.fechaFinEstipulada) {
-        request.fechaFinEstipulada = this.form.fechaFinEstipulada;
+      if (this.form.fechaEntregaEstipulada) {
+        request.fechaEntregaEstipulada = this.form.fechaEntregaEstipulada;
       }
       if (this.form.ubicacion?.localidadId) {
         request.ubicacion = {
@@ -392,6 +602,7 @@ export default {
           if (Object.keys(conocidos).length > 0) {
             this.erroresBackend = { ...this.erroresBackend, ...conocidos };
             this.mensajeError = "Revisá los datos marcados antes de continuar.";
+            this.irAlPasoDeErrores(Object.keys(conocidos));
           } else {
             this.mensajeError = "Revisá los datos cargados.";
           }
@@ -404,6 +615,7 @@ export default {
             [clasificacion.campo]: clasificacion.mensaje || "Fecha inválida.",
           };
           this.mensajeError = "Revisá los datos marcados antes de continuar.";
+          this.irAlPasoDeErrores([clasificacion.campo]);
           break;
         }
 
@@ -413,6 +625,7 @@ export default {
             requerimientosGral: [clasificacion.mensaje],
           };
           this.mensajeError = "Revisá los requerimientos de personal.";
+          this.irAlPasoDeErrores(["requerimientosGral"]);
           break;
         }
 
@@ -421,6 +634,7 @@ export default {
             ...this.erroresBackend,
             nombre: clasificacion.mensaje || "Ya existe un proyecto con ese nombre.",
           };
+          this.irAlPasoDeErrores(["nombre"]);
           break;
         }
 
@@ -458,6 +672,7 @@ export default {
             mensaje
           );
           this.mensajeError = "Revisá los requerimientos de personal.";
+          this.irAlPasoDeErrores(["requerimientosGral"]);
           break;
         }
 
@@ -488,6 +703,10 @@ export default {
     },
 
     cancelar() {
+      if (this.cargando) return;
+      this.modalCancelar = true;
+    },
+    descartarCreacion() {
       this.$router.push({ name: "home" });
     },
   },
@@ -519,6 +738,57 @@ export default {
   gap: 1.25rem;
 }
 
+/* Stepper: 1 Datos generales · 2 Objetivos · 3 Personal · 4 Moodboard */
+.crear-proyecto__stepper {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.crear-proyecto__paso {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.crear-proyecto__paso-numero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.crear-proyecto__paso--activo {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.crear-proyecto__paso--activo .crear-proyecto__paso-numero {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.crear-proyecto__paso-linea {
+  flex: 1;
+  min-width: 24px;
+  height: 2px;
+  margin: 0 0.75rem;
+  background: #e5e7eb;
+}
+
+.crear-proyecto__paso-linea--activa {
+  background: var(--color-primary);
+}
+
 .crear-proyecto__seccion {
   display: grid;
   gap: 1rem;
@@ -528,16 +798,10 @@ export default {
   border-radius: 12px;
 }
 
-.crear-proyecto__seccion-encabezado {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
 .crear-proyecto__seccion-titulo {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.35rem;
+  font-weight: 600;
   color: var(--color-text);
 }
 
@@ -545,6 +809,30 @@ export default {
   margin: 0.2rem 0 0;
   font-size: 0.8rem;
   color: var(--color-text-muted);
+}
+
+.crear-proyecto__subseccion {
+  display: grid;
+  gap: 0.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.crear-proyecto__subseccion-titulo {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.crear-proyecto__campo-fecha {
+  display: grid;
+  gap: 0.2rem;
+  max-width: 320px;
+}
+
+.crear-proyecto__agregar {
+  align-self: flex-start;
 }
 
 .crear-proyecto__fila {
@@ -576,6 +864,13 @@ export default {
   font-size: 0.85rem;
 }
 
+.crear-proyecto__postulaciones {
+  display: grid;
+  gap: 0.35rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
 .crear-proyecto__errores-seccion li + li {
   margin-top: 0.25rem;
 }
@@ -586,7 +881,26 @@ export default {
 
 .crear-proyecto__acciones {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 1rem;
+}
+
+.crear-proyecto__nota {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.crear-proyecto__acciones-derecha {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.crear-proyecto__btn-texto {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--color-text) !important;
 }
 </style>

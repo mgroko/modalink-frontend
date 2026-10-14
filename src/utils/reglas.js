@@ -38,8 +38,15 @@ export const reglasProyecto = {
     v === "" ||
     (Number.isFinite(Number(v)) && Number(v) >= 0) ||
     "No puede ser un valor negativo",
-  fechaFinNoAnterior: (fechaInicio) => (v) => {
-    if (!v || !fechaInicio) return true;
-    return v >= fechaInicio || "La fecha de fin no puede ser anterior a la fecha de inicio.";
+  fechaEntregaNoPasada: (hoy) => (v) => {
+    if (!v || !hoy) return true;
+    return v >= hoy || "La fecha de entrega no puede ser anterior a hoy.";
   },
 };
+
+/** "YYYY-MM-DD" de hoy, para min de datepickers con regla de fecha mínima. */
+export function hoyISO() {
+  const f = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${f.getFullYear()}-${pad(f.getMonth() + 1)}-${pad(f.getDate())}`;
+}

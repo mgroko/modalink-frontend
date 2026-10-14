@@ -1,6 +1,6 @@
 <template>
   <div class="objetivos">
-    <div class="objetivos__encabezado">
+    <div v-if="mostrarEncabezado" class="objetivos__encabezado">
       <div>
         <p class="objetivos__titulo">Objetivos</p>
         <p class="objetivos__ayuda">Definí qué querés lograr con el proyecto (opcional).</p>
@@ -30,8 +30,8 @@
 
       <VaInput
         v-model="objetivo.nombre"
-        label="Nombre del objetivo"
-        placeholder="Ej: Diseño de bocetos iniciales"
+        label="Nombre*"
+        placeholder="Nombre del objetivo"
         :max-length="100"
         counter
         :rules="[reglas.requerido, reglas.max100]"
@@ -67,6 +67,10 @@ export default {
     errores: {
       type: Object,
       default: () => ({}),
+    },
+    mostrarEncabezado: {
+      type: Boolean,
+      default: true,
     },
   },
   emits: ["update:modelValue"],
@@ -151,10 +155,9 @@ export default {
 }
 
 .objetivos__fila-numero {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--va-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: var(--color-text, #232134);
+  letter-spacing: 0.01em;
 }
 </style>

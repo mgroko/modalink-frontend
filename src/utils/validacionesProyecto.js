@@ -11,8 +11,7 @@ export const RAICES_FORM_PROYECTO = [
   "nombre",
   "descripcion",
   "privacidad",
-  "fechaInicio",
-  "fechaFinEstipulada",
+  "fechaEntregaEstipulada",
   "aceptaPostulacionGral",
   "ubicacion",
   "objetivos",
@@ -25,12 +24,15 @@ function presente(v) {
 }
 
 /**
- * fechaFinEstipulada ≥ fechaInicio (comparación directa: ambos "YYYY-MM-DD").
- * @returns {{fechaFinEstipulada?: string}} errores por campo (vacío si OK)
+ * fechaEntregaEstipulada no puede ser anterior a hoy (matriz UC-24 §3).
+ * El campo es opcional: si viene vacío no se valida.
+ * @param {string} fechaEntregaEstipulada "YYYY-MM-DD" o vacío
+ * @param {string} hoy "YYYY-MM-DD"
+ * @returns {{fechaEntregaEstipulada?: string}} errores por campo (vacío si OK)
  */
-export function validarFechasProyecto(fechaInicio, fechaFinEstipulada) {
-  if (presente(fechaInicio) && presente(fechaFinEstipulada) && fechaFinEstipulada < fechaInicio) {
-    return { fechaFinEstipulada: "La fecha de fin no puede ser anterior a la fecha de inicio." };
+export function validarFechaEntregaProyecto(fechaEntregaEstipulada, hoy) {
+  if (presente(fechaEntregaEstipulada) && presente(hoy) && fechaEntregaEstipulada < hoy) {
+    return { fechaEntregaEstipulada: "La fecha de entrega no puede ser anterior a hoy." };
   }
   return {};
 }
@@ -153,16 +155,17 @@ export function validarRequerimiento(requerimiento, caracteristicasDeProfesion) 
  * @param {object} form estado del formulario
  * @param {Object<number, object[]>} catalogosPorProfesion
  *        { [idProfesion]: CaracteristicaTecnica[] } cargado por la vista
+ * @param {string} [hoy] "YYYY-MM-DD" contra el que se valida la fecha de entrega
  * @returns {{campos: Object<string,string>, secciones: Object<string,string[]>}}
- *          `campos` con claves planas ("fechaFinEstipulada",
+ *          `campos` con claves planas ("fechaEntregaEstipulada",
  *          "requerimientosGral.0.caracteristicas.1") listas para resaltar;
  *          `secciones` agrupa mensajes por sección ("requerimientosGral")
  */
-export function validarProyecto(form, catalogosPorProfesion = {}) {
+export function validarProyecto(form, catalogosPorProfesion = {}, hoy = "") {
   const campos = {};
   const secciones = {};
 
-  Object.assign(campos, validarFechasProyecto(form.fechaInicio, form.fechaFinEstipulada));
+  Object.assign(campos, validarFechaEntregaProyecto(form.fechaEntregaEstipulada, hoy));
 
   const mensajesRequerimiento = [];
   (form.requerimientosGral || []).forEach((req, i) => {
