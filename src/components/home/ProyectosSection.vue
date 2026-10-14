@@ -2,14 +2,6 @@
   <section class="home-section">
     <div class="home-section__encabezado">
       <h2>Proyectos destacados</h2>
-      <VaButton
-        size="small"
-        preset="primary"
-        icon="mso-add"
-        @click="$router.push({ name: 'crear-proyecto' })"
-      >
-        Crear proyecto
-      </VaButton>
     </div>
 
     <div v-if="proyectos.length" class="home-section__grid">
