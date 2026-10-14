@@ -77,10 +77,14 @@ const routes = [
     meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
   },
   {
-    path: "/buscar-perfiles",
-    name: "buscar-perfiles",
+    path: "/buscar",
+    name: "buscar",
     component: BuscarPerfilView,
-    meta: { layout: HomeLayout, titulo: "Búsqueda de perfiles", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Búsqueda", requiresActiveProfile: true },
+  },
+  {
+    path: "/buscar-perfiles",
+    redirect: { name: "buscar" },
   },
   {
     path: "/crear-proyecto",

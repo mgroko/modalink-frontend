@@ -83,7 +83,7 @@ src/
 | `/home` | Home con feed, proyectos y perfil activo | Sí |
 | `/inicio-perfil` · `/inicio-perfil/:seccion` | Mi perfil (secciones) | Sí |
 | `/perfiles/:id` · `/perfiles/:id/:seccion` | Ver perfil de otro usuario (UC-16) | Sí |
-| `/buscar-perfiles` | Búsqueda de perfiles | Sí |
+| `/buscar` | Búsqueda combinada de perfiles y proyectos (redirige desde `/buscar-perfiles`) | Sí |
 | `/inicio-perfil/editar/:id` | Editar perfil desde el home | Sí |
 | `/dashboard-usuario` | Panel de usuario | No |
 | `/dashboard-usuario/crear-perfil` | Crear perfil de proyecto | Sin perfil activo |

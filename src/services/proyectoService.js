@@ -169,11 +169,54 @@ import http from "./http";
 /**
  * @typedef {Object} BuscarProyectosPropiosParams
  *   Todos opcionales: sin parámetros se listan todos los proyectos propios
- *   (orden alfabético). No hay criterio obligatorio, a diferencia de UC-29.
+ *   (orden alfabético).
  * @property {string} [nombre] coincidencia parcial, insensible a mayúsculas
  * @property {"BORRADOR"|"PUBLICADO"|"CONFIRMADO"|"FINALIZADO"|"CANCELADO"} [estado]
  *           en mayúsculas (la respuesta usa la forma legible)
  * @property {"DIRECTOR"|"MIEMBRO"} [rol] omitir si no hay selección explícita
+ * @property {number} [page] base 0, default 0
+ * @property {number} [size] default 20
+ * @property {boolean} [todos] true (o size ≤ 0) devuelve todo sin paginar
+ */
+
+/**
+ * @typedef {Object} ProyectoBusquedaItem
+ *   Item de `GET /proyectos/buscar` (UC-29). La visibilidad la aplica el
+ *   backend: solo aparecen proyectos visibles para el perfil activo
+ *   (miembro activo, o no-Borrador y Público).
+ * @property {number} idProyecto
+ * @property {string} nombre
+ * @property {string} descripcion
+ * @property {string|null} fechaInicio "YYYY-MM-DD"; null sin planificación
+ * @property {string} estado forma legible: "Borrador" | "Publicado" | "Confirmado"
+ *           | "Finalizado" | "Cancelado" (el filtro de entrada va en MAYÚSCULAS)
+ * @property {"PUBLICO"|"PRIVADO"} privacidad
+ * @property {boolean} aceptaPostulacionGral
+ * @property {number|null} idDirector null si no hay director activo
+ * @property {string|null} nombreDirector null si no hay director activo
+ */
+
+/**
+ * @typedef {Object} PaginaProyectoBusquedaResponse
+ * @property {ProyectoBusquedaItem[]} contenido
+ * @property {number} paginaActual base 0
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} BuscarProyectosParams
+ *   Todos opcionales (consistente con "Buscar perfil"): sin parámetros se
+ *   listan todos los proyectos visibles para el perfil activo.
+ * @property {string} [nombre] coincidencia parcial, insensible a mayúsculas
+ * @property {"BORRADOR"|"PUBLICADO"|"CONFIRMADO"|"FINALIZADO"|"CANCELADO"} [estado]
+ *           en mayúsculas; filtrar BORRADOR sin ser miembro devuelve vacío
+ *           (la visibilidad es un filtro AND aparte)
+ * @property {string} [director] coincidencia parcial sobre nombre artístico
+ *           o nombre/apellido del director activo del proyecto
  * @property {number} [page] base 0, default 0
  * @property {number} [size] default 20
  * @property {boolean} [todos] true (o size ≤ 0) devuelve todo sin paginar
@@ -197,6 +240,27 @@ const proyectoService = {
    */
   propios(params, signal) {
     return http.get("/proyectos/propios", { params, signal });
+  },
+
+  /**
+   * GET /proyectos/buscar — listado/búsqueda general de proyectos (UC-29).
+   * Aplica la regla de visibilidad server-side: el proyecto aparece si el
+   * perfil activo es miembro activo, o si no está en Borrador y es Público.
+   * Los invisibles se omiten (no hay 403 por elemento). El id del perfil
+   * activo lo resuelve el backend desde la sesión: no se envía.
+   *
+   * Errores:
+   * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
+   *   seleccionado en la sesión."
+   * - 400 MethodArgumentTypeMismatch → `estado` fuera del enum
+   * - 200 con `contenido: []` no es error (sin coincidencias / todo oculto)
+   * @param {BuscarProyectosParams} [params]
+   * @param {AbortSignal} [signal] cancela la request en vuelo si llega una
+   *           búsqueda nueva (patrón de BuscarPerfilView)
+   * @returns {Promise<{data: PaginaProyectoBusquedaResponse}>} 200 OK
+   */
+  buscar(params, signal) {
+    return http.get("/proyectos/buscar", { params, signal });
   },
 
   /**

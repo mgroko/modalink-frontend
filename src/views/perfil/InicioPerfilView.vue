@@ -19,7 +19,7 @@
     <div v-else-if="noEncontrado" class="inicio-perfil__estado">
       <span class="material-symbols-outlined inicio-perfil__estado-icono">person_off</span>
       {{ mensajeNoEncontrado || "El perfil que buscas no está disponible o ha sido dado de baja." }}
-      <VaButton preset="secondary" @click="$router.push({ name: 'buscar-perfiles' })">
+      <VaButton preset="secondary" @click="$router.push({ name: 'buscar' })">
         Volver a la búsqueda
       </VaButton>
     </div>

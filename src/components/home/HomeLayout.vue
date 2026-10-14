@@ -11,7 +11,7 @@
         <input
           v-model="busqueda"
           type="search"
-          placeholder="Buscar perfil por nombre o profesión..."
+          placeholder="Buscar perfiles o proyectos..."
           @keyup.enter="irABuscar"
         />
       </div>
@@ -268,7 +268,7 @@ export default {
     irABuscar() {
       const texto = this.busqueda.trim();
       this.$router.push({
-        name: "buscar-perfiles",
+        name: "buscar",
         query: texto ? { q: texto } : {},
       });
     },
