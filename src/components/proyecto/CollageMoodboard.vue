@@ -29,8 +29,8 @@
       />
     </div>
 
-    <div class="collage__pie">
-      <span class="collage__pie-ok">
+    <div class="collage__pie" :class="{ 'collage__pie--solo': soloLectura }">
+      <span v-if="!soloLectura" class="collage__pie-ok">
         <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
         El collage se actualiza al agregar imágenes.
       </span>
@@ -45,6 +45,7 @@
           {{ imagen.nombre }}
         </span>
         <button
+          v-if="!soloLectura"
           type="button"
           class="collage__chip-quitar"
           :title="`Quitar ${imagen.nombre}`"
@@ -72,6 +73,14 @@ export default {
     imagenes: {
       type: Array,
       default: () => [],
+    },
+    /*
+     * Vista de detalle del proyecto (sólo lectura): oculta el aviso de
+     * previsualización y los botones ✕ de los chips, que no aplican.
+     */
+    soloLectura: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ["quitar", "ampliar"],
@@ -178,6 +187,10 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.collage__pie--solo {
+  justify-content: flex-end;
 }
 
 .collage__pie-ok {

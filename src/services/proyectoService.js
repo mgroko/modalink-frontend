@@ -129,6 +129,16 @@ import http from "./http";
  * @property {ObjetivoProyectoResponse[]} objetivos
  * @property {RequerimientoGralResponse[]} requerimientosGral
  * @property {MoodboardResponse|null} moodboard
+ * @property {"DIRECTOR"|"MIEMBRO"|null} [rolUsuario] contexto del consultante;
+ *           sólo en GET /proyectos/{idProyecto}. null = no es miembro.
+ * @property {boolean} [esMiembro] true si el perfil es miembro activo
+ *           (incluye al director); sólo en GET /proyectos/{idProyecto}
+ * @property {string[]} [permisos] permisos del rol en este proyecto, ordenados
+ *           alfabéticamente; vacío si no es miembro; sólo en
+ *           GET /proyectos/{idProyecto}
+ * @property {boolean} [elegibleParaPostularse] true sólo si no es miembro,
+ *           acepta postulaciones y la profesión del perfil coincide con algún
+ *           requerimiento; sólo en GET /proyectos/{idProyecto}
  */
 
 /**
@@ -261,6 +271,30 @@ const proyectoService = {
    */
   buscar(params, signal) {
     return http.get("/proyectos/buscar", { params, signal });
+  },
+
+  /**
+   * GET /proyectos/{idProyecto} — detalle/dashboard del proyecto
+   * (ficha docs/backend/ficha-tecnica-ver-proyecto.md). A diferencia del
+   * listado (UC-29, que omite los invisibles), el detalle responde 403 si el
+   * proyecto no es visible para el perfil activo. Devuelve además el contexto
+   * del consultante (`rolUsuario`, `esMiembro`, `permisos`,
+   * `elegibleParaPostularse`) para condicionar la UI sin llamadas extra.
+   *
+   * Errores:
+   * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
+   *   seleccionado en la sesión."
+   * - 404 ProyectoNoEncontradoException → "El proyecto con id {id} no existe."
+   * - 403 AccesoDenegadoProyectoException → proyecto Privado/Borrador y el
+   *   perfil no es miembro (no confundir con 401: http.js ya redirige)
+   * - 409 PerfilEnBajaException → "El perfil no se encuentra activo."
+   * @param {number} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo (patrón de
+   *           ProyectosInicioView)
+   * @returns {Promise<{data: ProyectoResponse}>} 200 OK
+   */
+  obtener(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}`, { signal });
   },
 
   /**

@@ -30,6 +30,7 @@
           :alt="imagen.nombre"
         />
         <button
+          v-if="!soloLectura"
           type="button"
           class="galeria-moodboard-modal__quitar"
           :title="`Quitar ${imagen.nombre}`"
@@ -72,6 +73,14 @@ export default {
     imagenes: {
       type: Array,
       default: () => [],
+    },
+    /*
+     * Vista de detalle del proyecto (sólo lectura): oculta los botones ✕,
+     * que no aplican fuera del wizard de creación.
+     */
+    soloLectura: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ["update:modelValue", "quitar"],
