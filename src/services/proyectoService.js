@@ -121,7 +121,74 @@ import http from "./http";
  * @property {MoodboardResponse|null} moodboard
  */
 
+/**
+ * @typedef {Object} ActividadProximaProyecto
+ * @property {number} idActividad
+ * @property {string} nombre
+ * @property {string} fechaHoraInicio ISO 8601, ej. "2026-05-30T18:00:00"
+ * @property {number} duracionMinutos el fin se deriva en el frontend (inicio + duración)
+ */
+
+/**
+ * @typedef {Object} ProyectoPropioItem
+ *   Item de `GET /proyectos/propios` (UC-29 bis). A diferencia de
+ *   `ProyectoResponse`, trae el rol del perfil activo y su próxima actividad.
+ * @property {number} idProyecto
+ * @property {string} nombre
+ * @property {string} descripcion
+ * @property {string|null} fechaInicio "YYYY-MM-DD"; null si aún no hay planificación
+ * @property {string} estado forma legible: "Borrador" | "Publicado" | "Confirmado"
+ *           | "Finalizado" | "Cancelado"
+ * @property {"PUBLICO"|"PRIVADO"} privacidad
+ * @property {"DIRECTOR"|"MIEMBRO"} rolUsuario rol del perfil activo en el proyecto
+ * @property {ActividadProximaProyecto|null} proximaActividad null si no hay
+ *           actividad futura (PENDIENTE/EN_CURSO) asignada al perfil activo
+ */
+
+/**
+ * @typedef {Object} PaginaProyectoPropioResponse
+ * @property {ProyectoPropioItem[]} contenido
+ * @property {number} paginaActual base 0
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} BuscarProyectosPropiosParams
+ *   Todos opcionales: sin parámetros se listan todos los proyectos propios
+ *   (orden alfabético). No hay criterio obligatorio, a diferencia de UC-29.
+ * @property {string} [nombre] coincidencia parcial, insensible a mayúsculas
+ * @property {"BORRADOR"|"PUBLICADO"|"CONFIRMADO"|"FINALIZADO"|"CANCELADO"} [estado]
+ *           en mayúsculas (la respuesta usa la forma legible)
+ * @property {"DIRECTOR"|"MIEMBRO"} [rol] omitir si no hay selección explícita
+ * @property {number} [page] base 0, default 0
+ * @property {number} [size] default 20
+ * @property {boolean} [todos] true (o size ≤ 0) devuelve todo sin paginar
+ */
+
 const proyectoService = {
+  /**
+   * GET /proyectos/propios — lista los proyectos en los que participa el
+   * perfil activo de la sesión como director o miembro (UC-29 bis).
+   * El id del perfil activo lo resuelve el backend desde la sesión: no se envía.
+   *
+   * Errores:
+   * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
+   *   seleccionado en la sesión."
+   * - 400 MethodArgumentTypeMismatch → `estado` o `rol` fuera del enum
+   * - 200 con `contenido: []` no es error (sin proyectos / sin coincidencias)
+   * @param {BuscarProyectosPropiosParams} [params]
+   * @param {AbortSignal} [signal] cancela la request en vuelo si llega una
+   *           búsqueda nueva (patrón de BuscarPerfilView)
+   * @returns {Promise<{data: PaginaProyectoPropioResponse}>} 200 OK
+   */
+  propios(params, signal) {
+    return http.get("/proyectos/propios", { params, signal });
+  },
+
   /**
    * POST /proyectos — crea un proyecto con el perfil activo de la sesión
    * (cookie JWT HttpOnly + header X-XSRF-TOKEN lo resuelve http.js).

@@ -82,7 +82,7 @@ export default {
     itemsVisibles() {
       const itemsPropio = [
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
-        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "dashboard-usuario" },
+        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "proyectos-inicio" },
         { key: "resenas", label: "Reseñas", icono: "star", tipo: "seccion" },
         { key: "mi-red", label: "Mi red", icono: "group", tipo: "ruta" },
         { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "modificar-datos" },

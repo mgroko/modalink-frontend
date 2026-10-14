@@ -17,11 +17,19 @@
       </div>
 
       <nav class="home-layout__navigation" aria-label="Navegación principal">
-        <button class="home-layout__nav-item home-layout__nav-item--active" @click.stop="$router.push({ name: 'home' })">
+        <button
+          class="home-layout__nav-item"
+          :class="{ 'home-layout__nav-item--active': $route.name === 'home' }"
+          @click.stop="$router.push({ name: 'home' })"
+        >
           <span class="material-symbols-outlined">home</span>
           <span>Inicio</span>
         </button>
-        <button class="home-layout__nav-item" @click.stop="$router.push({ name: 'dashboard-usuario' })">
+        <button
+          class="home-layout__nav-item"
+          :class="{ 'home-layout__nav-item--active': esRutaProyectos }"
+          @click.stop="$router.push({ name: 'proyectos-inicio' })"
+        >
           <span class="material-symbols-outlined">business_center</span>
           <span>Proyectos</span>
         </button>
@@ -104,7 +112,7 @@
 
         <nav class="home-layout__quick-links">
           <button @click="$router.push({ name: 'inicioperfil' })"><span class="material-symbols-outlined">person</span>Mi perfil</button>
-          <button @click="$router.push({ name: 'dashboard-usuario' })"><span class="material-symbols-outlined">business_center</span>Proyectos</button>
+          <button @click="$router.push({ name: 'proyectos-inicio' })"><span class="material-symbols-outlined">business_center</span>Proyectos</button>
           <button><span class="material-symbols-outlined">chat_bubble</span>Contactos</button>
           <button @click="$router.push({ name: 'calendario' })"><span class="material-symbols-outlined">calendar_month</span>Calendario</button>
           <button @click="$router.push({ name: 'dashboard-usuario' })"><span class="material-symbols-outlined">dashboard</span>Dashboard</button>
@@ -166,6 +174,9 @@ export default {
     },
     inicialPerfil() {
       return this.inicialDe(this.nombreArtisticoActivo || this.perfilActual?.nombreArtistico || "?");
+    },
+    esRutaProyectos() {
+      return this.$route.name === "proyectos-inicio";
     },
     ubicacionTexto() {
       return formatUbicacion(this.ubicacion) || "Ubicación no definida";

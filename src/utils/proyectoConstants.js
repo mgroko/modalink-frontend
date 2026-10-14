@@ -25,6 +25,62 @@ export const ESTADOS_PROYECTO = {
 export const ETIQUETAS_ESTADO_PROYECTO = Object.values(ESTADOS_PROYECTO);
 
 /*
+ * Opciones para el select de filtro de estado. `value` va en MAYÚSCULAS porque
+ * es lo que exige el query param (`?estado=PUBLICADO`), mientras que `text`
+ * usa la forma legible que devuelve el backend (`"Publicado"`).
+ */
+export const OPCIONES_ESTADO_FILTRO = Object.entries(ESTADOS_PROYECTO).map(
+  ([value, text]) => ({ text, value })
+);
+
+export const ROLES_PROYECTO = {
+  DIRECTOR: "DIRECTOR",
+  MIEMBRO: "MIEMBRO",
+};
+
+export const ETIQUETAS_ROL_PROYECTO = {
+  DIRECTOR: "Director",
+  MIEMBRO: "Miembro",
+};
+
+/*
+ * Chip del rol del perfil activo en la tarjeta (mockup ProyectoInicio.png).
+ * Claves = valor exacto de `rolUsuario` en la respuesta.
+ */
+export const COLORES_ROL_PROYECTO = {
+  [ROLES_PROYECTO.DIRECTOR]: { fondo: "#EEF2FF", texto: "#3730A3", borde: "#C7D2FE" },
+  [ROLES_PROYECTO.MIEMBRO]: { fondo: "#F3F4F6", texto: "#485563", borde: "#D1D5DB" },
+};
+
+const COLORES_ROL_POR_DEFECTO = COLORES_ROL_PROYECTO[ROLES_PROYECTO.MIEMBRO];
+
+/**
+ * Colores del chip de rol (case-insensitive). Rol desconocido → Miembro.
+ * @param {string} rol valor de `proyecto.rolUsuario`
+ * @returns {{fondo: string, texto: string, borde: string}}
+ */
+export function coloresRolProyecto(rol) {
+  if (!rol) return COLORES_ROL_POR_DEFECTO;
+  const clave = Object.keys(COLORES_ROL_PROYECTO).find(
+    (k) => k.toLowerCase() === String(rol).toLowerCase()
+  );
+  return clave ? COLORES_ROL_PROYECTO[clave] : COLORES_ROL_POR_DEFECTO;
+}
+
+/**
+ * Etiqueta del rol ("DIRECTOR" → "Director").
+ * @param {string} rol valor de `proyecto.rolUsuario`
+ * @returns {string}
+ */
+export function etiquetaRolProyecto(rol) {
+  if (!rol) return "";
+  const clave = Object.keys(ETIQUETAS_ROL_PROYECTO).find(
+    (k) => k.toLowerCase() === String(rol).toLowerCase()
+  );
+  return clave ? ETIQUETAS_ROL_PROYECTO[clave] : String(rol);
+}
+
+/*
  * Paleta de estados (docs/pantallas/Pantallas - Modulo Proyecto/Estados proyecto.png).
  * `fondo`/`texto`/`borde` van juntos: el chip se pinta con los tres.
  * Claves = valor exacto que devuelve el backend en `proyecto.estado`.

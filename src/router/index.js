@@ -14,6 +14,7 @@ import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
+import ProyectosInicioView from "../views/proyecto/ProyectosInicioView.vue";
 import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
@@ -86,6 +87,12 @@ const routes = [
     name: "crear-proyecto",
     component: CrearProyectoView,
     meta: { layout: HomeLayout, titulo: "Crear proyecto", requiresActiveProfile: true },
+  },
+  {
+    path: "/proyectos",
+    name: "proyectos-inicio",
+    component: ProyectosInicioView,
+    meta: { layout: HomeLayout, titulo: "Proyectos / Inicio", requiresActiveProfile: true },
   },
   {
     path: "/proyectos/:id",
