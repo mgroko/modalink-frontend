@@ -56,8 +56,24 @@
           <VaDropdown v-if="usuario" placement="bottom-end">
             <template #anchor>
               <button class="perfil-switcher">
-                <span class="perfil-switcher__avatar">{{ inicialPerfil }}</span>
-                <span class="perfil-switcher__nombre">{{ nombreArtisticoActivo || "Sin perfil activo" }}</span>
+                <span class="perfil-switcher__avatar">
+                  <img
+                    v-if="fotoPerfilActiva && !fotoRota"
+                    :src="fotoPerfilActiva"
+                    :alt="nombreArtisticoActivo || 'Perfil activo'"
+                    @error="fotoRota = true"
+                  />
+                  <template v-else>{{ inicialPerfil }}</template>
+                </span>
+                <span v-if="idActivo" class="perfil-switcher__labels">
+                  <span class="perfil-switcher__nombre">{{ nombreArtisticoActivo || "Perfil" }}</span>
+                  <span v-if="profesionActiva" class="perfil-switcher__profesion">{{ profesionActiva }}</span>
+                  <span class="perfil-switcher__estado-linea">
+                    <span class="perfil-switcher__punto"></span>
+                    En línea
+                  </span>
+                </span>
+                <span v-else class="perfil-switcher__nombre">Sin perfil activo</span>
                 <span class="material-symbols-outlined">expand_more</span>
               </button>
             </template>
@@ -88,7 +104,22 @@
                     :disabled="perfil.estado !== 'Activo'"
                     @click="cambiarPerfil(perfil)"
                   >
-                    {{ perfil.nombreArtistico }}
+                    <span class="perfil-switcher__avatar perfil-switcher__avatar--mini">
+                      <img
+                        v-if="fotoDe(perfil)"
+                        :src="fotoDe(perfil)"
+                        :alt="perfil.nombreArtistico"
+                      />
+                      <template v-else>{{ inicialDe(perfil.nombreArtistico) }}</template>
+                    </span>
+                    <span class="perfil-switcher__item-info">
+                      <span class="perfil-switcher__item-nombre">{{ perfil.nombreArtistico }}</span>
+                      <span v-if="profesionDe(perfil)" class="perfil-switcher__item-profesion">{{ profesionDe(perfil) }}</span>
+                      <span class="perfil-switcher__item-estado">
+                        <span class="perfil-switcher__punto perfil-switcher__punto--offline"></span>
+                        Offline
+                      </span>
+                    </span>
                   </VaMenuItem>
                 </div>
 
@@ -152,6 +183,7 @@
 <script>
 import usuarioService from "../../services/usuarioService";
 import perfilService from "../../services/perfilService";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
   state,
   setPerfilActivo,
@@ -174,6 +206,7 @@ export default {
       perfiles: [],
       perfilesCargando: false,
       cambiandoPerfilId: null,
+      fotoRota: false,
     };
   },
   computed: {
@@ -201,14 +234,35 @@ export default {
     perfilActual() {
       return this.perfiles.find((p) => p.idPerfil === this.idActivo) || null;
     },
+    fotoPerfilActiva() {
+      const perfil = this.perfilActual;
+      return resolverFotoUrl(perfil?.urlFoto || perfil?.fotoPerfil || perfil?.fotoUrl);
+    },
+    profesionActiva() {
+      return this.perfilActual?.profesion || this.perfilActual?.profesiones?.[0]?.nombre || "";
+    },
     perfilesAlternativos() {
       return this.perfiles.filter((p) => p.idPerfil !== this.idActivo);
+    },
+  },
+  watch: {
+    fotoPerfilActiva() {
+      this.fotoRota = false;
     },
   },
   mounted() {
     this.cargarPerfiles();
   },
   methods: {
+    inicialDe(valor) {
+      return String(valor || "?").charAt(0).toUpperCase();
+    },
+    fotoDe(perfil) {
+      return resolverFotoUrl(perfil?.urlFoto || perfil?.fotoPerfil || perfil?.fotoUrl);
+    },
+    profesionDe(perfil) {
+      return perfil?.profesion || perfil?.profesiones?.[0]?.nombre || "";
+    },
     async cargarPerfiles() {
       this.perfilesCargando = true;
       try {
@@ -485,7 +539,7 @@ font-size: 1.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.6rem;
+  padding: 0.45rem 0.75rem;
   background: none;
   border: 1px solid #e5e7eb;
   border-radius: 999px;
@@ -509,6 +563,13 @@ font-size: 1.5rem;
   font-size: 0.75rem;
   font-weight: 600;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.perfil-switcher__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .perfil-switcher__nombre {
@@ -518,6 +579,32 @@ font-size: 1.5rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.perfil-switcher__labels {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.perfil-switcher__profesion {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.perfil-switcher__estado-linea {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: #16a34a;
 }
 
 .perfil-switcher__nombre .material-symbols-outlined {
@@ -584,6 +671,51 @@ font-size: 1.5rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.perfil-switcher__avatar--mini {
+  width: 32px;
+  height: 32px;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.perfil-switcher__avatar--mini img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.perfil-switcher__item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.perfil-switcher__item-nombre {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.perfil-switcher__item-profesion {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.perfil-switcher__item-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: #9ca3af;
+}
+
+.perfil-switcher__punto--offline {
+  background: #9ca3af;
 }
 
 .perfil-switcher__item--peligro {

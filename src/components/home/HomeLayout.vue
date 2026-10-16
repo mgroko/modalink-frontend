@@ -58,7 +58,15 @@
             />
             <template v-else>{{ inicialPerfil }}</template>
           </span>
-          <span>{{ nombreArtisticoActivo || "Perfil" }}</span>
+          <span v-if="idActivo" class="home-layout__profile-label">
+            <span class="home-layout__profile-name">{{ nombreArtisticoActivo || "Perfil" }}</span>
+            <span v-if="profesionActiva" class="home-layout__profile-profesion">{{ profesionActiva }}</span>
+            <span class="home-layout__profile-estado">
+              <span class="home-layout__profile-dot"></span>
+              En línea
+            </span>
+          </span>
+          <span v-else>{{ nombreArtisticoActivo || "Perfil" }}</span>
           <span class="material-symbols-outlined">expand_more</span>
         </button>
 
@@ -82,15 +90,34 @@
               <button
                 v-for="perfil in perfilesAlternativos"
                 :key="perfil.idPerfil"
+                class="home-layout__profile-option"
                 :disabled="perfil.estado !== 'Activo' || cambiandoPerfilId !== null"
                 @click="cambiarPerfil(perfil)"
               >
-                <span class="home-layout__mini-avatar">{{ inicialDe(perfil.nombreArtistico) }}</span>
-                {{ perfil.nombreArtistico }}
+                <span class="home-layout__mini-avatar">
+                  <img
+                    v-if="fotoDe(perfil)"
+                    :src="fotoDe(perfil)"
+                    :alt="perfil.nombreArtistico"
+                  />
+                  <template v-else>{{ inicialDe(perfil.nombreArtistico) }}</template>
+                </span>
+                <span class="home-layout__profile-option-info">
+                  <span class="home-layout__profile-option-name">{{ perfil.nombreArtistico }}</span>
+                  <span v-if="profesionDe(perfil)" class="home-layout__profile-option-profesion">{{ profesionDe(perfil) }}</span>
+                  <span class="home-layout__profile-option-estado">
+                    <span class="home-layout__profile-option-dot"></span>
+                    Offline
+                  </span>
+                </span>
               </button>
               <span v-if="!perfilesAlternativos.length" class="home-layout__empty">No hay perfiles alternativos</span>
             </div>
           </div>
+          <button class="home-layout__menu-logout" @click="cerrarSesion">
+            <span class="material-symbols-outlined">logout</span>
+            Cerrar sesión
+          </button>
         </div>
       </div>
     </header>
@@ -197,6 +224,9 @@ export default {
       const perfil = this.perfilActual;
       return resolverFotoUrl(perfil?.urlFoto || perfil?.fotoPerfil || perfil?.fotoUrl);
     },
+    profesionActiva() {
+      return this.perfilActual?.profesion || this.perfilActual?.profesiones?.[0]?.nombre || "";
+    },
     navActiva() {
       return this.$route.meta.navActiva || "inicio";
     },
@@ -227,6 +257,12 @@ export default {
     },
     inicialDe(valor) {
       return String(valor || "?").charAt(0).toUpperCase();
+    },
+    fotoDe(perfil) {
+      return resolverFotoUrl(perfil?.urlFoto || perfil?.fotoPerfil || perfil?.fotoUrl);
+    },
+    profesionDe(perfil) {
+      return perfil?.profesion || perfil?.profesiones?.[0]?.nombre || "";
     },
     cerrarMenu() {
       this.menuAbierto = false;
@@ -313,16 +349,29 @@ export default {
 .home-layout__nav-item--active { border-bottom: 2px solid #494776; color: #494776; }
 .home-layout__profile-wrapper { position: relative; }
 .home-layout__profile-trigger { display: flex; align-items: center; gap: .45rem; border: 0; background: transparent; color: #232134; cursor: pointer; }
+.home-layout__profile-label { display: flex; flex-direction: column; align-items: flex-start; gap: .05rem; line-height: 1.15; }
+.home-layout__profile-name { font-size: .85rem; font-weight: 600; }
+.home-layout__profile-profesion { font-size: .7rem; color: #767171; }
+.home-layout__profile-estado { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; color: #16a34a; }
+.home-layout__profile-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
 .home-layout__avatar, .home-layout__large-avatar, .home-layout__mini-avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #6866a9; color: #fff; font-weight: 600; overflow: hidden; }
-.home-layout__avatar img, .home-layout__large-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.home-layout__avatar img, .home-layout__large-avatar img, .home-layout__mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .home-layout__avatar { width: 36px; height: 36px; }
 .home-layout__large-avatar { width: 42px; height: 42px; flex-shrink: 0; }
-.home-layout__mini-avatar { width: 28px; height: 28px; font-size: .75rem; }
+.home-layout__mini-avatar { width: 28px; height: 28px; font-size: .75rem; flex-shrink: 0; }
+.home-layout__profile-option { display: flex; align-items: center; gap: .5rem; }
+.home-layout__profile-option-info { display: flex; flex-direction: column; gap: .05rem; line-height: 1.2; min-width: 0; }
+.home-layout__profile-option-name { font-size: .8rem; font-weight: 600; color: #232134; }
+.home-layout__profile-option-profesion { font-size: .7rem; color: #767171; }
+.home-layout__profile-option-estado { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; color: #9ca3af; }
+.home-layout__profile-option-dot { width: 6px; height: 6px; border-radius: 50%; background: #9ca3af; flex-shrink: 0; }
 .home-layout__profile-menu { position: absolute; z-index: 5; top: 48px; width: 255px; padding: .5rem 0; background: #fff; border: 1px solid #ddd; border-radius: 0 0 10px 10px; box-shadow: 0 8px 20px rgba(35,33,52,.12); }
 .home-layout__profile-menu--derecha { left: 0; }
 .home-layout__profile-menu--izquierda { right: 0; }
 .home-layout__profile-menu > button, .home-layout__switcher > button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: .75rem 1rem; border: 0; background: #fff; color: #232134; text-align: left; cursor: pointer; font-size: .82rem; }
 .home-layout__profile-menu button:hover { background: #f5f5f8; }
+.home-layout__profile-menu > .home-layout__menu-logout { justify-content: flex-start; gap: .5rem; color: #ef4444; }
+.home-layout__profile-menu > .home-layout__menu-logout .material-symbols-outlined { font-size: 1.1rem; }
 .home-layout__switcher { position: relative; }
 .home-layout__profiles { position: absolute; top: 0; width: 175px; padding: .5rem; background: #fff; border: 1px solid #ddd; box-shadow: 0 8px 20px rgba(35,33,52,.12); }
 .home-layout__profiles--derecha { left: 100%; border-radius: 0 10px 10px 10px; }
