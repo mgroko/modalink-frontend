@@ -185,6 +185,25 @@ export function validarProyecto(form, catalogosPorProfesion = {}, hoy = "") {
   return { campos, secciones };
 }
 
+/**
+ * Unicidad de nombre por perfil director (UC-24): el backend rechaza con 409
+ * si el perfil director activo ya tiene un proyecto con ese nombre. Acá se
+ * anticipa la regla contra los nombres ya conocidos (GET /proyectos/propios
+ * con rol DIRECTOR). La comparación ignora mayúsculas/minúsculas y espacios
+ * extremos.
+ * @param {string} nombre nombre cargado en el formulario
+ * @param {string[]} nombresExistentes nombres de proyectos del perfil director
+ * @returns {string|null} mensaje de error o null si el nombre está disponible
+ */
+export function validarNombreUnicoProyecto(nombre, nombresExistentes) {
+  if (!presente(nombre)) return null;
+  const normalizado = String(nombre).trim().toLocaleLowerCase();
+  const existe = (nombresExistentes || []).some(
+    (n) => String(n || "").trim().toLocaleLowerCase() === normalizado
+  );
+  return existe ? "Ya tenés un proyecto con ese nombre. Elegí otro." : null;
+}
+
 /** Mensajes de error de una sección con prefijo dado ("requerimientosGral.0."). */
 export function erroresConPrefijo(campos, prefijo) {
   return Object.entries(campos)

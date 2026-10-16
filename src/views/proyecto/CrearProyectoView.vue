@@ -240,6 +240,7 @@ import { reglasProyecto, hoyISO } from "../../utils/reglas.js";
 import { PRIVACIDADES } from "../../utils/proyectoConstants.js";
 import {
   validarProyecto,
+  validarNombreUnicoProyecto,
   mapearErroresBackend,
   raizConocida,
 } from "../../utils/validacionesProyecto.js";
@@ -292,6 +293,8 @@ export default {
       hoy: hoyISO(),
       profesiones: [],
       habilidades: [],
+      nombresPropios: [],
+      nombresPropiosListos: false,
       cargandoProfesiones: false,
       cargandoHabilidades: false,
       catalogosPorProfesion: {},
@@ -314,6 +317,7 @@ export default {
   },
   mounted() {
     this.cargarCatalogos();
+    this.cargarNombresPropios();
   },
   beforeUnmount() {
     revocarPreviews(this.imagenesMoodboard);
@@ -349,6 +353,26 @@ export default {
         this.habilidades = Array.isArray(datos) ? datos : datos?.habilidades || [];
       } finally {
         this.cargandoHabilidades = false;
+      }
+    },
+
+    /**
+     * Nombres de los proyectos propios (rol DIRECTOR) del perfil activo: se
+     * usan para anticipar en el paso 1 la regla de unicidad del backend
+     * (409 NombreProyectoDuplicadoException). Si falla, queda en [] y la
+     * validación anticipada se omite: el 409 del backend sigue cubriendo.
+     */
+    async cargarNombresPropios() {
+      try {
+        const response = await proyectoService.propios({ rol: "DIRECTOR", todos: true });
+        const contenido = response?.data?.contenido;
+        this.nombresPropios = Array.isArray(contenido)
+          ? contenido.map((p) => p?.nombre).filter(Boolean)
+          : [];
+        this.nombresPropiosListos = true;
+      } catch {
+        this.nombresPropios = [];
+        this.nombresPropiosListos = false;
       }
     },
 
@@ -429,6 +453,14 @@ export default {
       );
       const raices = RAICES_PASO[this.paso] || [];
 
+      if (raices.includes("nombre") && this.nombresPropiosListos) {
+        const msgNombre = validarNombreUnicoProyecto(
+          this.form.nombre,
+          this.nombresPropios
+        );
+        if (msgNombre) campos.nombre = msgNombre;
+      }
+
       const camposPaso = {};
       for (const [clave, msg] of Object.entries(campos)) {
         if (raices.includes(clave.split(".")[0])) camposPaso[clave] = msg;
@@ -499,6 +531,13 @@ export default {
         this.catalogosPorProfesion,
         this.hoy
       );
+      if (this.nombresPropiosListos) {
+        const msgNombre = validarNombreUnicoProyecto(
+          this.form.nombre,
+          this.nombresPropios
+        );
+        if (msgNombre) campos.nombre = msgNombre;
+      }
       this.erroresBackend = campos;
       this.seccionErrores = secciones;
       if (Object.keys(campos).length > 0 || Object.keys(secciones).length > 0) {
@@ -653,6 +692,7 @@ export default {
       this.paso = 1;
       this.agregarRequerimiento();
       this.$refs.form?.resetValidation();
+      this.cargarNombresPropios();
     },
 
     irAlProyecto() {
