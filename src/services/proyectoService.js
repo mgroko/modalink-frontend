@@ -298,6 +298,30 @@ const proyectoService = {
   },
 
   /**
+   * POST /proyectos/{idProyecto}/publicar — publica un proyecto en Borrador
+   * (UC-25). Requiere el permiso PUBLICAR_PROYECTO (en la práctica: director).
+   * La respuesta 200 tiene el mismo shape que GET /proyectos/{idProyecto}
+   * con `estado` en "Publicado": el frontend reemplaza los datos locales
+   * con ella (ficha ver-proyecto §4.2).
+   *
+   * Errores:
+   * - 400 información básica incompleta → body { message|mensaje, campos[] }
+   *   (mostrar el detalle de campos faltantes)
+   * - 400 MethodArgumentNotValidException → body { errores: { campo: msg } }
+   * - 403 AccesoDenegadoProyectoException (sin PUBLICAR_PROYECTO)
+   * - 404 ProyectoNoEncontradoException / PerfilActivoNoSeleccionadoException
+   * - 409 estado ≠ Borrador → refrescar los datos del proyecto (el botón
+   *   Publicar desaparece al cambiar el estado)
+   * - 409 PerfilEnBajaException → "El perfil no se encuentra activo."
+   * @param {number} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ProyectoResponse}>} 200 OK con el proyecto publicado
+   */
+  publicar(idProyecto, signal) {
+    return http.post(`/proyectos/${idProyecto}/publicar`, null, { signal });
+  },
+
+  /**
    * POST /proyectos — crea un proyecto con el perfil activo de la sesión
    * (cookie JWT HttpOnly + header X-XSRF-TOKEN lo resuelve http.js).
    *

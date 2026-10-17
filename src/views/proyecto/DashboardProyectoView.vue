@@ -52,8 +52,9 @@
             <VaButton
               v-if="puedePublicar"
               preset="primary"
-              disabled
-              title="Próximamente"
+              :disabled="publicando"
+              :loading="publicando"
+              @click="abrirPublicacion"
             >
               Publicar
             </VaButton>
@@ -189,6 +190,15 @@
           solo-lectura
           @update:modelValue="galeriaAbierta = $event"
         />
+
+        <ModalPublicarProyecto
+          :model-value="modalPublicarVisible"
+          :privacidad="proyecto.privacidad"
+          :publicando="publicando"
+          :error="errorPublicacion"
+          @update:modelValue="modalPublicarVisible = $event"
+          @confirmar="confirmarPublicacion"
+        />
       </template>
     </template>
   </div>
@@ -204,6 +214,7 @@ import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.v
 import RequerimientoDetalle from "../../components/proyecto/RequerimientoDetalle.vue";
 import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
+import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
@@ -222,6 +233,7 @@ import {
 // Cancela la request en vuelo si cambia el id o se reintenta
 // (no reactivo a propósito: AbortController no debe pasar por reactive()).
 let controladorCarga = null;
+let controladorPublicacion = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -231,6 +243,7 @@ export default {
     RequerimientoDetalle,
     CollageMoodboard,
     ModalGaleriaMoodboard,
+    ModalPublicarProyecto,
   },
   setup() {
     return { toast: useToast() };
@@ -248,6 +261,9 @@ export default {
       habilidades: [],
       catalogosCaracteristicas: {},
       galeriaAbierta: false,
+      modalPublicarVisible: false,
+      publicando: false,
+      errorPublicacion: "",
       idCarga: 0,
     };
   },
@@ -478,12 +494,87 @@ export default {
     reintentar() {
       this.cargar();
     },
+    abrirPublicacion() {
+      this.errorPublicacion = "";
+      this.modalPublicarVisible = true;
+    },
+    /** UC-25: confirma la publicación desde el modal. */
+    async confirmarPublicacion() {
+      if (this.publicando) return;
+      this.publicando = true;
+      this.errorPublicacion = "";
+      if (controladorPublicacion) controladorPublicacion.abort();
+      controladorPublicacion = new AbortController();
+      try {
+        const response = await proyectoService.publicar(
+          this.idProyecto,
+          controladorPublicacion.signal
+        );
+        this.modalPublicarVisible = false;
+        // Reemplaza los datos locales con la respuesta (§4.2): estado → Publicado
+        // y el botón Publicar desaparece.
+        this.proyecto = response?.data || this.proyecto;
+        this.toast.init({
+          title: "Proyecto publicado",
+          message: "El proyecto ya está visible según su privacidad.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
+        this.manejarErrorPublicacion(error);
+      } finally {
+        this.publicando = false;
+      }
+    },
+    manejarErrorPublicacion(error) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+
+      // 400: información básica incompleta — el modal permanece abierto
+      // mostrando el detalle de campos faltantes.
+      if (status === 400) {
+        const partes = [];
+        const mensaje = data?.mensaje || data?.message;
+        if (mensaje) partes.push(mensaje);
+        const campos = Array.isArray(data?.campos) ? data.campos : [];
+        if (campos.length) partes.push(`Faltan completar: ${campos.join(", ")}.`);
+        const errores = data?.errores && typeof data.errores === "object" ? data.errores : null;
+        if (errores) partes.push(Object.values(errores).join(" "));
+        this.errorPublicacion =
+          partes.join(" ") || "La información básica del proyecto está incompleta.";
+        return;
+      }
+
+      // 409: estado ≠ Borrador (o perfil en baja) — refrescar los datos.
+      if (status === 409) {
+        this.modalPublicarVisible = false;
+        this.cargar();
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.modalPublicarVisible = false;
+        this.toast.init({
+          title: "Error del servidor",
+          message: "No se pudo publicar el proyecto. Inténtalo nuevamente.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        return;
+      }
+
+      this.errorPublicacion = mensajeErrorApi(error, "No se pudo publicar el proyecto.");
+    },
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
     },
   },
   beforeUnmount() {
     if (controladorCarga) controladorCarga.abort();
+    if (controladorPublicacion) controladorPublicacion.abort();
   },
 };
 </script>
