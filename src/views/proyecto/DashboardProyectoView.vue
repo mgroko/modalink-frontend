@@ -70,6 +70,13 @@
           </div>
         </section>
 
+        <BaseAlert
+          v-if="esCancelado"
+          :message="mensajeCancelacion"
+          type="error"
+          class="dashboard-proyecto__banner-cancelado"
+        />
+
         <section class="dashboard-proyecto__panel">
           <h2 class="dashboard-proyecto__titulo">Datos generales</h2>
           <p class="dashboard-proyecto__parrafo">{{ proyecto.descripcion }}</p>
@@ -185,6 +192,25 @@
           </p>
         </section>
 
+        <section
+          v-if="puedeCancelar"
+          class="dashboard-proyecto__panel dashboard-proyecto__peligro"
+        >
+          <h2 class="dashboard-proyecto__titulo">Zona de peligro</h2>
+          <p class="dashboard-proyecto__parrafo">
+            Cancelar el proyecto es irreversible: se cancelarán las actividades
+            pendientes o en curso y se rechazarán las postulaciones e
+            invitaciones pendientes.
+          </p>
+          <VaButton
+            color="danger"
+            class="dashboard-proyecto__peligro-boton"
+            @click="abrirCancelacion"
+          >
+            Cancelar proyecto
+          </VaButton>
+        </section>
+
         <ModalGaleriaMoodboard
           :model-value="galeriaAbierta"
           :imagenes="imagenesMoodboard"
@@ -199,6 +225,15 @@
           :error="errorPublicacion"
           @update:modelValue="modalPublicarVisible = $event"
           @confirmar="confirmarPublicacion"
+        />
+
+        <ModalCancelarProyecto
+          :model-value="modalCancelarVisible"
+          :nombre-proyecto="proyecto.nombre"
+          :cancelando="cancelando"
+          :error="errorCancelacion"
+          @update:modelValue="modalCancelarVisible = $event"
+          @confirmar="confirmarCancelacion"
         />
       </template>
     </template>
@@ -216,6 +251,7 @@ import RequerimientoDetalle from "../../components/proyecto/RequerimientoDetalle
 import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
+import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
@@ -235,6 +271,7 @@ import {
 // (no reactivo a propósito: AbortController no debe pasar por reactive()).
 let controladorCarga = null;
 let controladorPublicacion = null;
+let controladorCancelacion = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -245,6 +282,7 @@ export default {
     CollageMoodboard,
     ModalGaleriaMoodboard,
     ModalPublicarProyecto,
+    ModalCancelarProyecto,
   },
   setup() {
     return { toast: useToast() };
@@ -265,6 +303,9 @@ export default {
       modalPublicarVisible: false,
       publicando: false,
       errorPublicacion: "",
+      modalCancelarVisible: false,
+      cancelando: false,
+      errorCancelacion: "",
       idCarga: 0,
     };
   },
@@ -304,6 +345,23 @@ export default {
     },
     puedePublicar() {
       return this.permisos.includes("PUBLICAR_PROYECTO") && this.esBorrador;
+    },
+    esCancelado() {
+      return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.CANCELADO;
+    },
+    /** UC-35 §8.1: combinar permiso con estado (los permisos son del rol). */
+    puedeCancelar() {
+      const estado = normalizarEstadoProyecto(this.proyecto?.estado);
+      return (
+        this.permisos.includes("CANCELAR_PROYECTO") &&
+        [ESTADOS_PROYECTO.PUBLICADO, ESTADOS_PROYECTO.CONFIRMADO].includes(estado)
+      );
+    },
+    mensajeCancelacion() {
+      const motivo = String(this.proyecto?.motivoCancelacion || "").trim();
+      return motivo
+        ? `Proyecto cancelado. Motivo: ${motivo}`
+        : "Proyecto cancelado. Sin motivo registrado.";
     },
     puedePostularse() {
       return (
@@ -588,6 +646,132 @@ export default {
 
       this.errorPublicacion = mensajeErrorApi(error, "No se pudo publicar el proyecto.");
     },
+    abrirCancelacion() {
+      this.errorCancelacion = "";
+      this.modalCancelarVisible = true;
+    },
+    /** UC-35: confirma la cancelación desde el modal. */
+    async confirmarCancelacion(motivo) {
+      if (this.cancelando) return;
+      this.cancelando = true;
+      this.errorCancelacion = "";
+      if (controladorCancelacion) controladorCancelacion.abort();
+      controladorCancelacion = new AbortController();
+      try {
+        const response = await proyectoService.cancelar(
+          this.idProyecto,
+          motivo,
+          controladorCancelacion.signal
+        );
+        // §8.3: reemplaza el estado local con la respuesta (estado Cancelado
+        // y motivo). La zona de peligro desaparece y se muestra el banner.
+        this.proyecto = response?.data || this.proyecto;
+        this.modalCancelarVisible = false;
+        this.toast.init({
+          title: "Proyecto cancelado",
+          message: "El proyecto fue cancelado correctamente.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
+        await this.manejarErrorCancelacion(error);
+      } finally {
+        this.cancelando = false;
+      }
+    },
+    async manejarErrorCancelacion(error) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      const mensaje = data?.message || "";
+      const clasificacion = clasificarErrorProyecto(error);
+
+      // §7.3 / §8.2: el modal sigue abierto y conserva el motivo.
+      if (status === 400) {
+        const errores = data?.errores && typeof data.errores === "object" ? data.errores : null;
+        this.errorCancelacion =
+          errores?.motivoCancelacion ||
+          mensaje ||
+          "El motivo de cancelación es obligatorio.";
+        return;
+      }
+
+      if (status === 403) {
+        this.modalCancelarVisible = false;
+        this.toast.init({
+          title: "No se pudo cancelar",
+          message: /perfil/i.test(mensaje)
+            ? "El perfil no se encuentra activo."
+            : mensaje ||
+              "No tenés permiso para cancelar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalCancelarVisible = false;
+
+        if (clasificacion?.tipo === "perfil-activo") {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (clasificacion?.tipo === "perfil-no-encontrado") {
+          await refrescarSesion();
+          this.mensajeError =
+            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (/proyecto/i.test(mensaje)) {
+          this.proyecto = null;
+          this.estadoNoEncontrado = true;
+          this.mensajeError = mensaje;
+          this.mostrarVolver = true;
+          return;
+        }
+
+        this.errorCancelacion = mensajeErrorApi(error, "No se pudo cancelar el proyecto.");
+        return;
+      }
+
+      if (status === 409) {
+        // §8.4: cerrar el modal, mostrar el mensaje y refrescar el proyecto.
+        this.modalCancelarVisible = false;
+        this.toast.init({
+          title: /perfil/i.test(mensaje) ? "Perfil inactivo" : "No se pudo cancelar",
+          message:
+            mensaje ||
+            (clasificacion?.tipo === "estado-no-cancelable"
+              ? "El proyecto ya no se encuentra en un estado cancelable."
+              : "El proyecto ya no se puede cancelar."),
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.cargar();
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorCancelacion =
+          "Ocurrió un error al cancelar el proyecto. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorCancelacion = mensajeErrorApi(
+        error,
+        "No se pudo cancelar el proyecto."
+      );
+    },
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
     },
@@ -595,6 +779,7 @@ export default {
   beforeUnmount() {
     if (controladorCarga) controladorCarga.abort();
     if (controladorPublicacion) controladorPublicacion.abort();
+    if (controladorCancelacion) controladorCancelacion.abort();
   },
 };
 </script>
@@ -763,6 +948,18 @@ export default {
 
 .dashboard-proyecto__proximamente {
   border-style: dashed;
+}
+
+.dashboard-proyecto__banner-cancelado {
+  margin-top: 0 !important;
+}
+
+.dashboard-proyecto__peligro {
+  border-color: #fca5a5;
+}
+
+.dashboard-proyecto__peligro-boton {
+  margin-top: 1rem;
 }
 
 .dashboard-proyecto__estado {

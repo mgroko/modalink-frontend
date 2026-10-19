@@ -12,7 +12,7 @@
  * @property {"campos"|"campo"|"seccion"|"duplicado"|"perfil-activo"|
  *           "perfil-no-encontrado"|"perfil-baja"|"habilidad"|"profesion"|
  *           "informacion-basica"|"requerimiento-satisfecho"|
- *           "estado-inmutable"|"generico"} tipo
+ *           "estado-inmutable"|"estado-no-cancelable"|"generico"} tipo
  * @property {object} [errores] body.errores original (sólo tipo "campos")
  * @property {string} [campo] campo a resaltar (sólo tipo "campo")
  * @property {string} [mensaje] message del backend
@@ -74,9 +74,13 @@ export function clasificarErrorProyecto(error) {
 
   if (status === 409) {
     // UC-36: estados inmutables y requerimientos con postulaciones aceptadas.
+    // UC-35: estado no cancelable ("Estado actual: ...").
     // El 409 de creación sigue siendo unicidad de nombre.
     if (/postulaciones aceptadas|requerimiento .*satisfech|satisfecho/i.test(mensaje)) {
       return { tipo: "requerimiento-satisfecho", mensaje };
+    }
+    if (/cancelar.*publicado o confirmado|estado actual/i.test(mensaje)) {
+      return { tipo: "estado-no-cancelable", mensaje };
     }
     if (/no se puede modificar un proyecto en estado/i.test(mensaje)) {
       return { tipo: "estado-inmutable", mensaje };

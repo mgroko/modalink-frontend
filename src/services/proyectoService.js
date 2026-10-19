@@ -162,6 +162,14 @@ import http from "./http";
  */
 
 /**
+ * @typedef {Object} CancelarProyectoRequest
+ *   UC-35. Único campo del body: no enviar idPerfilActivo, idUsuario ni estado.
+ * @property {string} motivoCancelacion obligatorio; no vacío ni sólo espacios;
+ *           máx. 200 caracteres. El backend lo persiste sin espacios al
+ *           inicio/final y lo devuelve en `ProyectoResponse.motivoCancelacion`.
+ */
+
+/**
  * @typedef {Object} ProyectoResponse
  * @property {number} idProyecto
  * @property {string} nombre
@@ -188,6 +196,11 @@ import http from "./http";
  * @property {boolean} [elegibleParaPostularse] true sólo si no es miembro,
  *           acepta postulaciones y la profesión del perfil coincide con algún
  *           requerimiento; sólo en GET /proyectos/{idProyecto}
+ * @property {string|null} [motivoCancelacion] UC-35: motivo ingresado al
+ *           cancelar; null si el proyecto no está cancelado. Presente en
+ *           GET /proyectos/{idProyecto}, POST /proyectos, POST
+ *           /proyectos/{idProyecto}/publicar y PUT /proyectos/{idProyecto}.
+ *           `GET /proyectos/propios` usa otro DTO y NO lo incluye.
  */
 
 /**
@@ -368,6 +381,38 @@ const proyectoService = {
    */
   publicar(idProyecto, signal) {
     return http.post(`/proyectos/${idProyecto}/publicar`, null, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/cancelar — cancela un proyecto en estado
+   * Publicado o Confirmado (UC-35). Requiere perfil Director activo con el
+   * permiso CANCELAR_PROYECTO. La operación NO es idempotente: un segundo
+   * intento responde 409. La respuesta 200 tiene el mismo shape que
+   * GET /proyectos/{idProyecto}, ya con `estado: "Cancelado"` y el motivo
+   * normalizado: el frontend reemplaza los datos locales con ella.
+   *
+   * Efectos (transaccionales): actividades PENDIENTE/EN_CURSO → CANCELADA,
+   * postulaciones e invitaciones pendientes → RECHAZADA y notificaciones.
+   * Un exmiembro puede seguir abriendo el detalle (200 con esMiembro: false).
+   *
+   * Errores:
+   * - 400 MethodArgumentNotValidException → body { errores: { motivoCancelacion } }
+   * - 403 AccesoDenegadoProyectoException (sin CANCELAR_PROYECTO / no miembro)
+   * - 403 director no activo
+   * - 404 PerfilActivoNoSeleccionadoException / PerfilNoEncontradoException /
+   *   ProyectoNoEncontradoException
+   * - 409 estado no cancelable (Borrador/Finalizado/Cancelado) o PerfilEnBaja
+   * @param {number} idProyecto
+   * @param {string} motivoCancelacion se envía con trim()
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ProyectoResponse}>} 200 OK con el proyecto cancelado
+   */
+  cancelar(idProyecto, motivoCancelacion, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/cancelar`,
+      { motivoCancelacion: String(motivoCancelacion || "").trim() },
+      { signal }
+    );
   },
 
   /**
