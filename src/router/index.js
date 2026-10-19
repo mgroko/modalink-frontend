@@ -16,6 +16,7 @@ import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
 import ProyectosInicioView from "../views/proyecto/ProyectosInicioView.vue";
 import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
+import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
@@ -97,6 +98,12 @@ const routes = [
     name: "proyectos-inicio",
     component: ProyectosInicioView,
     meta: { layout: HomeLayout, titulo: "Proyectos / Inicio", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id/modificar",
+    name: "modificar-proyecto",
+    component: ModificarProyectoView,
+    meta: { layout: HomeLayout, titulo: "Modificar proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
     path: "/proyectos/:id",

@@ -44,8 +44,9 @@
             <VaButton
               v-if="puedeEditar"
               preset="secondary"
-              disabled
-              title="Próximamente"
+              :disabled="!puedeModificar"
+              :title="puedeModificar ? 'Modificar proyecto' : motivoNoEditable"
+              @click="irAModificar"
             >
               Editar
             </VaButton>
@@ -289,6 +290,18 @@ export default {
     puedeEditar() {
       return this.permisos.includes("MODIFICAR_PROYECTO");
     },
+    estadoModificable() {
+      const estado = normalizarEstadoProyecto(this.proyecto?.estado);
+      return ![ESTADOS_PROYECTO.FINALIZADO, ESTADOS_PROYECTO.CANCELADO].includes(estado);
+    },
+    puedeModificar() {
+      return this.esMiembro && this.puedeEditar && this.estadoModificable;
+    },
+    motivoNoEditable() {
+      return this.estadoModificable
+        ? "No tenés permiso para modificar este proyecto."
+        : `El proyecto ${normalizarEstadoProyecto(this.proyecto?.estado)?.toLowerCase()} no se puede modificar.`;
+    },
     puedePublicar() {
       return this.permisos.includes("PUBLICAR_PROYECTO") && this.esBorrador;
     },
@@ -493,6 +506,13 @@ export default {
     },
     reintentar() {
       this.cargar();
+    },
+    irAModificar() {
+      if (!this.puedeModificar) return;
+      this.$router.push({
+        name: "modificar-proyecto",
+        params: { id: this.idProyecto },
+      });
     },
     abrirPublicacion() {
       this.errorPublicacion = "";

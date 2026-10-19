@@ -1,8 +1,12 @@
 <template>
   <div class="requerimiento">
     <div class="requerimiento__encabezado">
-      <span class="requerimiento__titulo">Requerimiento {{ indice + 1 }}</span>
+      <div class="requerimiento__encabezado-titulos">
+        <span class="requerimiento__titulo">Requerimiento {{ indice + 1 }}</span>
+        <span v-if="soloLectura" class="requerimiento__badge-satisfecho">Satisfecho</span>
+      </div>
       <VaButton
+        v-if="!soloLectura"
         preset="secondary"
         size="small"
         color="danger"
@@ -15,12 +19,17 @@
       </VaButton>
     </div>
 
+    <p v-if="soloLectura" class="requerimiento__hint">
+      Ya tiene postulaciones aceptadas: no se puede editar ni eliminar.
+    </p>
+
     <div class="requerimiento__fila">
       <VaInput
         v-model="modelValue.cantidad"
         type="number"
         label="Cantidad de personas*"
         placeholder="Ej: 2"
+        :disabled="soloLectura"
         :rules="[reglas.requerido, reglas.cantidadPositiva]"
         :error="errores.cantidad ? true : undefined"
         :error-messages="errores.cantidad || undefined"
@@ -33,6 +42,7 @@
         :text-by="(o) => capitalizar(o.nombre)"
         label="Profesión*"
         placeholder="Ej: Modelo"
+        :disabled="soloLectura"
         :rules="[reglas.requerido]"
         :error="errores.idProfesion ? true : undefined"
         :error-messages="errores.idProfesion || undefined"
@@ -52,7 +62,7 @@
         </p>
 
         <VaSelect
-          v-else
+          v-else-if="!soloLectura"
           v-model="caracteristicaAAgregar"
           :options="caracteristicasDisponibles"
           value-by="idCaracteristica"
@@ -76,6 +86,7 @@
             {{ etiquetaCaracteristica(catalogoDe(carac.idCaracteristica)) }}
           </span>
           <VaButton
+            v-if="!soloLectura"
             preset="secondary"
             size="small"
             color="danger"
@@ -95,6 +106,7 @@
             type="number"
             label="Valor mínimo"
             placeholder="Mín."
+            :disabled="soloLectura"
             :rules="[reglas.numerico, reglas.noNegativo]"
           />
           <VaInput
@@ -102,6 +114,7 @@
             type="number"
             label="Valor máximo"
             placeholder="Máx."
+            :disabled="soloLectura"
             :rules="[reglas.numerico, reglas.noNegativo]"
           />
         </div>
@@ -120,6 +133,7 @@
             :options="catalogoDe(carac.idCaracteristica).valores"
             value-by="idValor"
             :text-by="textoValor"
+            :disabled="soloLectura"
             class="requerimiento__valores"
           />
         </template>
@@ -133,6 +147,7 @@
       :options="habilidades"
       :loading="cargandoHabilidades"
       :ayuda="ayudaHabilidades"
+      :disabled="soloLectura"
       :error="errores.habilidades ? true : undefined"
       :error-message="errores.habilidades || undefined"
     />
@@ -142,6 +157,7 @@
       label="Descripción"
       placeholder="Descripción de la vacante..."
       :max-length="200"
+      :disabled="soloLectura"
       counter
       :rules="[reglas.max200]"
     />
@@ -182,6 +198,11 @@ export default {
     eliminarPermitido: {
       type: Boolean,
       default: true,
+    },
+    /** Requerimiento satisfecho (UC-36 §7): sólo lectura y badge "Satisfecho". */
+    soloLectura: {
+      type: Boolean,
+      default: false,
     },
     errores: {
       type: Object,
@@ -311,10 +332,26 @@ export default {
   justify-content: space-between;
 }
 
+.requerimiento__encabezado-titulos {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .requerimiento__titulo {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--va-text-primary);
+}
+
+.requerimiento__badge-satisfecho {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .requerimiento__fila {

@@ -61,10 +61,56 @@ import http from "./http";
  */
 
 /**
+ * @typedef {Object} RequerimientoGralModificarRequest
+ *   Igual que RequerimientoGralRequest más el id de un requerimiento existente.
+ *   Si se envía, debe pertenecer al proyecto y NO estar satisfecho.
+ * @property {number} [idRequerimientoGral] sólo en requerimientos existentes
+ *           editables (omitir en los nuevos)
+ * @property {number} cantidad > 0
+ * @property {number} idProfesion debe existir
+ * @property {string} [descripcion] máx. 200 caracteres
+ * @property {CaracteristicaRequerimientoRequest[]} [caracteristicas]
+ * @property {number[]} [habilidades]
+ */
+
+/**
+ * @typedef {Object} ModificarProyectoRequest
+ *   UC-36. `nombre` es inmutable y no forma parte del request. Ausente/null
+ *   significa "no cambiar" en todos los opcionales, salvo `ubicacion`:
+ *   omitirla en Borrador borra la ubicación (por eso el front la reenvía
+ *   siempre salvo que el usuario la quite explícitamente). `[]` en
+ *   `objetivos` elimina todos; en `requerimientosGral` elimina los no
+ *   satisfechos (los satisfechos se conservan solos).
+ * @property {string} descripcion máx. 200; no blanco
+ * @property {"PUBLICO"|"PRIVADO"} privacidad
+ * @property {boolean|null} [aceptaPostulacionGral] null/omitido = no cambia
+ * @property {string|null} [fechaEntregaEstipulada] "YYYY-MM-DD"; null/omitido
+ *           = no cambia (no se puede borrar por este endpoint)
+ * @property {UbicacionProyectoRequest|null} [ubicacion] null sólo permitido en
+ *           Borrador; en Publicado/Confirmado es obligatoria (400 si falta)
+ * @property {ObjetivoProyectoRequest[]|null} [objetivos] si se envía
+ *           reemplaza todos; [] elimina todos
+ * @property {RequerimientoGralModificarRequest[]|null} [requerimientosGral]
+ *           lista completa deseada (no delta); excluir los satisfechos
+ * @property {MoodboardRequest|null} [moodboard] si se envía actualiza/crea;
+ *           descripcion null borra la descripción
+ */
+
+/**
  * @typedef {Object} UbicacionProyectoResponse
  * @property {number} idUbicacion
- * @property {string} localidad
- * @property {string} provincia
+ * @property {string|null} direccion
+ * @property {string|null} codigoPostal
+ * @property {number|null} latitud
+ * @property {number|null} longitud
+ * @property {Object|null} ciudad
+ * @property {number} [ciudad.idCiudad]
+ * @property {string} [ciudad.idExterno] id Georef, ej. "06049010000"
+ * @property {string} [ciudad.nombre]
+ * @property {Object} [ciudad.provincia]
+ * @property {number} [ciudad.provincia.idProvincia]
+ * @property {string} [ciudad.provincia.idExterno] id Georef, ej. "06"
+ * @property {string} [ciudad.provincia.nombre]
  */
 
 /**
@@ -93,6 +139,9 @@ import http from "./http";
  * @property {string} nombreProfesion
  * @property {CaracteristicaRequerimientoResponse[]} caracteristicas
  * @property {number[]} habilidades
+ * @property {boolean} satisfecho true si tiene al menos una postulación
+ *           ACEPTADA: no se puede editar/eliminar desde el front y se excluye
+ *           del payload de modificación (ficha UC-36 §7)
  */
 
 /**
@@ -338,6 +387,33 @@ const proyectoService = {
    */
   crear(request) {
     return http.post("/proyectos", request);
+  },
+
+  /**
+   * PUT /proyectos/{idProyecto} — modifica un proyecto existente (UC-36).
+   * Requiere perfil activo miembro con el permiso MODIFICAR_PROYECTO. El
+   * `nombre` no forma parte del request (es inmutable). Los campos
+   * ausentes/null no cambian, salvo `ubicacion` en Borrador (omitirla la
+   * borra). La respuesta 200 tiene el mismo contrato que GET
+   * /proyectos/{idProyecto}: el frontend reemplaza el estado local con ella.
+   *
+   * Errores:
+   * - 400 MethodArgumentNotValidException → body { errores: { campo: msg } }
+   * - 400 UbicacionObligatoriaException (Publicado/Confirmado sin ubicación)
+   * - 400 FechaEntregaInvalidaException / RequerimientoInvalidoException
+   * - 400 InformacionBasicaIncompletaException → message con los faltantes
+   * - 403 AccesoDenegadoProyectoException (sin MODIFICAR_PROYECTO o no miembro)
+   * - 404 PerfilActivoNoSeleccionadoException / PerfilNoEncontradoException /
+   *   ProyectoNoEncontradoException / HabilidadNoEncontradaException
+   * - 409 estado Finalizado/Cancelado, requerimiento satisfecho enviado,
+   *   PerfilEnBajaException
+   * @param {number} idProyecto
+   * @param {ModificarProyectoRequest} request
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ProyectoResponse}>} 200 OK con el proyecto completo
+   */
+  modificar(idProyecto, request, signal) {
+    return http.put(`/proyectos/${idProyecto}`, request, { signal });
   },
 
   /**

@@ -11,7 +11,8 @@
  * @typedef {Object} ErrorProyectoClasificado
  * @property {"campos"|"campo"|"seccion"|"duplicado"|"perfil-activo"|
  *           "perfil-no-encontrado"|"perfil-baja"|"habilidad"|"profesion"|
- *           "generico"} tipo
+ *           "informacion-basica"|"requerimiento-satisfecho"|
+ *           "estado-inmutable"|"generico"} tipo
  * @property {object} [errores] body.errores original (sólo tipo "campos")
  * @property {string} [campo] campo a resaltar (sólo tipo "campo")
  * @property {string} [mensaje] message del backend
@@ -30,6 +31,14 @@ export function clasificarErrorProyecto(error) {
   if (status === 400) {
     if (data?.errores && Object.keys(data.errores).length > 0) {
       return { tipo: "campos", errores: data.errores };
+    }
+    // El mensaje de información básica enumera faltantes (puede contener
+    // "ubicación", "fecha" o "requerimiento"): va antes que esos matches.
+    if (/informaci[oó]n b[áa]sica incompleta/i.test(mensaje)) {
+      return { tipo: "informacion-basica", mensaje };
+    }
+    if (/ubicaci[oó]n es obligatoria/i.test(mensaje)) {
+      return { tipo: "campo", campo: "ubicacion", mensaje };
     }
     if (/fecha/i.test(mensaje)) {
       return { tipo: "campo", campo: "fechaEntregaEstipulada", mensaje };
@@ -64,6 +73,14 @@ export function clasificarErrorProyecto(error) {
   }
 
   if (status === 409) {
+    // UC-36: estados inmutables y requerimientos con postulaciones aceptadas.
+    // El 409 de creación sigue siendo unicidad de nombre.
+    if (/postulaciones aceptadas|requerimiento .*satisfech|satisfecho/i.test(mensaje)) {
+      return { tipo: "requerimiento-satisfecho", mensaje };
+    }
+    if (/no se puede modificar un proyecto en estado/i.test(mensaje)) {
+      return { tipo: "estado-inmutable", mensaje };
+    }
     return { tipo: "duplicado", campo: "nombre", mensaje };
   }
 

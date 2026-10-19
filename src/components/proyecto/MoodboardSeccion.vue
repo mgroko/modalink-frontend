@@ -8,6 +8,7 @@
     </template>
 
     <DropzoneImagenes
+      v-if="!soloLectura"
       :compacta="imagenes.length > 0"
       :deshabilitada="procesando"
       @agregar="alAgregarArchivos"
@@ -38,6 +39,7 @@
     <CollageMoodboard
       v-if="imagenes.length > 0"
       :imagenes="imagenes"
+      :solo-lectura="soloLectura"
       @quitar="quitarImagen"
       @ampliar="galeriaAbierta = true"
     />
@@ -47,6 +49,7 @@
       label="Descripción (opcional)"
       placeholder="Descripción del tablero..."
       :max-length="200"
+      :disabled="soloLectura"
       counter
       :rows="3"
       :rules="[reglas.max200]"
@@ -58,6 +61,7 @@
     <ModalGaleriaMoodboard
       v-model="galeriaAbierta"
       :imagenes="imagenes"
+      :solo-lectura="soloLectura"
       @quitar="quitarImagen"
     />
   </div>
@@ -111,6 +115,14 @@ export default {
     mostrarEncabezado: {
       type: Boolean,
       default: true,
+    },
+    /**
+     * Modo edición (UC-36): las imágenes del moodboard no se modifican desde
+     * este endpoint, así que se muestran en sólo lectura y sin dropzone.
+     */
+    soloLectura: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ["update:modelValue", "update:imagenes", "update:procesando"],
