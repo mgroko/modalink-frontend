@@ -30,17 +30,13 @@
       </div>
 
       <template v-if="proyecto">
-        <section class="dashboard-proyecto__panel dashboard-proyecto__hero">
-          <div class="dashboard-proyecto__hero-cuerpo">
-            <div class="dashboard-proyecto__hero-titular">
-              <h1 class="dashboard-proyecto__nombre">{{ proyecto.nombre }}</h1>
-              <EstadoProyectoBadge :estado="proyecto.estado" />
-            </div>
-            <p class="dashboard-proyecto__hero-descripcion">{{ proyecto.descripcion }}</p>
-            <p class="dashboard-proyecto__hero-rol">{{ subtituloRol }}</p>
-          </div>
-
-          <div class="dashboard-proyecto__hero-acciones">
+        <ProyectoEncabezado
+          :proyecto="proyecto"
+          :tab-activa="tabActiva"
+          :mostrar-planificacion="esMiembro"
+          @cambiar-tab="cambiarTab"
+        >
+          <template #acciones>
             <VaButton
               v-if="puedeEditar"
               preset="secondary"
@@ -67,8 +63,8 @@
             >
               Próximamente...
             </VaButton>
-          </div>
-        </section>
+          </template>
+        </ProyectoEncabezado>
 
         <BaseAlert
           v-if="esCancelado"
@@ -77,139 +73,142 @@
           class="dashboard-proyecto__banner-cancelado"
         />
 
-        <section class="dashboard-proyecto__panel">
-          <h2 class="dashboard-proyecto__titulo">Datos generales</h2>
-          <p class="dashboard-proyecto__parrafo">{{ proyecto.descripcion }}</p>
+        <template v-if="tabActiva === 'informacion'">
+          <section class="dashboard-proyecto__panel">
+            <h2 class="dashboard-proyecto__titulo">Datos generales</h2>
+            <p class="dashboard-proyecto__parrafo">{{ proyecto.descripcion }}</p>
 
-          <div class="dashboard-proyecto__grilla">
-            <div class="dashboard-proyecto__dato">
-              <span class="dashboard-proyecto__dato-label">Privacidad</span>
-              <span class="dashboard-proyecto__dato-valor">
-                {{ ETIQUETAS_PRIVACIDAD[proyecto.privacidad] || proyecto.privacidad }}
-              </span>
-              <span v-if="esPrivado" class="dashboard-proyecto__dato-hint">
-                Visible solo para tus perfiles miembros
-              </span>
+            <div class="dashboard-proyecto__grilla">
+              <div class="dashboard-proyecto__dato">
+                <span class="dashboard-proyecto__dato-label">Privacidad</span>
+                <span class="dashboard-proyecto__dato-valor">
+                  {{ ETIQUETAS_PRIVACIDAD[proyecto.privacidad] || proyecto.privacidad }}
+                </span>
+                <span v-if="esPrivado" class="dashboard-proyecto__dato-hint">
+                  Visible solo para tus perfiles miembros
+                </span>
+              </div>
+
+              <div class="dashboard-proyecto__dato">
+                <span class="dashboard-proyecto__dato-label">Ubicación</span>
+                <span class="dashboard-proyecto__dato-valor">{{ ubicacionTexto }}</span>
+              </div>
+
+              <div class="dashboard-proyecto__dato">
+                <span class="dashboard-proyecto__dato-label">Fecha de entrega</span>
+                <span class="dashboard-proyecto__dato-valor">
+                  {{ formatearFechaCorta(proyecto.fechaEntregaEstipulada) }}
+                </span>
+              </div>
+
+              <div class="dashboard-proyecto__dato">
+                <span class="dashboard-proyecto__dato-label">Fecha de inicio</span>
+                <span class="dashboard-proyecto__dato-valor">
+                  {{ formatearFechaCorta(proyecto.fechaInicio) }}
+                </span>
+              </div>
+
+              <div class="dashboard-proyecto__dato">
+                <span class="dashboard-proyecto__dato-label">Director</span>
+                <span class="dashboard-proyecto__dato-valor">
+                  {{ proyecto.nombreDirector || "—" }}
+                </span>
+              </div>
+
+              <div v-if="proyecto.aceptaPostulacionGral" class="dashboard-proyecto__dato">
+                <span class="dashboard-proyecto__dato-label">Postulaciones</span>
+                <span class="dashboard-proyecto__chip-postulaciones">Acepta postulaciones</span>
+              </div>
             </div>
+          </section>
 
-            <div class="dashboard-proyecto__dato">
-              <span class="dashboard-proyecto__dato-label">Ubicación</span>
-              <span class="dashboard-proyecto__dato-valor">{{ ubicacionTexto }}</span>
-            </div>
-
-            <div class="dashboard-proyecto__dato">
-              <span class="dashboard-proyecto__dato-label">Fecha de entrega</span>
-              <span class="dashboard-proyecto__dato-valor">
-                {{ formatearFechaCorta(proyecto.fechaEntregaEstipulada) }}
-              </span>
-            </div>
-
-            <div class="dashboard-proyecto__dato">
-              <span class="dashboard-proyecto__dato-label">Fecha de inicio</span>
-              <span class="dashboard-proyecto__dato-valor">
-                {{ formatearFechaCorta(proyecto.fechaInicio) }}
-              </span>
-            </div>
-
-            <div class="dashboard-proyecto__dato">
-              <span class="dashboard-proyecto__dato-label">Director</span>
-              <span class="dashboard-proyecto__dato-valor">
-                {{ proyecto.nombreDirector || "—" }}
-              </span>
-            </div>
-
-            <div v-if="proyecto.aceptaPostulacionGral" class="dashboard-proyecto__dato">
-              <span class="dashboard-proyecto__dato-label">Postulaciones</span>
-              <span class="dashboard-proyecto__chip-postulaciones">Acepta postulaciones</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="dashboard-proyecto__panel">
-          <h2 class="dashboard-proyecto__titulo">Objetivos</h2>
-          <div
-            v-if="(proyecto.objetivos || []).length"
-            class="dashboard-proyecto__objetivos"
-          >
-            <article
-              v-for="objetivo in proyecto.objetivos"
-              :key="objetivo.idObjetivo"
-              class="dashboard-proyecto__objetivo"
+          <section class="dashboard-proyecto__panel">
+            <h2 class="dashboard-proyecto__titulo">Objetivos</h2>
+            <div
+              v-if="(proyecto.objetivos || []).length"
+              class="dashboard-proyecto__objetivos"
             >
-              <p class="dashboard-proyecto__objetivo-nombre">{{ objetivo.nombre }}</p>
-              <p v-if="objetivo.descripcion" class="dashboard-proyecto__objetivo-desc">
-                {{ objetivo.descripcion }}
-              </p>
-            </article>
-          </div>
-          <p v-else class="dashboard-proyecto__vacio">
-            Este proyecto no tiene objetivos cargados.
-          </p>
-        </section>
+              <article
+                v-for="objetivo in proyecto.objetivos"
+                :key="objetivo.idObjetivo"
+                class="dashboard-proyecto__objetivo"
+              >
+                <p class="dashboard-proyecto__objetivo-nombre">{{ objetivo.nombre }}</p>
+                <p v-if="objetivo.descripcion" class="dashboard-proyecto__objetivo-desc">
+                  {{ objetivo.descripcion }}
+                </p>
+              </article>
+            </div>
+            <p v-else class="dashboard-proyecto__vacio">
+              Este proyecto no tiene objetivos cargados.
+            </p>
+          </section>
 
-        <section class="dashboard-proyecto__panel">
-          <h2 class="dashboard-proyecto__titulo">Personal requerido</h2>
-          <div
-            v-if="(proyecto.requerimientosGral || []).length"
-            class="dashboard-proyecto__requerimientos"
-          >
-            <RequerimientoDetalle
-              v-for="requerimiento in proyecto.requerimientosGral"
-              :key="requerimiento.idRequerimientoGral"
-              :requerimiento="requerimiento"
-              :habilidades="habilidades"
-              :catalogo-caracteristicas="catalogosCaracteristicas[requerimiento.idProfesion] || null"
+          <section class="dashboard-proyecto__panel">
+            <h2 class="dashboard-proyecto__titulo">Personal requerido</h2>
+            <div
+              v-if="(proyecto.requerimientosGral || []).length"
+              class="dashboard-proyecto__requerimientos"
+            >
+              <RequerimientoDetalle
+                v-for="requerimiento in proyecto.requerimientosGral"
+                :key="requerimiento.idRequerimientoGral"
+                :requerimiento="requerimiento"
+                :habilidades="habilidades"
+                :catalogo-caracteristicas="catalogosCaracteristicas[requerimiento.idProfesion] || null"
+              />
+            </div>
+            <p v-else class="dashboard-proyecto__vacio">
+              Este proyecto no tiene personal requerido cargado.
+            </p>
+          </section>
+
+          <section v-if="proyecto.moodboard" class="dashboard-proyecto__panel">
+            <h2 class="dashboard-proyecto__titulo">Moodboard</h2>
+
+            <CollageMoodboard
+              v-if="imagenesMoodboard.length"
+              :imagenes="imagenesMoodboard"
+              solo-lectura
+              @ampliar="galeriaAbierta = true"
             />
-          </div>
-          <p v-else class="dashboard-proyecto__vacio">
-            Este proyecto no tiene personal requerido cargado.
-          </p>
-        </section>
+            <p v-else class="dashboard-proyecto__contador">
+              0 de {{ MOODBOARD_IMAGENES.MAX_IMAGENES }} imágenes
+            </p>
 
-        <section v-if="proyecto.moodboard" class="dashboard-proyecto__panel">
-          <h2 class="dashboard-proyecto__titulo">Moodboard</h2>
+            <p v-if="proyecto.moodboard.descripcion" class="dashboard-proyecto__parrafo">
+              {{ proyecto.moodboard.descripcion }}
+            </p>
+          </section>
 
-          <CollageMoodboard
-            v-if="imagenesMoodboard.length"
-            :imagenes="imagenesMoodboard"
-            solo-lectura
-            @ampliar="galeriaAbierta = true"
-          />
-          <p v-else class="dashboard-proyecto__contador">
-            0 de {{ MOODBOARD_IMAGENES.MAX_IMAGENES }} imágenes
-          </p>
-
-          <p v-if="proyecto.moodboard.descripcion" class="dashboard-proyecto__parrafo">
-            {{ proyecto.moodboard.descripcion }}
-          </p>
-        </section>
-
-        <section v-if="esMiembro" class="dashboard-proyecto__panel dashboard-proyecto__proximamente">
-          <h2 class="dashboard-proyecto__titulo">Próximamente</h2>
-          <p class="dashboard-proyecto__parrafo">
-            Los miembros del equipo, el cronograma de actividades y las
-            postulaciones se habilitarán en una iteración siguiente.
-          </p>
-        </section>
-
-        <section
-          v-if="puedeCancelar"
-          class="dashboard-proyecto__panel dashboard-proyecto__peligro"
-        >
-          <h2 class="dashboard-proyecto__titulo">Zona de peligro</h2>
-          <p class="dashboard-proyecto__parrafo">
-            Cancelar el proyecto es irreversible: se cancelarán las actividades
-            pendientes o en curso y se rechazarán las postulaciones e
-            invitaciones pendientes.
-          </p>
-          <VaButton
-            color="danger"
-            class="dashboard-proyecto__peligro-boton"
-            @click="abrirCancelacion"
+          <section
+            v-if="puedeCancelar"
+            class="dashboard-proyecto__panel dashboard-proyecto__peligro"
           >
-            Cancelar proyecto
-          </VaButton>
-        </section>
+            <h2 class="dashboard-proyecto__titulo">Zona de peligro</h2>
+            <p class="dashboard-proyecto__parrafo">
+              Cancelar el proyecto es irreversible: se cancelarán las actividades
+              pendientes o en curso y se rechazarán las postulaciones e
+              invitaciones pendientes.
+            </p>
+            <VaButton
+              color="danger"
+              class="dashboard-proyecto__peligro-boton"
+              @click="abrirCancelacion"
+            >
+              Cancelar proyecto
+            </VaButton>
+          </section>
+        </template>
+
+        <PlanificacionProyecto
+          v-else-if="tabActiva === 'planificacion' && esMiembro"
+          :proyecto="proyecto"
+          :id-actividad-resaltada="idActividadResaltada"
+          @crear-actividad="irACrearActividad"
+          @ir-modificar-proyecto="irAModificar"
+          @limpiar-resaltado="limpiarActividadResaltada"
+        />
 
         <ModalGaleriaMoodboard
           :model-value="galeriaAbierta"
@@ -246,7 +245,8 @@ import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
 import { refrescarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
-import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.vue";
+import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
+import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
 import RequerimientoDetalle from "../../components/proyecto/RequerimientoDetalle.vue";
 import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
@@ -262,8 +262,6 @@ import {
   ESTADOS_PROYECTO,
   MOODBOARD_IMAGENES,
   PRIVACIDADES,
-  ROLES_PROYECTO,
-  etiquetaRolProyecto,
   normalizarEstadoProyecto,
 } from "../../utils/proyectoConstants.js";
 
@@ -277,7 +275,8 @@ export default {
   name: "DashboardProyectoView",
   components: {
     BaseAlert,
-    EstadoProyectoBadge,
+    ProyectoEncabezado,
+    PlanificacionProyecto,
     RequerimientoDetalle,
     CollageMoodboard,
     ModalGaleriaMoodboard,
@@ -307,6 +306,8 @@ export default {
       cancelando: false,
       errorCancelacion: "",
       idCarga: 0,
+      tabActiva: "informacion",
+      idActividadResaltada: null,
     };
   },
   computed: {
@@ -318,9 +319,6 @@ export default {
     },
     esMiembro() {
       return !!this.proyecto?.esMiembro;
-    },
-    esDirector() {
-      return this.proyecto?.rolUsuario === ROLES_PROYECTO.DIRECTOR;
     },
     esBorrador() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.BORRADOR;
@@ -370,18 +368,6 @@ export default {
         !!this.proyecto?.elegibleParaPostularse
       );
     },
-    /** Textos §4.1 de la ficha ver-proyecto. */
-    subtituloRol() {
-      if (!this.proyecto) return "";
-      if (!this.esMiembro) return "Vista pública del proyecto";
-      const rol = etiquetaRolProyecto(this.proyecto.rolUsuario);
-      const base = `Tu rol: ${rol} de proyecto`;
-      if (!this.esBorrador) return base;
-      const detalle = this.esDirector
-        ? "Solo vos podés ver el borrador hasta publicarlo"
-        : "Este proyecto está en borrador: aún no es visible para otros perfiles";
-      return `${base} · ${detalle}`;
-    },
     ubicacionTexto() {
       const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
       const provincia = this.proyecto?.ubicacion?.ciudad?.provincia?.nombre;
@@ -404,6 +390,19 @@ export default {
       this.proyecto = null;
       this.cargar();
     },
+    "$route.query.tab"() {
+      this.aplicarTabDesdeQuery();
+    },
+    "$route.query.nueva"() {
+      this.actualizarActividadResaltada();
+    },
+    esMiembro(valor) {
+      if (!valor) {
+        if (this.tabActiva === "planificacion") this.tabActiva = "informacion";
+        return;
+      }
+      this.aplicarTabDesdeQuery();
+    },
   },
   created() {
     // Pintado inmediato opcional desde history.state (CrearProyectoView);
@@ -413,6 +412,8 @@ export default {
       this.proyecto = estado.proyecto;
       this.cargando = false;
     }
+    this.aplicarTabDesdeQuery();
+    this.actualizarActividadResaltada();
   },
   async mounted() {
     await this.cargar();
@@ -564,6 +565,53 @@ export default {
     },
     reintentar() {
       this.cargar();
+    },
+    aplicarTabDesdeQuery() {
+      const tab =
+        this.$route.query.tab === "planificacion" ? "planificacion" : "informacion";
+      if (tab === "planificacion" && !this.esMiembro) {
+        this.tabActiva = "informacion";
+        return;
+      }
+      this.tabActiva = tab;
+    },
+    actualizarActividadResaltada() {
+      const valor = Number(this.$route.query.nueva);
+      this.idActividadResaltada =
+        Number.isFinite(valor) && valor > 0 ? valor : null;
+    },
+    reemplazarQuery(query) {
+      this.$router
+        .replace({
+          name: "dashboard-proyecto",
+          params: { id: this.idProyecto },
+          query,
+        })
+        .catch(() => {});
+    },
+    cambiarTab(tab) {
+      if (tab === "planificacion" && !this.esMiembro) return;
+      if (this.tabActiva === tab) return;
+
+      this.tabActiva = tab;
+      const query = { ...this.$route.query };
+      if (tab === "informacion") delete query.tab;
+      else query.tab = tab;
+      this.reemplazarQuery(query);
+    },
+    limpiarActividadResaltada() {
+      this.idActividadResaltada = null;
+      if (this.$route.query.nueva === undefined) return;
+      const query = { ...this.$route.query };
+      delete query.nueva;
+      this.reemplazarQuery(query);
+    },
+    irACrearActividad() {
+      if (!this.esMiembro) return;
+      this.$router.push({
+        name: "crear-actividad",
+        params: { id: this.idProyecto },
+      });
     },
     irAModificar() {
       if (!this.puedeModificar) return;

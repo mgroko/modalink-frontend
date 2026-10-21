@@ -1,0 +1,201 @@
+export const UNIDADES_DURACION = {
+  DIAS: "DIAS",
+  HORAS: "HORAS",
+};
+
+export const ETIQUETAS_UNIDAD_DURACION = {
+  [UNIDADES_DURACION.DIAS]: "Días",
+  [UNIDADES_DURACION.HORAS]: "Horas",
+};
+
+export const MINUTOS_POR_UNIDAD = {
+  [UNIDADES_DURACION.DIAS]: 1440,
+  [UNIDADES_DURACION.HORAS]: 60,
+};
+
+export const LIMITES_ACTIVIDAD = {
+  NOMBRE: 20,
+  DESCRIPCION: 200,
+  REQUERIMIENTO_DESCRIPCION: 200,
+};
+
+export const ESTADOS_ACTIVIDAD = {
+  PENDIENTE: "PENDIENTE",
+  EN_CURSO: "EN_CURSO",
+  FINALIZADA: "FINALIZADA",
+  CANCELADA: "CANCELADA",
+};
+
+export const ETIQUETAS_ESTADO_ACTIVIDAD = {
+  [ESTADOS_ACTIVIDAD.PENDIENTE]: "Pendiente",
+  [ESTADOS_ACTIVIDAD.EN_CURSO]: "En curso",
+  [ESTADOS_ACTIVIDAD.FINALIZADA]: "Finalizada",
+  [ESTADOS_ACTIVIDAD.CANCELADA]: "Cancelada",
+};
+
+export const OPCIONES_ESTADO_ACTIVIDAD = Object.values(ESTADOS_ACTIVIDAD).map(
+  (value) => ({ value, text: ETIQUETAS_ESTADO_ACTIVIDAD[value] })
+);
+
+export const COLORES_ESTADO_ACTIVIDAD = {
+  [ESTADOS_ACTIVIDAD.PENDIENTE]: {
+    fondo: "var(--color-warning-soft)",
+    texto: "var(--color-warning-text)",
+    borde: "var(--color-warning-border)",
+  },
+  [ESTADOS_ACTIVIDAD.EN_CURSO]: {
+    fondo: "var(--color-info-soft)",
+    texto: "var(--color-info-text)",
+    borde: "var(--color-info-border)",
+  },
+  [ESTADOS_ACTIVIDAD.FINALIZADA]: {
+    fondo: "var(--color-success-soft)",
+    texto: "var(--color-success-text)",
+    borde: "var(--color-success-border)",
+  },
+  [ESTADOS_ACTIVIDAD.CANCELADA]: {
+    fondo: "var(--color-danger-soft)",
+    texto: "var(--color-danger-text)",
+    borde: "var(--color-danger-border)",
+  },
+};
+
+const COLORES_ESTADO_ACTIVIDAD_POR_DEFECTO =
+  COLORES_ESTADO_ACTIVIDAD[ESTADOS_ACTIVIDAD.PENDIENTE];
+
+export function normalizarEstadoActividad(estado) {
+  if (!estado) return ESTADOS_ACTIVIDAD.PENDIENTE;
+  const clave = Object.keys(ESTADOS_ACTIVIDAD).find(
+    (k) => k.toLowerCase() === String(estado).toLowerCase()
+  );
+  return clave || String(estado).toUpperCase();
+}
+
+export function etiquetaEstadoActividad(estado) {
+  const clave = normalizarEstadoActividad(estado);
+  return ETIQUETAS_ESTADO_ACTIVIDAD[clave] || String(estado || "");
+}
+
+export function coloresEstadoActividad(estado) {
+  const clave = normalizarEstadoActividad(estado);
+  return COLORES_ESTADO_ACTIVIDAD[clave] || COLORES_ESTADO_ACTIVIDAD_POR_DEFECTO;
+}
+
+/**
+ * "3 d", "1 h 30 min", "2 d 4 h". Devuelve "—" si no hay duración válida.
+ * @param {number} minutos
+ * @returns {string}
+ */
+export function formatearDuracionMinutos(minutos) {
+  const total = Math.round(Number(minutos));
+  if (!Number.isFinite(total) || total <= 0) return "—";
+
+  const dias = Math.floor(total / MINUTOS_POR_UNIDAD.DIAS);
+  const resto = total % MINUTOS_POR_UNIDAD.DIAS;
+  const horas = Math.floor(resto / 60);
+  const mins = resto % 60;
+
+  const partes = [];
+  if (dias) partes.push(`${dias} d`);
+  if (horas) partes.push(`${horas} h`);
+  if (mins) partes.push(`${mins} min`);
+  return partes.join(" ");
+}
+
+/**
+ * Parsea fechas locales ISO-8601 (`YYYY-MM-DDTHH:mm:ss`) sin asumir UTC.
+ * @param {string|Date|null|undefined} valor
+ * @returns {Date|null}
+ */
+export function parseFechaLocal(valor) {
+  if (valor instanceof Date) {
+    return Number.isNaN(valor.getTime()) ? null : valor;
+  }
+  if (valor == null || valor === "") return null;
+
+  const [fecha, hora = ""] = String(valor).split("T");
+  const [anio, mes, dia] = fecha.split("-").map(Number);
+  if (!anio || !mes || !dia) return null;
+
+  const [h = 0, m = 0, s = 0] = hora.split(":").map(Number);
+  const resultado = new Date(anio, mes - 1, dia, h || 0, m || 0, s || 0);
+  return Number.isNaN(resultado.getTime()) ? null : resultado;
+}
+
+/**
+ * Fin del día de entrega, tal como programa el backend (23:59).
+ * @param {string|Date|null|undefined} fechaEntrega
+ * @returns {Date|null}
+ */
+export function finDelDiaEntrega(fechaEntrega) {
+  const fecha = parseFechaLocal(fechaEntrega);
+  if (!fecha) return null;
+  fecha.setHours(23, 59, 0, 0);
+  return fecha;
+}
+
+/**
+ * Inicio estimado de la nueva actividad: entrega 23:59 - duración.
+ * @param {string} fechaEntrega "YYYY-MM-DD" o ISO local
+ * @param {number|string} duracion
+ * @param {"DIAS"|"HORAS"} unidadDuracion
+ * @returns {Date|null}
+ */
+export function calcularInicioEstimado(fechaEntrega, duracion, unidadDuracion) {
+  const fin = finDelDiaEntrega(fechaEntrega);
+  const cantidad = Number(duracion);
+  const minutosPorUnidad = MINUTOS_POR_UNIDAD[unidadDuracion];
+  if (!fin || !Number.isFinite(cantidad) || cantidad <= 0 || !minutosPorUnidad) {
+    return null;
+  }
+  return new Date(fin.getTime() - cantidad * minutosPorUnidad * 60000);
+}
+
+/**
+ * Métricas del cronograma a partir de las actividades de UC-52.
+ * @param {Array<{fechaHoraInicio?: string, fechaHoraFin?: string}>} actividades
+ * @param {string} fechaEntrega
+ * @returns {{
+ *   total: number,
+ *   inicio: Date|null,
+ *   fin: Date|null,
+ *   duracionDias: number|null,
+ *   margenDias: number|null
+ * }}
+ */
+export function calcularMetricasPlanificacion(actividades, fechaEntrega) {
+  const lista = Array.isArray(actividades) ? actividades : [];
+  const inicios = [];
+  const fines = [];
+
+  for (const actividad of lista) {
+    const inicio = parseFechaLocal(actividad?.fechaHoraInicio);
+    const fin = parseFechaLocal(actividad?.fechaHoraFin);
+    if (inicio) inicios.push(inicio.getTime());
+    if (fin) fines.push(fin.getTime());
+  }
+
+  if (!inicios.length || !fines.length) {
+    return {
+      total: lista.length,
+      inicio: null,
+      fin: null,
+      duracionDias: null,
+      margenDias: null,
+    };
+  }
+
+  const inicio = new Date(Math.min(...inicios));
+  const fin = new Date(Math.max(...fines));
+  const duracionDias = Math.max(
+    1,
+    Math.ceil((fin.getTime() - inicio.getTime()) / 86400000)
+  );
+
+  const entrega = finDelDiaEntrega(fechaEntrega);
+  const margenDias = entrega
+    ? Math.ceil((entrega.getTime() - fin.getTime()) / 86400000)
+    : null;
+
+  return { total: lista.length, inicio, fin, duracionDias, margenDias };
+}

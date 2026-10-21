@@ -1,0 +1,171 @@
+import http from "./http";
+
+/*
+ * Contratos UC-49 (crear actividad) y UC-52 (buscar actividades).
+ * Tipos JSDoc puro: documentan el shape para el editor, sin tooling TS.
+ */
+
+/**
+ * @typedef {Object} UbicacionActividadRequest
+ * @property {string} localidadId id Georef con ceros a la izquierda
+ * @property {string} [provinciaId] id Georef con ceros a la izquierda
+ */
+
+/**
+ * @typedef {Object} CaracteristicaActividadRequest
+ * @property {number} idCaracteristica
+ * @property {number|null} [valorMin]
+ * @property {number|null} [valorMax]
+ * @property {number[]} [valores]
+ */
+
+/**
+ * @typedef {Object} RequerimientoActividadRequest
+ * @property {number} cantidad > 0
+ * @property {number} idProfesion
+ * @property {string} [descripcion] máx. 200
+ * @property {CaracteristicaActividadRequest[]} [caracteristicas]
+ * @property {number[]} [habilidades]
+ */
+
+/**
+ * @typedef {Object} CrearActividadRequest
+ * @property {string} nombre no blanco, máx. 20, único en la planificación
+ * @property {string} [descripcion] máx. 200
+ * @property {number} duracion entero > 0
+ * @property {"DIAS"|"HORAS"} unidadDuracion
+ * @property {UbicacionActividadRequest} [ubicacion]
+ * @property {number[]} [predecesoras]
+ * @property {RequerimientoActividadRequest[]} [requerimientos]
+ */
+
+/**
+ * @typedef {Object} RequerimientoActividadResponse
+ * @property {number} idRequerimiento
+ * @property {number} cantidad
+ * @property {string|null} descripcion
+ * @property {number} idProfesion
+ * @property {string} nombreProfesion
+ * @property {object[]} [caracteristicas]
+ * @property {number[]} [habilidades]
+ */
+
+/**
+ * @typedef {Object} ActividadResponse
+ * @property {number} idActividad
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {string} nombre
+ * @property {string|null} descripcion
+ * @property {number} duracionMinutos
+ * @property {string} fechaHoraInicio ISO local
+ * @property {string} fechaHoraFin ISO local derivado
+ * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+ * @property {object|null} ubicacion
+ * @property {{idActividad:number,nombre:string}[]} predecesoras
+ * @property {RequerimientoActividadResponse[]} requerimientos
+ */
+
+/**
+ * @typedef {Object} ActividadBusquedaResponse
+ * @property {number} idActividad
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {string} nombre
+ * @property {string|null} descripcion
+ * @property {number} duracionMinutos
+ * @property {string} fechaHoraInicio ISO local
+ * @property {string} fechaHoraFin ISO local derivado
+ * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+ * @property {{idRequerimiento:number,cantidad:number,descripcion:string|null,idProfesion:number,nombreProfesion:string}[]} requerimientos
+ * @property {{idActividad:number,nombre:string}[]} predecesoras
+ */
+
+/**
+ * @typedef {Object} BuscarActividadesParams
+ * @property {string} [nombre]
+ * @property {string} [descripcion]
+ * @property {string} [requerimiento]
+ * @property {number} [duracionMin] minutos
+ * @property {number} [duracionMax] minutos
+ * @property {string|string[]} [estado] PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+ * @property {number} [page] base 0
+ * @property {number} [size] default 20
+ * @property {boolean} [todos] true = sin paginar
+ */
+
+/**
+ * Serializa query params respetando claves repetidas para arrays, tal como
+ * exige UC-52 (`estado=PENDIENTE&estado=EN_CURSO`), sin el formato `estado[]`.
+ * @param {Record<string, unknown>} params
+ * @returns {string}
+ */
+function serializarParams(params = {}) {
+  const search = new URLSearchParams();
+
+  for (const [clave, valor] of Object.entries(params)) {
+    if (valor === undefined || valor === null || valor === "") continue;
+
+    if (Array.isArray(valor)) {
+      for (const item of valor) {
+        if (item === undefined || item === null || item === "") continue;
+        search.append(clave, String(item));
+      }
+      continue;
+    }
+
+    search.append(clave, String(valor));
+  }
+
+  return search.toString();
+}
+
+const actividadService = {
+  /**
+   * POST /proyectos/{idProyecto}/actividades — UC-49.
+   * La actividad siempre se crea PENDIENTE. No enviar estado ni fechas.
+   *
+   * Errores:
+   * - 400 MethodArgumentNotValidException / reglas de negocio
+   * - 403 sin CREAR_ACTIVIDAD o sin membresía activa
+   * - 404 perfil activo, proyecto o planificación inexistente
+   * - 409 nombre duplicado, estado no permitido, cronograma inviable
+   * @param {number|string} idProyecto
+   * @param {CrearActividadRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ActividadResponse}>} 201 Created
+   */
+  crear(idProyecto, request, signal) {
+    return http.post(`/proyectos/${idProyecto}/actividades`, request, { signal });
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/actividades/buscar — UC-52.
+   * Orden fijo: fechaHoraInicio ASC, idActividad ASC.
+   * Sin filtros devuelve todas las actividades visibles (paginadas).
+   *
+   * Errores:
+   * - 400 rango de duración inválido o estado fuera del enum
+   * - 403 proyecto no visible para el perfil activo
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {BuscarActividadesParams} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: {
+   *   contenido: ActividadBusquedaResponse[],
+   *   paginaActual: number,
+   *   tamanoPagina: number,
+   *   totalElementos: number,
+   *   totalPaginas: number,
+   *   primera: boolean,
+   *   ultima: boolean
+   * }}>} 200 OK
+   */
+  buscar(idProyecto, params = {}, signal) {
+    const query = serializarParams(params);
+    const url = `/proyectos/${idProyecto}/actividades/buscar${query ? `?${query}` : ""}`;
+    return http.get(url, { signal });
+  },
+};
+
+export default actividadService;

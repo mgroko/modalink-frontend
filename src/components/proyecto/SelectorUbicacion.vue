@@ -9,6 +9,8 @@
       placeholder="Seleccioná una provincia"
       :loading="cargandoProvincias"
       :disabled="disabled"
+      :error="error || undefined"
+      :error-messages="errorMessage || undefined"
       @update:model-value="onProvincia"
     />
 
@@ -21,6 +23,8 @@
       placeholder="Seleccioná una ciudad"
       :loading="cargandoLocalidades"
       :disabled="disabled || !provinciaId"
+      :error="error || undefined"
+      :error-messages="errorMessage || undefined"
       allow-search
       search-placeholder="Buscá una ciudad..."
       no-options-text="No hay localidades para esta provincia"
@@ -42,6 +46,14 @@ export default {
     disabled: {
       type: Boolean,
       default: false,
+    },
+    error: {
+      type: Boolean,
+      default: false,
+    },
+    errorMessage: {
+      type: String,
+      default: "",
     },
   },
   emits: ["update:modelValue"],

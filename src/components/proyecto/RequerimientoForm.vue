@@ -143,6 +143,7 @@
     </div>
 
     <MultiSelectHabilidades
+      v-if="mostrarHabilidades"
       v-model="modelValue.habilidades"
       :options="habilidades"
       :loading="cargandoHabilidades"
@@ -203,6 +204,11 @@ export default {
     soloLectura: {
       type: Boolean,
       default: false,
+    },
+    /** UC-49: el catálogo de habilidades aún no está expuesto (UC-48). */
+    mostrarHabilidades: {
+      type: Boolean,
+      default: true,
     },
     errores: {
       type: Object,
