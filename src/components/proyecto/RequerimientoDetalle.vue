@@ -165,7 +165,7 @@ export default {
   gap: 0.6rem;
   padding: 1rem 1.15rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
 }
 
@@ -203,7 +203,7 @@ export default {
   display: inline-block;
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
-  background: #eef2ff;
+  background: var(--color-info-soft);
   color: var(--color-primary);
   font-size: 0.78rem;
   font-weight: 500;

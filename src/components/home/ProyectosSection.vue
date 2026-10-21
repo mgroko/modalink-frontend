@@ -30,7 +30,7 @@ export default {
 .home-section {
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -56,7 +56,7 @@ export default {
 
 .home-card {
   padding: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 

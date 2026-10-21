@@ -5,10 +5,25 @@
 </template>
 
 <script>
+import { watch } from "vue";
+import { useColors } from "vuestic-ui";
 import { restaurarSesion, state } from "./services/authState";
+import { applyDomTheme, resolvedTheme } from "./services/themeState";
 
 export default {
   name: "App",
+  setup() {
+    const { applyPreset } = useColors();
+
+    watch(
+      resolvedTheme,
+      (theme) => {
+        applyPreset(theme);
+        applyDomTheme();
+      },
+      { immediate: true }
+    );
+  },
   computed: {
     // Remonta la vista al cambiar el perfil activo para recargar datos contextuales.
     viewKey() {

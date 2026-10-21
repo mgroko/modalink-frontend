@@ -663,7 +663,7 @@ export default {
 .dashboard-usuario__tabs {
   display: flex;
   gap: 1.5rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--color-border);
   margin-bottom: 1.25rem;
 }
 
@@ -703,7 +703,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 0.4rem 0.75rem;
   background: var(--color-surface);
@@ -737,7 +737,7 @@ export default {
 /* View toggle */
 .dashboard-usuario__view-toggle {
   display: flex;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -754,11 +754,11 @@ export default {
 }
 
 .dashboard-usuario__view-btn:not(:last-child) {
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--color-border);
 }
 
 .dashboard-usuario__view-btn--active {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 
@@ -786,8 +786,8 @@ export default {
   align-items: center;
   gap: 0.25rem;
   margin-top: 0.5rem;
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
   border: none;
   border-radius: 6px;
   padding: 0.5rem 1rem;
@@ -895,7 +895,7 @@ export default {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -938,8 +938,8 @@ export default {
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
   padding: 0.6rem 1rem;
-  border-top: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-border-soft);
+  border-bottom: 1px solid var(--color-border-soft);
   font-size: 0.78rem;
 }
 
@@ -966,7 +966,7 @@ export default {
   padding: 0.6rem 1rem;
   font-size: 0.78rem;
   color: var(--color-text-muted);
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-border-soft);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -979,7 +979,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 0.6rem 1rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-border-soft);
 }
 
 .perfil-card__footer-actions {
@@ -989,21 +989,21 @@ export default {
 }
 
 .perfil-card__iniciar {
-  color: #fff !important;
+  color: var(--color-on-accent) !important;
 }
 
 .perfil-card__continuar {
-  --va-background-color: #ffffff !important;
+  --va-background-color: var(--color-surface) !important;
   --va-background-mask-color: transparent !important;
   --va-background-mask-opacity: 0 !important;
-  color: #C96554 !important;
+  color: var(--color-accent) !important;
   border: 0 !important;
   box-shadow: none !important;
   padding: 0.25rem 0.5rem !important;
 }
 
 .perfil-card__continuar :deep(.va-button__content) {
-  color: #C96554 !important;
+  color: var(--color-accent) !important;
 }
 
 .perfil-card__continuar-icon {
@@ -1049,7 +1049,7 @@ export default {
 }
 
 .perfil-card__ingresar:hover {
-  background: #f0fdf4;
+  background: var(--color-success-soft);
 }
 
 .perfil-card__ingresar .material-symbols-outlined {
@@ -1078,7 +1078,7 @@ export default {
 }
 
 .detalle-perfil__foto--placeholder {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1100,8 +1100,8 @@ export default {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem;
   padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -1145,8 +1145,8 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 0.75rem;
   padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -1187,24 +1187,24 @@ export default {
 }
 
 .detalle-perfil__ingresar {
-  color: #fff !important;
+  color: var(--color-on-accent) !important;
 }
 
 .detalle-perfil__ingresar :deep(.va-button__content) {
-  color: #fff !important;
+  color: var(--color-on-accent) !important;
 }
 
 .detalle-perfil__continuar {
- --va-background-color: #ffffff !important;
+ --va-background-color: var(--color-surface) !important;
  --va-background-mask-color: transparent !important;
  --va-background-mask-opacity: 0 !important;
- color: #C96554 !important;
+ color: var(--color-accent) !important;
  border: 0 !important;
  box-shadow: none !important;
 }
 
 .detalle-perfil__continuar :deep(.va-button__content) {
- color: #C96554 !important;
+ color: var(--color-accent) !important;
 }
 
 .detalle-perfil__continuar-icon {

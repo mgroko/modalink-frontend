@@ -45,7 +45,7 @@ export default {
 .resenas-card {
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -63,7 +63,7 @@ export default {
 
 .resenas-card__item {
   padding: 0.75rem;
-  background: #f7f7fa;
+  background: var(--color-surface-soft);
   border-radius: 8px;
   margin-bottom: 0.6rem;
 }
@@ -89,11 +89,11 @@ export default {
 
 .resenas-card__estrellas .material-symbols-outlined {
   font-size: 0.95rem;
-  color: #d1d5db;
+  color: var(--color-border-strong);
 }
 
 .resenas-card__estrella--activa {
-  color: #f59e0b !important;
+  color: var(--color-warning) !important;
 }
 
 .resenas-card__numero {

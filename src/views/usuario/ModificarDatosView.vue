@@ -420,7 +420,7 @@ export default {
   border: 0;
   padding: 0;
   font-size: 0.78rem;
-  color: #b91c1c;
+  color: var(--color-danger-text);
   cursor: pointer;
 }
  

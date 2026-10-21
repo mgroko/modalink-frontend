@@ -53,6 +53,8 @@
           <span class="dashboard-main__subtitle">{{ titulo }}</span>
         </div>
         <div class="dashboard-main__header-actions">
+          <ThemeToggle />
+
           <VaDropdown v-if="usuario" placement="bottom-end">
             <template #anchor>
               <button class="perfil-switcher">
@@ -191,9 +193,13 @@ import {
   finalizarSesion,
   guardarBajaCuenta,
 } from "../../services/authState";
+import ThemeToggle from "../ThemeToggle.vue";
 
 export default {
   name: "UserDashboardLayout",
+  components: {
+    ThemeToggle,
+  },
   props: {
     titulo: {
       type: String,
@@ -320,7 +326,7 @@ export default {
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
-  background: var(--va-background-secondary, #F5F5F8);
+  background: var(--color-dashboard-bg);
 }
 
 /* ── Sidebar ── */
@@ -328,7 +334,7 @@ export default {
   width: 250px;
   min-width: 250px;
   background: var(--color-surface);
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -346,15 +352,15 @@ export default {
   align-items: center;
   gap: 0.6rem;
   padding: 0 1.25rem 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .sidebar__avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--color-text-muted);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -394,7 +400,7 @@ export default {
   gap: 0.5rem;
   margin: 0.5rem 1.25rem;
   padding: 0.5rem 0.7rem;
-  background: #f0f4ff;
+  background: var(--color-surface-muted);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -404,7 +410,7 @@ export default {
 }
 
 .sidebar__notifications:hover {
-  background: #e0e7ff;
+  background: var(--color-info-soft);
 }
 
 .sidebar__notifications .material-symbols-outlined {
@@ -414,8 +420,8 @@ export default {
 
 .sidebar__badge {
   margin-left: auto;
-  background: var(--va-danger);
-  color: #fff;
+  background: var(--color-danger-fill);
+  color: var(--color-on-primary);
   font-size: 0.7rem;
   font-weight: 600;
   min-width: 20px;
@@ -482,7 +488,7 @@ font-size: 1.5rem;
   padding: 0.55rem 0.7rem;
   background: none;
   border: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--color-border-soft);
   cursor: pointer;
   font-size: 0.82rem;
   color: var(--va-danger);
@@ -490,7 +496,7 @@ font-size: 1.5rem;
 }
 
 .sidebar__logout:hover {
-  background: #fef2f2;
+  background: var(--color-danger-soft);
 }
 
 .sidebar__logout .material-symbols-outlined {
@@ -512,7 +518,7 @@ font-size: 1.5rem;
   justify-content: space-between;
   padding: 0 2rem;
   background: var(--color-surface);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .dashboard-main__title {
@@ -541,22 +547,22 @@ font-size: 1.5rem;
   gap: 0.5rem;
   padding: 0.45rem 0.75rem;
   background: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   cursor: pointer;
   color: var(--color-text);
 }
 
 .perfil-switcher:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .perfil-switcher__avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--color-secondary);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -604,7 +610,7 @@ font-size: 1.5rem;
   align-items: center;
   gap: 0.3rem;
   font-size: 0.68rem;
-  color: #16a34a;
+  color: var(--color-success-text);
 }
 
 .perfil-switcher__nombre .material-symbols-outlined {
@@ -629,7 +635,7 @@ font-size: 1.5rem;
 
 .perfil-switcher__grupo {
   padding: 0.75rem 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .perfil-switcher__titulo {
@@ -661,7 +667,7 @@ font-size: 1.5rem;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--color-success);
   flex-shrink: 0;
 }
 
@@ -711,11 +717,11 @@ font-size: 1.5rem;
   align-items: center;
   gap: 0.3rem;
   font-size: 0.68rem;
-  color: #9ca3af;
+  color: var(--color-text-subtle);
 }
 
 .perfil-switcher__punto--offline {
-  background: #9ca3af;
+  background: var(--color-text-subtle);
 }
 
 .perfil-switcher__item--peligro {
@@ -724,7 +730,7 @@ font-size: 1.5rem;
 
 .dashboard-main__icon-btn {
   background: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 0.35rem;
   cursor: pointer;
@@ -735,7 +741,7 @@ font-size: 1.5rem;
 }
 
 .dashboard-main__icon-btn:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 

@@ -507,16 +507,6 @@ export default {
 <style scoped>
 .calendario {
   width: 100%;
-  --cal-actividad: #6fbf73;
-  --cal-actividad-celda: #cdeccf;
-  --cal-actividad-card: #edf8ee;
-  --cal-actividad-borde: #bfe3c2;
-  --cal-bloqueo-celda: #f8d4d4;
-  --cal-bloqueo-card: #fdefef;
-  --cal-bloqueo-borde: #f3c8c8;
-  --cal-disponible: #edf3f9;
-  --cal-disponible-hover: #e2ecf6;
-  --cal-nolaborable: #f3f4f6;
 }
 
 .calendario__toolbar {
@@ -536,7 +526,7 @@ export default {
 
 .calendario__nav-btn {
   background: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   width: 32px;
   height: 32px;
@@ -549,7 +539,7 @@ export default {
 }
 
 .calendario__nav-btn:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 
@@ -580,8 +570,8 @@ export default {
 }
 
 .calendario__hoy:hover {
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
 }
 
 .calendario__acciones {
@@ -620,7 +610,7 @@ export default {
 
 .calendario__leyenda-cuadro--actividad {
   background: var(--cal-actividad);
-  border: 1px solid #5aa860;
+  border: 1px solid var(--color-success);
 }
 
 .calendario__leyenda-cuadro--bloqueo {
@@ -629,18 +619,18 @@ export default {
 }
 
 .calendario__leyenda-cuadro--disponible {
-  background: #d9e6f2;
-  border: 1px solid #c6d9ec;
+  background: var(--cal-disponible);
+  border: 1px solid var(--color-info-border);
 }
 
 .calendario__leyenda-cuadro--nolaborable {
-  background: #e5e7eb;
-  border: 1px solid #d1d5db;
+  background: var(--color-border);
+  border: 1px solid var(--color-border-strong);
 }
 
 .calendario__grid-wrap {
   overflow-x: auto;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -648,7 +638,7 @@ export default {
   display: grid;
   grid-template-columns: 56px repeat(7, 1fr);
   gap: 1px;
-  background: #e5e7eb;
+  background: var(--color-border);
   min-width: 720px;
 }
 
@@ -663,7 +653,7 @@ export default {
   align-items: baseline;
   justify-content: center;
   gap: 0.3rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
   cursor: pointer;
 }
 
@@ -690,7 +680,7 @@ export default {
 
 .calendario__grid-header--nolaborable .calendario__grid-header-dia,
 .calendario__grid-header--nolaborable .calendario__grid-header-fecha {
-  color: #c4c6cf;
+  color: var(--color-text-subtle);
 }
 
 .calendario__hora {
@@ -726,7 +716,7 @@ export default {
 }
 
 .calendario__celda--bloqueo:hover {
-  background: #f3c3c3;
+  background: var(--color-danger-soft);
 }
 
 .calendario__celda--nolaborable {
@@ -754,7 +744,7 @@ export default {
   gap: 1rem;
   margin-top: 1.5rem;
   padding-top: 1.25rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .calendario__detalle-titulo {
@@ -768,7 +758,7 @@ export default {
   font-size: 0.85rem;
   color: var(--color-text-muted);
   padding: 1rem;
-  background: #f9fafb;
+  background: var(--color-surface-soft);
   border-radius: 8px;
   text-align: center;
 }
@@ -815,15 +805,15 @@ export default {
 }
 
 .calendario__evento-fecha {
-  color: #6b6978;
+  color: var(--color-text-muted);
 }
 
 .calendario__evento-badge {
   margin-left: auto;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #2f7d46;
-  background: #d5efda;
+  color: var(--color-success-text);
+  background: var(--color-success-soft);
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
 }
@@ -833,7 +823,7 @@ export default {
   background: none;
   border: none;
   cursor: pointer;
-  color: #d14343;
+  color: var(--color-danger-text);
   padding: 0.1rem;
   display: flex;
   align-items: center;
@@ -841,7 +831,7 @@ export default {
 }
 
 .calendario__evento-eliminar:hover {
-  background: #f8dcdc;
+  background: var(--color-danger-soft);
 }
 
 .calendario__evento-eliminar .material-symbols-outlined {

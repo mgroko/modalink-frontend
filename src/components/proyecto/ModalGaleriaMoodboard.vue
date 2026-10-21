@@ -126,7 +126,7 @@ export default {
   height: 180px;
   border-radius: 8px;
   object-fit: cover;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .galeria-moodboard-modal__quitar {
@@ -148,7 +148,7 @@ export default {
 }
 
 .galeria-moodboard-modal__quitar:hover {
-  background: #b91c1c;
+  background: var(--color-danger);
 }
 
 .galeria-moodboard-modal__quitar .material-symbols-outlined {

@@ -46,10 +46,10 @@ export default {
   display: inline-flex;
   align-items: center;
   padding: 0.15rem 0.6rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border-strong);
   border-radius: 6px;
-  background: #f3f4f6;
-  color: #485563;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.4;

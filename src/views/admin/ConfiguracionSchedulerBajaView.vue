@@ -285,7 +285,7 @@ export default {
 .configuracion-baja__card {
   margin-top: 1.5rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1.5rem;
 }
@@ -307,8 +307,8 @@ export default {
   flex-direction: column;
   gap: 0.85rem;
   padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -338,7 +338,7 @@ export default {
   font-family: monospace;
   font-size: 0.9rem;
   color: var(--color-text);
-  background: #ececf3;
+  background: var(--color-surface-muted);
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
 }

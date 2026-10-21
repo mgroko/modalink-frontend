@@ -572,7 +572,7 @@ export default {
 .inicio-perfil__panel {
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -603,7 +603,7 @@ export default {
 
 .inicio-perfil__publicacion {
   padding: 0.9rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .inicio-perfil__publicacion:last-child {
@@ -621,8 +621,8 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 0.75rem;
   padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   margin-bottom: 0.75rem;
 }
@@ -681,8 +681,8 @@ export default {
 }
 
 .inicio-perfil__habilidad {
-  background: #f0f0f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   color: var(--color-text);
   font-size: 0.8rem;
   padding: 0.3rem 0.75rem;

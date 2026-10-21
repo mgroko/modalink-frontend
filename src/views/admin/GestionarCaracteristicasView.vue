@@ -981,8 +981,8 @@ export default {
   flex-direction: column;
   gap: 0.5rem;
   padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -1015,7 +1015,7 @@ export default {
 .gestion-caracteristicas__color-picker {
   width: 34px;
   height: 34px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   cursor: pointer;
   padding: 0;
@@ -1043,8 +1043,8 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   margin-bottom: 1rem;
 }

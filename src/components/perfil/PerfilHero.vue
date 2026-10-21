@@ -87,7 +87,7 @@ export default {
   gap: 1.25rem;
   padding: 1.5rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -96,7 +96,7 @@ export default {
   height: 84px;
   border-radius: 50%;
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   color: var(--color-text-muted);
   display: flex;
   align-items: center;
@@ -159,7 +159,7 @@ export default {
 
 .perfil-hero__valoracion .material-symbols-outlined {
   font-size: 1.1rem;
-  color: #f59e0b;
+  color: var(--color-warning);
 }
 
 .perfil-hero__profesion {
@@ -200,7 +200,7 @@ export default {
 }
 
 .perfil-hero__editar:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 

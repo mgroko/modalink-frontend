@@ -797,7 +797,7 @@ export default {
 .dashboard-proyecto__panel {
   padding: 1.35rem 1.5rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -902,7 +902,7 @@ export default {
   align-self: flex-start;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  background: #eef2ff;
+  background: var(--color-info-soft);
   color: var(--color-primary);
   font-size: 0.78rem;
   font-weight: 500;
@@ -916,7 +916,7 @@ export default {
 
 .dashboard-proyecto__objetivo {
   padding: 0.85rem 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
 }
 
@@ -955,7 +955,7 @@ export default {
 }
 
 .dashboard-proyecto__peligro {
-  border-color: #fca5a5;
+  border-color: var(--color-danger-border);
 }
 
 .dashboard-proyecto__peligro-boton {
@@ -969,7 +969,7 @@ export default {
   gap: 0.5rem;
   padding: 3rem 1rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   text-align: center;
   color: var(--color-text-muted);

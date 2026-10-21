@@ -23,8 +23,11 @@
 
         <EstadoProyectoBadge :estado="estado" />
 
-        <VaAlert color="#FEF3C7" icon="mso-warning" class="exito-proyecto-modal__aviso"
-          :style="{ color: '#92400e' }">
+        <VaAlert
+          icon="mso-warning"
+          class="exito-proyecto-modal__aviso"
+          :style="{ backgroundColor: 'var(--color-warning-soft)', color: 'var(--color-warning-text)' }"
+        >
           {{ advertencia }}
         </VaAlert>
 
@@ -219,8 +222,8 @@ export default {
   width: 132px;
   height: 132px;
   border-radius: 50%;
-  background: #22c55e;
-  color: #fff;
+  background: var(--color-success-fill);
+  color: var(--color-on-primary);
 }
 
 .exito-proyecto-modal__check .material-symbols-outlined {
@@ -235,8 +238,8 @@ export default {
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  background: #f59e0b;
-  color: #fff;
+  background: var(--color-warning-fill);
+  color: var(--color-on-primary);
 }
 
 .exito-proyecto-modal__aviso-icono .material-symbols-outlined {

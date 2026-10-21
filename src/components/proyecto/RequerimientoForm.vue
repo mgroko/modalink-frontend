@@ -348,8 +348,8 @@ export default {
   display: inline-block;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
   font-size: 0.72rem;
   font-weight: 600;
 }
@@ -409,7 +409,7 @@ export default {
   padding: 0.9rem;
   border: 1px solid var(--va-background-border);
   border-radius: 8px;
-  background: var(--color-background, #fff);
+  background: var(--color-surface);
 }
 
 .requerimiento__caracteristica-cabecera {

@@ -50,7 +50,7 @@ export default {
   gap: 1rem;
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -63,7 +63,7 @@ export default {
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 50%;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   color: var(--color-text-muted);
 }
 

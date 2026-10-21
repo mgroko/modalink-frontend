@@ -172,7 +172,7 @@ export default {
   gap: 1rem;
   text-align: left;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1.25rem;
   cursor: pointer;
@@ -190,8 +190,8 @@ export default {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -126,7 +126,7 @@ export default {
 .collage__contador-chip {
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  background: #eef2ff;
+  background: var(--color-info-soft);
   color: var(--color-primary);
   font-size: 0.75rem;
   font-weight: 600;
@@ -178,7 +178,7 @@ export default {
   min-height: 0;
   border-radius: 8px;
   object-fit: cover;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   cursor: zoom-in;
 }
 
@@ -203,7 +203,7 @@ export default {
 
 .collage__pie-ok .material-symbols-outlined {
   font-size: 1rem;
-  color: #16a34a;
+  color: var(--color-success-text);
 }
 
 .collage__pie-contador {
@@ -226,9 +226,9 @@ export default {
   gap: 0.4rem;
   max-width: 220px;
   padding: 0.35rem 0.5rem 0.35rem 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--color-surface-soft);
 }
 
 .collage__chip-nombre {
@@ -251,7 +251,7 @@ export default {
 }
 
 .collage__chip-quitar:hover {
-  color: #b91c1c;
+  color: var(--color-danger-text);
 }
 
 .collage__chip-quitar .material-symbols-outlined {

@@ -923,7 +923,7 @@ export default {
 }
 
 .detalle-usuario__perfiles {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--color-border);
   padding-top: 1.25rem;
   margin-top: 1.25rem;
 }
@@ -956,8 +956,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
-  border: 1px dashed #d1d5db;
+  background: var(--color-surface-muted);
+  border: 1px dashed var(--color-border-strong);
 }
 
 .detalle-perfil__grid {
@@ -974,7 +974,7 @@ export default {
 }
 
 .detalle-perfil__biografia {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--color-border);
   padding-top: 1rem;
 }
 

@@ -1,9 +1,8 @@
 <template>
   <VaAlert
     v-if="message"
-    :color="config.bgColor"
     class="mt-4"
-    :style="{ color: config.textColor }"
+    :style="{ backgroundColor: config.bgColor, color: config.textColor }"
     :icon="config.icon"
   >
     <span class="font-semibold">{{ message }}</span>
@@ -29,15 +28,15 @@ export default {
       // exito
       if (this.type === "success") {
         return {
-          bgColor: "#dcfce7",
-          textColor: "#15803d",
+          bgColor: "var(--color-success-soft)",
+          textColor: "var(--color-success-text)",
           icon: "mso-check_circle",
         };
       }
       // error
       return {
-        bgColor: "#fee2e2",
-        textColor: "#b91c1c",
+        bgColor: "var(--color-danger-soft)",
+        textColor: "var(--color-danger-text)",
         icon: "mso-error",
       };
     },

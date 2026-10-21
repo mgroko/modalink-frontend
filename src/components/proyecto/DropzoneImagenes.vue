@@ -112,16 +112,16 @@ export default {
   align-items: center;
   gap: 0.65rem;
   padding: 2rem 1.5rem;
-  border: 2px dashed #c7d2fe;
+  border: 2px dashed var(--color-info-border);
   border-radius: 12px;
-  background: #f8faff;
+  background: var(--color-surface-soft);
   text-align: center;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .dropzone--activa {
   border-color: var(--color-primary);
-  background: #eef2ff;
+  background: var(--color-info-soft);
 }
 
 .dropzone--deshabilitada {
@@ -136,7 +136,7 @@ export default {
   width: 48px;
   height: 48px;
   border-radius: 10px;
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-primary);
   font-size: 1.5rem;
 }

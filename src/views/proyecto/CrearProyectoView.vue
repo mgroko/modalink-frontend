@@ -940,7 +940,7 @@ export default {
   height: 26px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #e5e7eb;
+  background: var(--color-border);
   color: var(--color-text-muted);
   font-size: 0.78rem;
   font-weight: 700;
@@ -952,8 +952,8 @@ export default {
 }
 
 .crear-proyecto__paso--activo .crear-proyecto__paso-numero {
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
 }
 
 .crear-proyecto__paso-linea {
@@ -961,7 +961,7 @@ export default {
   min-width: 24px;
   height: 2px;
   margin: 0 0.75rem;
-  background: #e5e7eb;
+  background: var(--color-border);
 }
 
 .crear-proyecto__paso-linea--activa {
@@ -973,7 +973,7 @@ export default {
   gap: 1rem;
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -994,7 +994,7 @@ export default {
   display: grid;
   gap: 0.35rem;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .crear-proyecto__subseccion-titulo {
@@ -1027,7 +1027,7 @@ export default {
   gap: 0.4rem;
   margin: 0;
   padding: 1rem;
-  border: 1px dashed #e5e7eb;
+  border: 1px dashed var(--color-border);
   border-radius: 8px;
   color: var(--color-text-muted);
   font-size: 0.85rem;
@@ -1036,10 +1036,10 @@ export default {
 .crear-proyecto__errores-seccion {
   margin: 0;
   padding: 0.75rem 1rem 0.75rem 2rem;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--color-danger-border);
   border-radius: 8px;
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
   font-size: 0.85rem;
 }
 
@@ -1047,7 +1047,7 @@ export default {
   display: grid;
   gap: 0.35rem;
   padding-top: 0.5rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .crear-proyecto__errores-seccion li + li {

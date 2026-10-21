@@ -2,7 +2,7 @@
   <div class="proyectos-inicio">
     <header class="proyectos-inicio__header">
       <h1 class="proyectos-inicio__titulo">Proyectos / Inicio</h1>
-      <VaButton color="#5CA4A9" text-color="#fff" icon="mso-add" @click="irACrearProyecto">
+      <VaButton color="#5CA4A9" text-color="#17161F" icon="mso-add" @click="irACrearProyecto">
         Crear proyecto
       </VaButton>
     </header>
@@ -114,6 +114,7 @@
         <VaButton
           v-else
           color="#5CA4A9"
+          text-color="#17161F"
           size="small"
           icon="mso-add"
           @click="irACrearProyecto"
@@ -514,7 +515,7 @@ export default {
 .proyectos-inicio__panel {
   padding: 1rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   margin-bottom: 1rem;
 }
@@ -615,7 +616,7 @@ export default {
   gap: 1rem;
   padding: 1rem 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   cursor: pointer;
   transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
@@ -654,7 +655,7 @@ export default {
   display: inline-flex;
   align-items: center;
   padding: 0.1rem 0.55rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border-strong);
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 500;
@@ -704,12 +705,12 @@ export default {
 .proyecto-tarjeta__actividad-hora {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #16a34a;
+  color: var(--color-success-text);
 }
 
 .proyecto-tarjeta__actividad-nombre {
   font-size: 0.82rem;
-  color: #16a34a;
+  color: var(--color-success-text);
 }
 
 .proyecto-tarjeta__sin-actividad {

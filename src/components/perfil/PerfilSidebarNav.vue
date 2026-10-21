@@ -123,7 +123,7 @@ export default {
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -135,7 +135,7 @@ export default {
   padding: 0.75rem 1rem;
   background: none;
   border: none;
-  border-bottom: 1px solid #f2f2f6;
+  border-bottom: 1px solid var(--color-border-soft);
   font-size: 0.84rem;
   color: var(--color-text);
   cursor: pointer;
@@ -148,11 +148,11 @@ export default {
 }
 
 .perfil-nav__item:hover {
-  background: #f7f7fa;
+  background: var(--color-surface-soft);
 }
 
 .perfil-nav__item--activo {
-  background: #ececf5;
+  background: var(--color-surface-muted);
   font-weight: 600;
   color: var(--color-primary);
 }
@@ -167,15 +167,15 @@ export default {
 }
 
 .perfil-nav__item--peligro {
-  color: #ef4444;
+  color: var(--color-danger-text);
 }
 
 .perfil-nav__item--peligro .material-symbols-outlined {
-  color: #ef4444;
+  color: var(--color-danger-text);
 }
 
 .perfil-nav__item--peligro:hover {
-  background: #fef2f2;
+  background: var(--color-danger-soft);
 }
 
 .perfil-nav__acciones {

@@ -300,14 +300,14 @@ export default {
   flex-direction: column;
   gap: 0.75rem;
   padding: 0.85rem 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
   transition: all 0.2s ease;
 }
 
 .configurar-jornada__dia--inactivo {
-  background: #f9fafb;
+  background: var(--color-surface-soft);
   opacity: 0.75;
 }
 
@@ -358,10 +358,10 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
-  background: #f8fafc;
+  background: var(--color-surface-soft);
   padding: 0.75rem;
   border-radius: 6px;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--color-border-soft);
 }
 
 @media (max-width: 640px) {

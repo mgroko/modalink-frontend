@@ -24,6 +24,8 @@
           Scheduler bajas
         </RouterLink>
 
+        <ThemeToggle />
+
         <VaDropdown v-if="usuario" placement="bottom-end">
           <template #anchor>
             <VaButton preset="secondary" size="small" icon="mso-admin_panel_settings">
@@ -103,9 +105,13 @@
 <script>
 import authService from "../../services/authService";
 import { state, limpiarSesion, tienePermiso } from "../../services/authState";
+import ThemeToggle from "../ThemeToggle.vue";
 
 export default {
   name: "AdminLayout",
+  components: {
+    ThemeToggle,
+  },
   computed: {
     usuario() {
       return state.usuario;
@@ -134,7 +140,7 @@ export default {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--va-background-secondary, #F5F5F8);
+  background: var(--color-bg);
 }
 
 .admin-layout__header {
@@ -144,7 +150,7 @@ export default {
   gap: 1rem;
   padding: 1rem 2rem;
   background: var(--color-surface);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .admin-layout__brand {

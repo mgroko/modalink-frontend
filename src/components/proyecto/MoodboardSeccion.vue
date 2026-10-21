@@ -16,10 +16,9 @@
 
     <VaAlert
       v-if="rechazadas.length > 0"
-      color="#FEF3C7"
       icon="mso-warning"
       class="moodboard__rechazadas"
-      :style="{ color: '#92400e' }"
+      :style="{ backgroundColor: 'var(--color-warning-soft)', color: 'var(--color-warning-text)' }"
     >
       <p class="moodboard__rechazadas-titulo">
         Algunas imágenes no se agregaron:
@@ -219,7 +218,7 @@ export default {
 .moodboard__spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #c7d2fe;
+  border: 2px solid var(--color-info-border);
   border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: moodboard-spinner 0.7s linear infinite;

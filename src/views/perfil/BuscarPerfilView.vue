@@ -1160,8 +1160,8 @@ export default {
   display: inline-flex;
   gap: 0.25rem;
   padding: 0.25rem;
-  background: #f0f0f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   margin-bottom: 1rem;
 }
@@ -1195,7 +1195,7 @@ export default {
   gap: 0.75rem;
   padding: 1rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   margin-bottom: 1rem;
 }
@@ -1248,7 +1248,7 @@ export default {
   gap: 0.75rem;
   padding: 1.5rem 1.25rem 1rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   text-align: center;
   cursor: pointer;
@@ -1271,7 +1271,7 @@ export default {
   height: 84px;
   border-radius: 50%;
   overflow: hidden;
-  background: #edeef4;
+  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1338,8 +1338,8 @@ export default {
 
 .perfil-busqueda__habilidad,
 .perfil-busqueda__caracteristica {
-  background: #f0f0f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   color: var(--color-text);
   font-size: 0.72rem;
   padding: 0.2rem 0.6rem;
@@ -1368,7 +1368,7 @@ export default {
   gap: 0.75rem;
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   cursor: pointer;
   transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;

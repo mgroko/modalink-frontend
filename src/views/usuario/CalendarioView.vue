@@ -38,7 +38,7 @@ export default {
 .calendario-view__tabs {
   display: flex;
   gap: 1.5rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--color-border);
   margin-bottom: 1.25rem;
 }
 
