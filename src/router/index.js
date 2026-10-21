@@ -20,6 +20,7 @@ import CrearActividadView from "../views/proyecto/CrearActividadView.vue";
 import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
+import NotificacionesView from "../views/usuario/NotificacionesView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
@@ -130,6 +131,23 @@ const routes = [
     name: "dashboard-usuario",
     component: DashboardUsuarioView,
     meta: { layout: UserDashboardLayout, permiteSinPerfil: true },
+  },
+  {
+    path: "/dashboard-usuario/notificaciones",
+    name: "notificaciones-usuario",
+    component: NotificacionesView,
+    meta: { layout: UserDashboardLayout, titulo: "Notificaciones", permiteSinPerfil: true },
+  },
+  {
+    path: "/notificaciones",
+    name: "notificaciones-perfil",
+    component: NotificacionesView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Notificaciones",
+      navActiva: "notificaciones",
+      soloPerfilActivo: true,
+    },
   },
   {
     path: "/dashboard-usuario/modificar-datos",

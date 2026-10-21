@@ -10,10 +10,13 @@
           </div>
         </div>
 
-        <button class="sidebar__notifications">
+        <button
+          class="sidebar__notifications"
+          @click="$router.push({ name: 'notificaciones-usuario' })"
+        >
           <span class="material-symbols-outlined">notifications</span>
           <span>Notificaciones</span>
-          <span class="sidebar__badge">2</span>
+          <span v-if="noLeidasUsuario > 0" class="sidebar__badge">{{ noLeidasUsuario }}</span>
         </button>
 
         <div class="sidebar__section">
@@ -194,6 +197,10 @@ import {
   guardarBajaCuenta,
 } from "../../services/authState";
 import ThemeToggle from "../ThemeToggle.vue";
+import {
+  state as notificacionState,
+  cargarResumenUsuario,
+} from "../../services/notificacionState";
 
 export default {
   name: "UserDashboardLayout",
@@ -225,6 +232,9 @@ export default {
     },
     idActivo() {
       return idPerfilActivo();
+    },
+    noLeidasUsuario() {
+      return notificacionState.noLeidasUsuario;
     },
     nombreArtisticoActivo() {
       return state.usuario?.nombreArtisticoActivo || null;
@@ -258,6 +268,7 @@ export default {
   },
   mounted() {
     this.cargarPerfiles();
+    cargarResumenUsuario();
   },
   methods: {
     inicialDe(valor) {

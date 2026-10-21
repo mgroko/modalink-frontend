@@ -41,9 +41,14 @@
           <span class="material-symbols-outlined">chat_bubble</span>
           <span>Mensajes</span>
         </button>
-        <button class="home-layout__nav-item">
+        <button
+          class="home-layout__nav-item"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'notificaciones' }"
+          @click.stop="$router.push({ name: 'notificaciones-perfil' })"
+        >
           <span class="material-symbols-outlined">notifications</span>
           <span>Notificaciones</span>
+          <span v-if="noLeidasPerfil > 0" class="home-layout__nav-badge">{{ noLeidasPerfil }}</span>
         </button>
       </nav>
 
@@ -184,6 +189,10 @@ import authService from "../../services/authService";
 import perfilService from "../../services/perfilService";
 import usuarioService from "../../services/usuarioService";
 import { state, limpiarSesion, setPerfilActivo, idPerfilActivo } from "../../services/authState";
+import {
+  state as notificacionState,
+  cargarResumenPerfil,
+} from "../../services/notificacionState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { nextTick } from "vue";
@@ -237,7 +246,10 @@ export default {
       return this.$route.meta.navActiva || "inicio";
     },
     ubicacionTexto() {
-      return formatUbicacion(this.ubicacion) || "Ubicación no definida";
+      return formatUbicacion(this.ubicacion) || "UbicaciA3n no definida";
+    },
+    noLeidasPerfil() {
+      return notificacionState.noLeidasPerfil;
     },
   },
   watch: {
@@ -247,6 +259,7 @@ export default {
   },
   mounted() {
     this.cargarDatos();
+    cargarResumenPerfil(this.idActivo);
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {
@@ -320,6 +333,7 @@ export default {
       try {
         const response = await perfilService.activar(perfil.idPerfil);
         setPerfilActivo(response?.data || perfil);
+        await cargarResumenPerfil(perfil.idPerfil);
         this.menuAbierto = false;
         this.perfilesAbiertos = false;
         await this.$router.push({ name: "home" });
@@ -351,9 +365,10 @@ export default {
 .home-layout__search { display: flex; align-items: center; gap: .5rem; width: 300px; padding: .5rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text-muted); }
 .home-layout__search input { width: 100%; border: 0; outline: 0; font-size: .8rem; }
 .home-layout__navigation { display: flex; align-self: stretch; gap: .7rem; }
-.home-layout__nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; min-width: 58px; background: transparent; border: 0; color: var(--color-text); font-size: .7rem; cursor: pointer; }
+.home-layout__nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; min-width: 58px; background: transparent; border: 0; color: var(--color-text); font-size: .7rem; cursor: pointer; }
 .home-layout__nav-item .material-symbols-outlined { font-size: 1.35rem; }
 .home-layout__nav-item--active { border-bottom: 2px solid var(--color-primary); color: var(--color-primary); }
+.home-layout__nav-badge { position: absolute; top: 0.15rem; right: 0.2rem; display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 0.25rem; border-radius: 999px; background: var(--color-danger-fill); color: var(--color-on-primary); font-size: 0.6rem; font-weight: 700; }
 .home-layout__profile-wrapper { position: relative; }
 .home-layout__profile-trigger { display: flex; align-items: center; gap: .45rem; border: 0; background: transparent; color: var(--color-text); cursor: pointer; }
 .home-layout__profile-label { display: flex; flex-direction: column; align-items: flex-start; gap: .05rem; line-height: 1.15; }
