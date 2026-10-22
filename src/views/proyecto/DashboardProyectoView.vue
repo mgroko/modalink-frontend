@@ -49,6 +49,7 @@
             <VaButton
               v-if="puedePublicar"
               preset="primary"
+              class="btn-publicar"
               :disabled="publicando"
               :loading="publicando"
               @click="abrirPublicacion"
@@ -1051,5 +1052,43 @@ export default {
   .dashboard-proyecto__objetivos {
     grid-template-columns: 1fr;
   }
+}
+
+.btn-publicar {
+  --va-background-color: #1e40af !important;
+  --va-color: #ffffff !important;
+  --va-background-opacity: 1 !important;
+  background: #1e40af !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.btn-publicar :deep(.va-button__content) {
+  color: #ffffff !important;
+}
+
+.btn-publicar:hover:not(:disabled) {
+  --va-background-color: #1e3a8a !important;
+  background: #1e3a8a !important;
+}
+
+.btn-publicar:disabled {
+  opacity: 0.5;
+}
+
+[data-theme="dark"] .btn-publicar {
+  --va-background-color: #93c5fd !important;
+  --va-color: #1e3a8a !important;
+  background: #93c5fd !important;
+  color: #1e3a8a !important;
+}
+
+[data-theme="dark"] .btn-publicar :deep(.va-button__content) {
+  color: #1e3a8a !important;
+}
+
+[data-theme="dark"] .btn-publicar:hover:not(:disabled) {
+  --va-background-color: #bfdbfe !important;
+  background: #bfdbfe !important;
 }
 </style>

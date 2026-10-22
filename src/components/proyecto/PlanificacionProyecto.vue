@@ -69,6 +69,7 @@
         <VaButton
           v-if="puedeCrear"
           preset="primary"
+          class="btn-agregar-actividad"
           :disabled="!tieneFechaEntrega"
           :title="
             tieneFechaEntrega
@@ -77,6 +78,14 @@
           "
           @click="$emit('crear-actividad')"
         >
+          <template #prepend>
+            <span
+              class="material-symbols-outlined btn-agregar-actividad__icono"
+              aria-hidden="true"
+            >
+              add
+            </span>
+          </template>
           Agregar actividad
         </VaButton>
       </header>
@@ -546,5 +555,60 @@ export default {
   to {
     transform: rotate(360deg);
   }
+}
+
+.btn-agregar-actividad {
+  --va-background-color: #494776 !important;
+  --va-background-color-opacity: 1 !important;
+  --va-button-font-weight: 400 !important;
+  background: #494776 !important;
+  color: #ffffff !important;
+  font-weight: 400 !important;
+  border: 2px solid #6e6ba8 !important;
+  border-radius: 10px !important;
+}
+
+.btn-agregar-actividad :deep(.va-button__content) {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.btn-agregar-actividad__icono {
+  color: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  margin-right: 0.45rem;
+  font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+}
+
+.btn-agregar-actividad:hover:not(:disabled) {
+  --va-background-color: #3b3a63 !important;
+  background: #3b3a63 !important;
+  border-color: #6e6ba8 !important;
+}
+
+.btn-agregar-actividad:disabled {
+  opacity: 0.5;
+}
+
+[data-theme="dark"] .btn-agregar-actividad {
+  --va-background-color: #8d86e0 !important;
+  background: #8d86e0 !important;
+  color: #17161f !important;
+  border: 1px solid #6f68c7 !important;
+}
+
+[data-theme="dark"] .btn-agregar-actividad :deep(.va-button__content) {
+  color: #17161f !important;
+}
+
+[data-theme="dark"] .btn-agregar-actividad__icono {
+  color: #17161f;
+}
+
+[data-theme="dark"] .btn-agregar-actividad:hover:not(:disabled) {
+  --va-background-color: #a49ef0 !important;
+  background: #a49ef0 !important;
+  border-color: #6f68c7 !important;
 }
 </style>

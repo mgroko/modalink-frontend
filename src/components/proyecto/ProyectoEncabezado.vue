@@ -170,6 +170,7 @@ export default {
   margin: 0.7rem 0 0;
   font-size: 0.82rem;
   color: var(--color-text-muted);
+  line-height: 1.5;
 }
 
 .proyecto-encabezado__acciones {
