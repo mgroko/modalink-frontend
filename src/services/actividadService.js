@@ -40,14 +40,59 @@ import http from "./http";
  */
 
 /**
+ * @typedef {Object} RequerimientoActividadModificarRequest
+ * @property {number} [idRequerimiento] sólo en requerimientos existentes
+ * @property {number} cantidad > 0
+ * @property {number} idProfesion
+ * @property {string|null} [descripcion] máx. 200; null borra la descripción
+ * @property {CaracteristicaActividadRequest[]} caracteristicas puede ser []
+ * @property {number[]} habilidades puede ser []
+ */
+
+/**
+ * @typedef {Object} ModificarActividadRequest
+ * @property {string} nombre no blanco, máx. 20, único en la planificación
+ *           excluyendo la propia actividad
+ * @property {string|null} [descripcion] null/ausente borra la descripción
+ * @property {number} duracion entero > 0
+ * @property {"DIAS"|"HORAS"} unidadDuracion
+ * @property {UbicacionActividadRequest|null} [ubicacion] null/ausente borra la ubicación
+ * @property {number[]} predecesoras obligatorio; [] borra todas
+ * @property {RequerimientoActividadModificarRequest[]} requerimientos obligatorio;
+ *           [] elimina los no protegidos
+ * @property {"PENDIENTE"|"EN_CURSO"|"FINALIZADA"|"CANCELADA"} estado
+ */
+
+/**
+ * @typedef {Object} CaracteristicaActividadResponse
+ * @property {number} idCaracteristica
+ * @property {string} codigo
+ * @property {"NUMERICO"|"ENUMERADO"|"TEXTO"} tipoDato
+ * @property {number|null} valorMin
+ * @property {number|null} valorMax
+ * @property {number[]} valores
+ */
+
+/**
  * @typedef {Object} RequerimientoActividadResponse
  * @property {number} idRequerimiento
  * @property {number} cantidad
  * @property {string|null} descripcion
  * @property {number} idProfesion
  * @property {string} nombreProfesion
- * @property {object[]} [caracteristicas]
+ * @property {CaracteristicaActividadResponse[]} [caracteristicas]
  * @property {number[]} [habilidades]
+ */
+
+/**
+ * @typedef {Object} ProfesionalAsignadoActividadResponse
+ * @property {number} idAsignacionActividad
+ * @property {number} idMiembroProyecto
+ * @property {number} idPerfil
+ * @property {number} idUsuario
+ * @property {string} nombreArtistico
+ * @property {number} idProfesion
+ * @property {string} nombreProfesion
  */
 
 /**
@@ -61,9 +106,11 @@ import http from "./http";
  * @property {string} fechaHoraInicio ISO local
  * @property {string} fechaHoraFin ISO local derivado
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+ * @property {"NORMAL"|"ALERTA_DESBORDE"} [estadoCronograma]
  * @property {object|null} ubicacion
  * @property {{idActividad:number,nombre:string}[]} predecesoras
  * @property {RequerimientoActividadResponse[]} requerimientos
+ * @property {ProfesionalAsignadoActividadResponse[]} [profesionalesAsignados]
  */
 
 /**
@@ -121,6 +168,53 @@ function serializarParams(params = {}) {
 }
 
 const actividadService = {
+  /**
+   * GET /proyectos/{idProyecto}/actividades/{idActividad} — UC-50.
+   * Precarga el formulario de edición. Valida perfil activo, membresía y
+   * permiso, pero no bloquea por estado del proyecto ni de la actividad.
+   *
+   * Errores:
+   * - 403 sin MODIFICAR_ACTIVIDAD o sin membresía activa
+   * - 404 perfil activo, perfil, proyecto o actividad inexistente
+   * - 409 perfil en baja
+   * @param {number|string} idProyecto
+   * @param {number|string} idActividad
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ActividadResponse}>} 200 OK
+   */
+  obtener(idProyecto, idActividad, signal) {
+    return http.get(
+      `/proyectos/${idProyecto}/actividades/${idActividad}`,
+      { signal }
+    );
+  },
+
+  /**
+   * PUT /proyectos/{idProyecto}/actividades/{idActividad} — UC-50.
+   * Reemplazo total: todos los campos obligatorios y ambas listas deben
+   * reenviarse. `descripcion` y `ubicacion` en null borran el dato.
+   *
+   * Errores:
+   * - 400 validaciones de campos, duración, predecesoras, requerimientos,
+   *   catálogos o fecha de entrega
+   * - 403 sin MODIFICAR_ACTIVIDAD o sin membresía activa
+   * - 404 perfil activo, perfil, proyecto, actividad o catálogo inexistente
+   * - 409 nombre duplicado, transición inválida, actividad/proyecto no
+   *   modificable, requerimiento con vínculos, ciclo o cronograma inviable
+   * @param {number|string} idProyecto
+   * @param {number|string} idActividad
+   * @param {ModificarActividadRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ActividadResponse}>} 200 OK con la actividad actualizada
+   */
+  modificar(idProyecto, idActividad, request, signal) {
+    return http.put(
+      `/proyectos/${idProyecto}/actividades/${idActividad}`,
+      request,
+      { signal }
+    );
+  },
+
   /**
    * POST /proyectos/{idProyecto}/actividades — UC-49.
    * La actividad siempre se crea PENDIENTE. No enviar estado ni fechas.

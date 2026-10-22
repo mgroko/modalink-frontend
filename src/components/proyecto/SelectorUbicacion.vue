@@ -67,6 +67,31 @@ export default {
       cargandoLocalidades: false,
     };
   },
+  watch: {
+    modelValue: {
+      deep: true,
+      handler(valor) {
+        const provinciaId = valor?.provinciaId || null;
+        const localidadId = valor?.localidadId || null;
+
+        if (
+          String(provinciaId || "") === String(this.provinciaId || "") &&
+          String(localidadId || "") === String(this.localidadId || "")
+        ) {
+          return;
+        }
+
+        this.provinciaId = provinciaId;
+        this.localidadId = localidadId;
+
+        if (this.provinciaId) {
+          this.cargarLocalidades(this.provinciaId);
+        } else {
+          this.localidades = [];
+        }
+      },
+    },
+  },
   async mounted() {
     await this.cargarProvincias();
     if (this.provinciaId) {

@@ -86,9 +86,11 @@
               <button
                 type="button"
                 class="tabla-actividades__accion"
-                disabled
-                title="Editar actividad: próximamente (UC-50)"
-                aria-label="Editar actividad: próximamente"
+                :class="{ 'tabla-actividades__accion--habilitada': puedeEditarFila(actividad) }"
+                :disabled="!puedeEditarFila(actividad)"
+                :title="motivoNoEditable(actividad)"
+                aria-label="Editar actividad"
+                @click="$emit('editar-actividad', actividad)"
               >
                 <span class="material-symbols-outlined">edit</span>
               </button>
@@ -114,6 +116,7 @@ import {
   coloresEstadoActividad,
   etiquetaEstadoActividad,
   formatearDuracionMinutos,
+  puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 
@@ -132,10 +135,27 @@ export default {
       type: String,
       default: "Todavía no hay actividades en este proyecto.",
     },
+    puedeEditar: {
+      type: Boolean,
+      default: false,
+    },
   },
+  emits: ["editar-actividad"],
   methods: {
     formatearDuracionMinutos,
     etiquetaEstadoActividad,
+    puedeEditarFila(actividad) {
+      return this.puedeEditar && puedeEditarActividad(actividad?.estado);
+    },
+    motivoNoEditable(actividad) {
+      if (!this.puedeEditar) {
+        return "No tenés permiso para modificar actividades en este proyecto.";
+      }
+      if (!puedeEditarActividad(actividad?.estado)) {
+        return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede modificar.`;
+      }
+      return "Editar actividad";
+    },
     resumenRequerimientos(actividad) {
       return (actividad?.requerimientos || []).map(
         (requerimiento) =>
@@ -279,6 +299,16 @@ export default {
   color: var(--color-text-muted);
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.tabla-actividades__accion--habilitada {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.tabla-actividades__accion--habilitada:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .tabla-actividades__accion--peligro {

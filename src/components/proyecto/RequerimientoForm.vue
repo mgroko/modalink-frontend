@@ -6,7 +6,7 @@
         <span v-if="soloLectura" class="requerimiento__badge-satisfecho">Satisfecho</span>
       </div>
       <VaButton
-        v-if="!soloLectura"
+        v-if="!soloLectura && mostrarEliminar"
         preset="secondary"
         size="small"
         color="danger"
@@ -197,6 +197,10 @@ export default {
       default: 0,
     },
     eliminarPermitido: {
+      type: Boolean,
+      default: true,
+    },
+    mostrarEliminar: {
       type: Boolean,
       default: true,
     },

@@ -124,6 +124,8 @@
         :actividades="actividades"
         :id-actividad-resaltada="idActividadResaltada"
         :mensaje-vacio="mensajeVacio"
+        :puede-editar="puedeEditarActividad"
+        @editar-actividad="$emit('editar-actividad', $event)"
       />
     </section>
 
@@ -179,7 +181,12 @@ export default {
       default: null,
     },
   },
-  emits: ["crear-actividad", "ir-modificar-proyecto", "limpiar-resaltado"],
+  emits: [
+    "crear-actividad",
+    "editar-actividad",
+    "ir-modificar-proyecto",
+    "limpiar-resaltado",
+  ],
   data() {
     return {
       actividadesTotales: [],
@@ -215,6 +222,12 @@ export default {
     },
     puedeModificar() {
       return this.permisos.includes("MODIFICAR_PROYECTO");
+    },
+    puedeEditarActividad() {
+      return (
+        this.permisos.includes("MODIFICAR_ACTIVIDAD") &&
+        this.estadoPermiteActividades
+      );
     },
     tieneFechaEntrega() {
       return !!this.proyecto?.fechaEntregaEstipulada;

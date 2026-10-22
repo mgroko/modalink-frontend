@@ -17,6 +17,7 @@ import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
 import ProyectosInicioView from "../views/proyecto/ProyectosInicioView.vue";
 import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
 import CrearActividadView from "../views/proyecto/CrearActividadView.vue";
+import ModificarActividadView from "../views/proyecto/ModificarActividadView.vue";
 import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
@@ -112,6 +113,12 @@ const routes = [
     name: "crear-actividad",
     component: CrearActividadView,
     meta: { layout: HomeLayout, titulo: "Nueva actividad", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id/actividades/:idActividad/modificar",
+    name: "modificar-actividad",
+    component: ModificarActividadView,
+    meta: { layout: HomeLayout, titulo: "Editar actividad", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
     path: "/proyectos/:id",

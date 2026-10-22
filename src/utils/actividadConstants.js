@@ -37,6 +37,31 @@ export const OPCIONES_ESTADO_ACTIVIDAD = Object.values(ESTADOS_ACTIVIDAD).map(
   (value) => ({ value, text: ETIQUETAS_ESTADO_ACTIVIDAD[value] })
 );
 
+export const TRANSICIONES_ESTADO_ACTIVIDAD = {
+  [ESTADOS_ACTIVIDAD.PENDIENTE]: [
+    ESTADOS_ACTIVIDAD.PENDIENTE,
+    ESTADOS_ACTIVIDAD.EN_CURSO,
+    ESTADOS_ACTIVIDAD.CANCELADA,
+  ],
+  [ESTADOS_ACTIVIDAD.EN_CURSO]: [
+    ESTADOS_ACTIVIDAD.EN_CURSO,
+    ESTADOS_ACTIVIDAD.FINALIZADA,
+    ESTADOS_ACTIVIDAD.CANCELADA,
+  ],
+  [ESTADOS_ACTIVIDAD.FINALIZADA]: [],
+  [ESTADOS_ACTIVIDAD.CANCELADA]: [],
+};
+
+export const ESTADOS_CRONOGRAMA = {
+  NORMAL: "NORMAL",
+  ALERTA_DESBORDE: "ALERTA_DESBORDE",
+};
+
+export const ETIQUETAS_ESTADO_CRONOGRAMA = {
+  [ESTADOS_CRONOGRAMA.NORMAL]: "Normal",
+  [ESTADOS_CRONOGRAMA.ALERTA_DESBORDE]: "Alerta por desborde",
+};
+
 export const COLORES_ESTADO_ACTIVIDAD = {
   [ESTADOS_ACTIVIDAD.PENDIENTE]: {
     fondo: "var(--color-warning-soft)",
@@ -69,6 +94,51 @@ export function normalizarEstadoActividad(estado) {
     (k) => k.toLowerCase() === String(estado).toLowerCase()
   );
   return clave || String(estado).toUpperCase();
+}
+
+/**
+ * Estados destino válidos desde el estado actual (UC-50 §7.1).
+ * @param {string} estadoActual
+ * @returns {string[]}
+ */
+export function estadosPermitidosActividad(estadoActual) {
+  const clave = normalizarEstadoActividad(estadoActual);
+  return TRANSICIONES_ESTADO_ACTIVIDAD[clave] || [];
+}
+
+/**
+ * Sólo las actividades PENDIENTE o EN_CURSO pueden modificarse.
+ * @param {string} estado
+ * @returns {boolean}
+ */
+export function puedeEditarActividad(estado) {
+  const clave = normalizarEstadoActividad(estado);
+  return [ESTADOS_ACTIVIDAD.PENDIENTE, ESTADOS_ACTIVIDAD.EN_CURSO].includes(clave);
+}
+
+/**
+ * Reconstruye duración y unidad desde `duracionMinutos`.
+ * Múltiplos de 1440 se muestran en DIAS; el resto en HORAS.
+ * @param {number} duracionMinutos
+ * @returns {{duracion: number|string, unidadDuracion: "DIAS"|"HORAS"}}
+ */
+export function descomponerDuracionMinutos(duracionMinutos) {
+  const total = Math.round(Number(duracionMinutos));
+  if (!Number.isFinite(total) || total <= 0) {
+    return { duracion: "", unidadDuracion: UNIDADES_DURACION.HORAS };
+  }
+
+  if (total % MINUTOS_POR_UNIDAD.DIAS === 0) {
+    return {
+      duracion: total / MINUTOS_POR_UNIDAD.DIAS,
+      unidadDuracion: UNIDADES_DURACION.DIAS,
+    };
+  }
+
+  return {
+    duracion: total / MINUTOS_POR_UNIDAD.HORAS,
+    unidadDuracion: UNIDADES_DURACION.HORAS,
+  };
 }
 
 export function etiquetaEstadoActividad(estado) {

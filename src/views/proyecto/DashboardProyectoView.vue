@@ -207,6 +207,7 @@
           :proyecto="proyecto"
           :id-actividad-resaltada="idActividadResaltada"
           @crear-actividad="irACrearActividad"
+          @editar-actividad="irAEditarActividad"
           @ir-modificar-proyecto="irAModificar"
           @limpiar-resaltado="limpiarActividadResaltada"
         />
@@ -397,6 +398,9 @@ export default {
     "$route.query.nueva"() {
       this.actualizarActividadResaltada();
     },
+    "$route.query.editada"() {
+      this.actualizarActividadResaltada();
+    },
     esMiembro(valor) {
       if (!valor) {
         if (this.tabActiva === "planificacion") this.tabActiva = "informacion";
@@ -577,7 +581,9 @@ export default {
       this.tabActiva = tab;
     },
     actualizarActividadResaltada() {
-      const valor = Number(this.$route.query.nueva);
+      const valor = Number(
+        this.$route.query.nueva ?? this.$route.query.editada
+      );
       this.idActividadResaltada =
         Number.isFinite(valor) && valor > 0 ? valor : null;
     },
@@ -602,9 +608,15 @@ export default {
     },
     limpiarActividadResaltada() {
       this.idActividadResaltada = null;
-      if (this.$route.query.nueva === undefined) return;
+      if (
+        this.$route.query.nueva === undefined &&
+        this.$route.query.editada === undefined
+      ) {
+        return;
+      }
       const query = { ...this.$route.query };
       delete query.nueva;
+      delete query.editada;
       this.reemplazarQuery(query);
     },
     irACrearActividad() {
@@ -612,6 +624,22 @@ export default {
       this.$router.push({
         name: "crear-actividad",
         params: { id: this.idProyecto },
+      });
+    },
+    irAEditarActividad(actividad) {
+      if (
+        !this.esMiembro ||
+        !this.permisos.includes("MODIFICAR_ACTIVIDAD") ||
+        !actividad?.idActividad
+      ) {
+        return;
+      }
+      this.$router.push({
+        name: "modificar-actividad",
+        params: {
+          id: this.idProyecto,
+          idActividad: actividad.idActividad,
+        },
       });
     },
     irAModificar() {

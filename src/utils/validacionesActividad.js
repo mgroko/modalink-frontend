@@ -1,6 +1,7 @@
 import {
   LIMITES_ACTIVIDAD,
   UNIDADES_DURACION,
+  estadosPermitidosActividad,
 } from "./actividadConstants.js";
 import { normalizarClaveCampo, validarRequerimiento } from "./validacionesProyecto.js";
 
@@ -101,18 +102,76 @@ export function validarActividad(form, catalogosPorProfesion = {}, actividades =
 }
 
 /**
+ * Valida el formulario completo antes del PUT de UC-50.
+ * Excluye la propia actividad del control de nombre y de predecesoras, y
+ * valida la transición de estado contra la matriz.
+ * @param {object} form
+ * @param {Object<number, object[]>} [catalogosPorProfesion]
+ * @param {Array<{idActividad:number,nombre:string}>} [actividades]
+ * @param {{idActividad:number,estado:string}|null} [actividadActual]
+ * @returns {{campos: Object<string,string>, secciones: Object<string,string[]>}}
+ */
+export function validarActividadEdicion(
+  form,
+  catalogosPorProfesion = {},
+  actividades = [],
+  actividadActual = null
+) {
+  const idActual = actividadActual?.idActividad ?? null;
+
+  const otrasActividades = (actividades || []).filter(
+    (actividad) =>
+      idActual == null || String(actividad?.idActividad) !== String(idActual)
+  );
+
+  const { campos, secciones } = validarActividad(
+    form,
+    catalogosPorProfesion,
+    otrasActividades
+  );
+
+  if (
+    idActual != null &&
+    (form?.predecesoras || []).some(
+      (id) => String(id) === String(idActual)
+    )
+  ) {
+    campos.predecesoras = "La actividad no puede ser su propia predecesora.";
+  }
+
+  const permitidos = estadosPermitidosActividad(actividadActual?.estado);
+  if (!permitidos.includes(form?.estado)) {
+    campos.estado =
+      "El estado seleccionado no es válido para el estado actual de la actividad.";
+  }
+
+  return { campos, secciones };
+}
+
+/**
  * Unicidad anticipada del nombre dentro de la planificación (409 backend).
  * @param {string} nombre
- * @param {Array<{nombre:string}>} actividades
+ * @param {Array<{idActividad?:number,nombre:string}>} actividades
+ * @param {number|string|null} [idExcluido] actividad que se está editando
  * @returns {string|null}
  */
-export function validarNombreActividadUnico(nombre, actividades = []) {
+export function validarNombreActividadUnico(
+  nombre,
+  actividades = [],
+  idExcluido = null
+) {
   const normalizado = normalizarNombreActividad(nombre);
   if (!normalizado) return null;
 
-  const existe = (actividades || []).some(
-    (actividad) => normalizarNombreActividad(actividad?.nombre) === normalizado
-  );
+  const existe = (actividades || [])
+    .filter(
+      (actividad) =>
+        idExcluido == null ||
+        String(actividad?.idActividad) !== String(idExcluido)
+    )
+    .some(
+      (actividad) => normalizarNombreActividad(actividad?.nombre) === normalizado
+    );
 
   return existe
     ? "Ya existe una actividad con ese nombre en este proyecto."
@@ -120,21 +179,36 @@ export function validarNombreActividadUnico(nombre, actividades = []) {
 }
 
 /**
- * Sin duplicados y, si se conoce el listado, todas dentro del proyecto.
+ * Sin duplicados, sin la propia actividad y, si se conoce el listado, todas
+ * dentro del proyecto.
  * @param {number[]} predecesoras
  * @param {Array<{idActividad:number}>} [actividades]
+ * @param {number|string|null} [idActual]
  * @returns {string|null}
  */
-export function validarPredecesoras(predecesoras, actividades = []) {
+export function validarPredecesoras(
+  predecesoras,
+  actividades = [],
+  idActual = null
+) {
   if (!Array.isArray(predecesoras) || predecesoras.length === 0) return null;
 
   if (new Set(predecesoras).size !== predecesoras.length) {
     return "No podés seleccionar la misma actividad predecesora dos veces.";
   }
 
+  if (
+    idActual != null &&
+    predecesoras.some((id) => String(id) === String(idActual))
+  ) {
+    return "La actividad no puede ser su propia predecesora.";
+  }
+
   if (Array.isArray(actividades) && actividades.length > 0) {
-    const ids = new Set(actividades.map((actividad) => actividad.idActividad));
-    if (predecesoras.some((id) => !ids.has(id))) {
+    const ids = new Set(
+      actividades.map((actividad) => String(actividad.idActividad))
+    );
+    if (predecesoras.some((id) => !ids.has(String(id)))) {
       return "Una de las predecesoras ya no pertenece a este proyecto.";
     }
   }
@@ -207,4 +281,63 @@ export function buildActividadRequest(form) {
   if (requerimientos.length > 0) request.requerimientos = requerimientos;
 
   return request;
+}
+
+/**
+ * Construye el body del PUT /actividades (reemplazo total, UC-50).
+ * Envía siempre ambas listas y `estado`; `null` explícito borra descripción
+ * y ubicación.
+ * @param {object} form
+ * @returns {import("../services/actividadService.js").ModificarActividadRequest}
+ */
+export function buildModificarActividadRequest(form) {
+  const descripcion = String(form?.descripcion || "").trim();
+
+  const localidadId = form?.ubicacion?.localidadId;
+  const ubicacion = localidadId
+    ? {
+        localidadId,
+        ...(form.ubicacion.provinciaId
+          ? { provinciaId: form.ubicacion.provinciaId }
+          : {}),
+      }
+    : null;
+
+  const predecesoras = (form?.predecesoras || [])
+    .map((id) => Number(id))
+    .filter((id) => Number.isFinite(id));
+
+  const requerimientos = (form?.requerimientos || []).map((requerimiento) => {
+    const item = {
+      cantidad: Number(requerimiento.cantidad),
+      idProfesion: requerimiento.idProfesion,
+      descripcion: String(requerimiento.descripcion || "").trim() || null,
+      caracteristicas: (requerimiento.caracteristicas || []).map((carac) => ({
+        idCaracteristica: carac.idCaracteristica,
+        valorMin: aNumeroONull(carac.valorMin),
+        valorMax: aNumeroONull(carac.valorMax),
+        valores: Array.isArray(carac.valores) ? carac.valores : [],
+      })),
+      habilidades: Array.isArray(requerimiento.habilidades)
+        ? requerimiento.habilidades
+        : [],
+    };
+
+    if (requerimiento.idRequerimiento != null) {
+      item.idRequerimiento = requerimiento.idRequerimiento;
+    }
+
+    return item;
+  });
+
+  return {
+    nombre: String(form?.nombre || "").trim(),
+    descripcion: descripcion || null,
+    duracion: Number(form?.duracion),
+    unidadDuracion: form?.unidadDuracion,
+    ubicacion,
+    predecesoras,
+    requerimientos,
+    estado: form?.estado,
+  };
 }
