@@ -129,7 +129,13 @@
       </div>
     </header>
 
-    <div class="home-layout__body" :class="{ 'home-layout__body--full': $route.meta.sinSidebarPerfil }">
+    <div
+      class="home-layout__body"
+      :class="{
+        'home-layout__body--full': $route.meta.sinSidebarPerfil,
+        'home-layout__body--ancho-proyecto': $route.meta.navActiva === 'proyectos',
+      }"
+    >
       <aside v-if="!$route.meta.sinSidebarPerfil" class="home-layout__sidebar">
         <section
           class="home-layout__profile-card home-layout__profile-card--clickeable"
@@ -402,6 +408,7 @@ export default {
 .home-layout__profiles button:disabled { cursor: not-allowed; opacity: .5; }
 .home-layout__empty { display: block; padding: .5rem; color: var(--color-text-muted); font-size: .8rem; }
 .home-layout__body { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 2.5rem; max-width: 1280px; margin: 2rem auto; padding: 0 1.5rem; }
+.home-layout__body--ancho-proyecto { max-width: 1620px; }
 .home-layout__body--full { grid-template-columns: minmax(0, 1fr); }
 .home-layout__sidebar { display: flex; flex-direction: column; min-height: calc(100vh - 150px); gap: 1.25rem; }
 .home-layout__profile-card, .home-layout__quick-links { padding: 1rem; background: var(--color-surface); border-radius: 8px; box-shadow: 0 1px 3px rgba(35,33,52,.04); }

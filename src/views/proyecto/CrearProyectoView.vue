@@ -896,7 +896,7 @@ export default {
 .crear-proyecto {
   display: grid;
   gap: 1rem;
-  max-width: 900px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 

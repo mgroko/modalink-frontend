@@ -244,17 +244,9 @@
                   </article>
                 </div>
 
-                <div class="crear-actividad__nuevo-requerimiento">
+                <div v-if="mostrandoDraft" class="crear-actividad__nuevo-requerimiento">
                   <div class="crear-actividad__nuevo-cabecera">
                     <h3 class="crear-actividad__nuevo-titulo">Nuevo requerimiento</h3>
-                    <VaButton
-                      v-if="draftTieneDatos"
-                      preset="secondary"
-                      size="small"
-                      @click="descartarRequerimiento"
-                    >
-                      Descartar
-                    </VaButton>
                   </div>
 
                   <RequerimientoForm
@@ -273,15 +265,37 @@
                     </li>
                   </ul>
 
-                  <VaButton
-                    preset="secondary"
-                    icon="mso-add"
-                    class="crear-actividad__agregar-requerimiento"
-                    @click="agregarRequerimiento"
-                  >
-                    Agregar requerimiento
-                  </VaButton>
+                  <div class="crear-actividad__nuevo-acciones">
+                    <VaButton
+                      preset="secondary"
+                      size="small"
+                      color="danger"
+                      icon="mso-close"
+                      title="Cancelar requerimiento"
+                      aria-label="Cancelar requerimiento"
+                      @click="descartarRequerimiento"
+                    />
+                    <VaButton
+                      preset="secondary"
+                      size="small"
+                      color="success"
+                      icon="mso-check"
+                      title="Confirmar requerimiento"
+                      aria-label="Confirmar requerimiento"
+                      @click="agregarRequerimiento"
+                    />
+                  </div>
                 </div>
+
+                <VaButton
+                  v-if="!mostrandoDraft"
+                  preset="secondary"
+                  icon="mso-add"
+                  class="crear-actividad__agregar-requerimiento"
+                  @click="iniciarRequerimiento"
+                >
+                  Agregar requerimiento
+                </VaButton>
 
                 <ul
                   v-if="seccionErrores.requerimientos?.length"
@@ -455,6 +469,7 @@ export default {
         predecesoras: [],
         requerimientos: [],
       },
+      mostrandoDraft: false,
       requerimientoDraft: this.nuevoRequerimiento(0),
       errores: {},
       seccionErrores: {},
@@ -721,6 +736,12 @@ export default {
         [idProfesion]: caracteristicas,
       };
     },
+    iniciarRequerimiento() {
+      this.requerimientoDraft = this.crearRequerimientoVacio();
+      this.erroresDraft = {};
+      this.errorDraftSeccion = [];
+      this.mostrandoDraft = true;
+    },
     agregarRequerimiento() {
       const { campos, seccion } = validarRequerimiento(
         this.requerimientoDraft,
@@ -749,6 +770,10 @@ export default {
       this.requerimientoDraft = this.crearRequerimientoVacio();
       this.erroresDraft = {};
       this.errorDraftSeccion = [];
+      this.mostrandoDraft = false;
+      if (this.mensajeError === "Revisá el requerimiento antes de agregarlo.") {
+        this.mensajeError = "";
+      }
     },
     quitarRequerimiento(indice) {
       this.form.requerimientos.splice(indice, 1);
@@ -809,20 +834,24 @@ export default {
         return;
       }
 
-      if (this.draftTieneDatos) {
-        const { campos, seccion } = validarRequerimiento(
-          this.requerimientoDraft,
-          this.catalogosPorProfesion[this.requerimientoDraft.idProfesion]
-        );
-        this.erroresDraft = campos;
-        this.errorDraftSeccion = seccion;
-        this.mensajeError =
-          "Agregá o descartá el requerimiento pendiente antes de crear la actividad.";
-        this.$refs.requerimientosRef?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-        return;
+      if (this.mostrandoDraft) {
+        if (this.draftTieneDatos) {
+          const { campos, seccion } = validarRequerimiento(
+            this.requerimientoDraft,
+            this.catalogosPorProfesion[this.requerimientoDraft.idProfesion]
+          );
+          this.erroresDraft = campos;
+          this.errorDraftSeccion = seccion;
+          this.mensajeError =
+            "Agregá o descartá el requerimiento pendiente antes de crear la actividad.";
+          this.$refs.requerimientosRef?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          return;
+        }
+
+        this.descartarRequerimiento();
       }
 
       const { campos, secciones } = validarActividad(
@@ -1020,7 +1049,7 @@ export default {
   flex-direction: column;
   gap: 1rem;
   width: 100%;
-  max-width: 1120px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -1214,6 +1243,13 @@ export default {
   color: var(--color-text);
   font-size: 0.88rem;
   font-weight: 600;
+}
+
+.crear-actividad__nuevo-acciones {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .crear-actividad__agregar-requerimiento {
