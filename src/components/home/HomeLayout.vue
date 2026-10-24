@@ -252,7 +252,7 @@ export default {
       return this.$route.meta.navActiva || "inicio";
     },
     ubicacionTexto() {
-      return formatUbicacion(this.ubicacion) || "UbicaciA3n no definida";
+      return formatUbicacion(this.ubicacion) || "Ubicación no definida";
     },
     noLeidasPerfil() {
       return notificacionState.noLeidasPerfil;

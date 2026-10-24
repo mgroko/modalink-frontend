@@ -125,7 +125,9 @@
         :id-actividad-resaltada="idActividadResaltada"
         :mensaje-vacio="mensajeVacio"
         :puede-editar="puedeEditarActividad"
+        :puede-eliminar="puedeEliminarActividad"
         @editar-actividad="$emit('editar-actividad', $event)"
+        @eliminar-actividad="$emit('eliminar-actividad', $event)"
       />
     </section>
 
@@ -180,10 +182,15 @@ export default {
       type: [Number, String],
       default: null,
     },
+    tokenRefresco: {
+      type: Number,
+      default: 0,
+    },
   },
   emits: [
     "crear-actividad",
     "editar-actividad",
+    "eliminar-actividad",
     "ir-modificar-proyecto",
     "limpiar-resaltado",
   ],
@@ -226,6 +233,12 @@ export default {
     puedeEditarActividad() {
       return (
         this.permisos.includes("MODIFICAR_ACTIVIDAD") &&
+        this.estadoPermiteActividades
+      );
+    },
+    puedeEliminarActividad() {
+      return (
+        this.permisos.includes("ELIMINAR_ACTIVIDAD") &&
         this.estadoPermiteActividades
       );
     },
@@ -291,6 +304,9 @@ export default {
           this.$emit("limpiar-resaltado");
         }, 5000);
       },
+    },
+    tokenRefresco() {
+      this.cargarTodo();
     },
   },
   created() {

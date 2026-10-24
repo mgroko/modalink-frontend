@@ -98,7 +98,19 @@
           </div>
 
           <div class="modificar-proyecto__subseccion">
-            <p class="modificar-proyecto__subseccion-titulo">Ubicación</p>
+            <div class="modificar-proyecto__fila-titulo">
+              <p class="modificar-proyecto__subseccion-titulo">Ubicación</p>
+              <button
+                v-if="form.ubicacion && proyectoOriginal?.ubicacion"
+                type="button"
+                class="modificar-proyecto__quitar-ubicacion"
+                :disabled="cargando"
+                @click="eliminarUbicacionProyecto()"
+              >
+                <span class="material-symbols-outlined">location_off</span>
+                Quitar ubicación
+              </button>
+            </div>
             <p class="modificar-proyecto__seccion-ayuda">
               {{ ayudaUbicacion }}
             </p>
@@ -108,6 +120,12 @@
             />
             <p v-if="advertenciaUbicacion" class="modificar-proyecto__aviso">
               {{ advertenciaUbicacion }}
+            </p>
+            <p v-if="mensajeErrorEliminarUbicacion" class="modificar-proyecto__aviso modificar-proyecto__aviso--error">
+              {{ mensajeErrorEliminarUbicacion }}
+            </p>
+            <p v-if="mensajeExitoEliminarUbicacion" class="modificar-proyecto__aviso modificar-proyecto__aviso--exito">
+              {{ mensajeExitoEliminarUbicacion }}
             </p>
           </div>
         </section>
@@ -210,6 +228,11 @@
         </section>
 
         <div class="modificar-proyecto__alertas">
+          <BaseAlert
+            v-if="mensajeErrorActividades && !modalConfirmar"
+            :message="mensajeErrorActividades"
+            type="error"
+          />
           <BaseAlert v-if="mensajeError && !modalConfirmar" :message="mensajeError" type="error" />
           <BaseAlert v-if="mensajeExito" :message="mensajeExito" type="success" />
         </div>
@@ -231,8 +254,20 @@
               <VaButton v-if="paso > 1" preset="secondary" :disabled="guardando" @click="anterior">
                 Atrás
               </VaButton>
-              <VaButton type="submit" :loading="guardando">
-                {{ esUltimoPaso ? "Guardar cambios" : "Siguiente" }}
+              <VaButton v-if="!esUltimoPaso" type="submit" :loading="guardando">
+                Siguiente
+              </VaButton>
+              <VaButton
+                v-if="!esUltimoPaso"
+                preset="primary"
+                type="button"
+                :loading="guardando"
+                @click="guardar"
+              >
+                Guardar cambios
+              </VaButton>
+              <VaButton v-else type="submit" :loading="guardando">
+                Guardar cambios
               </VaButton>
             </div>
           </div>
@@ -275,6 +310,7 @@
 
 <script>
 import proyectoService from "../../services/proyectoService.js";
+import actividadService from "../../services/actividadService.js";
 import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
 import { refrescarSesion } from "../../services/authState.js";
@@ -320,6 +356,7 @@ export default {
     RequerimientoForm,
     MoodboardSeccion,
   },
+
   data() {
     return {
       pasos: ["Datos generales", "Objetivos", "Personal", "Moodboard"],
@@ -336,6 +373,8 @@ export default {
         moodboard: "",
       },
       imagenesMoodboard: [],
+      actividades: [],
+      mensajeErrorActividades: "",
       proyectoOriginal: null,
       estado: ESTADOS_PROYECTO.BORRADOR,
       precargado: false,
@@ -350,12 +389,15 @@ export default {
       ubicacionQuitada: false,
       advertenciaUbicacion: "",
       advertenciaFecha: "",
+      mensajeErrorEliminarUbicacion: "",
+      mensajeExitoEliminarUbicacion: "",
       cargando: true,
       errorCarga: "",
       guardando: false,
       mensajeError: "",
       mensajeExito: "",
       modalConfirmar: false,
+      modalEliminarUbicacionVisible: false,
       siguienteUid: 0,
       idCarga: 0,
       reglas: reglasProyecto,
@@ -454,7 +496,15 @@ export default {
         }
 
         this.precargarFormulario(proyecto);
-        await this.cargarCatalogos();
+        const resultados = await Promise.allSettled([
+          this.cargarCatalogos(),
+          this.cargarActividades(),
+        ]);
+        const resultadoActividades = resultados[1];
+        if (resultadoActividades.status === "rejected") {
+          this.mensajeErrorActividades =
+            "No se pudieron cargar las actividades del proyecto. Podés seguir editando, pero no se podrá validar la existencia de requerimientos de actividad hasta reintentar.";
+        }
       } catch (error) {
         if (
           corrida !== this.idCarga ||
@@ -554,6 +604,16 @@ export default {
       }
     },
 
+    async cargarActividades() {
+      this.mensajeErrorActividades = "";
+      const response = await actividadService.buscar(this.idProyecto, { todos: true });
+      const contenido = response?.data?.contenido;
+      if (!Array.isArray(contenido)) {
+        throw new Error("La respuesta de actividades no tiene un formato válido.");
+      }
+      this.actividades = contenido;
+    },
+
     async cargarProfesiones() {
       const response = await perfilService.listarProfesiones();
       const datos = response?.data;
@@ -632,6 +692,30 @@ export default {
           ? "La ubicación (provincia y ciudad) es obligatoria en proyectos publicados o confirmados."
           : "";
       this.limpiarError("ubicacion");
+    },
+
+    async eliminarUbicacionProyecto() {
+      if (this.guardando) return;
+      this.mensajeErrorEliminarUbicacion = "";
+      this.mensajeExitoEliminarUbicacion = "";
+
+      try {
+        // En Borrador, setting ubicacion a null borra la ubicación al enviar el request.
+        // En proyectos publicados/confirmados la ubicación es obligatoria, así que sólo
+        // procedemos si el proyecto está en borrador.
+        if (!this.esBorrador) {
+          this.mensajeErrorEliminarUbicacion =
+            "Solo se puede quitar la ubicación en proyectos en borrador.";
+          return;
+        }
+        this.form.ubicacion = null;
+        this.ubicacionQuitada = true;
+        const guardado = await this.guardar();
+        if (guardado) this.mensajeExitoEliminarUbicacion = "Ubicación eliminada.";
+      } catch (error) {
+        this.mensajeErrorEliminarUbicacion =
+          error?.response?.data?.message || "No se pudo quitar la ubicación. Intentá nuevamente.";
+      }
     },
 
     errorCampo(campo) {
@@ -793,8 +877,20 @@ export default {
         !!this.proyectoOriginal?.moodboard || !!String(this.form.moodboard || "").trim();
       if (!tieneMoodboard) faltantes.push("moodboard");
 
-      if (this.form.requerimientosGral.length === 0) {
-        faltantes.push("al menos un requerimiento de personal");
+      const tieneRequerimientoGeneral = this.form.requerimientosGral.length > 0;
+      if (!tieneRequerimientoGeneral && this.mensajeErrorActividades) {
+        faltantes.push(this.mensajeErrorActividades);
+        return faltantes;
+      }
+      const tieneRequerimientoActividad = this.actividades.some(
+        (actividad) =>
+          actividad?.estado !== "CANCELADA" &&
+          Array.isArray(actividad?.requerimientos) &&
+          actividad.requerimientos.length > 0
+      );
+
+      if (!tieneRequerimientoGeneral && !tieneRequerimientoActividad) {
+        faltantes.push("al menos un requerimiento general o de actividad");
       }
 
       return faltantes;
@@ -806,31 +902,31 @@ export default {
       )}.`;
     },
 
-    guardar() {
+    async guardar() {
       this.mensajeError = "";
       this.mensajeExito = "";
 
       if (!this.$refs.form.validate()) {
         this.mensajeError = "Revisá los campos marcados antes de continuar.";
-        return;
+        return false;
       }
 
       const { campos, secciones } = this.validarFormulario();
-      if (this.aplicarValidacion(campos, secciones)) return;
+      if (this.aplicarValidacion(campos, secciones)) return false;
 
       const faltantes = this.validarInformacionBasica();
       if (faltantes.length > 0) {
         this.mensajeError = this.mensajeInformacionBasica(faltantes);
         this.irAPaso(1);
-        return;
+        return false;
       }
 
       if (this.requiereConfirmacion) {
         this.modalConfirmar = true;
-        return;
+        return false;
       }
 
-      this.ejecutarGuardado();
+      return this.ejecutarGuardado();
     },
 
     cancelarConfirmacion() {
@@ -845,7 +941,7 @@ export default {
     },
 
     async ejecutarGuardado() {
-      if (this.guardando) return;
+      if (this.guardando) return false;
       this.guardando = true;
       this.mensajeError = "";
       this.mensajeExito = "";
@@ -862,14 +958,16 @@ export default {
         const proyecto = response?.data;
         this.modalConfirmar = false;
         this.mensajeExito = "Los cambios se guardaron correctamente.";
-        this.$router.push({
+        await this.$router.push({
           name: "dashboard-proyecto",
           params: { id: this.idProyecto },
           state: { proyecto },
         });
+        return true;
       } catch (error) {
-        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return false;
         await this.manejarError(error);
+        return false;
       } finally {
         this.guardando = false;
       }
@@ -1253,6 +1351,14 @@ export default {
   color: var(--color-warning-text);
 }
 
+.modificar-proyecto__aviso--error {
+  color: var(--color-danger-text);
+}
+
+.modificar-proyecto__aviso--exito {
+  color: var(--color-success-text);
+}
+
 .modificar-proyecto__subseccion {
   display: grid;
   gap: 0.35rem;
@@ -1282,6 +1388,40 @@ export default {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.5rem;
   align-items: center;
+}
+
+.modificar-proyecto__fila-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modificar-proyecto__quitar-ubicacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--color-danger-soft, rgba(220, 38, 38, 0.1));
+  border: 1px solid var(--color-danger-border, rgba(220, 38, 38, 0.3));
+  border-radius: 9999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  color: var(--color-danger-text, #dc2626);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.modificar-proyecto__quitar-ubicacion:hover:not(:disabled) {
+  background: var(--color-danger-soft, rgba(220, 38, 38, 0.2));
+  border-color: var(--color-danger-text, #dc2626);
+}
+
+.modificar-proyecto__quitar-ubicacion:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modificar-proyecto__quitar-ubicacion .material-symbols-outlined {
+  font-size: 0.75rem;
 }
 
 .modificar-proyecto__vacio {

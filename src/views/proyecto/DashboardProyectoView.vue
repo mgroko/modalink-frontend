@@ -206,10 +206,21 @@
           v-else-if="tabActiva === 'planificacion' && esMiembro"
           :proyecto="proyecto"
           :id-actividad-resaltada="idActividadResaltada"
+          :token-refresco="tokenRefrescoPlanificacion"
           @crear-actividad="irACrearActividad"
           @editar-actividad="irAEditarActividad"
           @ir-modificar-proyecto="irAModificar"
           @limpiar-resaltado="limpiarActividadResaltada"
+          @eliminar-actividad="abrirModalEliminarActividad"
+        />
+
+        <ModalEliminarActividad
+          :model-value="modalEliminarActividadVisible"
+          :actividad="actividadEliminar"
+          :eliminando="eliminandoActividad"
+          :error="errorEliminarActividad"
+          @update:modelValue="modalEliminarActividadVisible = $event"
+          @confirmar="confirmarEliminarActividad"
         />
 
         <ModalGaleriaMoodboard
@@ -254,6 +265,8 @@ import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
+import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
+import actividadService from "../../services/actividadService.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
@@ -272,6 +285,7 @@ import {
 let controladorCarga = null;
 let controladorPublicacion = null;
 let controladorCancelacion = null;
+let controladorEliminacion = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -284,18 +298,19 @@ export default {
     ModalGaleriaMoodboard,
     ModalPublicarProyecto,
     ModalCancelarProyecto,
+    ModalEliminarActividad,
   },
   setup() {
     return { toast: useToast() };
   },
-  data() {
+data() {
     return {
       ETIQUETAS_PRIVACIDAD,
       MOODBOARD_IMAGENES,
       proyecto: null,
       cargando: true,
       mensajeError: "",
-      puedeReintentar: false,
+      podeReintentar: false,
       estadoNoEncontrado: false,
       mostrarVolver: false,
       habilidades: [],
@@ -310,6 +325,11 @@ export default {
       idCarga: 0,
       tabActiva: "informacion",
       idActividadResaltada: null,
+      modalEliminarActividadVisible: false,
+      actividadEliminar: {},
+      eliminandoActividad: false,
+      errorEliminarActividad: "",
+      tokenRefrescoPlanificacion: 0,
     };
   },
   computed: {
@@ -852,11 +872,146 @@ export default {
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
     },
+    async abrirModalEliminarActividad(actividad) {
+      this.actividadEliminar = actividad;
+      // Cargar detalle de la actividad para mostrar profesionales asignados, etc.
+      try {
+        const detalle = await actividadService.obtener(
+          actividad.idProyecto,
+          actividad.idActividad,
+          null
+        );
+        this.actividadEliminar = { ...actividad, ...detalle };
+      } catch (e) {
+        // Si falla el detalle, conservamos los datos del listado (se mostrará lo disponible).
+      }
+      this.errorEliminarActividad = "";
+      this.modalEliminarActividadVisible = true;
+    },
+    async confirmarEliminarActividad({ idProyecto, idActividad, motivo }) {
+      if (this.eliminandoActividad) return;
+      this.eliminandoActividad = true;
+      this.errorEliminarActividad = "";
+      if (controladorEliminacion) controladorEliminacion.abort();
+      controladorEliminacion = new AbortController();
+      try {
+        await actividadService.eliminar(
+          idProyecto,
+          idActividad,
+          motivo,
+          controladorEliminacion.signal
+        );
+        // Refrescar la planificación y el proyecto
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion++;
+        });
+        this.modalEliminarActividadVisible = false;
+        this.toast.init({
+          title: "Actividad eliminada",
+          message: "La actividad fue eliminada correctamente y el cronograma se recalculó.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
+        await this.manejarErrorEliminarActividad(error);
+      } finally {
+        this.eliminandoActividad = false;
+      }
+    },
+    async manejarErrorEliminarActividad(error) {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      const mensaje = data?.message || "";
+      const clasificacion = clasificarErrorProyecto(error);
+
+      if (status === 400) {
+        this.errorEliminarActividad =
+          data?.motivo || mensaje || "El motivo de la eliminación es obligatorio.";
+        // El modal se mantiene abierto para que el usuario corrija el motivo.
+        return;
+      }
+
+      if (status === 403) {
+        this.errorEliminarActividad =
+          "No tenés permiso para eliminar esta actividad o tu perfil no está activo.";
+        this.modalEliminarActividadVisible = false;
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: mensaje || "No tenés permiso para esta acción.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        return;
+      }
+
+      if (status === 404) {
+        this.modalEliminarActividadVisible = false;
+        if (clasificacion?.tipo === "perfil-activo") {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+        if (clasificacion?.tipo === "perfil-no-encontrado") {
+          await refrescarSesion();
+          this.mensajeError =
+            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+        if (/proyecto/i.test(mensaje)) {
+          this.proyecto = null;
+          this.estadoNoEncontrado = true;
+          this.mensajeError = mensaje;
+          this.mostrarVolver = true;
+          return;
+        }
+        this.errorEliminarActividad = mensajeErrorApi(
+          error,
+          "No se pudo eliminar la actividad."
+        );
+        return;
+      }
+
+      if (status === 409) {
+        this.modalEliminarActividadVisible = false;
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message:
+            mensaje ||
+            (clasificacion?.tipo === "estado-no-cancelable"
+              ? "La actividad no se puede eliminar (estado FINALIZADA o CANCELADA)."
+              : "El proyecto no admite la operación."),
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorEliminarActividad =
+          "Ocurrió un error al eliminar la actividad. Inténtalo nuevamente.";
+        // Mantener el modal abierto ante errores de red/servidor.
+        return;
+      }
+
+      this.errorEliminarActividad = mensajeErrorApi(
+        error,
+        "No se pudo eliminar la actividad."
+      );
+    },
   },
   beforeUnmount() {
     if (controladorCarga) controladorCarga.abort();
     if (controladorPublicacion) controladorPublicacion.abort();
     if (controladorCancelacion) controladorCancelacion.abort();
+    if (controladorEliminacion) controladorEliminacion.abort();
   },
 };
 </script>

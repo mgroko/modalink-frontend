@@ -97,9 +97,11 @@
               <button
                 type="button"
                 class="tabla-actividades__accion tabla-actividades__accion--peligro"
-                disabled
-                title="Eliminar actividad: próximamente (UC-51)"
-                aria-label="Eliminar actividad: próximamente"
+                :class="{ 'tabla-actividades__accion--habilitada': puedeEliminarFila(actividad) }"
+                :disabled="!puedeEliminarFila(actividad)"
+                :title="motivoNoEliminable(actividad)"
+                aria-label="Eliminar actividad"
+                @click="$emit('eliminar-actividad', actividad)"
               >
                 <span class="material-symbols-outlined">delete</span>
               </button>
@@ -139,8 +141,12 @@ export default {
       type: Boolean,
       default: false,
     },
+    puedeEliminar: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ["editar-actividad"],
+  emits: ["editar-actividad", "eliminar-actividad"],
   methods: {
     formatearDuracionMinutos,
     etiquetaEstadoActividad,
@@ -155,6 +161,18 @@ export default {
         return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede modificar.`;
       }
       return "Editar actividad";
+    },
+    puedeEliminarFila(actividad) {
+      return this.puedeEliminar && puedeEditarActividad(actividad?.estado);
+    },
+    motivoNoEliminable(actividad) {
+      if (!this.puedeEliminar) {
+        return "No tenés permiso para eliminar actividades en este proyecto.";
+      }
+      if (!puedeEditarActividad(actividad?.estado)) {
+        return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede eliminar.`;
+      }
+      return "Eliminar actividad";
     },
     resumenRequerimientos(actividad) {
       return (actividad?.requerimientos || []).map(
