@@ -253,6 +253,7 @@ export default {
 .notificaciones-view {
   width: 100%;
   max-width: 900px;
+  margin: 0 auto;
 }
 
 .notificaciones-view__header {
@@ -265,7 +266,9 @@ export default {
 
 .notificaciones-view__title {
   margin: 0;
-  font-size: 1.3rem;
+  color: var(--color-text);
+  font-size: 1.45rem;
+  font-weight: 700;
 }
 
 .notificaciones-view__subtitle {
@@ -279,6 +282,10 @@ export default {
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.notificaciones-view__actions :deep(.va-button) {
+  opacity: 0.8;
 }
 
 .notificaciones-view__select {

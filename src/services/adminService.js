@@ -1,6 +1,14 @@
 import http from "./http";
 
 const adminService = {
+  obtenerDashboardResumen(size = 10) {
+    return http.get("/admin/dashboard/resumen", { params: { size } });
+  },
+
+  listarProyectos(params = {}) {
+    return http.get("/admin/proyectos", { params });
+  },
+
   listarUsuarios() {
     return http.get("/admin/usuarios");
   },

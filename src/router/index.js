@@ -30,6 +30,9 @@ import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristica
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
+import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
+import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
+import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
 
@@ -190,7 +193,29 @@ const routes = [
     path: "/admin/dashboard",
     name: "dashboard-admin",
     component: DashboardAdminView,
-    meta: { layout: AdminLayout, requiereAdmin: true }
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_USUARIOS" }
+  },
+  {
+    path: "/admin/notificaciones",
+    name: "notificaciones-admin",
+    component: NotificacionesView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Notificaciones",
+    }
+  },
+  {
+    path: "/admin/proyectos",
+    name: "proyectos-admin",
+    component: ProyectosAdminView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_USUARIOS", titulo: "Proyectos" }
+  },
+  {
+    path: "/admin/reportes",
+    name: "reportes-admin",
+    component: ReportesAdminView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Reportes" }
   },
   {
     path: "/admin/gestion-usuarios",
@@ -220,6 +245,17 @@ const routes = [
     name: "gestion-unidades-medida",
     component: GestionUnidadesMedidaView,
     meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Unidades de medida" }
+  },
+  {
+    path: "/admin/configuracion",
+    name: "configuracion-sistema",
+    component: ConfiguracionSistemaView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Configuración del sistema",
+    }
   },
   {
     path: "/admin/configuracion-scheduler",

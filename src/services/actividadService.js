@@ -260,6 +260,34 @@ const actividadService = {
     const url = `/proyectos/${idProyecto}/actividades/buscar${query ? `?${query}` : ""}`;
     return http.get(url, { signal });
   },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/actividades/{idActividad}?motivo={motivo} — UC-51.
+   * Elimina una actividad de la planificación. Requiere motivo obligatorio.
+   * Es transaccional: si falla una parte, no se aplica ningún cambio.
+   * Efectos: elimina actividad, conecta predecesoras con sucesoras,
+   * recalcula cronograma, elimina asignaciones (miembros conservados en proyecto),
+   * elimina postulaciones/invitaciones y genera notificaciones.
+   *
+   * Errores:
+   * - 400 motivo vacío o inválido
+   * - 403 sin perfil activo, membresía activa o permiso ELIMINAR_ACTIVIDAD
+   * - 404 proyecto, planificación o actividad inexistente
+   * - 409 actividad FINALIZADA o CANCELADA, proyecto en estado no permitido
+   *
+   * @param {number|string} idProyecto
+   * @param {number|string} idActividad
+   * @param {string} motivo motivo de la eliminación (máx. 200 chars, no vacío ni solo espacios)
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: null}>} 204 No Content sin body
+   */
+  eliminar(idProyecto, idActividad, motivo, signal) {
+    const query = encodeURIComponent(String(motivo ?? "").trim());
+    return http.delete(
+      `/proyectos/${idProyecto}/actividades/${idActividad}?motivo=${query}`,
+      { signal }
+    );
+  }
 };
 
 export default actividadService;
