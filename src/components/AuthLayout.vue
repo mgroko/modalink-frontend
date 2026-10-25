@@ -18,10 +18,15 @@
     <main class="auth-layout__content">
       <slot />
     </main>
+
+    <div class="auth-layout__theme">
+      <ThemeToggle />
+    </div>
   </div>
 </template>
 
 <script>
+import ThemeToggle from "./ThemeToggle.vue";
 import foto1 from "../assets/auth/DSC_0162.jpg";
 import foto2 from "../assets/auth/DSC_0102-2.jpg";
 import foto3 from "../assets/auth/DSC_0120.jpg";
@@ -36,6 +41,9 @@ const INTERVALO_ROTACION = 5000;
 
 export default {
   name: "AuthLayout",
+  components: {
+    ThemeToggle,
+  },
   data() {
     return {
       imagenes: [foto1, foto2, foto3, foto4, foto5, foto6, foto7, foto8, foto9],
@@ -61,16 +69,24 @@ export default {
 
 <style scoped>
 .auth-layout {
+  position: relative;
   min-height: 100vh;
   display: flex;
-  background: var(--va-background-secondary, #F5F5F8);
+  background: var(--color-bg);
+}
+
+.auth-layout__theme {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 5;
 }
 
 .auth-layout__brand {
   position: relative;
   width: 40vw;
   min-width: 280px;
-  background: var(--va-primary, #494776);
+  background: var(--color-primary-fill);
   display: flex;
   align-items: center;
   justify-content: center;

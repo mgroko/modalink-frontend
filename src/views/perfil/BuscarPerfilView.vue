@@ -1,15 +1,40 @@
 <template>
   <div class="buscar-perfil">
-    <h1 class="buscar-perfil__titulo">Buscar perfiles</h1>
+    <h1 class="buscar-perfil__titulo">Buscar</h1>
     <p class="buscar-perfil__subtitulo">
-      Encontrá profesionales por nombre, profesión o ubicación.
+      {{
+        tab === "proyectos"
+          ? "Encontrá proyectos por nombre, estado o director."
+          : "Encontrá profesionales por nombre, profesión o ubicación."
+      }}
     </p>
+
+    <div class="buscar-perfil__tabs" role="tablist" aria-label="Tipo de búsqueda">
+      <button
+        class="buscar-perfil__tab"
+        :class="{ 'buscar-perfil__tab--active': tab === 'perfiles' }"
+        role="tab"
+        :aria-selected="tab === 'perfiles'"
+        @click="cambiarTab('perfiles')"
+      >
+        Perfiles
+      </button>
+      <button
+        class="buscar-perfil__tab"
+        :class="{ 'buscar-perfil__tab--active': tab === 'proyectos' }"
+        role="tab"
+        :aria-selected="tab === 'proyectos'"
+        @click="cambiarTab('proyectos')"
+      >
+        Proyectos
+      </button>
+    </div>
 
     <section class="buscar-perfil__filtros">
       <VaInput
         v-model="filtros.q"
         class="buscar-perfil__campo buscar-perfil__campo--texto"
-        placeholder="Nombre, profesión o ubicación"
+        :placeholder="placeholderTexto"
         @keyup.enter="buscarAhora"
         @input="programarBusqueda"
       >
@@ -19,6 +44,7 @@
       </VaInput>
 
       <VaSelect
+        v-if="tab === 'perfiles'"
         v-model="filtros.idProfesion"
         class="buscar-perfil__campo"
         :options="profesiones"
@@ -28,6 +54,18 @@
         clearable
         :loading="cargandoProfesiones"
         @update:modelValue="cambiarProfesion"
+      />
+
+      <VaSelect
+        v-else
+        v-model="filtros.estadoProyecto"
+        class="buscar-perfil__campo"
+        :options="opcionesEstadoProyecto"
+        value-by="value"
+        text-by="text"
+        placeholder="Estado"
+        clearable
+        @update:modelValue="buscarAhora"
       />
 
       <VaSelect
@@ -41,6 +79,7 @@
       />
 
       <VaButton
+        v-if="tab === 'perfiles'"
         preset="secondary"
         size="small"
         :icon="mostrarAvanzado ? 'mso-expand_less' : 'mso-expand_more'"
@@ -54,7 +93,7 @@
       </VaButton>
     </section>
 
-    <section v-if="mostrarAvanzado" class="buscar-perfil__filtros">
+    <section v-if="tab === 'perfiles' && mostrarAvanzado" class="buscar-perfil__filtros">
     
 
       <VaSelect
@@ -107,26 +146,33 @@
 
     <div v-if="cargando" class="buscar-perfil__estado">
       <span class="material-symbols-outlined buscar-perfil__estado-icono">hourglass_empty</span>
-      Buscando perfiles...
+      {{ tab === "proyectos" ? "Buscando proyectos..." : "Buscando perfiles..." }}
     </div>
 
     <template v-else>
       <p v-if="paginacion.totalElementos > 0" class="buscar-perfil__resumen">
-        {{ paginacion.totalElementos }} perfil(es) encontrado(s)
+        {{ paginacion.totalElementos }}
+        {{ tab === "proyectos" ? "proyecto(s) encontrado(s)" : "perfil(es) encontrado(s)" }}
         <template v-if="!esTodos">
           · Página {{ paginacion.paginaActual + 1 }} de {{ paginacion.totalPaginas }}
         </template>
       </p>
 
-      <div v-if="perfiles.length === 0" class="buscar-perfil__estado">
+      <div v-if="resultadosVacios" class="buscar-perfil__estado">
         <span class="material-symbols-outlined buscar-perfil__estado-icono">search_off</span>
-        <span>No encontramos ningún perfil que coincida con tus criterios de búsqueda.</span>
+        <span>
+          {{
+            tab === "proyectos"
+              ? "No encontramos ningún proyecto que coincida con tus criterios de búsqueda."
+              : "No encontramos ningún perfil que coincida con tus criterios de búsqueda."
+          }}
+        </span>
         <VaButton preset="secondary" size="small" @click="limpiarFiltros">
           Restablecer filtros
         </VaButton>
       </div>
 
-      <div v-else class="buscar-perfil__grid">
+      <div v-else-if="tab === 'perfiles'" class="buscar-perfil__grid">
         <article
           v-for="perfil in perfiles"
           :key="perfil.idPerfil"
@@ -220,6 +266,58 @@
         </article>
       </div>
 
+      <div v-else class="buscar-perfil__grid">
+        <article
+          v-for="proyecto in proyectos"
+          :key="proyecto.idProyecto"
+          class="proyecto-busqueda"
+          role="button"
+          tabindex="0"
+          @click="irAProyecto(proyecto)"
+          @keydown.enter="irAProyecto(proyecto)"
+          @keydown.space.prevent="irAProyecto(proyecto)"
+        >
+          <div class="proyecto-busqueda__cuerpo">
+            <div class="proyecto-busqueda__header">
+              <h3 class="proyecto-busqueda__nombre">{{ proyecto.nombre }}</h3>
+              <EstadoProyectoBadge :estado="proyecto.estado" />
+            </div>
+
+            <p v-if="proyecto.descripcion" class="proyecto-busqueda__descripcion">
+              {{ proyecto.descripcion }}
+            </p>
+
+            <p v-if="proyecto.nombreDirector" class="proyecto-busqueda__director">
+              <span class="material-symbols-outlined">person</span>
+              {{ proyecto.nombreDirector }}
+            </p>
+
+            <p v-if="proyecto.fechaInicio" class="proyecto-busqueda__fecha">
+              <span class="material-symbols-outlined">event</span>
+              Inicia: {{ formatFecha(proyecto.fechaInicio) }}
+            </p>
+
+            <VaBadge
+              v-if="proyecto.privacidad"
+              :text="etiquetaPrivacidad(proyecto.privacidad)"
+              color="secondary"
+              outline
+              class="proyecto-busqueda__privacidad"
+            />
+          </div>
+
+          <div class="proyecto-busqueda__footer">
+            <VaButton
+              color="primary"
+              size="small"
+              @click.stop="irAProyecto(proyecto)"
+            >
+              Ver proyecto
+            </VaButton>
+          </div>
+        </article>
+      </div>
+
       <div
         v-if="!esTodos && paginacion.totalPaginas > 1"
         class="buscar-perfil__paginacion"
@@ -249,8 +347,10 @@
 
 <script>
 import perfilService from "../../services/perfilService";
+import proyectoService from "../../services/proyectoService";
 import usuarioService from "../../services/usuarioService";
 import BaseAlert from "../../components/AlertaBase.vue";
+import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.vue";
 import { useToast } from "vuestic-ui";
 import { formatUbicacion, resolverUbicacionTexto } from "../../utils/ubicacion.js";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -261,6 +361,10 @@ import {
   UNIDADES_POR_CODIGO,
   normCodigo,
 } from "../../utils/perfilConstants.js";
+import {
+  ETIQUETAS_PRIVACIDAD,
+  OPCIONES_ESTADO_FILTRO,
+} from "../../utils/proyectoConstants.js";
 
 const DEBOUNCE_MS = 350;
 const LONGITUD_MIN_UBICACION = 3;
@@ -272,15 +376,18 @@ const LIMITE_CARACTERISTICAS_CARD = 3;
 let controladorBusqueda = null;
 
 export default {
-  name: "BuscarPerfilView",
+  name: "BuscarView",
   components: {
     BaseAlert,
+    EstadoProyectoBadge,
   },
   setup() {
     return { toast: useToast() };
   },
   data() {
     return {
+      tab: "perfiles",
+      buscado: { perfiles: false, proyectos: false },
       filtros: {
         q: "",
         nombre: "",
@@ -289,6 +396,7 @@ export default {
         idCaracteristica: null,
         valorCaracteristica: "",
         idValorCaracteristica: null,
+        estadoProyecto: null,
         tamano: { text: "20 por página", value: 20 },
       },
       opcionesTamano: [
@@ -296,13 +404,23 @@ export default {
         { text: "50 por página", value: 50 },
         { text: "Ver todos", value: 0 },
       ],
+      opcionesEstadoProyecto: OPCIONES_ESTADO_FILTRO,
       profesiones: [],
       cargandoProfesiones: false,
       caracteristicas: [],
       cargandoCaracteristicas: false,
       mostrarAvanzado: false,
       perfiles: [],
-      paginacion: {
+      proyectos: [],
+      paginacionPerfiles: {
+        paginaActual: 0,
+        tamanoPagina: 20,
+        totalElementos: 0,
+        totalPaginas: 0,
+        primera: true,
+        ultima: true,
+      },
+      paginacionProyectos: {
         paginaActual: 0,
         tamanoPagina: 20,
         totalElementos: 0,
@@ -318,9 +436,26 @@ export default {
       resolucionUbicacionCache: new Map(),
       claveResultados: null,
       resultadosCombinados: [],
+      claveResultadosProyectos: null,
+      resultadosCombinadosProyectos: [],
     };
   },
   computed: {
+    paginacion() {
+      return this.tab === "proyectos"
+        ? this.paginacionProyectos
+        : this.paginacionPerfiles;
+    },
+    resultadosVacios() {
+      return this.tab === "proyectos"
+        ? this.proyectos.length === 0
+        : this.perfiles.length === 0;
+    },
+    placeholderTexto() {
+      return this.tab === "proyectos"
+        ? "Nombre del proyecto o director"
+        : "Nombre, profesión o ubicación";
+    },
     esTodos() {
       return this.filtros.tamano?.value === 0;
     },
@@ -356,6 +491,10 @@ export default {
     if (typeof q === "string" && q.trim()) {
       this.filtros.q = q.trim();
     }
+    const tab = this.$route.query.tab;
+    if (tab === "proyectos") {
+      this.tab = "proyectos";
+    }
     await Promise.all([this.cargarProfesiones(), this.buscar()]);
   },
   watch: {
@@ -364,6 +503,14 @@ export default {
       if (valor === this.filtros.q.trim()) return;
       this.filtros.q = valor;
       this.buscarAhora();
+    },
+    "$route.query.tab"(nuevo) {
+      const tab = nuevo === "proyectos" ? "proyectos" : "perfiles";
+      if (tab === this.tab) return;
+      this.tab = tab;
+      this.mensajeError = "";
+      this.puedeReintentar = false;
+      if (!this.buscado[tab]) this.buscar(0);
     },
   },
   methods: {
@@ -522,24 +669,47 @@ export default {
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     limpiarFiltros() {
-      this.filtros = {
-        q: "",
-        nombre: "",
-        apellido: "",
-        idProfesion: null,
-        idCaracteristica: null,
-        valorCaracteristica: "",
-        idValorCaracteristica: null,
-        tamano: { text: "20 por página", value: 20 },
-      };
-      this.caracteristicas = [];
-      this.cargandoCaracteristicas = false;
-      this.claveResultados = null;
-      this.resultadosCombinados = [];
-      if (this.$route.query.q) {
-        this.$router.replace({ query: {} });
+      if (this.tab === "proyectos") {
+        this.filtros.estadoProyecto = null;
+        this.claveResultadosProyectos = null;
+        this.resultadosCombinadosProyectos = [];
+      } else {
+        this.filtros.nombre = "";
+        this.filtros.apellido = "";
+        this.filtros.idProfesion = null;
+        this.filtros.idCaracteristica = null;
+        this.filtros.valorCaracteristica = "";
+        this.filtros.idValorCaracteristica = null;
+        this.caracteristicas = [];
+        this.cargandoCaracteristicas = false;
+        this.claveResultados = null;
+        this.resultadosCombinados = [];
+      }
+      this.filtros.q = "";
+      this.filtros.tamano = { text: "20 por página", value: 20 };
+      const query = { ...this.$route.query };
+      delete query.q;
+      if (Object.keys(query).length > 0 || this.$route.query.q) {
+        this.$router.replace({ query });
       }
       this.buscarAhora();
+    },
+    cambiarTab(tab) {
+      if (tab === this.tab) return;
+      this.tab = tab;
+      this.mensajeError = "";
+      this.puedeReintentar = false;
+      this.sincronizarQueryTab();
+      if (!this.buscado[tab]) this.buscar(0);
+    },
+    sincronizarQueryTab() {
+      const query = { ...this.$route.query };
+      if (this.tab === "proyectos") {
+        query.tab = "proyectos";
+      } else {
+        delete query.tab;
+      }
+      this.$router.replace({ query });
     },
     /**
      * Filtros explícitos del panel (sin texto libre ni paginación).
@@ -577,6 +747,29 @@ export default {
     // Sin texto libre: una sola request con paginación del servidor.
     buildParams(page) {
       const params = this.buildParamsBase();
+      const size = this.filtros.tamano?.value ?? 20;
+      if (size === 0) {
+        params.todos = true;
+      } else {
+        params.page = page;
+        params.size = size;
+      }
+      return params;
+    },
+    /**
+     * Filtros explícitos del tab de proyectos (sin texto libre ni paginación).
+     * El estado se aplica a la ruta simple y a cada variante del fan-out,
+     * de modo que el AND del backend sigue respetándose por request.
+     */
+    buildParamsProyectoBase() {
+      const params = {};
+      if (this.filtros.estadoProyecto) {
+        params.estado = this.filtros.estadoProyecto;
+      }
+      return params;
+    },
+    buildParamsProyecto(page) {
+      const params = this.buildParamsProyectoBase();
       const size = this.filtros.tamano?.value ?? 20;
       if (size === 0) {
         params.todos = true;
@@ -681,6 +874,37 @@ export default {
       );
     },
     /**
+     * Unión OR del texto libre sobre proyectos: nombre del proyecto y
+     * director (nombre artístico o nombre/apellido), espejo del fan-out
+     * de perfiles pero con los dos campos que ofrece la ficha UC-29.
+     */
+    variantesDeTextoProyecto(texto) {
+      const base = this.buildParamsProyectoBase();
+      return ["nombre", "director"].map((clave) => ({
+        ...base,
+        todos: true,
+        [clave]: texto,
+      }));
+    },
+    combinarProyectos(respuestas) {
+      const vistos = new Map();
+      for (const respuesta of respuestas) {
+        const contenido = Array.isArray(respuesta?.data?.contenido)
+          ? respuesta.data.contenido
+          : [];
+        for (const proyecto of contenido) {
+          if (proyecto?.idProyecto != null && !vistos.has(proyecto.idProyecto)) {
+            vistos.set(proyecto.idProyecto, proyecto);
+          }
+        }
+      }
+      return Array.from(vistos.values()).sort((a, b) =>
+        String(a?.nombre || "").localeCompare(String(b?.nombre || ""), "es", {
+          sensitivity: "base",
+        })
+      );
+    },
+    /**
      * Paginación en cliente sobre el listado combinado, con la misma
      * forma de PaginaResponse que consume la vista.
      */
@@ -712,7 +936,16 @@ export default {
         contenido: listado.slice(pagina * size, (pagina + 1) * size),
       };
     },
+    /** Despacha la búsqueda al tab activo. */
     async buscar(page = 0) {
+      this.buscado[this.tab] = true;
+      if (this.tab === "proyectos") {
+        await this.buscarProyectos(page);
+      } else {
+        await this.buscarPerfiles(page);
+      }
+    },
+    async buscarPerfiles(page = 0) {
       // Token de corrida: si llega una búsqueda nueva mientras esta sigue
       // resolviendo la tanda, se descarta; la anterior se corta además
       // con AbortController.
@@ -734,7 +967,7 @@ export default {
           if (corrida !== this.idBusqueda) return;
           const data = response?.data || {};
           this.perfiles = Array.isArray(data.contenido) ? data.contenido : [];
-          this.paginacion = this.normalizarPagina(data);
+          this.paginacionPerfiles = this.normalizarPagina(data);
           return;
         }
 
@@ -761,7 +994,7 @@ export default {
 
         const pagina = this.paginar(listado, page);
         this.perfiles = pagina.contenido;
-        this.paginacion = {
+        this.paginacionPerfiles = {
           paginaActual: pagina.paginaActual,
           tamanoPagina: pagina.tamanoPagina,
           totalElementos: pagina.totalElementos,
@@ -779,26 +1012,120 @@ export default {
         }
         const status = error?.response?.status;
         this.perfiles = [];
-        if (status === 401) {
-          this.mensajeError = mensajeErrorApi(error, "Tu cuenta no se encuentra habilitada.");
-        } else if (status === 403) {
-          this.mensajeError = mensajeErrorApi(error, "No se pudo completar la búsqueda.");
-        } else if (!status || status >= 500) {
-          this.puedeReintentar = true;
-          this.mensajeError = "Ocurrió un error al buscar perfiles. Inténtalo nuevamente.";
-          this.toast.init({
-            title: "Error del servidor",
-            message: "No se pudieron cargar los perfiles. Usá el botón de reintento.",
-            color: "danger",
-            position: "top-right",
-            duration: 6000,
-          });
-        } else {
-          this.mensajeError = "Ocurrió un error al buscar perfiles. Inténtalo nuevamente.";
-        }
+        this.manejarErrorBusqueda(error, status, "perfiles");
       } finally {
         if (corrida === this.idBusqueda) this.cargando = false;
       }
+    },
+    async buscarProyectos(page = 0) {
+      const corrida = ++this.idBusqueda;
+      if (controladorBusqueda) controladorBusqueda.abort();
+      controladorBusqueda = new AbortController();
+      const signal = controladorBusqueda.signal;
+
+      this.cargando = true;
+      this.mensajeError = "";
+      this.puedeReintentar = false;
+
+      try {
+        const texto = this.limpiarTexto(this.filtros.q);
+
+        // Sin texto libre: una sola request con paginación del servidor.
+        // Los criterios son opcionales (ficha UC-29): la búsqueda vacía
+        // lista todos los proyectos visibles para el perfil activo.
+        if (!texto) {
+          const response = await proyectoService.buscar(
+            this.buildParamsProyecto(page),
+            signal
+          );
+          if (corrida !== this.idBusqueda) return;
+          const data = response?.data || {};
+          this.proyectos = Array.isArray(data.contenido) ? data.contenido : [];
+          this.paginacionProyectos = this.normalizarPagina(data);
+          return;
+        }
+
+        // Con texto libre: unión OR (nombre del proyecto o director) +
+        // merge + paginación cliente.
+        const variantes = this.variantesDeTextoProyecto(texto);
+
+        const clave = JSON.stringify({ texto, variantes });
+        let listado;
+        if (this.claveResultadosProyectos === clave) {
+          listado = this.resultadosCombinadosProyectos;
+        } else {
+          const respuestas = await Promise.all(
+            variantes.map((params) => proyectoService.buscar(params, signal))
+          );
+          if (corrida !== this.idBusqueda) return;
+          listado = this.combinarProyectos(respuestas);
+          this.claveResultadosProyectos = clave;
+          this.resultadosCombinadosProyectos = listado;
+        }
+
+        const pagina = this.paginar(listado, page);
+        this.proyectos = pagina.contenido;
+        this.paginacionProyectos = {
+          paginaActual: pagina.paginaActual,
+          tamanoPagina: pagina.tamanoPagina,
+          totalElementos: pagina.totalElementos,
+          totalPaginas: pagina.totalPaginas,
+          primera: pagina.primera,
+          ultima: pagina.ultima,
+        };
+      } catch (error) {
+        if (
+          corrida !== this.idBusqueda ||
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+        const status = error?.response?.status;
+        this.proyectos = [];
+        this.manejarErrorBusqueda(error, status, "proyectos");
+      } finally {
+        if (corrida === this.idBusqueda) this.cargando = false;
+      }
+    },
+    manejarErrorBusqueda(error, status, recurso) {
+      if (status === 404) {
+        this.mensajeError =
+          "No hay un perfil activo seleccionado en la sesión. Elegí un perfil para buscar.";
+      } else if (status === 401) {
+        this.mensajeError = mensajeErrorApi(error, "Tu cuenta no se encuentra habilitada.");
+      } else if (status === 403) {
+        this.mensajeError = mensajeErrorApi(error, "No se pudo completar la búsqueda.");
+      } else if (!status || status >= 500) {
+        this.puedeReintentar = true;
+        this.mensajeError = `Ocurrió un error al buscar ${recurso}. Inténtalo nuevamente.`;
+        this.toast.init({
+          title: "Error del servidor",
+          message: `No se pudieron cargar los ${recurso}. Usá el botón de reintento.`,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+      } else {
+        this.mensajeError = `Ocurrió un error al buscar ${recurso}. Inténtalo nuevamente.`;
+      }
+    },
+    irAProyecto(proyecto) {
+      if (proyecto?.idProyecto) {
+        this.$router.push({
+          name: "dashboard-proyecto",
+          params: { id: proyecto.idProyecto },
+        });
+      }
+    },
+    formatFecha(fecha) {
+      const partes = String(fecha || "").split("-");
+      if (partes.length !== 3) return fecha;
+      const [anio, mes, dia] = partes;
+      return `${dia}/${mes}/${anio}`;
+    },
+    etiquetaPrivacidad(privacidad) {
+      return ETIQUETAS_PRIVACIDAD[privacidad] || privacidad;
     },
     reintentar() {
       this.buscar(this.paginacion.paginaActual);
@@ -829,6 +1156,38 @@ export default {
   margin: 0 0 1.25rem;
 }
 
+.buscar-perfil__tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.buscar-perfil__tab {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.buscar-perfil__tab:hover {
+  color: var(--color-text);
+}
+
+.buscar-perfil__tab--active {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: 0 1px 3px rgba(35, 33, 52, 0.1);
+}
+
 .buscar-perfil__filtros {
   display: flex;
   flex-wrap: wrap;
@@ -836,7 +1195,7 @@ export default {
   gap: 0.75rem;
   padding: 1rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   margin-bottom: 1rem;
 }
@@ -889,7 +1248,7 @@ export default {
   gap: 0.75rem;
   padding: 1.5rem 1.25rem 1rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   text-align: center;
   cursor: pointer;
@@ -912,7 +1271,7 @@ export default {
   height: 84px;
   border-radius: 50%;
   overflow: hidden;
-  background: #edeef4;
+  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -979,8 +1338,8 @@ export default {
 
 .perfil-busqueda__habilidad,
 .perfil-busqueda__caracteristica {
-  background: #f0f0f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   color: var(--color-text);
   font-size: 0.72rem;
   padding: 0.2rem 0.6rem;
@@ -999,6 +1358,87 @@ export default {
 }
 
 .perfil-busqueda__footer {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.proyecto-busqueda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+}
+
+.proyecto-busqueda:hover {
+  box-shadow: 0 8px 20px rgba(35, 33, 52, 0.08);
+  transform: translateY(-2px);
+  border-color: var(--color-primary-light);
+}
+
+.proyecto-busqueda:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.proyecto-busqueda__cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.proyecto-busqueda__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.proyecto-busqueda__nombre {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.proyecto-busqueda__descripcion {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.proyecto-busqueda__director,
+.proyecto-busqueda__fecha {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.proyecto-busqueda__director .material-symbols-outlined,
+.proyecto-busqueda__fecha .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.proyecto-busqueda__privacidad {
+  align-self: flex-start;
+  font-size: 0.75rem;
+}
+
+.proyecto-busqueda__footer {
   margin-top: auto;
   padding-top: 0.5rem;
 }

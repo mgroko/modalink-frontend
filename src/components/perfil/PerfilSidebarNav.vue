@@ -31,15 +31,25 @@
       </button>
     </nav>
 
-    <VaButton
-      v-if="!esPropio"
-      color="success"
-      block
-      icon="mso-handshake"
-      @click="$emit('contactar')"
-    >
-      Contactar / Colaborar
-    </VaButton>
+    <div v-if="!esPropio" class="perfil-nav__acciones">
+      <VaButton
+        class="perfil-nav__accion"
+        color="#5CA4A9"
+        icon="mso-person_add"
+        @click="$emit('conectar')"
+      >
+        Conectar
+      </VaButton>
+      <VaButton
+        class="perfil-nav__accion"
+        preset="secondary"
+        color="primary"
+        icon="mso-chat_bubble"
+        @click="$emit('mensaje')"
+      >
+        Mensaje
+      </VaButton>
+    </div>
 
     <VaButton
       v-if="!esPropio"
@@ -67,12 +77,12 @@ export default {
       default: "publicaciones",
     },
   },
-  emits: ["cambiar-seccion", "navegar-ruta", "cerrar-sesion", "contactar", "reportar"],
+  emits: ["cambiar-seccion", "navegar-ruta", "cerrar-sesion", "conectar", "mensaje", "reportar"],
   computed: {
     itemsVisibles() {
       const itemsPropio = [
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
-        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "dashboard-usuario" },
+        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "proyectos-inicio" },
         { key: "resenas", label: "Reseñas", icono: "star", tipo: "seccion" },
         { key: "mi-red", label: "Mi red", icono: "group", tipo: "ruta" },
         { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "modificar-datos" },
@@ -113,7 +123,7 @@ export default {
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -125,7 +135,7 @@ export default {
   padding: 0.75rem 1rem;
   background: none;
   border: none;
-  border-bottom: 1px solid #f2f2f6;
+  border-bottom: 1px solid var(--color-border-soft);
   font-size: 0.84rem;
   color: var(--color-text);
   cursor: pointer;
@@ -138,11 +148,11 @@ export default {
 }
 
 .perfil-nav__item:hover {
-  background: #f7f7fa;
+  background: var(--color-surface-soft);
 }
 
 .perfil-nav__item--activo {
-  background: #ececf5;
+  background: var(--color-surface-muted);
   font-weight: 600;
   color: var(--color-primary);
 }
@@ -157,14 +167,23 @@ export default {
 }
 
 .perfil-nav__item--peligro {
-  color: #ef4444;
+  color: var(--color-danger-text);
 }
 
 .perfil-nav__item--peligro .material-symbols-outlined {
-  color: #ef4444;
+  color: var(--color-danger-text);
 }
 
 .perfil-nav__item--peligro:hover {
-  background: #fef2f2;
+  background: var(--color-danger-soft);
+}
+
+.perfil-nav__acciones {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.perfil-nav__accion {
+  flex: 1;
 }
 </style>

@@ -29,7 +29,7 @@ export default {
 .home-section {
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -52,7 +52,7 @@ export default {
 
 .publicacion {
   padding: 0.9rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .publicacion:last-child {

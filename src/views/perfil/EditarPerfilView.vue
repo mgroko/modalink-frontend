@@ -644,7 +644,7 @@ export default {
 .editar-perfil__panel {
   padding: 1.5rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -654,7 +654,7 @@ export default {
   gap: 1rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .editar-perfil__foto-img {
@@ -666,7 +666,7 @@ export default {
 }
 
 .editar-perfil__foto-img--placeholder {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: center;

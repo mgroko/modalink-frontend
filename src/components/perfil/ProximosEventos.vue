@@ -118,7 +118,7 @@ export default {
 .proximos-eventos {
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -153,14 +153,14 @@ export default {
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 0.75rem;
-  border: 1px solid #d9e4ea;
+  border: 1px solid var(--color-info-border);
   border-radius: 8px;
-  background: #eef7f7;
+  background: var(--color-info-soft);
 }
 
 .proximos-eventos__item--bloqueo {
-  background: #fdf1f2;
-  border-color: #f3c8cd;
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger-border);
 }
 
 .proximos-eventos__fecha {

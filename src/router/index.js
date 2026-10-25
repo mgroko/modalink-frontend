@@ -13,8 +13,15 @@ import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
 import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
+import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
+import ProyectosInicioView from "../views/proyecto/ProyectosInicioView.vue";
+import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
+import CrearActividadView from "../views/proyecto/CrearActividadView.vue";
+import ModificarActividadView from "../views/proyecto/ModificarActividadView.vue";
+import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
+import NotificacionesView from "../views/usuario/NotificacionesView.vue";
 import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
@@ -23,6 +30,9 @@ import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristica
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
+import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
+import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
+import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
 
@@ -47,7 +57,7 @@ const routes = [
     path: "/home",
     name: "home",
     component: HomeView,
-    meta: { layout: HomeLayout, titulo: "Inicio", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Inicio", requiresActiveProfile: true, navActiva: "inicio" },
   },
   {
     path: "/inicio-perfil",
@@ -74,10 +84,50 @@ const routes = [
     meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
   },
   {
-    path: "/buscar-perfiles",
-    name: "buscar-perfiles",
+    path: "/buscar",
+    name: "buscar",
     component: BuscarPerfilView,
-    meta: { layout: HomeLayout, titulo: "Búsqueda de perfiles", requiresActiveProfile: true },
+    meta: { layout: HomeLayout, titulo: "Búsqueda", requiresActiveProfile: true },
+  },
+  {
+    path: "/buscar-perfiles",
+    redirect: { name: "buscar" },
+  },
+  {
+    path: "/crear-proyecto",
+    name: "crear-proyecto",
+    component: CrearProyectoView,
+    meta: { layout: HomeLayout, titulo: "Crear proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos",
+    name: "proyectos-inicio",
+    component: ProyectosInicioView,
+    meta: { layout: HomeLayout, titulo: "Proyectos / Inicio", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id/modificar",
+    name: "modificar-proyecto",
+    component: ModificarProyectoView,
+    meta: { layout: HomeLayout, titulo: "Modificar proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id/actividades/crear",
+    name: "crear-actividad",
+    component: CrearActividadView,
+    meta: { layout: HomeLayout, titulo: "Nueva actividad", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id/actividades/:idActividad/modificar",
+    name: "modificar-actividad",
+    component: ModificarActividadView,
+    meta: { layout: HomeLayout, titulo: "Editar actividad", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id",
+    name: "dashboard-proyecto",
+    component: DashboardProyectoView,
+    meta: { layout: HomeLayout, titulo: "Proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
     path: "/inicio-perfil/editar/:id",
@@ -91,6 +141,23 @@ const routes = [
     name: "dashboard-usuario",
     component: DashboardUsuarioView,
     meta: { layout: UserDashboardLayout, permiteSinPerfil: true },
+  },
+  {
+    path: "/dashboard-usuario/notificaciones",
+    name: "notificaciones-usuario",
+    component: NotificacionesView,
+    meta: { layout: UserDashboardLayout, titulo: "Notificaciones", permiteSinPerfil: true },
+  },
+  {
+    path: "/notificaciones",
+    name: "notificaciones-perfil",
+    component: NotificacionesView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Notificaciones",
+      navActiva: "notificaciones",
+      soloPerfilActivo: true,
+    },
   },
   {
     path: "/dashboard-usuario/modificar-datos",
@@ -126,7 +193,29 @@ const routes = [
     path: "/admin/dashboard",
     name: "dashboard-admin",
     component: DashboardAdminView,
-    meta: { layout: AdminLayout, requiereAdmin: true }
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_USUARIOS" }
+  },
+  {
+    path: "/admin/notificaciones",
+    name: "notificaciones-admin",
+    component: NotificacionesView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Notificaciones",
+    }
+  },
+  {
+    path: "/admin/proyectos",
+    name: "proyectos-admin",
+    component: ProyectosAdminView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_USUARIOS", titulo: "Proyectos" }
+  },
+  {
+    path: "/admin/reportes",
+    name: "reportes-admin",
+    component: ReportesAdminView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Reportes" }
   },
   {
     path: "/admin/gestion-usuarios",
@@ -156,6 +245,17 @@ const routes = [
     name: "gestion-unidades-medida",
     component: GestionUnidadesMedidaView,
     meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Unidades de medida" }
+  },
+  {
+    path: "/admin/configuracion",
+    name: "configuracion-sistema",
+    component: ConfiguracionSistemaView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Configuración del sistema",
+    }
   },
   {
     path: "/admin/configuracion-scheduler",

@@ -659,7 +659,7 @@ export default {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #e5e7eb;
+  background: var(--color-border);
   color: var(--color-text-muted);
   display: flex;
   align-items: center;
@@ -675,8 +675,8 @@ export default {
 }
 
 .crear-perfil__paso--activo .crear-perfil__paso-numero {
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
 }
 
 .crear-perfil__paso--completo {
@@ -684,14 +684,14 @@ export default {
 }
 
 .crear-perfil__paso--completo .crear-perfil__paso-numero {
-  background: #f59e0b;
-  color: #fff;
+  background: var(--color-warning-fill);
+  color: var(--color-on-primary);
 }
 
 .crear-perfil__paso-linea {
   flex: 1;
   height: 2px;
-  background: #e5e7eb;
+  background: var(--color-border);
   margin: 0 1rem;
 }
 
@@ -727,7 +727,7 @@ export default {
 }
 
 .crear-perfil__foto-img--placeholder {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: center;

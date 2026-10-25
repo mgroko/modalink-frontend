@@ -14,17 +14,17 @@
       </button>
     </div>
 
-    <Calendario />
+    <CalendarioProfesional mostrar-acciones />
   </div>
 </template>
 
 <script>
-import Calendario from "../../components/calendario/Calendario.vue";
+import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 
 export default {
   name: "CalendarioView",
   components: {
-    Calendario,
+    CalendarioProfesional,
   },
 };
 </script>
@@ -38,7 +38,7 @@ export default {
 .calendario-view__tabs {
   display: flex;
   gap: 1.5rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--color-border);
   margin-bottom: 1.25rem;
 }
 

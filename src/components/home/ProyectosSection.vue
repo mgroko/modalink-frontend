@@ -30,12 +30,20 @@ export default {
 .home-section {
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
+.home-section__encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 .home-section__encabezado h2 {
-  margin: 0 0 1rem;
+  margin: 0;
   color: var(--color-text);
   font-size: 1rem;
 }
@@ -48,7 +56,7 @@ export default {
 
 .home-card {
   padding: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 

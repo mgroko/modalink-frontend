@@ -146,13 +146,13 @@
           placement="top"
           :message="popoverEstado(rowData)"
         >
-          <VaBadge :text="rowData.estado" :color="colorEstado(rowData.estado)" text-color="white" />
+          <VaBadge :text="rowData.estado" :color="colorEstado(rowData.estado)" />
         </VaPopover>
         <VaBadge
           v-else
           :text="rowData.estado"
           :color="colorEstado(rowData.estado)"
-          text-color="white"
+         
         />
       </template>
 
@@ -262,7 +262,7 @@
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Estado</span>
-              <VaBadge :text="usuarioDetalle.estado" :color="colorEstado(usuarioDetalle.estado)" text-color="white" />
+              <VaBadge :text="usuarioDetalle.estado" :color="colorEstado(usuarioDetalle.estado)" />
             </div>
             <div class="detalle-usuario__campo">
               <span class="detalle-usuario__label">Fecha de nacimiento</span>
@@ -296,7 +296,7 @@
                   <span class="detalle-usuario__perfil-nombre">{{ perfil.nombreArtistico || '—' }}</span>
                   <span class="detalle-usuario__texto-muted">{{ perfil.profesion || '—' }}</span>
                 </div>
-                <VaBadge :text="perfil.estado" :color="colorEstado(perfil.estado)" text-color="white" />
+                <VaBadge :text="perfil.estado" :color="colorEstado(perfil.estado)" />
               </div>
             </div>
           </section>
@@ -468,11 +468,11 @@ export default {
       return usuario.id ?? usuario.idUsuario;
     },
     colorEstado(estado) {
-      if (estado === "Activo") return "#2e7d32";
-      if (estado === "Deshabilitado") return "#c62828";
-      if (estado === "PendienteBaja") return "#ef6c00";
-      if (estado === "Baja") return "#757575";
-      return "#9e9e9e";
+      if (estado === "Activo") return "success";
+      if (estado === "Deshabilitado") return "danger";
+      if (estado === "PendienteBaja") return "warning";
+      if (estado === "Baja") return "secondary";
+      return "grey";
     },
     popoverEstado(usuario) {
       if (usuario.estado === "Deshabilitado") {
@@ -729,7 +729,7 @@ export default {
   gap: 0.75rem;
   padding: 1rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   margin: 1.25rem 0 1rem;
 }
@@ -874,7 +874,7 @@ export default {
 }
 
 .detalle-usuario__perfiles {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--color-border);
   padding-top: 1.25rem;
   margin-top: 1.25rem;
 }
@@ -895,7 +895,7 @@ export default {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.6rem 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 

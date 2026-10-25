@@ -15,14 +15,14 @@
         <button class="calendario__hoy" @click="irAHoy">Hoy</button>
       </div>
 
-      <div class="calendario__acciones">
+      <div v-if="mostrarAcciones && !soloLectura" class="calendario__acciones">
         <VaButton preset="secondary" color="primary" @click="abrirJornada">
           <span class="material-symbols-outlined calendario__btn-icono">schedule</span>
           Configurar jornada
         </VaButton>
         <VaButton color="primary" @click="abrirBloqueo">
           <span class="material-symbols-outlined calendario__btn-icono">add</span>
-          Agregar bloqueo
+          Agregar bloque
         </VaButton>
       </div>
     </div>
@@ -52,92 +52,91 @@
         </div>
       </div>
 
-      <div class="calendario__grid" :class="{ 'calendario__grid--dia': vista === 'dia' }">
-        <div class="calendario__grid-corner"></div>
-        <div
-          v-for="dia in diasSemana"
-          :key="dia.fechaKey"
-          class="calendario__grid-header"
-          :class="{ 'calendario__grid-header--hoy': dia.esHoy, 'calendario__grid-header--nolaborable': !dia.laborable }"
-        >
-          <span class="calendario__grid-header-dia">{{ dia.nombre }}</span>
-          <span class="calendario__grid-header-fecha">{{ dia.numero }}</span>
-        </div>
-
-        <template v-for="slot in slotsHorario" :key="slot.hora">
-          <div class="calendario__hora">
-            <span>{{ slot.etiqueta }}</span>
-          </div>
+      <div class="calendario__grid-wrap">
+        <div class="calendario__grid">
+          <div class="calendario__grid-corner"></div>
           <div
             v-for="dia in diasSemana"
-            :key="dia.fechaKey + '-' + slot.hora"
-            class="calendario__celda"
-            :class="celdaClase(dia, slot)"
-            @click="clickEnCelda(dia, slot)"
-          ></div>
-        </template>
+            :key="dia.fechaKey"
+            class="calendario__grid-header"
+            :class="{
+              'calendario__grid-header--hoy': dia.esHoy,
+              'calendario__grid-header--nolaborable': !dia.laborable,
+            }"
+            role="button"
+            tabindex="0"
+            @click="seleccionarDia(dia)"
+            @keydown.enter="seleccionarDia(dia)"
+          >
+            <span class="calendario__grid-header-dia">{{ dia.nombre }}</span>
+            <span class="calendario__grid-header-fecha">{{ dia.numero }}</span>
+            <span v-if="dia.esHoy" class="calendario__grid-header-hoy">(Hoy)</span>
+          </div>
+
+          <template v-for="slot in slotsHorario" :key="slot.hora">
+            <div class="calendario__hora">
+              <span>{{ slot.etiqueta }}</span>
+            </div>
+            <div
+              v-for="dia in diasSemana"
+              :key="dia.fechaKey + '-' + slot.hora"
+              class="calendario__celda"
+              :class="celdaClase(dia, slot)"
+              @click="clickEnCelda(dia, slot)"
+            ></div>
+          </template>
+        </div>
       </div>
 
-      <div class="calendario__capacitacion-gap"></div>
-
       <div class="calendario__detalle">
-        <h3 class="calendario__detalle-titulo">
-          Detalle: {{ fechaDetalle }}
-        </h3>
+        <h3 class="calendario__detalle-titulo">Detalle del día: {{ tituloDetalle }}</h3>
 
-        <div class="calendario__detalle-grupo">
-          <span class="calendario__detalle-subtitulo">Bloqueos manuales</span>
-          <div v-if="bloqueosDelDia.length === 0" class="calendario__detalle-vacio">
-            Sin bloqueos manuales este día.
-          </div>
-          <div
-            v-for="bloqueo in bloqueosDelDia"
-            :key="bloqueo.idBloqueo"
-            class="calendario__detalle-item calendario__detalle-item--bloqueo"
-          >
-            <div class="calendario__detalle-item-info">
-              <span class="calendario__detalle-item-rango">{{ rango(bloqueo) }}</span>
-              <span class="calendario__detalle-item-motivo">{{ bloqueo.motivo || 'Sin motivo' }}</span>
-            </div>
-            <button class="calendario__detalle-item-eliminar" title="Eliminar bloqueo" @click="confirmarEliminar(bloqueo)">
-              <span class="material-symbols-outlined">delete</span>
-            </button>
-          </div>
+        <div v-if="itemsDelDia.length === 0" class="calendario__detalle-vacio">
+          Sin bloqueos ni actividades este día.
         </div>
 
-        <div class="calendario__detalle-grupo">
-          <span class="calendario__detalle-subtitulo">Actividades de proyecto</span>
-          <div v-if="actividadesDelDia.length === 0" class="calendario__detalle-vacio">
-            Sin actividades este día.
-          </div>
+        <div v-else class="calendario__detalle-grid">
           <div
-            v-for="actividad in actividadesDelDia"
-            :key="actividad.idActividad"
-            class="calendario__detalle-item calendario__detalle-item--actividad"
+            v-for="item in itemsDelDia"
+            :key="item.id"
+            class="calendario__evento"
+            :class="`calendario__evento--${item.tipo}`"
           >
-            <div class="calendario__detalle-item-info">
-              <span class="calendario__detalle-item-rango">{{ rango(actividad) }}</span>
-              <span class="calendario__detalle-item-motivo">{{ actividad.nombre }}</span>
+            <div class="calendario__evento-cabecera">
+              <span class="calendario__evento-rango">
+                <span
+                  v-for="(parte, i) in item.rango"
+                  :key="i"
+                  :class="`calendario__evento-${parte.clase}`"
+                >{{ parte.texto }}</span>
+              </span>
+              <span v-if="item.proyecto" class="calendario__evento-badge">{{ item.proyecto }}</span>
+              <button
+                v-if="item.tipo === 'bloqueo' && !soloLectura"
+                class="calendario__evento-eliminar"
+                title="Eliminar bloqueo"
+                @click="confirmarEliminar(item.original)"
+              >
+                <span class="material-symbols-outlined">delete</span>
+              </button>
             </div>
+            <span class="calendario__evento-desc">{{ item.descripcion }}</span>
           </div>
         </div>
       </div>
     </template>
 
-    <!-- Modal: configurar jornada -->
     <ConfigurarJornada
       v-model="modalJornadaVisible"
       :jornada="calendario?.jornada || null"
       @guardada="onJornadaGuardada"
     />
 
-    <!-- Modal: crear bloqueo -->
     <CrearBloqueo
       v-model="modalBloqueoVisible"
       @creado="onBloqueoCreado"
     />
 
-    <!-- Modal: confirmar eliminación de bloqueo -->
     <VaModal
       v-model="modalEliminarVisible"
       size="small"
@@ -164,11 +163,26 @@ import calendarioService from "../../services/calendarioService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ConfigurarJornada from "./ConfigurarJornada.vue";
 import CrearBloqueo from "./CrearBloqueo.vue";
-import { fechaLarga, formatearRangoEvento, rangoSemana } from "../../utils/fechas.js";
+import { rangoSemana, formatearFechaCorta } from "../../utils/fechas.js";
 import { horaCorta, aMinutos, aHora } from "../../utils/horas";
 import { mensajeErrorApi } from "../../utils/apiError";
 
 const NOMBRES_DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const NOMBRES_DIAS_LARGOS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const MESES_LARGOS = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -179,23 +193,49 @@ function toFechaKey(fecha) {
 }
 
 function aDate(localDateTime) {
-  const fecha = new Date(localDateTime);
-  return fecha;
+  return new Date(localDateTime);
+}
+
+function rangoFechaHora(inicio, fin) {
+  const ini = aDate(inicio);
+  const termino = aDate(fin);
+  const hora = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return [
+    { texto: formatearFechaCorta(ini), clase: "fecha" },
+    { texto: hora(ini), clase: "hora" },
+    { texto: "\u2013", clase: "sep" },
+    { texto: formatearFechaCorta(termino), clase: "fecha" },
+    { texto: hora(termino), clase: "hora" },
+  ];
 }
 
 export default {
-  name: "Calendario",
+  name: "CalendarioProfesional",
   components: {
     BaseAlert,
     ConfigurarJornada,
     CrearBloqueo,
   },
+  props: {
+    mostrarAcciones: {
+      type: Boolean,
+      default: false,
+    },
+    soloLectura: {
+      type: Boolean,
+      default: false,
+    },
+    idUsuario: {
+      type: Number,
+      default: null,
+    },
+  },
+  emits: ["actualizado"],
   data() {
     return {
       cargando: true,
       calendario: null,
       semanaInicio: null,
-      vista: "semana",
       diaSeleccionado: null,
       modalJornadaVisible: false,
       modalBloqueoVisible: false,
@@ -251,39 +291,71 @@ export default {
       });
       return { horaInicio: min, horaFin: max };
     },
-    fechaDetalle() {
+    tituloDetalle() {
       if (!this.diaSeleccionado) return "—";
-      return fechaLarga(this.diaSeleccionado);
+      const fecha = this.diaSeleccionado;
+      return `${NOMBRES_DIAS_LARGOS[fecha.getDay()]} ${fecha.getDate()} de ${MESES_LARGOS[fecha.getMonth()]}`;
     },
-    bloqueosDelDia() {
+    itemsDelDia() {
       if (!this.diaSeleccionado || !this.calendario) return [];
       const key = toFechaKey(this.diaSeleccionado);
-      return (this.calendario.bloqueosManuales || []).filter((b) =>
-        this.entrecruzaConDia(b, key)
-      );
-    },
-    actividadesDelDia() {
-      if (!this.diaSeleccionado || !this.calendario) return [];
-      const key = toFechaKey(this.diaSeleccionado);
-      return (this.calendario.actividades || []).filter((a) =>
-        this.entrecruzaConDia(a, key)
-      );
+      const items = [];
+
+      (this.calendario.bloqueosManuales || []).forEach((b) => {
+        if (!this.entrecruzaConDia(b, key)) return;
+        items.push({
+          id: `bloqueo-${b.idBloqueo}`,
+          tipo: "bloqueo",
+          rango: rangoFechaHora(b.fechaHoraInicio, b.fechaHoraFin),
+          descripcion: `Bloqueo manual: ${b.motivo || "Sin motivo"}`,
+          proyecto: null,
+          orden: aDate(b.fechaHoraInicio).getTime(),
+          original: b,
+        });
+      });
+
+      (this.calendario.actividades || []).forEach((a) => {
+        if (!this.entrecruzaConDia(a, key)) return;
+        items.push({
+          id: `actividad-${a.idActividad}`,
+          tipo: "actividad",
+          rango: rangoFechaHora(a.fechaHoraInicio, a.fechaHoraFin),
+          descripcion: a.nombre || "Actividad de proyecto",
+          proyecto: a.proyectoNombre || (a.idProyecto ? `Proyecto #${a.idProyecto}` : null),
+          orden: aDate(a.fechaHoraInicio).getTime(),
+          original: a,
+        });
+      });
+
+      return items.sort((a, b) => a.orden - b.orden);
     },
   },
   mounted() {
     this.semanaInicio = this.inicioDeSemana(new Date());
     this.cargarCalendario();
   },
+  watch: {
+    idUsuario() {
+      this.cargarCalendario();
+    },
+  },
   methods: {
     async cargarCalendario() {
       this.cargando = true;
       this.mensajeError = "";
       try {
-        const response = await calendarioService.obtenerCalendario();
+        const response = this.idUsuario
+          ? await calendarioService.obtenerCalendarioPerfil(this.idUsuario)
+          : await calendarioService.obtenerCalendario();
         this.calendario = response.data;
         this.diaSeleccionado = new Date();
       } catch (error) {
-        this.mensajeError = mensajeErrorApi(error, "No se pudo cargar el calendario.");
+        this.calendario = null;
+        if (this.idUsuario && error?.response?.status === 404) {
+          this.mensajeError = "Este perfil no tiene una agenda configurada.";
+        } else {
+          this.mensajeError = mensajeErrorApi(error, "No se pudo cargar el calendario.");
+        }
       } finally {
         this.cargando = false;
       }
@@ -300,12 +372,10 @@ export default {
       const nueva = new Date(this.semanaInicio);
       nueva.setDate(nueva.getDate() + dir * 7);
       this.semanaInicio = nueva;
-      this.vista = "semana";
     },
     irAHoy() {
       this.semanaInicio = this.inicioDeSemana(new Date());
       this.diaSeleccionado = new Date();
-      this.vista = "semana";
     },
     jornadaPorDia(diaSemana) {
       return (this.calendario?.jornada?.dias || []).find((d) => d.diaSemana === diaSemana) || null;
@@ -320,11 +390,9 @@ export default {
       const finTarde = horaCorta(jornada.horaFinTarde);
 
       if (!finManiana || !iniTarde) {
-        // Jornada corrida: entre iniManiana y finTarde
         return slotInicio >= iniManiana && slotFin <= finTarde;
       }
 
-      // Jornada partida: en el bloque de la mañana o en el bloque de la tarde
       const enManiana = slotInicio >= iniManiana && slotFin <= finManiana;
       const enTarde = slotInicio >= iniTarde && slotFin <= finTarde;
       return enManiana || enTarde;
@@ -343,8 +411,6 @@ export default {
     entrecruzaConDia(item, fechaKey) {
       const ini = aDate(item.fechaHoraInicio);
       const fin = aDate(item.fechaHoraFin);
-      const finDia = new Date(ini.toISOString().slice(0, 10) + "T23:59:59");
-      const iniDia = new Date(`${fechaKey}T00:00:00`);
       const itemIni = new Date(`${fechaKey}T00:00:00`);
       const itemFin = new Date(`${fechaKey}T23:59:59`);
       return ini < itemFin && fin > itemIni;
@@ -363,7 +429,6 @@ export default {
       if (actividad) clases.push("calendario__celda--actividad");
       else if (bloqueo) clases.push("calendario__celda--bloqueo");
       else clases.push("calendario__celda--disponible");
-      if (dia.esHoy) clases.push("calendario__celda--hoy");
       return clases;
     },
     actividadEnSlot(dia, slot) {
@@ -390,8 +455,8 @@ export default {
       if (!dia.laborable) return;
       this.diaSeleccionado = dia.fecha;
     },
-    rango(item) {
-      return formatearRangoEvento(item.fechaHoraInicio, item.fechaHoraFin);
+    seleccionarDia(dia) {
+      this.diaSeleccionado = dia.fecha;
     },
     abrirJornada() {
       this.modalJornadaVisible = true;
@@ -399,17 +464,19 @@ export default {
     abrirBloqueo() {
       this.modalBloqueoVisible = true;
     },
-    onJornadaGuardada() {
+    async onJornadaGuardada() {
       this.modalJornadaVisible = false;
       this.mensajeExito = "Jornada laboral actualizada correctamente.";
       this.mensajeError = "";
-      this.cargarCalendario();
+      await this.cargarCalendario();
+      this.$emit("actualizado");
     },
-    onBloqueoCreado() {
+    async onBloqueoCreado() {
       this.modalBloqueoVisible = false;
       this.mensajeExito = "Bloqueo creado correctamente.";
       this.mensajeError = "";
-      this.cargarCalendario();
+      await this.cargarCalendario();
+      this.$emit("actualizado");
     },
     confirmarEliminar(bloqueo) {
       this.bloqueoAEliminar = bloqueo;
@@ -425,6 +492,7 @@ export default {
         this.modalEliminarVisible = false;
         this.mensajeExito = "Bloqueo eliminado. Horario marcado como disponible.";
         await this.cargarCalendario();
+        this.$emit("actualizado");
       } catch (error) {
         this.mensajeError = mensajeErrorApi(error, "No se pudo eliminar el bloqueo.");
         this.modalEliminarVisible = false;
@@ -458,7 +526,7 @@ export default {
 
 .calendario__nav-btn {
   background: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   width: 32px;
   height: 32px;
@@ -471,7 +539,7 @@ export default {
 }
 
 .calendario__nav-btn:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 
@@ -502,8 +570,8 @@ export default {
 }
 
 .calendario__hoy:hover {
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
 }
 
 .calendario__acciones {
@@ -541,39 +609,37 @@ export default {
 }
 
 .calendario__leyenda-cuadro--actividad {
-  background: var(--color-secondary);
-  border: 1px solid var(--color-secondary-dark);
+  background: var(--cal-actividad);
+  border: 1px solid var(--color-success);
 }
 
 .calendario__leyenda-cuadro--bloqueo {
-  background: #fee2e2;
-  border: 1px solid var(--va-danger, #E11D48);
+  background: var(--cal-bloqueo-celda);
+  border: 1px solid var(--cal-bloqueo-borde);
 }
 
 .calendario__leyenda-cuadro--disponible {
-  background: var(--color-support);
-  border: 1px solid var(--color-primary-light);
+  background: var(--cal-disponible);
+  border: 1px solid var(--color-info-border);
 }
 
 .calendario__leyenda-cuadro--nolaborable {
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-border);
+  border: 1px solid var(--color-border-strong);
+}
+
+.calendario__grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
 }
 
 .calendario__grid {
   display: grid;
   grid-template-columns: 56px repeat(7, 1fr);
   gap: 1px;
-  background: #e5e7eb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-  overflow-x: auto;
+  background: var(--color-border);
   min-width: 720px;
-}
-
-.calendario__grid--dia {
-  grid-template-columns: 56px 1fr;
 }
 
 .calendario__grid-corner {
@@ -584,26 +650,16 @@ export default {
   background: var(--color-surface);
   padding: 0.5rem 0.25rem;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.calendario__grid-header--hoy .calendario__grid-header-fecha {
-  background: var(--color-primary);
-  color: #fff;
-  border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
+  gap: 0.3rem;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
 }
 
 .calendario__grid-header-dia {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--color-text-muted);
-  text-transform: uppercase;
 }
 
 .calendario__grid-header-fecha {
@@ -612,9 +668,19 @@ export default {
   color: var(--color-text);
 }
 
+.calendario__grid-header-hoy {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.calendario__grid-header--hoy .calendario__grid-header-fecha {
+  color: var(--color-primary);
+}
+
 .calendario__grid-header--nolaborable .calendario__grid-header-dia,
 .calendario__grid-header--nolaborable .calendario__grid-header-fecha {
-  color: #c4c6cf;
+  color: var(--color-text-subtle);
 }
 
 .calendario__hora {
@@ -633,34 +699,29 @@ export default {
 }
 
 .calendario__celda--disponible {
-  background: #eaf4f4;
+  background: var(--cal-disponible);
 }
 
 .calendario__celda--disponible:hover {
-  background: #d8ebeb;
+  background: var(--cal-disponible-hover);
 }
 
 .calendario__celda--actividad {
-  background: var(--color-secondary);
+  background: var(--cal-actividad-celda);
   cursor: default;
 }
 
 .calendario__celda--bloqueo {
-  background: #fee2e2;
-  border: 1px solid var(--va-danger, #E11D48);
+  background: var(--cal-bloqueo-celda);
 }
 
 .calendario__celda--bloqueo:hover {
-  background: #fdc9c9;
+  background: var(--color-danger-soft);
 }
 
 .calendario__celda--nolaborable {
-  background: #f3f4f6;
+  background: var(--cal-nolaborable);
   cursor: default;
-}
-
-.calendario__celda--hoy {
-  box-shadow: inset 0 0 0 2px var(--color-primary-light);
 }
 
 .calendario__estado {
@@ -677,14 +738,13 @@ export default {
   font-size: 2.5rem;
 }
 
-.calendario__capacitacion-gap {
-  height: 1.5rem;
-}
-
 .calendario__detalle {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .calendario__detalle-titulo {
@@ -692,86 +752,96 @@ export default {
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.calendario__detalle-grupo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.calendario__detalle-subtitulo {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
 }
 
 .calendario__detalle-vacio {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: var(--color-text-muted);
-  padding: 0.5rem;
-  background: #f9fafb;
-  border-radius: 6px;
+  padding: 1rem;
+  background: var(--color-surface-soft);
+  border-radius: 8px;
+  text-align: center;
 }
 
-.calendario__detalle-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #e5e7eb;
+.calendario__detalle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
-.calendario__detalle-item--bloqueo {
-  background: #fff5f5;
-  border-color: #fecaca;
-}
-
-.calendario__detalle-item--actividad {
-  background: #f3f2fa;
-  border-color: var(--color-secondary);
-}
-
-.calendario__detalle-item-info {
+.calendario__evento {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.4rem;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
 }
 
-.calendario__detalle-item-rango {
-  font-size: 0.8rem;
-  font-weight: 600;
+.calendario__evento--bloqueo {
+  background: var(--cal-bloqueo-card);
+  border-color: var(--cal-bloqueo-borde);
+}
+
+.calendario__evento--actividad {
+  background: var(--cal-actividad-card);
+  border-color: var(--cal-actividad-borde);
+}
+
+.calendario__evento-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 24px;
+}
+
+.calendario__evento-rango {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 700;
   color: var(--color-text);
 }
 
-.calendario__detalle-item-motivo {
-  font-size: 0.78rem;
+.calendario__evento-fecha {
   color: var(--color-text-muted);
 }
 
-.calendario__detalle-item-eliminar {
+.calendario__evento-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-success-text);
+  background: var(--color-success-soft);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.calendario__evento-eliminar {
+  margin-left: auto;
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--va-danger, #E11D48);
-  padding: 0.2rem;
+  color: var(--color-danger-text);
+  padding: 0.1rem;
   display: flex;
   align-items: center;
-}
-
-.calendario__detalle-item-eliminar:hover {
-  background: #fee2e2;
   border-radius: 4px;
 }
 
-.calendario__detalle-item-eliminar .material-symbols-outlined {
+.calendario__evento-eliminar:hover {
+  background: var(--color-danger-soft);
+}
+
+.calendario__evento-eliminar .material-symbols-outlined {
   font-size: 1.15rem;
+}
+
+.calendario__evento-desc {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  line-height: 1.4;
 }
 
 .calendario__modal-footer {
@@ -779,5 +849,16 @@ export default {
   gap: 0.5rem;
   justify-content: flex-end;
   width: 100%;
+}
+
+@media (max-width: 640px) {
+  .calendario__toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .calendario__detalle-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

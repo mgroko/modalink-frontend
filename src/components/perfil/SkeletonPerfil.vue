@@ -52,7 +52,7 @@ export default {
 .skeleton-perfil__panel {
   padding: 1.5rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -152,7 +152,7 @@ export default {
 .skeleton-shimmer {
   position: relative;
   overflow: hidden;
-  background: #eef0f4;
+  background: var(--color-surface-muted);
 }
 
 .skeleton-shimmer::after {
@@ -160,7 +160,7 @@ export default {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  background: linear-gradient(90deg, transparent, var(--color-skeleton-highlight), transparent);
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
 }
 

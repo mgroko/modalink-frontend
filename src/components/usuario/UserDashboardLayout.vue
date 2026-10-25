@@ -10,10 +10,13 @@
           </div>
         </div>
 
-        <button class="sidebar__notifications">
+        <button
+          class="sidebar__notifications"
+          @click="$router.push({ name: 'notificaciones-usuario' })"
+        >
           <span class="material-symbols-outlined">notifications</span>
           <span>Notificaciones</span>
-          <span class="sidebar__badge">2</span>
+          <span v-if="noLeidasUsuario > 0" class="sidebar__badge">{{ noLeidasUsuario }}</span>
         </button>
 
         <div class="sidebar__section">
@@ -53,11 +56,29 @@
           <span class="dashboard-main__subtitle">{{ titulo }}</span>
         </div>
         <div class="dashboard-main__header-actions">
+          <ThemeToggle />
+
           <VaDropdown v-if="usuario" placement="bottom-end">
             <template #anchor>
               <button class="perfil-switcher">
-                <span class="perfil-switcher__avatar">{{ inicialPerfil }}</span>
-                <span class="perfil-switcher__nombre">{{ nombreArtisticoActivo || "Sin perfil activo" }}</span>
+                <span class="perfil-switcher__avatar">
+                  <img
+                    v-if="fotoPerfilActiva && !fotoRota"
+                    :src="fotoPerfilActiva"
+                    :alt="nombreArtisticoActivo || 'Perfil activo'"
+                    @error="fotoRota = true"
+                  />
+                  <template v-else>{{ inicialPerfil }}</template>
+                </span>
+                <span v-if="idActivo" class="perfil-switcher__labels">
+                  <span class="perfil-switcher__nombre">{{ nombreArtisticoActivo || "Perfil" }}</span>
+                  <span v-if="profesionActiva" class="perfil-switcher__profesion">{{ profesionActiva }}</span>
+                  <span class="perfil-switcher__estado-linea">
+                    <span class="perfil-switcher__punto"></span>
+                    En línea
+                  </span>
+                </span>
+                <span v-else class="perfil-switcher__nombre">Sin perfil activo</span>
                 <span class="material-symbols-outlined">expand_more</span>
               </button>
             </template>
@@ -88,7 +109,22 @@
                     :disabled="perfil.estado !== 'Activo'"
                     @click="cambiarPerfil(perfil)"
                   >
-                    {{ perfil.nombreArtistico }}
+                    <span class="perfil-switcher__avatar perfil-switcher__avatar--mini">
+                      <img
+                        v-if="fotoDe(perfil)"
+                        :src="fotoDe(perfil)"
+                        :alt="perfil.nombreArtistico"
+                      />
+                      <template v-else>{{ inicialDe(perfil.nombreArtistico) }}</template>
+                    </span>
+                    <span class="perfil-switcher__item-info">
+                      <span class="perfil-switcher__item-nombre">{{ perfil.nombreArtistico }}</span>
+                      <span v-if="profesionDe(perfil)" class="perfil-switcher__item-profesion">{{ profesionDe(perfil) }}</span>
+                      <span class="perfil-switcher__item-estado">
+                        <span class="perfil-switcher__punto perfil-switcher__punto--offline"></span>
+                        Offline
+                      </span>
+                    </span>
                   </VaMenuItem>
                 </div>
 
@@ -152,6 +188,7 @@
 <script>
 import usuarioService from "../../services/usuarioService";
 import perfilService from "../../services/perfilService";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
   state,
   setPerfilActivo,
@@ -159,9 +196,17 @@ import {
   finalizarSesion,
   guardarBajaCuenta,
 } from "../../services/authState";
+import ThemeToggle from "../ThemeToggle.vue";
+import {
+  state as notificacionState,
+  cargarResumenUsuario,
+} from "../../services/notificacionState";
 
 export default {
   name: "UserDashboardLayout",
+  components: {
+    ThemeToggle,
+  },
   props: {
     titulo: {
       type: String,
@@ -174,6 +219,7 @@ export default {
       perfiles: [],
       perfilesCargando: false,
       cambiandoPerfilId: null,
+      fotoRota: false,
     };
   },
   computed: {
@@ -186,6 +232,9 @@ export default {
     },
     idActivo() {
       return idPerfilActivo();
+    },
+    noLeidasUsuario() {
+      return notificacionState.noLeidasUsuario;
     },
     nombreArtisticoActivo() {
       return state.usuario?.nombreArtisticoActivo || null;
@@ -201,14 +250,36 @@ export default {
     perfilActual() {
       return this.perfiles.find((p) => p.idPerfil === this.idActivo) || null;
     },
+    fotoPerfilActiva() {
+      const perfil = this.perfilActual;
+      return resolverFotoUrl(perfil?.urlFoto || perfil?.fotoPerfil || perfil?.fotoUrl);
+    },
+    profesionActiva() {
+      return this.perfilActual?.profesion || this.perfilActual?.profesiones?.[0]?.nombre || "";
+    },
     perfilesAlternativos() {
       return this.perfiles.filter((p) => p.idPerfil !== this.idActivo);
     },
   },
+  watch: {
+    fotoPerfilActiva() {
+      this.fotoRota = false;
+    },
+  },
   mounted() {
     this.cargarPerfiles();
+    cargarResumenUsuario();
   },
   methods: {
+    inicialDe(valor) {
+      return String(valor || "?").charAt(0).toUpperCase();
+    },
+    fotoDe(perfil) {
+      return resolverFotoUrl(perfil?.urlFoto || perfil?.fotoPerfil || perfil?.fotoUrl);
+    },
+    profesionDe(perfil) {
+      return perfil?.profesion || perfil?.profesiones?.[0]?.nombre || "";
+    },
     async cargarPerfiles() {
       this.perfilesCargando = true;
       try {
@@ -266,7 +337,7 @@ export default {
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
-  background: var(--va-background-secondary, #F5F5F8);
+  background: var(--color-dashboard-bg);
 }
 
 /* ── Sidebar ── */
@@ -274,7 +345,7 @@ export default {
   width: 250px;
   min-width: 250px;
   background: var(--color-surface);
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -292,15 +363,15 @@ export default {
   align-items: center;
   gap: 0.6rem;
   padding: 0 1.25rem 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .sidebar__avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--color-text-muted);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -340,7 +411,7 @@ export default {
   gap: 0.5rem;
   margin: 0.5rem 1.25rem;
   padding: 0.5rem 0.7rem;
-  background: #f0f4ff;
+  background: var(--color-surface-muted);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -350,7 +421,7 @@ export default {
 }
 
 .sidebar__notifications:hover {
-  background: #e0e7ff;
+  background: var(--color-info-soft);
 }
 
 .sidebar__notifications .material-symbols-outlined {
@@ -360,8 +431,8 @@ export default {
 
 .sidebar__badge {
   margin-left: auto;
-  background: var(--va-danger);
-  color: #fff;
+  background: var(--color-danger-fill);
+  color: var(--color-on-primary);
   font-size: 0.7rem;
   font-weight: 600;
   min-width: 20px;
@@ -428,7 +499,7 @@ font-size: 1.5rem;
   padding: 0.55rem 0.7rem;
   background: none;
   border: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--color-border-soft);
   cursor: pointer;
   font-size: 0.82rem;
   color: var(--va-danger);
@@ -436,7 +507,7 @@ font-size: 1.5rem;
 }
 
 .sidebar__logout:hover {
-  background: #fef2f2;
+  background: var(--color-danger-soft);
 }
 
 .sidebar__logout .material-symbols-outlined {
@@ -458,7 +529,7 @@ font-size: 1.5rem;
   justify-content: space-between;
   padding: 0 2rem;
   background: var(--color-surface);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .dashboard-main__title {
@@ -485,30 +556,37 @@ font-size: 1.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.6rem;
+  padding: 0.45rem 0.75rem;
   background: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   cursor: pointer;
   color: var(--color-text);
 }
 
 .perfil-switcher:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .perfil-switcher__avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--color-secondary);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 600;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.perfil-switcher__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .perfil-switcher__nombre {
@@ -518,6 +596,32 @@ font-size: 1.5rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.perfil-switcher__labels {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.perfil-switcher__profesion {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.perfil-switcher__estado-linea {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: var(--color-success-text);
 }
 
 .perfil-switcher__nombre .material-symbols-outlined {
@@ -542,7 +646,7 @@ font-size: 1.5rem;
 
 .perfil-switcher__grupo {
   padding: 0.75rem 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .perfil-switcher__titulo {
@@ -574,7 +678,7 @@ font-size: 1.5rem;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--color-success);
   flex-shrink: 0;
 }
 
@@ -586,13 +690,58 @@ font-size: 1.5rem;
   gap: 0.75rem;
 }
 
+.perfil-switcher__avatar--mini {
+  width: 32px;
+  height: 32px;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.perfil-switcher__avatar--mini img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.perfil-switcher__item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.perfil-switcher__item-nombre {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.perfil-switcher__item-profesion {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.perfil-switcher__item-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: var(--color-text-subtle);
+}
+
+.perfil-switcher__punto--offline {
+  background: var(--color-text-subtle);
+}
+
 .perfil-switcher__item--peligro {
   color: var(--va-danger);
 }
 
 .dashboard-main__icon-btn {
   background: none;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 0.35rem;
   cursor: pointer;
@@ -603,7 +752,7 @@ font-size: 1.5rem;
 }
 
 .dashboard-main__icon-btn:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 

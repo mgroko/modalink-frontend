@@ -19,7 +19,7 @@
     <div v-else-if="noEncontrado" class="inicio-perfil__estado">
       <span class="material-symbols-outlined inicio-perfil__estado-icono">person_off</span>
       {{ mensajeNoEncontrado || "El perfil que buscas no está disponible o ha sido dado de baja." }}
-      <VaButton preset="secondary" @click="$router.push({ name: 'buscar-perfiles' })">
+      <VaButton preset="secondary" @click="$router.push({ name: 'buscar' })">
         Volver a la búsqueda
       </VaButton>
     </div>
@@ -77,10 +77,13 @@
             <section class="inicio-perfil__panel">
               <h2 class="inicio-perfil__panel-titulo">Calendario profesional</h2>
               <div v-if="esPropio" class="inicio-perfil__calendario-wrap">
-                <CalendarioCompacto />
+                <CalendarioProfesional mostrar-acciones @actualizado="refrescarEventos" />
               </div>
               <div v-else class="inicio-perfil__calendario-wrap">
-                <DisponibilidadAjena :id-usuario="perfil.idUsuario || perfil.idPerfil" />
+                <CalendarioProfesional
+                  :id-usuario="perfil.idUsuario || perfil.idPerfil"
+                  solo-lectura
+                />
               </div>
             </section>
           </template>
@@ -189,7 +192,7 @@
 
         <aside class="inicio-perfil__sidebar">
           <template v-if="esPropio">
-            <ProximosEventos />
+            <ProximosEventos ref="proximosEventos" />
             <PerfilSidebarNav
               es-propio
               :seccion-activa="seccion"
@@ -203,9 +206,10 @@
               :es-propio="false"
               :seccion-activa="seccion"
               @cambiar-seccion="cambiarSeccion"
-              @navegar-ruta="navegarRuta"
-              @contactar="proximamente"
-              @reportar="modalReporte = true"
+            @navegar-ruta="navegarRuta"
+            @conectar="proximamente"
+            @mensaje="proximamente"
+            @reportar="modalReporte = true"
             />
             <ResenasCard :resenas="resenas" />
           </template>
@@ -227,8 +231,7 @@ import homeService from "../../services/homeService";
 import authService from "../../services/authService";
 import { idPerfilActivo, limpiarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
-import CalendarioCompacto from "../../components/calendario/CalendarioCompacto.vue";
-import DisponibilidadAjena from "../../components/calendario/DisponibilidadAjena.vue";
+import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
@@ -254,8 +257,7 @@ export default {
   name: "InicioPerfilView",
   components: {
     BaseAlert,
-    CalendarioCompacto,
-    DisponibilidadAjena,
+    CalendarioProfesional,
     PerfilHero,
     PerfilSidebarNav,
     ProximosEventos,
@@ -468,6 +470,9 @@ export default {
         this.proximamente();
       }
     },
+    refrescarEventos() {
+      this.$refs.proximosEventos?.cargar();
+    },
     proximamente() {
       alert("Funcionalidad próximamente disponible.");
     },
@@ -567,7 +572,7 @@ export default {
 .inicio-perfil__panel {
   padding: 1.25rem;
   background: var(--color-surface);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -598,7 +603,7 @@ export default {
 
 .inicio-perfil__publicacion {
   padding: 0.9rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .inicio-perfil__publicacion:last-child {
@@ -616,8 +621,8 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 0.75rem;
   padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   margin-bottom: 0.75rem;
 }
@@ -676,8 +681,8 @@ export default {
 }
 
 .inicio-perfil__habilidad {
-  background: #f0f0f6;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   color: var(--color-text);
   font-size: 0.8rem;
   padding: 0.3rem 0.75rem;
