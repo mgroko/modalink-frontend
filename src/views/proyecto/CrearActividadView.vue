@@ -122,6 +122,15 @@
                   {{ errores.unidadDuracion }}
                 </p>
 
+                <VaInput
+                  v-model="form.horarioPreferenciaInicio"
+                  type="time"
+                  label="Horario preferido de inicio"
+                  hint="Opcional. No es el horario definitivo de la actividad."
+                  :error="!!errores.horarioPreferenciaInicio"
+                  :error-messages="errores.horarioPreferenciaInicio || undefined"
+                />
+
                 <VaTextarea
                   v-model="form.descripcion"
                   label="Descripción"
@@ -319,7 +328,7 @@
                   type="submit"
                   preset="primary"
                   :loading="guardando"
-                  :disabled="guardando || !tieneFechaEntrega"
+                  :disabled="guardando"
                 >
                   Crear actividad
                 </VaButton>
@@ -465,6 +474,7 @@ export default {
         descripcion: "",
         duracion: "",
         unidadDuracion: UNIDADES_DURACION.DIAS,
+        horarioPreferenciaInicio: "",
         ubicacion: null,
         predecesoras: [],
         requerimientos: [],

@@ -131,6 +131,15 @@
                   {{ errores.unidadDuracion }}
                 </p>
 
+                <VaInput
+                  v-model="form.horarioPreferenciaInicio"
+                  type="time"
+                  label="Horario preferido de inicio"
+                  hint="Opcional. No es el horario definitivo de la actividad."
+                  :error="!!errores.horarioPreferenciaInicio"
+                  :error-messages="errores.horarioPreferenciaInicio || undefined"
+                />
+
                 <VaSelect
                   ref="estadoSelect"
                   v-model="form.estado"
@@ -332,7 +341,7 @@
                   type="submit"
                   preset="primary"
                   :loading="guardando"
-                  :disabled="guardando || !tieneFechaEntrega"
+                  :disabled="guardando"
                 >
                   Guardar cambios
                 </VaButton>
@@ -598,6 +607,7 @@ export default {
         descripcion: "",
         duracion: "",
         unidadDuracion: UNIDADES_DURACION.HORAS,
+        horarioPreferenciaInicio: "",
         estado: ESTADOS_ACTIVIDAD.PENDIENTE,
         ubicacion: null,
         predecesoras: [],
@@ -827,6 +837,7 @@ export default {
         descripcion: actividad.descripcion || "",
         duracion,
         unidadDuracion,
+        horarioPreferenciaInicio: actividad.horarioPreferenciaInicio || "",
         estado: normalizarEstadoActividad(actividad.estado),
         ubicacion: this.mapearUbicacion(actividad.ubicacion),
         predecesoras: (actividad.predecesoras || []).map(

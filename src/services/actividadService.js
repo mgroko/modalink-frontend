@@ -34,6 +34,7 @@ import http from "./http";
  * @property {string} [descripcion] máx. 200
  * @property {number} duracion entero > 0
  * @property {"DIAS"|"HORAS"} unidadDuracion
+ * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {UbicacionActividadRequest} [ubicacion]
  * @property {number[]} [predecesoras]
  * @property {RequerimientoActividadRequest[]} [requerimientos]
@@ -56,6 +57,7 @@ import http from "./http";
  * @property {string|null} [descripcion] null/ausente borra la descripción
  * @property {number} duracion entero > 0
  * @property {"DIAS"|"HORAS"} unidadDuracion
+ * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha; null borra la preferencia
  * @property {UbicacionActividadRequest|null} [ubicacion] null/ausente borra la ubicación
  * @property {number[]} predecesoras obligatorio; [] borra todas
  * @property {RequerimientoActividadModificarRequest[]} requerimientos obligatorio;
@@ -103,8 +105,15 @@ import http from "./http";
  * @property {string} nombre
  * @property {string|null} descripcion
  * @property {number} duracionMinutos
- * @property {string} fechaHoraInicio ISO local
- * @property {string} fechaHoraFin ISO local derivado
+ * @property {string|null} fechaHoraInicio ISO local persistido; null si solo está proyectada
+ * @property {string|null} fechaHoraFin ISO local derivado de la fecha persistida
+ * @property {string|null} inicioProyectado ISO local calculado sin persistencia
+ * @property {string|null} finProyectado ISO local calculado sin persistencia
+ * @property {boolean|null} tentativo true cuando el origen del cálculo es estimado
+ * @property {boolean|null} conflicto true si la ventana CPM no es factible
+ * @property {string|null} motivoConflicto explicación del conflicto CPM
+ * @property {boolean|null} parcial true si falta fecha de entrega
+ * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
  * @property {"NORMAL"|"ALERTA_DESBORDE"} [estadoCronograma]
  * @property {object|null} ubicacion
@@ -121,8 +130,9 @@ import http from "./http";
  * @property {string} nombre
  * @property {string|null} descripcion
  * @property {number} duracionMinutos
- * @property {string} fechaHoraInicio ISO local
- * @property {string} fechaHoraFin ISO local derivado
+ * @property {string|null} fechaHoraInicio ISO local persistido
+ * @property {string|null} fechaHoraFin ISO local derivado
+ * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
  * @property {{idRequerimiento:number,cantidad:number,descripcion:string|null,idProfesion:number,nombreProfesion:string}[]} requerimientos
  * @property {{idActividad:number,nombre:string}[]} predecesoras

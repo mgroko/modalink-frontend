@@ -20,6 +20,13 @@ function aNumeroONull(valor) {
   return Number.isFinite(numero) ? numero : null;
 }
 
+function validarHorarioPreferencia(valor) {
+  if (!presente(valor)) return null;
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(valor))
+    ? null
+    : "El horario preferido debe tener formato HH:mm.";
+}
+
 export function normalizarNombreActividad(nombre) {
   return String(nombre || "").trim().toLocaleLowerCase();
 }
@@ -65,6 +72,9 @@ export function validarActividad(form, catalogosPorProfesion = {}, actividades =
   if (!Object.values(UNIDADES_DURACION).includes(form?.unidadDuracion)) {
     campos.unidadDuracion = "Seleccioná una unidad de duración válida.";
   }
+
+  const errorHorario = validarHorarioPreferencia(form?.horarioPreferenciaInicio);
+  if (errorHorario) campos.horarioPreferenciaInicio = errorHorario;
 
   if (form?.ubicacion?.provinciaId && !form?.ubicacion?.localidadId) {
     campos.ubicacion = "Seleccioná una localidad para la provincia elegida.";
@@ -240,6 +250,9 @@ export function buildActividadRequest(form) {
     nombre: String(form?.nombre || "").trim(),
     duracion: Number(form?.duracion),
     unidadDuracion: form?.unidadDuracion,
+    horarioPreferenciaInicio: presente(form?.horarioPreferenciaInicio)
+      ? String(form.horarioPreferenciaInicio)
+      : null,
   };
 
   const descripcion = String(form?.descripcion || "").trim();
@@ -335,6 +348,9 @@ export function buildModificarActividadRequest(form) {
     descripcion: descripcion || null,
     duracion: Number(form?.duracion),
     unidadDuracion: form?.unidadDuracion,
+    horarioPreferenciaInicio: presente(form?.horarioPreferenciaInicio)
+      ? String(form.horarioPreferenciaInicio)
+      : null,
     ubicacion,
     predecesoras,
     requerimientos,
