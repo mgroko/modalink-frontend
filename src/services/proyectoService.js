@@ -145,6 +145,28 @@ import http from "./http";
  */
 
 /**
+ * @typedef {"GENERAL"|"ACTIVIDAD"} TipoPostulacion
+ */
+
+/**
+ * @typedef {"PENDIENTE"|"ACEPTADA"|"RECHAZADA"} EstadoPostulacion
+ */
+
+/**
+ * @typedef {Object} PostulacionResponse
+ *   UC-26. Respuesta de POST /proyectos/{idProyecto}/postulaciones/{general|actividad}.
+ * @property {number} idPostulacion
+ * @property {TipoPostulacion} tipo
+ * @property {EstadoPostulacion} estado siempre "PENDIENTE" al crear
+ * @property {string} fechaPostulacion ISO-8601 del servidor
+ * @property {number} idProyecto
+ * @property {number} idRequerimiento idRequerimientoGral o
+ *           idRequerimientoActividad según `tipo`
+ * @property {boolean} tentativa true si la disponibilidad se evaluó de forma
+ *           provisional; siempre false en postulaciones generales
+ */
+
+/**
  * @typedef {Object} ImagenMoodboardResponse
  * @property {number} idImagen
  * @property {string} url ruta relativa, ej.
@@ -357,6 +379,63 @@ const proyectoService = {
    */
   obtener(idProyecto, signal) {
     return http.get(`/proyectos/${idProyecto}`, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/postulaciones/general — UC-26.
+   * Da de alta una postulación PENDIENTE a un requerimiento general. El
+   * backend resuelve el perfil activo desde la sesión: NO enviar idPerfil,
+   * idPerfilActivo, idUsuario, estado, tipo, tentativa ni idProyecto en el
+   * body (el proyecto va en la URL). El body debe tener exactamente
+   * `{ idRequerimientoGral }`.
+   *
+   * Errores:
+   * - 400 MethodArgumentNotValidException → falta idRequerimientoGral
+   * - 401 sesión/cuenta no válida
+   * - 404 PerfilActivoNoSeleccionadoException / PerfilNoEncontradoException /
+   *   requerimiento inexistente o de otro proyecto
+   * - 409 proyecto no Publicado, sin postulaciones generales, perfil miembro,
+   *   profesión distinta, cupo satisfecho, postulación duplicada o perfil inactivo
+   * @param {number|string} idProyecto
+   * @param {number} idRequerimientoGral
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: PostulacionResponse}>} 201 Created
+   */
+  postularARequerimientoGeneral(idProyecto, idRequerimientoGral, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/postulaciones/general`,
+      { idRequerimientoGral },
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/postulaciones/actividad — UC-26.
+   * Da de alta una postulación PENDIENTE a un requerimiento de actividad.
+   * Mismas reglas de sesión que la postulación general: el body debe tener
+   * exactamente `{ idRequerimientoActividad }`. La actividad debe pertenecer
+   * al proyecto del path y estar PENDIENTE; el backend verifica además
+   * profesión, cupo, duplicado y disponibilidad (con `tentativa` si el
+   * proyecto aún no tiene fecha de inicio confirmada).
+   *
+   * Errores:
+   * - 400 MethodArgumentNotValidException → falta idRequerimientoActividad
+   * - 401 sesión/cuenta no válida
+   * - 404 perfil activo, perfil, requerimiento inexistente o de otro proyecto
+   * - 409 proyecto no Publicado, perfil miembro, actividad no PENDIENTE,
+   *   profesión distinta, cupo satisfecho, postulación duplicada, sin
+   *   disponibilidad o perfil inactivo
+   * @param {number|string} idProyecto
+   * @param {number} idRequerimientoActividad
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: PostulacionResponse}>} 201 Created
+   */
+  postularARequerimientoActividad(idProyecto, idRequerimientoActividad, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/postulaciones/actividad`,
+      { idRequerimientoActividad },
+      { signal }
+    );
   },
 
   /**

@@ -5,6 +5,11 @@
       <span class="req-detalle__profesion">{{ requerimiento.nombreProfesion }}</span>
     </div>
 
+    <p v-if="requerimiento.satisfecho" class="req-detalle__satisfecho">
+      <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+      Con postulaciones aceptadas
+    </p>
+
     <template v-if="chipsCaracteristicas.length">
       <p class="req-detalle__label">Características técnicas</p>
       <div class="req-detalle__chips">
@@ -34,6 +39,10 @@
     <p v-if="requerimiento.descripcion" class="req-detalle__descripcion">
       {{ requerimiento.descripcion }}
     </p>
+
+    <div v-if="mostrarAccion" class="req-detalle__accion">
+      <slot name="accion" />
+    </div>
   </article>
 </template>
 
@@ -77,6 +86,11 @@ export default {
     catalogoCaracteristicas: {
       type: Array,
       default: null,
+    },
+    /** Reserva espacio para el slot `accion` (botón Postularme). */
+    mostrarAccion: {
+      type: Boolean,
+      default: false,
     },
   },
   computed: {
@@ -187,6 +201,25 @@ export default {
   color: var(--color-text);
 }
 
+.req-detalle__satisfecho {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--color-success-border);
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.req-detalle__satisfecho .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
 .req-detalle__label {
   margin: 0.25rem 0 0;
   font-size: 0.78rem;
@@ -214,5 +247,11 @@ export default {
   font-size: 0.85rem;
   line-height: 1.45;
   color: var(--color-text-muted);
+}
+
+.req-detalle__accion {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
 }
 </style>

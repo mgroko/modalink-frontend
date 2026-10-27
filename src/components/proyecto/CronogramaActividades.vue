@@ -8,7 +8,7 @@
         </span>
       </div>
       <p class="cronograma-actividades__nota">
-        Ruta crítica y holgura: próximamente (UC-33).
+        Las fechas proyectadas son orientativas hasta confirmar el proyecto.
       </p>
     </div>
 
@@ -39,9 +39,18 @@
         <span class="cronograma-actividades__nombre" :title="item.nombre">
           {{ item.indice }} · {{ item.nombre }}
         </span>
-        <div class="cronograma-actividades__pista">
+        <div
+          class="cronograma-actividades__pista"
+          :class="{
+            'cronograma-actividades__pista--conflicto': item.conflicto,
+          }"
+        >
           <div
             class="cronograma-actividades__barra"
+            :class="{
+              'cronograma-actividades__barra--proyectada': item.proyectada,
+              'cronograma-actividades__barra--critica': item.critica,
+            }"
             :style="estiloBarra(item)"
             :title="tituloBarra(item)"
           ></div>
@@ -72,8 +81,12 @@ export default {
     items() {
       return (this.actividades || [])
         .map((actividad, indice) => {
-          const inicio = parseFechaLocal(actividad?.fechaHoraInicio);
-          const fin = parseFechaLocal(actividad?.fechaHoraFin);
+          const inicio = parseFechaLocal(
+            actividad?.fechaHoraInicio || actividad?.inicioProyectado
+          );
+          const fin = parseFechaLocal(
+            actividad?.fechaHoraFin || actividad?.finProyectado
+          );
           if (!inicio || !fin) return null;
 
           const inicioMs = inicio.getTime();
@@ -87,6 +100,9 @@ export default {
             fin,
             inicioMs,
             finMs,
+            proyectada: !actividad?.fechaHoraInicio && !!actividad?.inicioProyectado,
+            critica: actividad?.critica === true,
+            conflicto: actividad?.conflicto === true,
           };
         })
         .filter(Boolean);
@@ -121,7 +137,12 @@ export default {
       };
     },
     tituloBarra(item) {
-      return `${item.nombre}: ${formatearFecha(item.inicio)} – ${formatearFecha(item.fin)}`;
+      const estado = item.conflicto
+        ? "conflicto"
+        : item.proyectada
+          ? "proyectada"
+          : "confirmada";
+      return `${item.nombre} (${estado}): ${formatearFecha(item.inicio)} – ${formatearFecha(item.fin)}`;
     },
   },
 };
@@ -134,6 +155,19 @@ export default {
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 1rem;
+}
+
+.cronograma-actividades__barra--proyectada {
+  opacity: 0.55;
+  background: var(--color-primary-light, var(--color-primary));
+}
+
+.cronograma-actividades__barra--critica {
+  box-shadow: inset 0 -3px 0 var(--color-danger-text);
+}
+
+.cronograma-actividades__pista--conflicto {
+  background: var(--color-danger-soft);
 }
 
 .cronograma-actividades__leyenda {

@@ -72,7 +72,13 @@
           </td>
 
           <td class="tabla-actividades__fechas">
-            {{ rangoFechas(actividad) }}
+            <span>{{ rangoFechas(actividad) }}</span>
+            <small
+              v-if="!actividad.fechaHoraInicio && actividad.inicioProyectado"
+              class="tabla-actividades__fecha-proyectada"
+            >
+              Proyectada
+            </small>
           </td>
 
           <td>
@@ -181,8 +187,12 @@ export default {
       );
     },
     rangoFechas(actividad) {
-      const inicio = formatearFechaCorta(actividad?.fechaHoraInicio);
-      const fin = formatearFechaCorta(actividad?.fechaHoraFin);
+      const inicio = formatearFechaCorta(
+        actividad?.fechaHoraInicio || actividad?.inicioProyectado
+      );
+      const fin = formatearFechaCorta(
+        actividad?.fechaHoraFin || actividad?.finProyectado
+      );
       if (inicio === "—" && fin === "—") return "—";
       return `${inicio} – ${fin}`;
     },

@@ -67,6 +67,11 @@ export default {
       type: Boolean,
       default: true,
     },
+    /** Pestaña pública de actividades para postularse (no miembros). */
+    mostrarActividades: {
+      type: Boolean,
+      default: false,
+    },
     /** Texto opcional; si no llega, se compone con rol, privacidad, ubicación y entrega. */
     subtitulo: {
       type: String,
@@ -79,6 +84,9 @@ export default {
       const tabs = [{ id: "informacion", label: "Información general" }];
       if (this.mostrarPlanificacion) {
         tabs.push({ id: "planificacion", label: "Planificación" });
+      }
+      if (this.mostrarActividades) {
+        tabs.push({ id: "actividades", label: "Actividades" });
       }
       return tabs;
     },

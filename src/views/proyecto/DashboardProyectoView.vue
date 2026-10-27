@@ -34,6 +34,7 @@
           :proyecto="proyecto"
           :tab-activa="tabActiva"
           :mostrar-planificacion="esMiembro"
+          :mostrar-actividades="puedePostularActividad"
           @cambiar-tab="cambiarTab"
         >
           <template #acciones>
@@ -55,14 +56,6 @@
               @click="abrirPublicacion"
             >
               Publicar
-            </VaButton>
-            <VaButton
-              v-if="puedePostularse"
-              preset="primary"
-              disabled
-              title="Próximamente..."
-            >
-              Próximamente...
             </VaButton>
           </template>
         </ProyectoEncabezado>
@@ -157,7 +150,45 @@
                 :requerimiento="requerimiento"
                 :habilidades="habilidades"
                 :catalogo-caracteristicas="catalogosCaracteristicas[requerimiento.idProfesion] || null"
-              />
+                :mostrar-accion="puedePostularGeneral"
+              >
+                <template #accion>
+                  <VaButton
+                    preset="primary"
+                    size="small"
+                    :disabled="
+                      estaPostulado(
+                        TIPOS_POSTULACION.GENERAL,
+                        requerimiento.idRequerimientoGral
+                      ) || enviandoPostulacion
+                    "
+                    :loading="
+                      estaEnviando(
+                        TIPOS_POSTULACION.GENERAL,
+                        requerimiento.idRequerimientoGral
+                      )
+                    "
+                    :aria-busy="
+                      estaEnviando(
+                        TIPOS_POSTULACION.GENERAL,
+                        requerimiento.idRequerimientoGral
+                      )
+                        ? 'true'
+                        : 'false'
+                    "
+                    @click="abrirPostulacionGeneral(requerimiento)"
+                  >
+                    {{
+                      estaPostulado(
+                        TIPOS_POSTULACION.GENERAL,
+                        requerimiento.idRequerimientoGral
+                      )
+                        ? "Postulación enviada"
+                        : "Postularme"
+                    }}
+                  </VaButton>
+                </template>
+              </RequerimientoDetalle>
             </div>
             <p v-else class="dashboard-proyecto__vacio">
               Este proyecto no tiene personal requerido cargado.
@@ -214,6 +245,16 @@
           @eliminar-actividad="abrirModalEliminarActividad"
         />
 
+        <ActividadesPostulables
+          v-else-if="tabActiva === 'actividades' && puedePostularActividad"
+          ref="actividadesPostulables"
+          :id-proyecto="idProyecto"
+          :postulaciones-enviadas="postulacionesEnviadas"
+          :enviando-clave="claveEnviando"
+          :puede-postular="!esMiembro"
+          @postular="abrirPostulacionActividad"
+        />
+
         <ModalEliminarActividad
           :model-value="modalEliminarActividadVisible"
           :actividad="actividadEliminar"
@@ -247,6 +288,20 @@
           @update:modelValue="modalCancelarVisible = $event"
           @confirmar="confirmarCancelacion"
         />
+
+        <ModalPostulacion
+          :model-value="modalPostulacion.visible"
+          :tipo="modalPostulacion.tipo"
+          :nombre-proyecto="proyecto.nombre"
+          :requerimiento="modalPostulacion.requerimiento"
+          :actividad="modalPostulacion.actividad"
+          :enviando="enviandoPostulacion"
+          :error="errorPostulacion"
+          :sugerir-calendario="errorPostulacionEsDisponibilidad"
+          @update:model-value="modalPostulacion.visible = $event"
+          @confirmar="confirmarPostulacion"
+          @revisar-calendario="irACalendario"
+        />
       </template>
     </template>
   </div>
@@ -260,18 +315,31 @@ import { refrescarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
+import ActividadesPostulables from "../../components/proyecto/ActividadesPostulables.vue";
 import RequerimientoDetalle from "../../components/proyecto/RequerimientoDetalle.vue";
 import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
 import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
+import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import actividadService from "../../services/actividadService.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import {
+  AVISO_DISPONIBILIDAD_PROVISORIA,
+  TIPOS_POSTULACION,
+  clavePostulacion,
+  esErrorDisponibilidad,
+  esErrorPostulacionDuplicada,
+  mensajeExitoPostulacion,
+  puedePostularActividad as esActividadPostulable,
+  puedePostularGeneral as esElegibleParaPostularGeneral,
+  proyectoAdmitePostulacionesActividad,
+} from "../../utils/postulacionConstants.js";
 import {
   ETIQUETAS_PRIVACIDAD,
   ESTADOS_PROYECTO,
@@ -286,6 +354,7 @@ let controladorCarga = null;
 let controladorPublicacion = null;
 let controladorCancelacion = null;
 let controladorEliminacion = null;
+let controladorPostulacion = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -293,12 +362,14 @@ export default {
     BaseAlert,
     ProyectoEncabezado,
     PlanificacionProyecto,
+    ActividadesPostulables,
     RequerimientoDetalle,
     CollageMoodboard,
     ModalGaleriaMoodboard,
     ModalPublicarProyecto,
     ModalCancelarProyecto,
     ModalEliminarActividad,
+    ModalPostulacion,
   },
   setup() {
     return { toast: useToast() };
@@ -307,6 +378,7 @@ data() {
     return {
       ETIQUETAS_PRIVACIDAD,
       MOODBOARD_IMAGENES,
+      TIPOS_POSTULACION,
       proyecto: null,
       cargando: true,
       mensajeError: "",
@@ -322,6 +394,17 @@ data() {
       modalCancelarVisible: false,
       cancelando: false,
       errorCancelacion: "",
+      modalPostulacion: {
+        visible: false,
+        tipo: TIPOS_POSTULACION.GENERAL,
+        requerimiento: null,
+        actividad: null,
+      },
+      enviandoPostulacion: false,
+      claveEnviando: "",
+      errorPostulacion: "",
+      errorPostulacionEsDisponibilidad: false,
+      postulacionesEnviadas: {},
       idCarga: 0,
       tabActiva: "informacion",
       idActividadResaltada: null,
@@ -383,12 +466,13 @@ data() {
         ? `Proyecto cancelado. Motivo: ${motivo}`
         : "Proyecto cancelado. Sin motivo registrado.";
     },
-    puedePostularse() {
-      return (
-        !this.esMiembro &&
-        !!this.proyecto?.aceptaPostulacionGral &&
-        !!this.proyecto?.elegibleParaPostularse
-      );
+    /** UC-26: la ficha declara `elegibleParaPostularse` como fuente de verdad. */
+    puedePostularGeneral() {
+      return esElegibleParaPostularGeneral(this.proyecto);
+    },
+    /** UC-26: pestaña pública de actividades para no miembros. */
+    puedePostularActividad() {
+      return proyectoAdmitePostulacionesActividad(this.proyecto);
     },
     ubicacionTexto() {
       const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
@@ -410,6 +494,21 @@ data() {
     idProyecto(nuevo, anterior) {
       if (nuevo === anterior) return;
       this.proyecto = null;
+      this.postulacionesEnviadas = {};
+      this.modalPostulacion = {
+        visible: false,
+        tipo: TIPOS_POSTULACION.GENERAL,
+        requerimiento: null,
+        actividad: null,
+      };
+      this.enviandoPostulacion = false;
+      this.claveEnviando = "";
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+      if (controladorPostulacion) {
+        controladorPostulacion.abort();
+        controladorPostulacion = null;
+      }
       this.cargar();
     },
     "$route.query.tab"() {
@@ -424,9 +523,24 @@ data() {
     esMiembro(valor) {
       if (!valor) {
         if (this.tabActiva === "planificacion") this.tabActiva = "informacion";
+        this.aplicarTabDesdeQuery();
         return;
       }
       this.aplicarTabDesdeQuery();
+    },
+    puedePostularActividad(valor) {
+      if (valor) {
+        this.aplicarTabDesdeQuery();
+        return;
+      }
+      if (this.tabActiva !== "actividades") return;
+
+      this.tabActiva = "informacion";
+      const query = { ...this.$route.query };
+      if (query.tab === "actividades") {
+        delete query.tab;
+        this.reemplazarQuery(query);
+      }
     },
   },
   created() {
@@ -592,9 +706,15 @@ data() {
       this.cargar();
     },
     aplicarTabDesdeQuery() {
-      const tab =
-        this.$route.query.tab === "planificacion" ? "planificacion" : "informacion";
+      const solicitada = this.$route.query.tab;
+      const permitidas = ["informacion", "planificacion", "actividades"];
+      const tab = permitidas.includes(solicitada) ? solicitada : "informacion";
+
       if (tab === "planificacion" && !this.esMiembro) {
+        this.tabActiva = "informacion";
+        return;
+      }
+      if (tab === "actividades" && !this.puedePostularActividad) {
         this.tabActiva = "informacion";
         return;
       }
@@ -618,6 +738,7 @@ data() {
     },
     cambiarTab(tab) {
       if (tab === "planificacion" && !this.esMiembro) return;
+      if (tab === "actividades" && !this.puedePostularActividad) return;
       if (this.tabActiva === tab) return;
 
       this.tabActiva = tab;
@@ -869,6 +990,247 @@ data() {
         "No se pudo cancelar el proyecto."
       );
     },
+    /** UC-26: abre la confirmación de postulación a un requerimiento general. */
+    abrirPostulacionGeneral(requerimiento) {
+      if (!this.puedePostularGeneral || !requerimiento?.idRequerimientoGral) {
+        return;
+      }
+
+      const clave = clavePostulacion(
+        TIPOS_POSTULACION.GENERAL,
+        requerimiento.idRequerimientoGral
+      );
+      if (this.postulacionesEnviadas[clave]) return;
+
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+      this.modalPostulacion = {
+        visible: true,
+        tipo: TIPOS_POSTULACION.GENERAL,
+        requerimiento,
+        actividad: null,
+      };
+    },
+    /** UC-26: abre la confirmación de postulación a un requerimiento de actividad. */
+    abrirPostulacionActividad({ actividad, requerimiento } = {}) {
+      if (!esActividadPostulable(this.proyecto, actividad)) return;
+      if (!requerimiento?.idRequerimiento) return;
+
+      const clave = clavePostulacion(
+        TIPOS_POSTULACION.ACTIVIDAD,
+        requerimiento.idRequerimiento
+      );
+      if (this.postulacionesEnviadas[clave]) return;
+
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+      this.modalPostulacion = {
+        visible: true,
+        tipo: TIPOS_POSTULACION.ACTIVIDAD,
+        requerimiento,
+        actividad,
+      };
+    },
+    estaPostulado(tipo, idRequerimiento) {
+      const clave = clavePostulacion(tipo, idRequerimiento);
+      return !!clave && !!this.postulacionesEnviadas[clave];
+    },
+    estaEnviando(tipo, idRequerimiento) {
+      const clave = clavePostulacion(tipo, idRequerimiento);
+      return !!clave && this.claveEnviando === clave;
+    },
+    registrarPostulacionEnviada(tipo, idRequerimiento) {
+      const clave = clavePostulacion(tipo, idRequerimiento);
+      if (!clave) return;
+      this.postulacionesEnviadas = {
+        ...this.postulacionesEnviadas,
+        [clave]: true,
+      };
+    },
+    /** UC-26: confirma la postulación del modal activo. */
+    async confirmarPostulacion() {
+      if (this.enviandoPostulacion) return;
+
+      const { tipo, requerimiento, actividad } = this.modalPostulacion || {};
+      if (!requerimiento) return;
+
+      const idRequerimiento =
+        tipo === TIPOS_POSTULACION.GENERAL
+          ? requerimiento.idRequerimientoGral
+          : requerimiento.idRequerimiento;
+      if (idRequerimiento == null) return;
+
+      this.enviandoPostulacion = true;
+      this.claveEnviando = clavePostulacion(tipo, idRequerimiento);
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+
+      if (controladorPostulacion) controladorPostulacion.abort();
+      controladorPostulacion = new AbortController();
+
+      try {
+        const response =
+          tipo === TIPOS_POSTULACION.GENERAL
+            ? await proyectoService.postularARequerimientoGeneral(
+                this.idProyecto,
+                idRequerimiento,
+                controladorPostulacion.signal
+              )
+            : await proyectoService.postularARequerimientoActividad(
+                this.idProyecto,
+                idRequerimiento,
+                controladorPostulacion.signal
+              );
+
+        const data = response?.data || {};
+        this.registrarPostulacionEnviada(tipo, idRequerimiento);
+        this.modalPostulacion.visible = false;
+
+        this.toast.init({
+          title: "Postulación enviada",
+          message: mensajeExitoPostulacion(tipo, actividad?.nombre),
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        if (data.tentativa === true) {
+          this.toast.init({
+            title: "Disponibilidad provisoria",
+            message: AVISO_DISPONIBILIDAD_PROVISORIA,
+            color: "primary",
+            position: "top-right",
+            duration: 8000,
+          });
+        }
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorPostulacion(error);
+      } finally {
+        this.enviandoPostulacion = false;
+        this.claveEnviando = "";
+      }
+    },
+    async manejarErrorPostulacion(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+      const clasificacion = clasificarErrorProyecto(error);
+
+      // 400: error de integración (el botón siempre envía un ID).
+      if (status === 400) {
+        console.error("Error de integración al enviar una postulación:", error);
+        this.errorPostulacion =
+          mensaje ||
+          "No se pudo enviar la postulación. Revisá los datos e intentá nuevamente.";
+        return;
+      }
+
+      // 401: el proyecto mantiene el comportamiento actual (cuenta no activa).
+      if (status === 401) {
+        this.modalPostulacion.visible = false;
+        this.toast.init({
+          title: "No se pudo postular",
+          message: mensajeErrorApi(error, "Tu cuenta no se encuentra activa."),
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        return;
+      }
+
+      if (status === 404) {
+        if (clasificacion?.tipo === "perfil-activo") {
+          this.modalPostulacion.visible = false;
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (clasificacion?.tipo === "perfil-no-encontrado") {
+          this.modalPostulacion.visible = false;
+          await refrescarSesion();
+          this.mensajeError =
+            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        // Requerimiento inexistente o de otro proyecto: refrescar sin reintentar.
+        this.modalPostulacion.visible = false;
+        this.toast.init({
+          title: "No se pudo postular",
+          message: mensaje || "El requerimiento ya no está disponible.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        this.refrescarActividades();
+        return;
+      }
+
+      if (status === 409) {
+        // Sin disponibilidad: el modal queda abierto para leer el mensaje.
+        if (esErrorDisponibilidad(error)) {
+          this.errorPostulacion = mensaje;
+          this.errorPostulacionEsDisponibilidad = true;
+          this.refrescarActividades();
+          return;
+        }
+
+        if (esErrorPostulacionDuplicada(error)) {
+          const { tipo, requerimiento } = this.modalPostulacion || {};
+          const idRequerimiento =
+            tipo === TIPOS_POSTULACION.GENERAL
+              ? requerimiento?.idRequerimientoGral
+              : requerimiento?.idRequerimiento;
+          if (idRequerimiento != null) {
+            this.registrarPostulacionEnviada(tipo, idRequerimiento);
+          }
+        }
+
+        this.modalPostulacion.visible = false;
+        const esPerfilInactivo =
+          /perfil/i.test(mensaje) && /inactiv/i.test(mensaje);
+        this.toast.init({
+          title: esPerfilInactivo ? "Perfil inactivo" : "No se pudo postular",
+          message: mensaje || "La postulación no se pudo completar.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+
+        if (esPerfilInactivo) {
+          await refrescarSesion();
+        }
+
+        await this.cargar();
+        this.refrescarActividades();
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorPostulacion =
+          "Ocurrió un error al enviar la postulación. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorPostulacion = mensajeErrorApi(
+        error,
+        "No se pudo enviar la postulación."
+      );
+    },
+    refrescarActividades() {
+      const componente = this.$refs.actividadesPostulables;
+      if (componente?.refrescar) componente.refrescar();
+    },
+    irACalendario() {
+      this.modalPostulacion.visible = false;
+      this.$router.push({ name: "calendario" });
+    },
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
     },
@@ -1012,6 +1374,7 @@ data() {
     if (controladorPublicacion) controladorPublicacion.abort();
     if (controladorCancelacion) controladorCancelacion.abort();
     if (controladorEliminacion) controladorEliminacion.abort();
+    if (controladorPostulacion) controladorPostulacion.abort();
   },
 };
 </script>

@@ -137,7 +137,7 @@
     >
       <h2 class="planificacion-proyecto__titulo">Cronograma</h2>
       <p class="planificacion-proyecto__subtitulo">
-        Vista general de las actividades ordenadas por fecha de inicio.
+        Vista general de las actividades con fechas confirmadas o proyectadas.
       </p>
 
       <CronogramaActividades :actividades="actividades" />
