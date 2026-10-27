@@ -84,6 +84,10 @@ import http from "./http";
  * @property {string} nombreProfesion
  * @property {CaracteristicaActividadResponse[]} [caracteristicas]
  * @property {number[]} [habilidades]
+ * @property {number} [cubiertos] pendiente backend: miembros/asignaciones
+ *           activas vinculadas al requerimiento
+ * @property {number} [faltantes] pendiente backend: max(0, cantidad - cubiertos)
+ * @property {boolean} [satisfecho] pendiente backend: cubiertos >= cantidad
  */
 
 /**
@@ -134,7 +138,7 @@ import http from "./http";
  * @property {string|null} fechaHoraFin ISO local derivado
  * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
- * @property {{idRequerimiento:number,cantidad:number,descripcion:string|null,idProfesion:number,nombreProfesion:string}[]} requerimientos
+ * @property {{idRequerimiento:number,cantidad:number,descripcion:string|null,idProfesion:number,nombreProfesion:string,cubiertos?:number,faltantes?:number,satisfecho?:boolean}[]} requerimientos
  * @property {{idActividad:number,nombre:string}[]} predecesoras
  */
 

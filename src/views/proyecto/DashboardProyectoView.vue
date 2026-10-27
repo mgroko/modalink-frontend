@@ -150,7 +150,8 @@
                 :requerimiento="requerimiento"
                 :habilidades="habilidades"
                 :catalogo-caracteristicas="catalogosCaracteristicas[requerimiento.idProfesion] || null"
-                :mostrar-accion="puedePostularGeneral"
+                :mostrar-accion="puedePostularGeneralDe(requerimiento)"
+                :sin-cupo="estaSinCupoGeneral(requerimiento)"
               >
                 <template #accion>
                   <VaButton
@@ -250,8 +251,9 @@
           ref="actividadesPostulables"
           :id-proyecto="idProyecto"
           :postulaciones-enviadas="postulacionesEnviadas"
+          :requerimientos-sin-cupo="requerimientosSinCupo"
           :enviando-clave="claveEnviando"
-          :puede-postular="!esMiembro"
+          :puede-postular="puedePostularActividad"
           @postular="abrirPostulacionActividad"
         />
 
@@ -333,6 +335,7 @@ import {
   AVISO_DISPONIBILIDAD_PROVISORIA,
   TIPOS_POSTULACION,
   clavePostulacion,
+  esErrorCupoCompleto,
   esErrorDisponibilidad,
   esErrorPostulacionDuplicada,
   mensajeExitoPostulacion,
@@ -405,6 +408,8 @@ data() {
       errorPostulacion: "",
       errorPostulacionEsDisponibilidad: false,
       postulacionesEnviadas: {},
+      /** Requerimientos marcados sin cupo tras un 409 de cupo completo. */
+      requerimientosSinCupo: {},
       idCarga: 0,
       tabActiva: "informacion",
       idActividadResaltada: null,
@@ -466,11 +471,7 @@ data() {
         ? `Proyecto cancelado. Motivo: ${motivo}`
         : "Proyecto cancelado. Sin motivo registrado.";
     },
-    /** UC-26: la ficha declara `elegibleParaPostularse` como fuente de verdad. */
-    puedePostularGeneral() {
-      return esElegibleParaPostularGeneral(this.proyecto);
-    },
-    /** UC-26: pestaña pública de actividades para no miembros. */
+    /** UC-26: pestaña de actividades para no miembros y miembros MIEMBRO. */
     puedePostularActividad() {
       return proyectoAdmitePostulacionesActividad(this.proyecto);
     },
@@ -495,6 +496,7 @@ data() {
       if (nuevo === anterior) return;
       this.proyecto = null;
       this.postulacionesEnviadas = {};
+      this.requerimientosSinCupo = {};
       this.modalPostulacion = {
         visible: false,
         tipo: TIPOS_POSTULACION.GENERAL,
@@ -992,9 +994,7 @@ data() {
     },
     /** UC-26: abre la confirmación de postulación a un requerimiento general. */
     abrirPostulacionGeneral(requerimiento) {
-      if (!this.puedePostularGeneral || !requerimiento?.idRequerimientoGral) {
-        return;
-      }
+      if (!this.puedePostularGeneralDe(requerimiento)) return;
 
       const clave = clavePostulacion(
         TIPOS_POSTULACION.GENERAL,
@@ -1013,8 +1013,16 @@ data() {
     },
     /** UC-26: abre la confirmación de postulación a un requerimiento de actividad. */
     abrirPostulacionActividad({ actividad, requerimiento } = {}) {
-      if (!esActividadPostulable(this.proyecto, actividad)) return;
+      if (!esActividadPostulable(this.proyecto, actividad, requerimiento)) return;
       if (!requerimiento?.idRequerimiento) return;
+      if (
+        this.estaSinCupo(
+          TIPOS_POSTULACION.ACTIVIDAD,
+          requerimiento.idRequerimiento
+        )
+      ) {
+        return;
+      }
 
       const clave = clavePostulacion(
         TIPOS_POSTULACION.ACTIVIDAD,
@@ -1031,6 +1039,22 @@ data() {
         actividad,
       };
     },
+    puedePostularGeneralDe(requerimiento) {
+      const id = requerimiento?.idRequerimientoGral;
+      if (id == null) return false;
+      if (this.estaSinCupo(TIPOS_POSTULACION.GENERAL, id)) return false;
+      return esElegibleParaPostularGeneral(this.proyecto, requerimiento);
+    },
+    estaSinCupoGeneral(requerimiento) {
+      return this.estaSinCupo(
+        TIPOS_POSTULACION.GENERAL,
+        requerimiento?.idRequerimientoGral
+      );
+    },
+    estaSinCupo(tipo, idRequerimiento) {
+      const clave = clavePostulacion(tipo, idRequerimiento);
+      return !!clave && !!this.requerimientosSinCupo[clave];
+    },
     estaPostulado(tipo, idRequerimiento) {
       const clave = clavePostulacion(tipo, idRequerimiento);
       return !!clave && !!this.postulacionesEnviadas[clave];
@@ -1044,6 +1068,19 @@ data() {
       if (!clave) return;
       this.postulacionesEnviadas = {
         ...this.postulacionesEnviadas,
+        [clave]: true,
+      };
+    },
+    /**
+     * Oculta la acción cuando el backend respondió cupo completo aunque la
+     * respuesta recargada todavía no traiga `satisfecho` (actividades).
+     * La marca dura la sesión de la vista y se limpia al cambiar de proyecto.
+     */
+    registrarSinCupo(tipo, idRequerimiento) {
+      const clave = clavePostulacion(tipo, idRequerimiento);
+      if (!clave) return;
+      this.requerimientosSinCupo = {
+        ...this.requerimientosSinCupo,
         [clave]: true,
       };
     },
@@ -1189,6 +1226,17 @@ data() {
               : requerimiento?.idRequerimiento;
           if (idRequerimiento != null) {
             this.registrarPostulacionEnviada(tipo, idRequerimiento);
+          }
+        }
+
+        if (esErrorCupoCompleto(error)) {
+          const { tipo, requerimiento } = this.modalPostulacion || {};
+          const idRequerimiento =
+            tipo === TIPOS_POSTULACION.GENERAL
+              ? requerimiento?.idRequerimientoGral
+              : requerimiento?.idRequerimiento;
+          if (idRequerimiento != null) {
+            this.registrarSinCupo(tipo, idRequerimiento);
           }
         }
 

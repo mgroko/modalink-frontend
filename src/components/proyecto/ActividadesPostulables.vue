@@ -4,8 +4,8 @@
       <div>
         <h2 class="actividades-postulables__titulo">Actividades abiertas</h2>
         <p class="actividades-postulables__subtitulo">
-          Postulate a los requerimientos de las actividades pendientes del
-          proyecto.
+          Postulate a los requerimientos con cupo disponible de las actividades
+          pendientes del proyecto.
         </p>
       </div>
     </header>
@@ -25,7 +25,7 @@
       v-else-if="!error && !actividadesConRequerimientos.length"
       class="actividades-postulables__vacio"
     >
-      No hay actividades pendientes con requerimientos para postularse.
+      No hay actividades pendientes con cupo disponible para postularse.
     </p>
 
     <div v-else-if="!error" class="actividades-postulables__lista">
@@ -84,7 +84,7 @@
             </div>
 
             <VaButton
-              v-if="puedePostular"
+              v-if="puedePostular && tieneCupo(requerimiento)"
               preset="primary"
               size="small"
               :disabled="estaDeshabilitado(requerimiento)"
@@ -94,6 +94,16 @@
             >
               {{ estaPostulado(requerimiento) ? "Postulación enviada" : "Postularme" }}
             </VaButton>
+
+            <span
+              v-else-if="puedePostular"
+              class="requerimiento-postulable__sin-cupo"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">
+                event_busy
+              </span>
+              Cupo completo
+            </span>
           </div>
         </div>
       </article>
@@ -103,10 +113,12 @@
 
 <script>
 /*
- * Listado público de actividades PENDIENTE para postularse (UC-26, ficha §8.1).
- * Se muestra sólo a perfiles no miembros con proyecto Publicado. La carga y
- * el refresco viven acá; la request de postulación la resuelve el dashboard,
- * que abre el modal de confirmación.
+ * Listado de actividades PENDIENTE para postularse (UC-26, ficha §8.1).
+ * Se muestra a perfiles no directores (no miembros o miembros `MIEMBRO`) con
+ * proyecto Publicado o Confirmado. La carga y el refresco viven acá; la
+ * request de postulación la resuelve el dashboard, que abre el modal de
+ * confirmación. El cupo se lee de `satisfecho`/`faltantes` cuando el backend
+ * los expone; si no, el 409 del dashboard marca el requerimiento sin cupo.
  */
 import actividadService from "../../services/actividadService.js";
 import { refrescarSesion } from "../../services/authState";
@@ -123,6 +135,7 @@ import { formatearFecha } from "../../utils/fechas.js";
 import {
   TIPOS_POSTULACION,
   clavePostulacion,
+  hayCupo,
 } from "../../utils/postulacionConstants.js";
 
 export default {
@@ -135,6 +148,11 @@ export default {
     },
     /** Mapa de claves ya postuladas en esta sesión de la vista. */
     postulacionesEnviadas: {
+      type: Object,
+      default: () => ({}),
+    },
+    /** Requerimientos marcados sin cupo tras un 409 de cupo completo. */
+    requerimientosSinCupo: {
       type: Object,
       default: () => ({}),
     },
@@ -163,7 +181,9 @@ export default {
       return (this.actividades || []).filter(
         (actividad) =>
           Array.isArray(actividad?.requerimientos) &&
-          actividad.requerimientos.length > 0
+          actividad.requerimientos.some((requerimiento) =>
+            this.tieneCupo(requerimiento)
+          )
       );
     },
   },
@@ -281,6 +301,14 @@ export default {
         requerimiento?.idRequerimiento
       );
     },
+    estaSinCupo(requerimiento) {
+      const clave = this.claveDe(requerimiento);
+      return !!clave && !!this.requerimientosSinCupo?.[clave];
+    },
+    /** Cupo del backend (si viene) y marca local tras un 409 de cupo completo. */
+    tieneCupo(requerimiento) {
+      return hayCupo(requerimiento) && !this.estaSinCupo(requerimiento);
+    },
     estaPostulado(requerimiento) {
       const clave = this.claveDe(requerimiento);
       return !!clave && !!this.postulacionesEnviadas?.[clave];
@@ -297,7 +325,9 @@ export default {
       );
     },
     postular(actividad, requerimiento) {
-      if (this.estaDeshabilitado(requerimiento)) return;
+      if (this.estaDeshabilitado(requerimiento) || !this.tieneCupo(requerimiento)) {
+        return;
+      }
       this.$emit("postular", { actividad, requerimiento });
     },
   },
@@ -471,6 +501,24 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.8rem;
   line-height: 1.4;
+}
+
+.requerimiento-postulable__sin-cupo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.requerimiento-postulable__sin-cupo .material-symbols-outlined {
+  font-size: 0.95rem;
 }
 
 @keyframes girar {

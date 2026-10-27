@@ -3,7 +3,7 @@
     <div class="requerimiento__encabezado">
       <div class="requerimiento__encabezado-titulos">
         <span class="requerimiento__titulo">Requerimiento {{ indice + 1 }}</span>
-        <span v-if="soloLectura" class="requerimiento__badge-satisfecho">Satisfecho</span>
+        <span v-if="soloLectura" class="requerimiento__badge-satisfecho">Cupo completo</span>
       </div>
       <VaButton
         v-if="!soloLectura && mostrarEliminar"
@@ -20,7 +20,7 @@
     </div>
 
     <p v-if="soloLectura" class="requerimiento__hint">
-      Ya tiene postulaciones aceptadas: no se puede editar ni eliminar.
+      Tiene miembros activos: no se puede editar ni eliminar.
     </p>
 
     <div class="requerimiento__fila">
@@ -204,7 +204,7 @@ export default {
       type: Boolean,
       default: true,
     },
-    /** Requerimiento satisfecho (UC-36 §7): sólo lectura y badge "Satisfecho". */
+    /** Requerimiento con cupo completo (UC-36 §7): sólo lectura y badge. */
     soloLectura: {
       type: Boolean,
       default: false,

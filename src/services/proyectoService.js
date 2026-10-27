@@ -139,9 +139,13 @@ import http from "./http";
  * @property {string} nombreProfesion
  * @property {CaracteristicaRequerimientoResponse[]} caracteristicas
  * @property {number[]} habilidades
- * @property {boolean} satisfecho true si tiene al menos una postulación
- *           ACEPTADA: no se puede editar/eliminar desde el front y se excluye
- *           del payload de modificación (ficha UC-36 §7)
+ * @property {number} cubiertos miembros/asignaciones ACTIVAS vinculadas al
+ *           requerimiento; el front no lo deriva
+ * @property {number} faltantes max(0, cantidad - cubiertos)
+ * @property {boolean} satisfecho cupo completo (`cubiertos >= cantidad`), no
+ *           "al menos una postulación ACEPTADA" (ficha UC-26 §11). Con cupo
+ *           completo no se puede editar/eliminar desde UC-36 y se excluye del
+ *           payload de modificación (ficha UC-36 §7)
  */
 
 /**
@@ -215,9 +219,12 @@ import http from "./http";
  * @property {string[]} [permisos] permisos del rol en este proyecto, ordenados
  *           alfabéticamente; vacío si no es miembro; sólo en
  *           GET /proyectos/{idProyecto}
- * @property {boolean} [elegibleParaPostularse] true sólo si no es miembro,
- *           acepta postulaciones y la profesión del perfil coincide con algún
- *           requerimiento; sólo en GET /proyectos/{idProyecto}
+ * @property {boolean} [elegibleParaPostularse] true sólo si el proyecto está
+ *           Publicado o Confirmado, el perfil no es miembro activo, el
+ *           proyecto acepta postulaciones generales y la profesión del perfil
+ *           activo coincide con algún requerimiento general. NO evalúa cupo
+ *           (para eso usar `satisfecho`/`faltantes`); sólo en
+ *           GET /proyectos/{idProyecto}
  * @property {string|null} [motivoCancelacion] UC-35: motivo ingresado al
  *           cancelar; null si el proyecto no está cancelado. Presente en
  *           GET /proyectos/{idProyecto}, POST /proyectos, POST
@@ -394,8 +401,9 @@ const proyectoService = {
    * - 401 sesión/cuenta no válida
    * - 404 PerfilActivoNoSeleccionadoException / PerfilNoEncontradoException /
    *   requerimiento inexistente o de otro proyecto
-   * - 409 proyecto no Publicado, sin postulaciones generales, perfil miembro,
-   *   profesión distinta, cupo satisfecho, postulación duplicada o perfil inactivo
+   * - 409 proyecto no Publicado/Confirmado, sin postulaciones generales,
+   *   perfil miembro, profesión distinta, cupo completo, postulación duplicada
+   *   o perfil inactivo
    * @param {number|string} idProyecto
    * @param {number} idRequerimientoGral
    * @param {AbortSignal} [signal] cancela la request en vuelo
@@ -422,8 +430,8 @@ const proyectoService = {
    * - 400 MethodArgumentNotValidException → falta idRequerimientoActividad
    * - 401 sesión/cuenta no válida
    * - 404 perfil activo, perfil, requerimiento inexistente o de otro proyecto
-   * - 409 proyecto no Publicado, perfil miembro, actividad no PENDIENTE,
-   *   profesión distinta, cupo satisfecho, postulación duplicada, sin
+   * - 409 proyecto no Publicado/Confirmado, director, actividad no PENDIENTE,
+   *   profesión distinta, cupo completo, postulación duplicada, sin
    *   disponibilidad o perfil inactivo
    * @param {number|string} idProyecto
    * @param {number} idRequerimientoActividad

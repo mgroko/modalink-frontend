@@ -3,11 +3,12 @@
     <div class="req-detalle__cabecera">
       <span class="req-detalle__cantidad">{{ requerimiento.cantidad }}</span>
       <span class="req-detalle__profesion">{{ requerimiento.nombreProfesion }}</span>
+      <span v-if="textoCupo" class="req-detalle__cupo">{{ textoCupo }}</span>
     </div>
 
-    <p v-if="requerimiento.satisfecho" class="req-detalle__satisfecho">
+    <p v-if="cupoCompleto" class="req-detalle__satisfecho">
       <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
-      Con postulaciones aceptadas
+      Cupo completo
     </p>
 
     <template v-if="chipsCaracteristicas.length">
@@ -57,6 +58,7 @@ import {
   normCodigo,
   simboloUnidad,
 } from "../../utils/perfilConstants.js";
+import { textoCupo as textoCupoRequerimiento } from "../../utils/postulacionConstants.js";
 
 /*
  * Requerimiento general en modo lectura (ficha ver-proyecto §5.4): hoy sólo
@@ -92,8 +94,19 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Marca local de cupo completo tras un 409 (la respuesta puede no traerlo). */
+    sinCupo: {
+      type: Boolean,
+      default: false,
+    },
   },
   computed: {
+    cupoCompleto() {
+      return this.sinCupo || this.requerimiento?.satisfecho === true;
+    },
+    textoCupo() {
+      return textoCupoRequerimiento(this.requerimiento);
+    },
     chipsCaracteristicas() {
       const chips = [];
       for (const carac of this.requerimiento?.caracteristicas || []) {
@@ -199,6 +212,17 @@ export default {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.req-detalle__cupo {
+  margin-left: auto;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .req-detalle__satisfecho {
