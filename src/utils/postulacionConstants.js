@@ -26,10 +26,45 @@ export const TIPOS_POSTULACION = {
   ACTIVIDAD: "ACTIVIDAD",
 };
 
+/** Acciones de UC-34 sobre una postulación. */
+export const ACCIONES_GESTION = {
+  ACEPTAR: "ACEPTAR",
+  RECHAZAR: "RECHAZAR",
+};
+
 export const ESTADOS_POSTULACION = {
   PENDIENTE: "PENDIENTE",
   ACEPTADA: "ACEPTADA",
   RECHAZADA: "RECHAZADA",
+};
+
+export const ETIQUETAS_ESTADO_POSTULACION = {
+  [ESTADOS_POSTULACION.PENDIENTE]: "Pendiente",
+  [ESTADOS_POSTULACION.ACEPTADA]: "Aceptada",
+  [ESTADOS_POSTULACION.RECHAZADA]: "Rechazada",
+};
+
+export const COLORES_ESTADO_POSTULACION = {
+  [ESTADOS_POSTULACION.PENDIENTE]: {
+    fondo: "var(--color-warning-soft)",
+    texto: "var(--color-warning-text)",
+    borde: "var(--color-warning-border)",
+  },
+  [ESTADOS_POSTULACION.ACEPTADA]: {
+    fondo: "var(--color-success-soft)",
+    texto: "var(--color-success-text)",
+    borde: "var(--color-success-border)",
+  },
+  [ESTADOS_POSTULACION.RECHAZADA]: {
+    fondo: "var(--color-danger-soft)",
+    texto: "var(--color-danger-text)",
+    borde: "var(--color-danger-border)",
+  },
+};
+
+export const ETIQUETAS_TIPO_POSTULACION = {
+  [TIPOS_POSTULACION.GENERAL]: "General",
+  [TIPOS_POSTULACION.ACTIVIDAD]: "Actividad",
 };
 
 export const AVISO_DISPONIBILIDAD_PROVISORIA =
@@ -209,4 +244,48 @@ export function textoCupo(requerimiento) {
   }
 
   return `${cubiertos} / ${cantidad} cubiertos`;
+}
+
+/**
+ * Normaliza el estado de una postulación al enum canónico.
+ * @param {string|null|undefined} estado
+ * @returns {string}
+ */
+export function normalizarEstadoPostulacion(estado) {
+  if (!estado) return ESTADOS_POSTULACION.PENDIENTE;
+  const clave = Object.keys(ESTADOS_POSTULACION).find(
+    (k) => k.toLowerCase() === String(estado).toLowerCase()
+  );
+  return clave || String(estado).toUpperCase();
+}
+
+/**
+ * @param {string|null|undefined} estado
+ * @returns {string}
+ */
+export function etiquetaEstadoPostulacion(estado) {
+  const clave = normalizarEstadoPostulacion(estado);
+  return ETIQUETAS_ESTADO_POSTULACION[clave] || String(estado || "");
+}
+
+/**
+ * @param {string|null|undefined} estado
+ * @returns {{fondo: string, texto: string, borde: string}}
+ */
+export function coloresEstadoPostulacion(estado) {
+  const clave = normalizarEstadoPostulacion(estado);
+  return (
+    COLORES_ESTADO_POSTULACION[clave] ||
+    COLORES_ESTADO_POSTULACION[ESTADOS_POSTULACION.PENDIENTE]
+  );
+}
+
+/**
+ * @param {string|null|undefined} tipo
+ * @returns {string}
+ */
+export function etiquetaTipoPostulacion(tipo) {
+  if (!tipo) return "";
+  const clave = String(tipo).toUpperCase();
+  return ETIQUETAS_TIPO_POSTULACION[clave] || String(tipo);
 }

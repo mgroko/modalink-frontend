@@ -5,10 +5,13 @@ import {
   ESTADOS_POSTULACION,
   TIPOS_POSTULACION,
   clavePostulacion,
+  coloresEstadoPostulacion,
   esCupoCompleto,
   esErrorCupoCompleto,
   esErrorDisponibilidad,
   esErrorPostulacionDuplicada,
+  etiquetaEstadoPostulacion,
+  etiquetaTipoPostulacion,
   hayCupo,
   mensajeExitoPostulacion,
   puedePostularActividad,
@@ -220,4 +223,25 @@ test("estados de postulación exportados", () => {
     "ACEPTADA",
     "RECHAZADA",
   ]);
+});
+
+test("etiquetas y colores de estado de postulación", () => {
+  assert.equal(etiquetaEstadoPostulacion("pendiente"), "Pendiente");
+  assert.equal(etiquetaEstadoPostulacion("ACEPTADA"), "Aceptada");
+  assert.equal(etiquetaEstadoPostulacion("RECHAZADA"), "Rechazada");
+  assert.equal(etiquetaEstadoPostulacion(null), "Pendiente");
+  assert.equal(
+    coloresEstadoPostulacion("ACEPTADA").texto,
+    "var(--color-success-text)"
+  );
+  assert.equal(
+    coloresEstadoPostulacion("desconocido").texto,
+    "var(--color-warning-text)"
+  );
+});
+
+test("etiquetas de tipo de postulación", () => {
+  assert.equal(etiquetaTipoPostulacion("GENERAL"), "General");
+  assert.equal(etiquetaTipoPostulacion("actividad"), "Actividad");
+  assert.equal(etiquetaTipoPostulacion(""), "");
 });

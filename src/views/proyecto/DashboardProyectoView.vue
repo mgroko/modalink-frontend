@@ -57,6 +57,14 @@
             >
               Publicar
             </VaButton>
+            <VaButton
+              v-if="puedeGestionarPostulaciones"
+              preset="secondary"
+              icon="mso-group"
+              @click="irAPostulaciones"
+            >
+              Postulaciones
+            </VaButton>
           </template>
         </ProyectoEncabezado>
 
@@ -348,6 +356,7 @@ import {
   ESTADOS_PROYECTO,
   MOODBOARD_IMAGENES,
   PRIVACIDADES,
+  ROLES_PROYECTO,
   normalizarEstadoProyecto,
 } from "../../utils/proyectoConstants.js";
 
@@ -474,6 +483,13 @@ data() {
     /** UC-26: pestaña de actividades para no miembros y miembros MIEMBRO. */
     puedePostularActividad() {
       return proyectoAdmitePostulacionesActividad(this.proyecto);
+    },
+    /** UC-34: sólo el director con GESTIONAR_POSTULACIONES gestiona postulaciones. */
+    puedeGestionarPostulaciones() {
+      return (
+        this.proyecto?.rolUsuario === ROLES_PROYECTO.DIRECTOR &&
+        this.permisos.includes("GESTIONAR_POSTULACIONES")
+      );
     },
     ubicacionTexto() {
       const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
@@ -1281,6 +1297,12 @@ data() {
     },
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
+    },
+    irAPostulaciones() {
+      this.$router.push({
+        name: "postulaciones-proyecto",
+        params: { id: this.idProyecto },
+      });
     },
     async abrirModalEliminarActividad(actividad) {
       this.actividadEliminar = actividad;

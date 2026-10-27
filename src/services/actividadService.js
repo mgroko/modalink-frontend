@@ -1,4 +1,5 @@
 import http from "./http";
+import { serializarParams } from "../utils/queryParams.js";
 
 /*
  * Contratos UC-49 (crear actividad) y UC-52 (buscar actividades).
@@ -154,32 +155,6 @@ import http from "./http";
  * @property {number} [size] default 20
  * @property {boolean} [todos] true = sin paginar
  */
-
-/**
- * Serializa query params respetando claves repetidas para arrays, tal como
- * exige UC-52 (`estado=PENDIENTE&estado=EN_CURSO`), sin el formato `estado[]`.
- * @param {Record<string, unknown>} params
- * @returns {string}
- */
-function serializarParams(params = {}) {
-  const search = new URLSearchParams();
-
-  for (const [clave, valor] of Object.entries(params)) {
-    if (valor === undefined || valor === null || valor === "") continue;
-
-    if (Array.isArray(valor)) {
-      for (const item of valor) {
-        if (item === undefined || item === null || item === "") continue;
-        search.append(clave, String(item));
-      }
-      continue;
-    }
-
-    search.append(clave, String(valor));
-  }
-
-  return search.toString();
-}
 
 const actividadService = {
   /**
