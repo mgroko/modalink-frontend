@@ -125,13 +125,20 @@ Esta especificación detalla la interacción con la API para editar un proyecto 
 
 ### 5.2 Requerimientos de personal
 
-Un requerimiento está **satisfecho** cuando tiene al menos una postulación en estado `ACEPTADA`.
+Un requerimiento está **satisfecho** cuando su cupo está completo
+(`cubiertos >= cantidad`), según miembros/asignaciones activas. No se define por
+"al menos una postulación `ACEPTADA`" (ver ficha UC-26 §11).
 
 * **No se pueden enviar requerimientos satisfechos** en `requerimientosGral` → `409` (`RequerimientoSatisfechoException`).
 * Si un requerimiento satisfecho **se omite del payload, se conserva automáticamente**.
 * Los requerimientos **no satisfechos** que se envían se **eliminan y recrean** (el `id` solo se usa para validar pertenencia y estado).
 * Un `idRequerimientoGral` que no pertenece al proyecto → `400` (`RequerimientoInvalidoException`).
 * Si `requerimientosGral` es `null`/ausente, no se modifica ningún requerimiento.
+
+> **Pendiente backend (cupo parcial):** si `cubiertos > 0` pero `faltantes > 0`,
+> el requerimiento no está satisfecho y el delete+recreate puede fallar por la
+> FK de `miembros_proyecto`. El backend debe bloquear también ese caso (o
+> preservar el requerimiento). Ver ficha UC-26 §11.
 
 ### 5.3 Objetivos
 

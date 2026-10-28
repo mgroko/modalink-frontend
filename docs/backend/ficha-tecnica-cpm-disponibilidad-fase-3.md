@@ -5,7 +5,7 @@
 **Proyecto:** ModaLink  
 **Backend:** Spring Boot  
 **Fecha de referencia:** 2026-10-27  
-**Estado:** backend CPM/disponibilidad hasta fase 3; **UC-34 (aceptación de postulaciones) implementado**; UC-60 (confirmación de proyecto) pendiente.
+**Estado:** backend CPM/disponibilidad hasta fase 3; **endpoint HTTP de consulta de disponibilidad implementado**; **pestañas Planificación y Cronograma implementadas en backend**; **UC-34 (aceptación de postulaciones) implementado**; UC-60 (confirmación de proyecto) pendiente.
 
 ---
 
@@ -284,7 +284,7 @@ Si no hay disponibilidad, el endpoint responde `409` y no crea membresía ni
 asignación. Un director no puede ser aceptado como postulante de actividad.
 
 Para el contrato completo de aceptación/rechazo y la UI de gestión, ver
-[`ficha-tecnica-gestionar-postulaciones.md`](./ficha-tecnica-gestionar-postulaciones.md).
+[`ficha-tecnica-gestionar-postulaciones.md`](./aplicadas/ficha-tecnica-gestionar-postulaciones.md).
 
 ---
 
@@ -397,24 +397,87 @@ Por eso el frontend no debe agregar márgenes manualmente ni desplazar el
 - postulación UC-26 con validación de disponibilidad;
 - aceptación de postulaciones de actividad (UC-34) con revalidación de
   disponibilidad y creación de `AsignacionActividad`;
-- notificaciones `POSTULACION_ACEPTADA` y `ACTIVIDAD_ASIGNADA`.
+- notificaciones `POSTULACION_ACEPTADA` y `ACTIVIDAD_ASIGNADA`;
+- endpoint HTTP de consulta de disponibilidad:
+
+```http
+GET /proyectos/{idProyecto}/actividades/{idActividad}/disponibilidad
+GET /proyectos/{idProyecto}/actividades/{idActividad}/disponibilidad?idPerfil=10
+GET /proyectos/{idProyecto}/actividades/{idActividad}/disponibilidad?idPerfil=10&idPerfil=11
+```
+
+Reglas del endpoint:
+
+- requiere sesión iniciada y un perfil activo seleccionado;
+- sin `idPerfil` evalúa el perfil activo del solicitante (previsualización
+  de UC-26: el candidato todavía no es miembro del proyecto);
+- con `idPerfil` evalúa los perfiles indicados y devuelve `miembros` con el
+  detalle de cada uno; con varios perfiles solo hay disponibilidad si existe
+  un hueco común;
+- consultar la disponibilidad de otros perfiles requiere ser miembro activo
+  del proyecto;
+- el proyecto debe ser visible para el solicitante (miembro activo, ex
+  miembro de proyecto cancelado o proyecto público no borrador/cancelado);
+- una actividad cancelada responde `409`;
+- es una consulta de solo lectura: no reserva ni asigna la actividad.
+
+La respuesta es el `ResultadoDisponibilidad` descrito en la sección 6. Los
+huecos de `miembros[].huecos` se serializan como `{ "inicio": "...", "fin":
+"..." }`; no se expone el campo derivado `minutos`.
+
+#### Pestaña Planificación
+
+```http
+GET /proyectos/{idProyecto}/actividades
+```
+
+- Acceso: `VER_PROYECTO` (miembros activos del proyecto).
+- Tabla liviana: datos básicos, fechas persistidas, predecesoras y
+  `responsables` (perfiles activos en `asignacion_actividad`).
+- No calcula CPM. No incluye `critica`, `holgura`, `inicioProyectado` ni
+  `finProyectado`.
+- Filtros y paginación en servidor. Orden topológico por dependencias con
+  desempate por id de actividad.
+- Las actividades canceladas se listan con `estado = "CANCELADA"`.
+- La búsqueda de candidatos sigue siendo
+  `GET /proyectos/{idProyecto}/actividades/buscar` (visibilidad, sin
+  responsables).
+
+Ver [`ficha-tecnica-planificacion-actividades.md`](./aplicadas/ficha-tecnica-planificacion-actividades.md).
+
+#### Pestaña Cronograma
+
+```http
+GET /proyectos/{idProyecto}/cronograma
+```
+
+- Acceso: `VER_PROYECTO`.
+- Devuelve `resumen`, `actividades` para el Gantt y la tabla CPM, y
+  `conflictos`.
+- Calcula el CPM sobre todas las actividades de la planificación excepto
+  `CANCELADA`; las canceladas no aparecen en este endpoint.
+- `resumen.rutaCritica` viene ordenado por inicio temprano.
+- `resumen.margenMinutos` es la fuente del margen hasta la entrega; no
+  recalcularlo desde fechas.
+- `actividades[].finConHolgura` es el fin de la barra clara del Gantt
+  (`finProyectado + holguraMakespan`). No usar `rangoEjecucion` para esa barra.
+- Los tooltips pueden usar `holguraEntrega`, `rangoInicio`, `rangoEjecucion`,
+  `conflicto`, `motivoConflicto`, `fijo` y `tentativo`.
+- El detalle completo al hacer click en una barra se obtiene con
+  `GET /proyectos/{idProyecto}/actividades/{idActividad}` (`VER_PROYECTO`).
+
+Ver [`ficha-tecnica-visualizar-cronograma.md`](./aplicadas/ficha-tecnica-visualizar-cronograma.md).
 
 ### Pendiente de exponer o cerrar
-
-- endpoint HTTP específico:
-
-```text
-GET /proyectos/{idProyecto}/actividades/{idActividad}/disponibilidad
-```
 
 - integración del endpoint con el router/servicio frontend;
 - revalidación definitiva durante UC-70 para asignaciones fuera del flujo de
   postulación;
-- confirmación de proyecto de fase 4 (UC-60);
-- contrato final de serialización HTTP para el detalle de disponibilidad.
+- confirmación de proyecto de fase 4 (UC-60).
 
-Hasta que el endpoint específico esté disponible, el frontend no debe inventar
-una ruta ni duplicar el cálculo de disponibilidad en JavaScript.
+El frontend no debe duplicar el cálculo de disponibilidad en JavaScript: usa
+este endpoint y refresca la consulta después de cambios de proyecto, actividad,
+agenda o asignación.
 
 ---
 

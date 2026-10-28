@@ -80,10 +80,10 @@ para UC-26:
 
 | Campo | Tipo | Uso en el frontend |
 | :--- | :--- | :--- |
-| `estado` | `string` | Valores con formato de presentación: `"Borrador"`, `"Publicado"`, `"Confirmado"`, `"Finalizado"`, `"Cancelado"`. Sólo `"Publicado"` acepta postulaciones. |
+| `estado` | `string` | Valores con formato de presentación: `"Borrador"`, `"Publicado"`, `"Confirmado"`, `"Finalizado"`, `"Cancelado"`. `"Publicado"` y `"Confirmado"` aceptan postulaciones si el requerimiento tiene faltantes; el resto no. |
 | `aceptaPostulacionGral` | `boolean` | Si es `false`, no mostrar postulación a requerimientos generales. |
-| `esMiembro` | `boolean` | Si es `true`, ocultar **ambas** acciones de postulación (el backend responde `409`). |
-| `elegibleParaPostularse` | `boolean` | **Fuente de verdad para postulación general.** Es `true` sólo si el proyecto está `Publicado`, el perfil no es miembro, el proyecto acepta postulaciones generales y la profesión del perfil activo coincide con algún requerimiento general. |
+| `esMiembro` | `boolean` | Para postulación **general**, si es `true` no se muestra la acción. En **actividades**, un miembro activo `MIEMBRO` sí puede postularse; el `DIRECTOR` no. |
+| `elegibleParaPostularse` | `boolean` | **Fuente de verdad para postulación general.** Es `true` sólo si el proyecto está `Publicado` o `Confirmado`, el perfil no es miembro activo, el proyecto acepta postulaciones generales y la profesión del perfil activo coincide con algún requerimiento general. **No evalúa cupo**: para eso usar `satisfecho`/`faltantes`. |
 | `rolUsuario` | `string` \| `null` | `null` para no miembros. |
 | `requerimientosGral` | `array` | Lista de requerimientos generales (ver 3.2). |
 
@@ -104,6 +104,8 @@ Cada elemento de `requerimientosGral`:
   "nombreProfesion": "Modelo",
   "caracteristicas": [],
   "habilidades": [],
+  "cubiertos": 0,
+  "faltantes": 2,
   "satisfecho": false
 }
 ```
@@ -112,7 +114,9 @@ Cada elemento de `requerimientosGral`:
 | :--- | :--- | :--- |
 | `idRequerimientoGral` | `long` | Es el valor que se envía en el body. |
 | `cantidad` | `int` | Cupo solicitado. |
-| `satisfecho` | `boolean` | `true` si el requerimiento ya tiene **al menos una** postulación `ACEPTADA`. **No significa necesariamente que el cupo esté completo** cuando `cantidad > 1`. Usarlo como indicador visual, no como único criterio para deshabilitar el botón. |
+| `cubiertos` | `int` | Miembros/asignaciones **activas** vinculadas al requerimiento. El front no lo deriva. |
+| `faltantes` | `int` | `max(0, cantidad - cubiertos)`. |
+| `satisfecho` | `boolean` | **Cupo completo** (`cubiertos >= cantidad`). Con `cantidad > 1` y `cubiertos = 1`, `satisfecho = false` y el botón debe seguir visible. |
 
 ### 3.3 Actividades y sus requerimientos
 
@@ -164,6 +168,13 @@ Cada actividad:
 | `estado` | Enum crudo en mayúsculas: `PENDIENTE`, `EN_CURSO`, `FINALIZADA`, `CANCELADA`. **Sólo `PENDIENTE` admite postulaciones.** |
 | `requerimientos[].idRequerimiento` | Es el valor que se envía como `idRequerimientoActividad`. |
 | `duracionMinutos` | Duración que el backend usa para verificar disponibilidad. |
+
+> **Pendiente backend:** los requerimientos de `/actividades/buscar` todavía no
+> incluyen `cubiertos`, `faltantes` ni `satisfecho`. Hasta que se agreguen, el
+> front no puede ocultar de antemano los requerimientos con cupo completo: el
+> `409` de cupo es la red de seguridad y la acción se oculta localmente después
+> de ese error. No derivar el cupo desde `cantidad` ni desde profesionales
+> asignados.
 
 > No confundir el formato de `estado` del proyecto (`"Publicado"`) con el de la
 > actividad (`"PENDIENTE"`) ni con el de la postulación (`"PENDIENTE"`). El
@@ -218,9 +229,9 @@ Cada actividad:
 
 | Caso | Condición frontend |
 | :--- | :--- |
-| Postular a requerimiento general | `proyecto.elegibleParaPostularse === true && requerimiento.satisfecho === false`. |
-| Postular a actividad | `(proyecto.estado === 'Publicado' \|\| proyecto.estado === 'Confirmado') && actividad.estado === 'PENDIENTE' && requerimiento.satisfecho === false && (!proyecto.esMiembro \|\| proyecto.rolUsuario === 'MIEMBRO')`. La profesión, el cupo, el duplicado y la disponibilidad los valida el backend. |
-| No mostrar la acción | `proyecto.rolUsuario === 'DIRECTOR'` o el requerimiento está satisfecho. |
+| Postular a requerimiento general | `proyecto.elegibleParaPostularse === true && requerimiento.faltantes > 0` (equivale a `satisfecho === false`; con `cantidad > 1` y cupo parcial el botón sigue visible). |
+| Postular a actividad | `(proyecto.estado === 'Publicado' \|\| proyecto.estado === 'Confirmado') && actividad.estado === 'PENDIENTE' && requerimiento.faltantes > 0 && (!proyecto.esMiembro \|\| proyecto.rolUsuario === 'MIEMBRO')`. La profesión, el duplicado y la disponibilidad los valida el backend. |
+| No mostrar la acción | `proyecto.rolUsuario === 'DIRECTOR'`, el requerimiento está satisfecho o no tiene faltantes. |
 
 ---
 
@@ -360,14 +371,16 @@ En el detalle del proyecto (`/proyectos/:id`), en la sección de requerimientos:
 
 * **Requerimientos generales:** un botón **Postularme** por requerimiento, visible
   sólo si `proyecto.elegibleParaPostularse === true` y el requerimiento tiene
-  `satisfecho === false`.
+  `faltantes > 0`.
 * **Actividades:** en el listado de actividades (o en el detalle de cada una), un
   botón **Postularme** por cada requerimiento de actividades `PENDIENTE`, visible
-  si el proyecto está `Publicado` o `Confirmado`, el requerimiento no está
-  satisfecho y el perfil no es director. Un miembro `MIEMBRO` sí puede verlo.
+  si el proyecto está `Publicado` o `Confirmado`, el requerimiento tiene
+  `faltantes > 0` (cuando el backend lo exponga) y el perfil no es director. Un
+  miembro `MIEMBRO` sí puede verlo.
 
 No mostrar ninguna acción de postulación para un `DIRECTOR`, si el proyecto está
-`Borrador`/`Finalizado`/`Cancelado` o si el requerimiento está satisfecho.
+`Borrador`/`Finalizado`/`Cancelado`, si el requerimiento está satisfecho o si no
+tiene faltantes.
 
 ### 8.2 Flujo recomendado
 
@@ -479,10 +492,14 @@ Utilidades existentes a reutilizar:
 ## 10. Checklist de Aceptación
 
 - [ ] El botón de postulación general sólo aparece con
-      `proyecto.elegibleParaPostularse === true` y el requerimiento insatisfecho.
+      `proyecto.elegibleParaPostularse === true` y `requerimiento.faltantes > 0`.
 - [ ] El botón de postulación a actividad aparece con proyecto `Publicado` o
-      `Confirmado`, actividad `PENDIENTE`, requerimiento insatisfecho y perfil
+      `Confirmado`, actividad `PENDIENTE`, requerimiento con faltantes y perfil
       no director. Un miembro `MIEMBRO` puede verlo.
+- [ ] El botón se oculta con cupo completo (`satisfecho === true` o
+      `faltantes === 0`) y se muestra el chip "Cupo completo".
+- [ ] Tras un `409` de cupo completo, la acción queda oculta en la sesión de la
+      vista aunque la respuesta no traiga `satisfecho`.
 - [ ] El request general usa exactamente `{ "idRequerimientoGral": <id> }`.
 - [ ] El request de actividad usa exactamente
       `{ "idRequerimientoActividad": <id> }`.
@@ -496,7 +513,8 @@ Utilidades existentes a reutilizar:
 - [ ] La vista contempla que `estado` del proyecto viene capitalizado
       (`"Publicado"`) y el de actividades/postulaciones en mayúsculas
       (`"PENDIENTE"`).
-- [ ] Un director puede navegar al apartado de postulaciones del proyecto (UC-74).
+- [x] Un director puede navegar al apartado de postulaciones del proyecto
+      (UC-74) desde el dashboard.
 - [ ] No se consulta `/notificaciones`: el backend aún no expone lectura de
       notificaciones.
 
@@ -518,3 +536,17 @@ Utilidades existentes a reutilizar:
 * **Cupo:** `satisfecho` significa **cupo completo** (`cubiertos >= cantidad`)
   según miembros/asignaciones activos. Usar `cubiertos` y `faltantes`; no inferir
   el cupo por postulaciones aceptadas.
+* **UC-36 / cupo parcial (pendiente backend):** hoy UC-36 bloquea editar/eliminar
+  sólo cuando `satisfecho === true`. Si un requerimiento tiene `cubiertos > 0` y
+  `faltantes > 0`, el payload de modificación lo elimina y recrea, y puede chocar
+  con la FK de miembros. El backend debe bloquear también cuando `cubiertos > 0`
+  (o preservar el requerimiento). Mientras tanto la UI mantiene el bloqueo por
+  `satisfecho` y usa el copy amplio *"Tiene miembros activos: no se puede editar
+  ni eliminar"*.
+* **Elegibilidad por requerimiento (pendiente backend):** `elegibleParaPostularse`
+  es global al proyecto. Si hay requerimientos generales de profesiones
+  distintas, el botón puede mostrarse en el que no coincide y el backend responde
+  `409` ("profesión distinta"). Se resolverá en una iteración posterior del
+  backend; el front sólo muestra el mensaje.
+* **UC-74/UC-34:** implementados en `/proyectos/:id/postulaciones`; el acceso
+  se muestra al director con `GESTIONAR_POSTULACIONES`.

@@ -90,6 +90,11 @@ POST /proyectos/105/postulaciones/general/77/aceptar
 Mismo flujo de confirmación que el general, mostrando además el nombre de la
 actividad y su fecha/horario si está definido.
 
+> El listado de UC-74 no incluye las fechas de la actividad. El frontend
+> consulta `GET /proyectos/{idProyecto}/actividades/{idActividad}` al abrir el
+> modal para mostrarlas; si esa llamada falla, continúa con el nombre del
+> listado y un aviso no bloqueante.
+
 ```http
 POST /proyectos/105/postulaciones/actividad/88/aceptar
 ```
@@ -195,6 +200,8 @@ En un rechazo:
 
 ## 9. Recomendaciones de UI/UX
 
+- La pantalla vive en `/proyectos/:id/postulaciones` y se accede desde el
+  dashboard del proyecto (director con `GESTIONAR_POSTULACIONES`).
 - Usar un modal de confirmación; nunca aceptar/rechazar con un solo clic.
 - Deshabilitar el botón mientras la petición está en curso para evitar dobles
   envíos.
