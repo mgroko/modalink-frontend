@@ -63,6 +63,19 @@
             <span class="notificacion-card__fecha">{{ formatearFecha(notificacion.fechaGenerada) }}</span>
           </div>
           <p class="notificacion-card__mensaje">{{ notificacion.mensaje }}</p>
+
+          <RouterLink
+            v-if="!modoAdmin && notificacion.destino"
+            :to="notificacion.destino.ruta"
+            class="notificacion-card__enlace"
+            @click="marcarLeidaAlNavegar(notificacion)"
+          >
+            {{ notificacion.destino.etiqueta }}
+            <span class="material-symbols-outlined" aria-hidden="true">
+              arrow_forward
+            </span>
+          </RouterLink>
+
           <span
             v-if="!modoPerfil && notificacion.idPerfilContexto != null"
             class="notificacion-card__perfil"
@@ -93,6 +106,10 @@ import {
   cargarResumenPerfil,
   cargarResumenUsuario,
 } from "../../services/notificacionState";
+import {
+  TIPOS_NOTIFICACION,
+  destinoNotificacion,
+} from "../../utils/notificacionConstants.js";
 
 export default {
   name: "NotificacionesView",
@@ -113,6 +130,9 @@ export default {
   computed: {
     modoPerfil() {
       return this.$route.meta.soloPerfilActivo === true;
+    },
+    modoAdmin() {
+      return this.$route.meta.requiereAdmin === true;
     },
     idPerfilContexto() {
       return this.modoPerfil ? idPerfilActivo() : this.filtroPerfil;
@@ -161,7 +181,12 @@ export default {
           page: 0,
           size: 100,
         });
-        this.notificaciones = response?.data?.contenido || [];
+        this.notificaciones = (response?.data?.contenido || []).map(
+          (notificacion) => ({
+            ...notificacion,
+            destino: destinoNotificacion(notificacion),
+          })
+        );
       } catch (error) {
         this.notificaciones = [];
         this.error = error?.response?.data?.message || "No se pudieron cargar las notificaciones.";
@@ -191,6 +216,12 @@ export default {
         this.marcandoId = null;
       }
     },
+    marcarLeidaAlNavegar(notificacion) {
+      if (!notificacion.leida) {
+        // No bloquear la navegación: si el PATCH falla, se navega igual.
+        void this.marcarLeida(notificacion);
+      }
+    },
     async marcarTodas() {
       if (this.marcandoTodas) return;
 
@@ -212,8 +243,10 @@ export default {
     },
     etiquetaTipo(tipo) {
       const etiquetas = {
-        PROYECTO_CANCELADO: "Proyecto cancelado",
-        POSTULACION_RECHAZADA: "Postulación rechazada",
+        [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "Postulación recibida",
+        [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "Postulación aceptada",
+        [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "Postulación rechazada",
+        [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "Proyecto cancelado",
         INVITACION_RECHAZADA: "Invitación rechazada",
         HITO_CUMPLIDO: "Hito cumplido",
         ACTIVIDAD_ASIGNADA: "Actividad asignada",
@@ -222,8 +255,10 @@ export default {
     },
     iconoPorTipo(tipo) {
       const iconos = {
-        PROYECTO_CANCELADO: "cancel",
-        POSTULACION_RECHAZADA: "person_remove",
+        [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "person_add",
+        [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "how_to_reg",
+        [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "person_remove",
+        [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "cancel",
         INVITACION_RECHAZADA: "mail_off",
         HITO_CUMPLIDO: "flag",
         ACTIVIDAD_ASIGNADA: "assignment",
@@ -367,6 +402,25 @@ export default {
   margin: 0.3rem 0 0;
   font-size: 0.88rem;
   line-height: 1.4;
+}
+
+.notificacion-card__enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.35rem;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.notificacion-card__enlace:hover {
+  text-decoration: underline;
+}
+
+.notificacion-card__enlace .material-symbols-outlined {
+  font-size: 0.95rem;
 }
 
 .notificacion-card__perfil {

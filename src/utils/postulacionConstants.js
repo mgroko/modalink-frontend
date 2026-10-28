@@ -14,8 +14,13 @@ import {
  * poder probarlas de forma aislada.
  *
  * El backend es la fuente de verdad:
- * - `elegibleParaPostularse` ya contempla estado Publicado|Confirmado, no ser
- *   miembro, `aceptaPostulacionGral` y la profesión. NO evalúa cupo.
+ * - `requerimiento.puedePostularse` es la fuente de verdad por requerimiento.
+ *   Ya contempla estado del proyecto/actividad, membresía/rol, profesión y
+ *   cupo. El front no debe replicar esas reglas.
+ * - `elegibleParaPostularse` queda como resumen global deprecado para el
+ *   gating; no debe usarse para habilitar el botón de un requerimiento.
+ * - Si el backend todavía no expone `puedePostularse` (rollout), se usa
+ *   `elegibleParaPostularse`/`hayCupo` como fallback.
  * - El cupo se lee de `satisfecho`/`faltantes` (definición §11 de la ficha:
  *   `satisfecho = cubiertos >= cantidad`). El front no lo deriva de `cantidad`
  *   ni de asignaciones.
@@ -121,18 +126,50 @@ export function esCupoCompleto(requerimiento) {
 }
 
 /**
- * Postulación general (ficha §4.4): `elegibleParaPostularse` es la fuente de
- * verdad y ya incluye estado Publicado|Confirmado, no ser miembro,
- * `aceptaPostulacionGral` y la profesión. Acá sólo se suma el cupo.
+ * ¿El backend habilitó este requerimiento para el perfil activo?
+ *
+ * `puedePostularse` es la fuente de verdad de Fase 1/2. Si el backend todavía
+ * no lo expone (rollout), se usa el cupo como fallback.
+ * @param {object|null|undefined} requerimiento
+ * @returns {boolean}
+ */
+export function puedePostularRequerimiento(requerimiento) {
+  if (!requerimiento) return false;
+  if (typeof requerimiento.puedePostularse === "boolean") {
+    return requerimiento.puedePostularse;
+  }
+  return hayCupo(requerimiento);
+}
+
+/**
+ * Texto para explicar por qué no se muestra la acción de postulación.
+ * No intenta adivinar la causa cuando el backend sólo devuelve `false`.
+ * @param {object|null|undefined} requerimiento
+ * @returns {string}
+ */
+export function motivoNoPostulable(requerimiento) {
+  if (!requerimiento) return "";
+  if (esCupoCompleto(requerimiento)) return "Cupo completo";
+  if (requerimiento.puedePostularse === false) {
+    return "No disponible para tu perfil";
+  }
+  return "";
+}
+
+/**
+ * Postulación general (ficha §4.4): si el backend expone `puedePostularse`,
+ * esa es la fuente de verdad. Si no, se conserva el fallback histórico con
+ * `elegibleParaPostularse` + cupo.
  * @param {object|null|undefined} proyecto ProyectoResponse
  * @param {object|null|undefined} requerimiento RequerimientoGralResponse
  * @returns {boolean}
  */
 export function puedePostularGeneral(proyecto, requerimiento) {
   if (!proyecto || !requerimiento) return false;
-  return (
-    proyecto.elegibleParaPostularse === true && hayCupo(requerimiento)
-  );
+  if (typeof requerimiento.puedePostularse === "boolean") {
+    return requerimiento.puedePostularse;
+  }
+  return proyecto.elegibleParaPostularse === true && hayCupo(requerimiento);
 }
 
 /**
@@ -153,9 +190,13 @@ export function proyectoAdmitePostulacionesActividad(proyecto) {
 }
 
 /**
- * Postulación a una actividad concreta (ficha §4.4): proyecto Publicado o
- * Confirmado, perfil no director, actividad PENDIENTE y requerimiento con cupo.
- * La profesión, el duplicado y la disponibilidad los valida el backend.
+ * Postulación a una actividad concreta (ficha §4.4): si el backend expone
+ * `puedePostularse`, esa es la fuente de verdad. Si no, se conserva el
+ * fallback histórico: proyecto Publicado/Confirmado, perfil no director,
+ * actividad PENDIENTE y cupo disponible.
+ *
+ * La profesión, el duplicado y la disponibilidad los sigue validando el
+ * backend; `puedePostularse` no garantiza el éxito de la request.
  * @param {object|null|undefined} proyecto ProyectoResponse
  * @param {object|null|undefined} actividad ActividadBusquedaResponse
  * @param {object|null|undefined} requerimiento requerimiento de la actividad
@@ -163,6 +204,9 @@ export function proyectoAdmitePostulacionesActividad(proyecto) {
  */
 export function puedePostularActividad(proyecto, actividad, requerimiento) {
   if (!proyecto || !actividad || !requerimiento) return false;
+  if (typeof requerimiento.puedePostularse === "boolean") {
+    return requerimiento.puedePostularse;
+  }
   return (
     proyectoAdmitePostulacionesActividad(proyecto) &&
     normalizarEstadoActividad(actividad.estado) === ESTADOS_ACTIVIDAD.PENDIENTE &&

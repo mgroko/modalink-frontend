@@ -13,7 +13,7 @@
     </div>
 
     <p v-if="!items.length" class="cronograma-actividades__vacio">
-      No hay actividades con fechas para graficar.
+      No hay actividades programables con fechas para graficar.
     </p>
 
     <div v-else class="cronograma-actividades__scroll">
@@ -61,7 +61,10 @@
 </template>
 
 <script>
-import { parseFechaLocal } from "../../utils/actividadConstants.js";
+import {
+  esActividadCancelada,
+  parseFechaLocal,
+} from "../../utils/actividadConstants.js";
 import { formatearFecha } from "../../utils/fechas.js";
 
 const FORMATO_TICK = new Intl.DateTimeFormat("es-AR", {
@@ -80,6 +83,7 @@ export default {
   computed: {
     items() {
       return (this.actividades || [])
+        .filter((actividad) => !esActividadCancelada(actividad))
         .map((actividad, indice) => {
           const inicio = parseFechaLocal(
             actividad?.fechaHoraInicio || actividad?.inicioProyectado

@@ -85,10 +85,13 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} nombreProfesion
  * @property {CaracteristicaActividadResponse[]} [caracteristicas]
  * @property {number[]} [habilidades]
- * @property {number} [cubiertos] pendiente backend: miembros/asignaciones
- *           activas vinculadas al requerimiento
- * @property {number} [faltantes] pendiente backend: max(0, cantidad - cubiertos)
- * @property {boolean} [satisfecho] pendiente backend: cubiertos >= cantidad
+ * @property {number} [cubiertos] miembros/asignaciones activas vinculadas al
+ *           requerimiento
+ * @property {number} [faltantes] max(0, cantidad - cubiertos)
+ * @property {boolean} [satisfecho] cupo completo (cubiertos >= cantidad)
+ * @property {boolean} [puedePostularse] fuente de verdad por requerimiento;
+ *           incluye estado del proyecto/actividad, rol, profesión y cupo.
+ *           Usarlo para habilitar la acción; no recalcular en el front.
  */
 
 /**
@@ -139,7 +142,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} fechaHoraFin ISO local derivado
  * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
- * @property {{idRequerimiento:number,cantidad:number,descripcion:string|null,idProfesion:number,nombreProfesion:string,cubiertos?:number,faltantes?:number,satisfecho?:boolean}[]} requerimientos
+ * @property {{idRequerimiento:number,cantidad:number,descripcion:string|null,idProfesion:number,nombreProfesion:string,cubiertos?:number,faltantes?:number,satisfecho?:boolean,puedePostularse?:boolean}[]} requerimientos
  * @property {{idActividad:number,nombre:string}[]} predecesoras
  */
 

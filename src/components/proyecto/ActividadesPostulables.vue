@@ -84,7 +84,7 @@
             </div>
 
             <VaButton
-              v-if="puedePostular && tieneCupo(requerimiento)"
+              v-if="puedePostular && puedePostularRequerimientoDe(requerimiento)"
               preset="primary"
               size="small"
               :disabled="estaDeshabilitado(requerimiento)"
@@ -102,7 +102,7 @@
               <span class="material-symbols-outlined" aria-hidden="true">
                 event_busy
               </span>
-              Cupo completo
+              {{ motivoNoPostulable(requerimiento) }}
             </span>
           </div>
         </div>
@@ -117,8 +117,10 @@
  * Se muestra a perfiles no directores (no miembros o miembros `MIEMBRO`) con
  * proyecto Publicado o Confirmado. La carga y el refresco viven acá; la
  * request de postulación la resuelve el dashboard, que abre el modal de
- * confirmación. El cupo se lee de `satisfecho`/`faltantes` cuando el backend
- * los expone; si no, el 409 del dashboard marca el requerimiento sin cupo.
+ * confirmación. La acción se gatea con `requerimiento.puedePostularse`
+ * (fuente de verdad del backend); si el backend todavía no lo expone, se usa
+ * el cupo como fallback. El 409 del dashboard sigue marcando localmente los
+ * requerimientos sin cupo.
  */
 import actividadService from "../../services/actividadService.js";
 import { refrescarSesion } from "../../services/authState";
@@ -135,7 +137,8 @@ import { formatearFecha } from "../../utils/fechas.js";
 import {
   TIPOS_POSTULACION,
   clavePostulacion,
-  hayCupo,
+  esCupoCompleto,
+  puedePostularRequerimiento,
 } from "../../utils/postulacionConstants.js";
 
 export default {
@@ -182,7 +185,7 @@ export default {
         (actividad) =>
           Array.isArray(actividad?.requerimientos) &&
           actividad.requerimientos.some((requerimiento) =>
-            this.tieneCupo(requerimiento)
+            this.puedePostularRequerimientoDe(requerimiento)
           )
       );
     },
@@ -305,9 +308,21 @@ export default {
       const clave = this.claveDe(requerimiento);
       return !!clave && !!this.requerimientosSinCupo?.[clave];
     },
-    /** Cupo del backend (si viene) y marca local tras un 409 de cupo completo. */
-    tieneCupo(requerimiento) {
-      return hayCupo(requerimiento) && !this.estaSinCupo(requerimiento);
+    /** Elegibilidad del backend por requerimiento + marca local tras 409. */
+    puedePostularRequerimientoDe(requerimiento) {
+      return (
+        puedePostularRequerimiento(requerimiento) &&
+        !this.estaSinCupo(requerimiento)
+      );
+    },
+    motivoNoPostulable(requerimiento) {
+      if (this.estaSinCupo(requerimiento) || esCupoCompleto(requerimiento)) {
+        return "Cupo completo";
+      }
+      if (requerimiento?.puedePostularse === false) {
+        return "No disponible para tu perfil";
+      }
+      return "No disponible";
     },
     estaPostulado(requerimiento) {
       const clave = this.claveDe(requerimiento);
@@ -325,7 +340,10 @@ export default {
       );
     },
     postular(actividad, requerimiento) {
-      if (this.estaDeshabilitado(requerimiento) || !this.tieneCupo(requerimiento)) {
+      if (
+        this.estaDeshabilitado(requerimiento) ||
+        !this.puedePostularRequerimientoDe(requerimiento)
+      ) {
         return;
       }
       this.$emit("postular", { actividad, requerimiento });

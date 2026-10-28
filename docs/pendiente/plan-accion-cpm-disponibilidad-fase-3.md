@@ -105,7 +105,7 @@ Sin recalcular CPM, holguras ni márgenes en JavaScript, y sin persistir proyecc
   `inicioProyectado`, `finProyectado` y `finConHolgura` del cronograma.
 - **T0.3 — (Opcional) nombres en disponibilidad multi-miembro.** Agregar `idPerfil` y `nombreArtistico` a `DetalleMiembroDisponibilidad` para no mostrar «Usuario 12».
 
-### Fase 1 — Contrato local, utilidades y tests
+### Fase 1 — Contrato local y utilidades
 
 - **T1.1 — Actualizar `src/services/actividadService.js`.**
   - Agregar métodos:
@@ -124,16 +124,9 @@ Sin recalcular CPM, holguras ni márgenes en JavaScript, y sin persistir proyecc
   - `formatearHolgura(minutos)`: `null` → `""`; negativo → `−2 h 15 min`; sin cálculos.
   - `describirCpm(actividad)`: devuelve `[{ tipo, etiqueta, detalle }]` en orden estable (`Proyectada`, `Estimada`, `Crítica`, `Conflicto`, `Parcial`).
   - `textoProyeccion(actividad)`: tooltip único («Fecha proyectada por CPM; no está persistida» / «Proyección provisional hasta confirmar el proyecto»).
-- **T1.3 — Tests `src/utils/cpmConstants.test.js`.**
-  - `null`/`undefined` no rompen.
-  - `tentativo: true` y `tentative: "true"` equivalen.
-  - `critica: true` no implica `conflicto`.
-  - `conflicto: true` no implica `critica`.
-  - `holgura` negativa, cero y `null`.
-  - Estado de cronograma desconocido.
-- **T1.4 — Serialización de `idPerfil` repetido.** Reutilizar `serializarParams` (ya soporta arrays) y testear el caso `idPerfil=10&idPerfil=11`.
+- **T1.3 — Serialización de `idPerfil` repetido.** Reutilizar `serializarParams` (ya soporta arrays) y validar manualmente el caso `idPerfil=10&idPerfil=11`.
 
-**Aceptación:** `npm test` pasa; ningún componente necesita lógica propia para interpretar flags CPM.
+**Aceptación:** ningún componente necesita lógica propia para interpretar flags CPM.
 
 ---
 
@@ -175,7 +168,7 @@ Sin recalcular CPM, holguras ni márgenes en JavaScript, y sin persistir proyecc
 - **T2.4 — `ModificarActividadView.vue`.**
   - Resumen: `estadoCronograma`, chips CPM, `holguraMakespan`, `holguraEntrega`, `motivoConflicto`.
   - Fechas actuales con fallback y etiqueta de proyección.
-  - Verificar que `buildModificarActividadRequest` no envíe fechas proyectadas (hoy no envía fechas; dejar test/assert).
+  - Verificar manualmente que `buildModificarActividadRequest` no envíe fechas proyectadas (hoy no envía fechas).
 - **T2.5 — `ModalGestionPostulacion.vue` (detalle de actividad).**
   - Fechas con fallback proyectado.
   - Mostrar chips de `Estimada`, `Crítica`, `Conflicto`, `Parcial` y `motivoConflicto` antes de aceptar.
@@ -255,7 +248,7 @@ Sin recalcular CPM, holguras ni márgenes en JavaScript, y sin persistir proyecc
 
 ### Fase 5 — QA
 
-- **T5.1 — Tests unitarios** (`npm test`): `cpmConstants`, `disponibilidadConstants`, serialización de `idPerfil`.
+- **T5.1 — Pruebas E2E.** Se incorporarán con Playwright más adelante; por ahora no se agregan tests unitarios.
 - **T5.2 — Build** (`npm run build`).
 - **T5.3 — Matriz manual:** los casos de proyección/CPM aplican a la pestaña **Cronograma**; la tabla de Planificación muestra solo fechas persistidas.
 

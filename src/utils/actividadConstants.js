@@ -117,6 +117,16 @@ export function puedeEditarActividad(estado) {
 }
 
 /**
+ * El estado de actividad llega normalizado en mayúsculas desde el backend y
+ * los formularios, así que la comparación directa es suficiente.
+ * @param {object|null|undefined} actividad
+ * @returns {boolean}
+ */
+export function esActividadCancelada(actividad) {
+  return actividad?.estado === ESTADOS_ACTIVIDAD.CANCELADA;
+}
+
+/**
  * Reconstruye duración y unidad desde `duracionMinutos`.
  * Múltiplos de 1440 se muestran en DIAS; el resto en HORAS.
  * @param {number} duracionMinutos

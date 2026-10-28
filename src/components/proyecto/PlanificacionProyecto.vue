@@ -29,8 +29,11 @@
       <article class="planificacion-proyecto__metrica">
         <span class="planificacion-proyecto__metrica-label">Actividades</span>
         <strong class="planificacion-proyecto__metrica-valor">
-          {{ metricas.total }}
+          {{ totalActividades }}
         </strong>
+        <span v-if="textoCanceladas" class="planificacion-proyecto__metrica-hint">
+          {{ textoCanceladas }}
+        </span>
       </article>
 
       <article class="planificacion-proyecto__metrica">
@@ -132,15 +135,16 @@
     </section>
 
     <section
-      v-if="!cargando && actividades.length"
+      v-if="!cargando && actividadesCronograma.length"
       class="planificacion-proyecto__panel"
     >
       <h2 class="planificacion-proyecto__titulo">Cronograma</h2>
       <p class="planificacion-proyecto__subtitulo">
         Vista general de las actividades con fechas confirmadas o proyectadas.
+        No incluye actividades canceladas.
       </p>
 
-      <CronogramaActividades :actividades="actividades" />
+      <CronogramaActividades :actividades="actividadesCronograma" />
     </section>
   </section>
 </template>
@@ -152,7 +156,10 @@ import BaseAlert from "../AlertaBase.vue";
 import FiltrosActividades from "./FiltrosActividades.vue";
 import TablaActividades from "./TablaActividades.vue";
 import CronogramaActividades from "./CronogramaActividades.vue";
-import { calcularMetricasPlanificacion } from "../../utils/actividadConstants.js";
+import {
+  calcularMetricasPlanificacion,
+  esActividadCancelada,
+} from "../../utils/actividadConstants.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
   ESTADOS_PROYECTO,
@@ -245,9 +252,32 @@ export default {
     tieneFechaEntrega() {
       return !!this.proyecto?.fechaEntregaEstipulada;
     },
+    actividadesProgramables() {
+      return (this.actividadesTotales || []).filter(
+        (actividad) => !esActividadCancelada(actividad)
+      );
+    },
+    /** Lista filtrada de la tabla, sin canceladas, para el cronograma. */
+    actividadesCronograma() {
+      return (this.actividades || []).filter(
+        (actividad) => !esActividadCancelada(actividad)
+      );
+    },
+    totalActividades() {
+      return (this.actividadesTotales || []).length;
+    },
+    canceladas() {
+      return (this.actividadesTotales || []).filter(esActividadCancelada).length;
+    },
+    textoCanceladas() {
+      if (!this.canceladas) return "";
+      return this.canceladas === 1
+        ? "1 cancelada no incluida en el cronograma"
+        : `${this.canceladas} canceladas no incluidas en el cronograma`;
+    },
     metricas() {
       return calcularMetricasPlanificacion(
-        this.actividadesTotales,
+        this.actividadesProgramables,
         this.proyecto?.fechaEntregaEstipulada
       );
     },
@@ -279,7 +309,7 @@ export default {
         const total = this.actividades.length;
         return `${total} ${total === 1 ? "actividad encontrada" : "actividades encontradas"}`;
       }
-      const total = this.metricas.total;
+      const total = this.totalActividades;
       return `${total} ${total === 1 ? "actividad cargada" : "actividades cargadas"}`;
     },
     mensajeVacio() {

@@ -146,6 +146,10 @@ import http from "./http";
  *           "al menos una postulación ACEPTADA" (ficha UC-26 §11). Con cupo
  *           completo no se puede editar/eliminar desde UC-36 y se excluye del
  *           payload de modificación (ficha UC-36 §7)
+ * @property {boolean} puedePostularse fuente de verdad por requerimiento:
+ *           true sólo si el perfil activo puede postularse a ESTE
+ *           requerimiento (estado del proyecto, membresía, profesión y cupo).
+ *           Usar este campo para habilitar el botón; no recalcular en el front.
  */
 
 /**
@@ -219,11 +223,13 @@ import http from "./http";
  * @property {string[]} [permisos] permisos del rol en este proyecto, ordenados
  *           alfabéticamente; vacío si no es miembro; sólo en
  *           GET /proyectos/{idProyecto}
- * @property {boolean} [elegibleParaPostularse] true sólo si el proyecto está
- *           Publicado o Confirmado, el perfil no es miembro activo, el
- *           proyecto acepta postulaciones generales y la profesión del perfil
- *           activo coincide con algún requerimiento general. NO evalúa cupo
- *           (para eso usar `satisfecho`/`faltantes`); sólo en
+ * @property {boolean} [elegibleParaPostularse] resumen global histórico;
+ *           true sólo si el proyecto está Publicado o Confirmado, el perfil no
+ *           es miembro activo, el proyecto acepta postulaciones generales y la
+ *           profesión del perfil activo coincide con algún requerimiento
+ *           general. NO evalúa cupo ni es la fuente de verdad por
+ *           requerimiento: para el gating usar
+ *           `requerimientosGral[].puedePostularse`. Sólo en
  *           GET /proyectos/{idProyecto}
  * @property {string|null} [motivoCancelacion] UC-35: motivo ingresado al
  *           cancelar; null si el proyecto no está cancelado. Presente en
@@ -369,8 +375,10 @@ const proyectoService = {
    * (ficha docs/backend/ficha-tecnica-ver-proyecto.md). A diferencia del
    * listado (UC-29, que omite los invisibles), el detalle responde 403 si el
    * proyecto no es visible para el perfil activo. Devuelve además el contexto
-   * del consultante (`rolUsuario`, `esMiembro`, `permisos`,
-   * `elegibleParaPostularse`) para condicionar la UI sin llamadas extra.
+   * del consultante (`rolUsuario`, `esMiembro`, `permisos`) y
+   * `requerimientosGral[].puedePostularse` para condicionar la UI sin
+   * llamadas extra. `elegibleParaPostularse` queda como resumen global
+   * deprecado para el gating.
    *
    * Errores:
    * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
