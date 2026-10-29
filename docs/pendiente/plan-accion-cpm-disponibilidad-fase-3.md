@@ -4,6 +4,12 @@
 **Ficha base:** `docs/backend/ficha-tecnica-cpm-disponibilidad-fase-3.md` (2026-10-27)  
 **Alcance:** aplicar en el front el contrato de actividades con CPM, el endpoint de disponibilidad y las reglas de refresco de UC-26/UC-34.
 
+> **Actualización 2026-10-28 — fases 1 a 5 implementadas.** La ficha quedó
+> aplicada en el frontend: utilidades CPM/disponibilidad, pestañas
+> Planificación y Cronograma, panel de disponibilidad en UC-26/UC-34 y
+> refresco posterior a cambios. El build de producción pasa. La sección 2.1 se
+> conserva como registro del estado previo.
+
 > **Actualización 2026-10-27 — endpoints implementados.** La planificación y el
 > cronograma quedaron separados:
 >

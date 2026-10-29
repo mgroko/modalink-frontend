@@ -5,7 +5,7 @@
 **Proyecto:** ModaLink  
 **Backend:** Spring Boot  
 **Fecha de referencia:** 2026-10-27  
-**Estado:** backend CPM/disponibilidad hasta fase 3; **endpoint HTTP de consulta de disponibilidad implementado**; **pestañas Planificación y Cronograma implementadas en backend**; **UC-34 (aceptación de postulaciones) implementado**; UC-60 (confirmación de proyecto) pendiente.
+**Estado:** backend CPM/disponibilidad hasta fase 3; **endpoint HTTP de consulta de disponibilidad implementado**; **pestañas Planificación y Cronograma implementadas en backend**; **UC-34 (aceptación de postulaciones) implementado**; **fases 1 a 5 del frontend implementadas**; UC-60 (confirmación de proyecto) pendiente en backend.
 
 ---
 
@@ -159,9 +159,12 @@ Uso sugerido:
 
 ### Conversión a fechas absolutas
 
-Para las respuestas HTTP de actividad, el backend ya traduce los rangos CPM a
-fechas absolutas cuando corresponde. El frontend no debe recalcular CPM ni
-sumar márgenes por su cuenta.
+`rangoInicio` y `rangoEjecucion` son **minutos relativos a `t0`**
+(`inicioMinutos`, `finMinutos`), no fechas absolutas. El frontend no los dibuja
+como barras ni los convierte: usa `inicioProyectado`, `finProyectado` y
+`finConHolgura` que entrega `GET /proyectos/{idProyecto}/cronograma`.
+
+El frontend no debe recalcular CPM ni sumar márgenes por su cuenta.
 
 ---
 
@@ -470,9 +473,18 @@ GET /proyectos/{idProyecto}/cronograma
 
 Ver [`ficha-tecnica-visualizar-cronograma.md`](./aplicadas/ficha-tecnica-visualizar-cronograma.md).
 
-### Pendiente de exponer o cerrar
+### Implementado en el frontend
 
-- integración del endpoint con el router/servicio frontend;
+- `listarPlanificacion` y `obtenerCronograma` en `actividadService`;
+- pestañas **Planificación** y **Cronograma** con carga diferida;
+- tarjetas de resumen, Gantt, tabla CPM, tooltips y detalle al hacer click;
+- `obtenerDisponibilidad` con soporte de `idPerfil` repetido;
+- panel reutilizable `DisponibilidadActividad` en la postulación del candidato
+  y en la aceptación del director;
+- refresco del cronograma y de la disponibilidad después de cambios.
+
+### Pendiente de exponer o cerrar en backend
+
 - revalidación definitiva durante UC-70 para asignaciones fuera del flujo de
   postulación;
 - confirmación de proyecto de fase 4 (UC-60).
