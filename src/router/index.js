@@ -34,6 +34,8 @@ import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.
 import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
 import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
+import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
+import ReportePerfilDetalleView from "../views/admin/ReportePerfilDetalleView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
 
@@ -223,6 +225,26 @@ const routes = [
     name: "reportes-admin",
     component: ReportesAdminView,
     meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Reportes" }
+  },
+  {
+    path: "/admin/reportes-perfil",
+    name: "admin-reportes-perfil",
+    component: ReportesPerfilView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Reportes de perfil",
+    },
+  },
+  {
+    path: "/admin/reportes-perfil/:id",
+    name: "admin-reporte-perfil",
+    component: ReportePerfilDetalleView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Detalle del reporte",
+    },
   },
   {
     path: "/admin/gestion-usuarios",

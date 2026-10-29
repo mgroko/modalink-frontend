@@ -1,23 +1,35 @@
+import http from "./http";
+
 /**
  * Servicio de reportes de perfiles (UC-15).
+ *
+ * Nota: el alta no devuelve body (`204 No Content`). El resto de la gestión
+ * vive en `adminService` (`/admin/reportes-perfil`).
  */
 const reporteService = {
   /**
-   * Reporta un perfil visto desde la búsqueda (UC-15).
+   * POST /perfiles/{idPerfil}/reportes — UC-15.
+   * Requiere sesión y perfil activo. El `idPerfil` del path es el perfil
+   * reportado (no el autor).
    *
-   * TODO(UC-15): el sistema aún no expone el endpoint de reportes. Reemplazar
-   * esta simulación por la llamada real cuando exista la ficha técnica
-   * (método, ruta y cuerpo a confirmar con el equipo de desarrollo), p. ej.:
-   *   return http.post(`/perfiles/${idPerfil}/reportes`, reporte);
+   * Reglas:
+   * - `motivo`: SPAM | CONTENIDO_OFENSIVO | SUPLANTACION | PERFIL_FALSO | OTRO
+   * - `descripcion`: opcional, máx. 200; obligatoria y no vacía si OTRO.
+   * - No se puede reportar el perfil propio ni un perfil inactivo.
+   * - Un administrador no puede reportar.
+   * - Un mismo autor no puede tener dos reportes PENDIENTE sobre el mismo perfil.
    *
-   * @param {number} idPerfil perfil a reportar
-   * @param {{categoria: string, detalle: string|null}} reporte motivo normalizado
-   *        y detalle opcional (máx. 500 caracteres)
-   * @returns {Promise<{data: object}>}
+   * Errores: 400, 401, 403, 404, 409, 500.
+   * @param {number|string} idPerfil perfil reportado
+   * @param {{motivo: string, descripcion?: string|null}} reporte
+   * @returns {Promise<{data: string}>} 204 No Content
    */
-  reportar(idPerfil, reporte) {
-    console.warn("[UC-15] reporteService.reportar pendiente de implementación:", idPerfil, reporte);
-    return Promise.resolve({ data: { pendiente: true } });
+  reportar(idPerfil, { motivo, descripcion } = {}) {
+    const texto = String(descripcion ?? "").trim();
+    return http.post(`/perfiles/${idPerfil}/reportes`, {
+      motivo,
+      descripcion: texto || null,
+    });
   },
 };
 

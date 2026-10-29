@@ -12,6 +12,7 @@ import http from "./http";
  * @typedef {Object} NotificacionResponse
  * @property {number} idNotificacion
  * @property {string} tipo
+ * @property {string} [titulo] título listo para UI (puede faltar en tipos viejos)
  * @property {string} mensaje
  * @property {string|null} entidadTipo
  * @property {number|null} entidadId en postulaciones es el id de la postulación

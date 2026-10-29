@@ -205,6 +205,7 @@
           <template v-else>
             <PerfilSidebarNav
               :es-propio="false"
+              :puede-reportar="!esAdministrador"
               :seccion-activa="seccion"
               @cambiar-seccion="cambiarSeccion"
               @navegar-ruta="navegarRuta"
@@ -231,7 +232,7 @@
 import perfilService from "../../services/perfilService";
 import homeService from "../../services/homeService";
 import authService from "../../services/authService";
-import { idPerfilActivo, limpiarSesion } from "../../services/authState";
+import { esAdmin, idPerfilActivo, limpiarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
@@ -303,6 +304,9 @@ export default {
     esPropio() {
       if (this.perfil?.esPropietario != null) return this.perfil.esPropietario === true;
       return this.perfil?.idPerfil != null && this.perfil.idPerfil === idPerfilActivo();
+    },
+    esAdministrador() {
+      return esAdmin();
     },
     mensajeBaja() {
       const { expiracion, restante } = this.contadorBaja;

@@ -13,11 +13,13 @@ export const TIPOS_NOTIFICACION = {
   POSTULACION_RECHAZADA: "POSTULACION_RECHAZADA",
   PROYECTO_CANCELADO: "PROYECTO_CANCELADO",
   PROYECTO_CONFIRMADO: "PROYECTO_CONFIRMADO",
+  PERFIL_REPORTADO: "PERFIL_REPORTADO",
 };
 
 export const RUTAS_NOTIFICACION = {
   POSTULACIONES: "postulaciones-proyecto",
   PROYECTO: "dashboard-proyecto",
+  ADMIN_REPORTE_PERFIL: "admin-reporte-perfil",
 };
 
 /**
@@ -46,6 +48,8 @@ function idProyectoValido(valor) {
  * - `PROYECTO_CONFIRMADO` → detalle del proyecto, sólo con `idProyecto`
  *   (UC-60: el sistema lo deriva de `entidadTipo = "PROYECTO"`).
  * - `POSTULACION_ACEPTADA` → detalle del proyecto.
+ * - `PERFIL_REPORTADO` → detalle del reporte admin, usando
+ *   `entidadTipo = "REPORTE_PERFIL"` y `entidadId = idReporte`.
  * - `POSTULACION_RECHAZADA`, `ACTIVIDAD_*`, `INVITACION_*`, `HITO_*` y el
  *   resto no tienen destino permitido.
  * @param {object|null|undefined} notificacion NotificacionResponse
@@ -94,6 +98,20 @@ export function destinoNotificacion(notificacion) {
         : {
             etiqueta: "Ver proyecto",
             ruta: { name: RUTAS_NOTIFICACION.PROYECTO, params: { id } },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.PERFIL_REPORTADO: {
+      if (notificacion.entidadTipo !== "REPORTE_PERFIL") return null;
+      const id = idProyectoValido(notificacion.entidadId);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver reporte",
+            ruta: {
+              name: RUTAS_NOTIFICACION.ADMIN_REPORTE_PERFIL,
+              params: { id },
+            },
           };
     }
 

@@ -34,13 +34,18 @@
         :rules="[reglasPerfil.requerido]"
       />
       <VaTextarea
-        v-model="detalle"
-        label="Detalle (opcional)"
+        v-model="descripcion"
+        label="Descripción"
         placeholder="Contanos qué sucede..."
-        :max-length="500"
+        :max-length="limiteDescripcion"
         counter
-        :rows="3"
+        :rows="4"
+        :rules="descripcionReglas"
       />
+      <p class="reportar-modal__ayuda">
+        La descripción es obligatoria si elegís “Otro”. Máximo
+        {{ limiteDescripcion }} caracteres.
+      </p>
     </VaForm>
 
     <template #footer>
@@ -61,6 +66,11 @@ import reporteService from "../../services/reporteService";
 import BaseAlert from "../AlertaBase.vue";
 import { reglasPerfil } from "../../utils/reglas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  LIMITE_DESCRIPCION_REPORTE_PERFIL,
+  MOTIVOS_REPORTE_PERFIL,
+  OPCIONES_MOTIVO_REPORTE_PERFIL,
+} from "../../utils/reportePerfilConstants.js";
 
 export default {
   name: "ReportarPerfilModal",
@@ -79,18 +89,24 @@ export default {
   data() {
     return {
       motivo: null,
-      detalle: "",
+      descripcion: "",
       enviando: false,
       mensajeError: "",
       reglasPerfil,
-      opcionesMotivo: [
-        { text: "Spam o publicidad engañosa", value: "SPAM" },
-        { text: "Contenido ofensivo o inapropiado", value: "CONTENIDO_OFENSIVO" },
-        { text: "Suplantación de identidad", value: "SUPLANTACION" },
-        { text: "Perfil falso o fraudulento", value: "PERFIL_FALSO" },
-        { text: "Otro", value: "OTRO" },
-      ],
+      opcionesMotivo: OPCIONES_MOTIVO_REPORTE_PERFIL,
+      limiteDescripcion: LIMITE_DESCRIPCION_REPORTE_PERFIL,
     };
+  },
+  computed: {
+    descripcionReglas() {
+      return [
+        reglasPerfil.max200,
+        (valor) =>
+          this.motivo !== MOTIVOS_REPORTE_PERFIL.OTRO ||
+          String(valor || "").trim().length > 0 ||
+          "Describí el motivo del reporte.",
+      ];
+    },
   },
   methods: {
     onCambioVisibilidad(valor) {
@@ -105,32 +121,62 @@ export default {
     },
     limpiar() {
       this.motivo = null;
-      this.detalle = "";
+      this.descripcion = "";
       this.mensajeError = "";
     },
     async enviar() {
       if (this.enviando) return;
       const validado = await this.$refs.form.validate();
       if (!validado) return;
+      if (this.perfil?.idPerfil == null) {
+        this.mensajeError = "No se pudo identificar el perfil a reportar.";
+        return;
+      }
 
       this.enviando = true;
       this.mensajeError = "";
       try {
-        await reporteService.reportar(this.perfil?.idPerfil, {
-          categoria: this.motivo,
-          detalle: this.detalle.trim() || null,
+        await reporteService.reportar(this.perfil.idPerfil, {
+          motivo: this.motivo,
+          descripcion: this.descripcion,
         });
         this.$emit("reportado");
         this.$emit("update:modelValue", false);
         this.limpiar();
       } catch (error) {
-        this.mensajeError = mensajeErrorApi(
-          error,
-          "No se pudo enviar el reporte. Intentá nuevamente."
-        );
+        this.mensajeError = this.mensajeDeError(error);
       } finally {
         this.enviando = false;
       }
+    },
+    mensajeDeError(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+
+      if (status === 400) {
+        return mensaje || "Revisá el motivo y la descripción del reporte.";
+      }
+      if (status === 403) {
+        return (
+          mensaje || "No podés reportar perfiles como administrador."
+        );
+      }
+      if (status === 404) {
+        return (
+          mensaje ||
+          "El perfil ya no está disponible o no tenés un perfil activo."
+        );
+      }
+      if (status === 409) {
+        return (
+          mensaje ||
+          "Ya existe un reporte pendiente para este perfil o no podés reportarte a vos mismo."
+        );
+      }
+      return mensajeErrorApi(
+        error,
+        "No se pudo enviar el reporte. Intentá nuevamente."
+      );
     },
   },
 };
@@ -153,6 +199,13 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.reportar-modal__ayuda {
+  margin: -0.25rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 
 .reportar-modal__acciones {

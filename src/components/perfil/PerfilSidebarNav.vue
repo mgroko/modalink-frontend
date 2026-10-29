@@ -52,7 +52,7 @@
     </div>
 
     <VaButton
-      v-if="!esPropio"
+      v-if="!esPropio && puedeReportar"
       color="danger"
       size="small"
       block
@@ -69,6 +69,11 @@ export default {
   name: "PerfilSidebarNav",
   props: {
     esPropio: {
+      type: Boolean,
+      default: true,
+    },
+    /** Oculta la acción para administradores (UC-15). */
+    puedeReportar: {
       type: Boolean,
       default: true,
     },

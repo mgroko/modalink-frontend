@@ -35,6 +35,10 @@
           <span>Reportes</span>
           <span class="admin-layout__soon">Próximo</span>
         </RouterLink>
+        <RouterLink to="/admin/reportes-perfil" class="admin-layout__link">
+          <span class="material-symbols-outlined">flag</span>
+          <span>Reportes de perfil</span>
+        </RouterLink>
         <RouterLink to="/admin/gestionar-caracteristicas" class="admin-layout__link">
           <span class="material-symbols-outlined">tune</span>
           <span>Características técnicas</span>

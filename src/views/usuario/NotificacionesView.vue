@@ -8,7 +8,7 @@
 
       <div class="notificaciones-view__actions">
         <select
-          v-if="!modoPerfil"
+          v-if="!modoPerfil && !modoAdmin"
           v-model="filtroPerfil"
           class="notificaciones-view__select"
           @change="cargar"
@@ -59,13 +59,13 @@
 
         <div class="notificacion-card__contenido">
           <div class="notificacion-card__cabecera">
-            <span class="notificacion-card__tipo">{{ etiquetaTipo(notificacion.tipo) }}</span>
+            <span class="notificacion-card__tipo">{{ tituloNotificacion(notificacion) }}</span>
             <span class="notificacion-card__fecha">{{ formatearFecha(notificacion.fechaGenerada) }}</span>
           </div>
           <p class="notificacion-card__mensaje">{{ notificacion.mensaje }}</p>
 
           <a
-            v-if="!modoAdmin && notificacion.destino"
+            v-if="notificacion.destino"
             :href="hrefDestino(notificacion)"
             class="notificacion-card__enlace"
             :class="{
@@ -140,12 +140,16 @@ export default {
       return this.$route.meta.requiereAdmin === true;
     },
     idPerfilContexto() {
+      if (this.modoAdmin) return null;
       return this.modoPerfil ? idPerfilActivo() : this.filtroPerfil;
     },
     titulo() {
       return this.modoPerfil ? "Notificaciones del perfil" : "Notificaciones";
     },
     subtitulo() {
+      if (this.modoAdmin) {
+        return "Reportes de perfil y actividad del sistema.";
+      }
       return this.modoPerfil
         ? "Actividad reciente del perfil activo."
         : "Todas las notificaciones de tu cuenta. Podés filtrar por perfil.";
@@ -167,6 +171,10 @@ export default {
   },
   methods: {
     async cargarPerfiles() {
+      if (this.modoAdmin) {
+        this.perfiles = [];
+        return;
+      }
       try {
         const response = await perfilService.listarMisPerfiles();
         this.perfiles = response?.data || [];
@@ -235,6 +243,12 @@ export default {
       const destino = notificacion?.destino;
       if (!destino || this.activandoNotificacion) return;
 
+      if (this.modoAdmin) {
+        this.marcarLeidaAlNavegar(notificacion);
+        this.$router.push(destino.ruta);
+        return;
+      }
+
       const idPerfil = notificacion?.idPerfilContexto;
       const perfilActivo = idPerfilActivo();
       const necesitaActivarPerfil =
@@ -289,6 +303,9 @@ export default {
         this.marcandoTodas = false;
       }
     },
+    tituloNotificacion(notificacion) {
+      return notificacion?.titulo || this.etiquetaTipo(notificacion?.tipo);
+    },
     etiquetaTipo(tipo) {
       const etiquetas = {
         [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "Postulación recibida",
@@ -296,6 +313,7 @@ export default {
         [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "Postulación rechazada",
         [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "Proyecto cancelado",
         [TIPOS_NOTIFICACION.PROYECTO_CONFIRMADO]: "Proyecto confirmado",
+        [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
         INVITACION_RECHAZADA: "Invitación rechazada",
         HITO_CUMPLIDO: "Hito cumplido",
         ACTIVIDAD_ASIGNADA: "Actividad asignada",
@@ -309,6 +327,7 @@ export default {
         [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "person_remove",
         [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "cancel",
         [TIPOS_NOTIFICACION.PROYECTO_CONFIRMADO]: "event_available",
+        [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
         INVITACION_RECHAZADA: "mail_off",
         HITO_CUMPLIDO: "flag",
         ACTIVIDAD_ASIGNADA: "assignment",
