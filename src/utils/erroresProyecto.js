@@ -1,6 +1,6 @@
 /*
  * Clasificación de errores del endpoint POST /proyectos (matriz UC-24 §5).
- * El backend sólo envía { message, httpStatus, timestamp } (o { errores } en
+ * El sistema sólo envía { message, httpStatus, timestamp } (o { errores } en
  * MethodArgumentNotValidException): no incluye el nombre de la excepción, así
  * que la clasificación por palabra clave sobre `message` es una heurística
  * conservadora — ante la duda se devuelve "generico"/null y la vista usa un
@@ -15,7 +15,7 @@
  *           "estado-inmutable"|"estado-no-cancelable"|"generico"} tipo
  * @property {object} [errores] body.errores original (sólo tipo "campos")
  * @property {string} [campo] campo a resaltar (sólo tipo "campo")
- * @property {string} [mensaje] message del backend
+ * @property {string} [mensaje] message del sistema
  */
 
 /**
@@ -96,13 +96,13 @@ export function clasificarErrorProyecto(error) {
  * @property {"limite"|"formato"|"vacio"|"tamano-peticion"|"dimensiones"|
  *           "permiso"|"proyecto-no-encontrado"|"perfil-activo"|
  *           "generico"} tipo
- * @property {string} [mensaje] message del backend
+ * @property {string} [mensaje] message del sistema
  */
 
 /*
  * Clasificación de errores de POST /proyectos/{id}/moodboard/imagenes
  * (matriz UC-24 §7.4). Misma heurística conservadora que
- * clasificarErrorProyecto: el backend sólo envía { message }, sin el nombre
+ * clasificarErrorProyecto: el sistema sólo envía { message }, sin el nombre
  * de la excepción, así que se clasifica por palabras clave del mensaje y
  * ante la duda se devuelve "generico".
  */

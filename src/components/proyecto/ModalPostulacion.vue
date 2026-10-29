@@ -65,7 +65,7 @@
 
     <p v-if="esActividad" class="postulacion-modal__nota">
       La disponibilidad se verifica antes de postular. Si la consulta falla por
-      un error técnico, el backend volverá a validarla al enviar. Si el proyecto
+      un error técnico, el sistema volverá a validarla al enviar. Si el proyecto
       todavía no tiene fecha de inicio confirmada, la verificación será
       provisoria.
     </p>
@@ -178,7 +178,7 @@ export default {
       type: String,
       default: "",
     },
-    /** Muestra el atajo a calendario cuando el backend respondió sin disponibilidad. */
+    /** Muestra el atajo a calendario cuando el sistema respondió sin disponibilidad. */
     sugerirCalendario: {
       type: Boolean,
       default: false,

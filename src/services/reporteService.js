@@ -5,9 +5,9 @@ const reporteService = {
   /**
    * Reporta un perfil visto desde la búsqueda (UC-15).
    *
-   * TODO(UC-15): el backend aún no expone el endpoint de reportes. Reemplazar
+   * TODO(UC-15): el sistema aún no expone el endpoint de reportes. Reemplazar
    * esta simulación por la llamada real cuando exista la ficha técnica
-   * (método, ruta y cuerpo a confirmar con el equipo de backend), p. ej.:
+   * (método, ruta y cuerpo a confirmar con el equipo de desarrollo), p. ej.:
    *   return http.post(`/perfiles/${idPerfil}/reportes`, reporte);
    *
    * @param {number} idPerfil perfil a reportar
@@ -16,7 +16,7 @@ const reporteService = {
    * @returns {Promise<{data: object}>}
    */
   reportar(idPerfil, reporte) {
-    console.warn("[UC-15] reporteService.reportar pendiente de backend:", idPerfil, reporte);
+    console.warn("[UC-15] reporteService.reportar pendiente de implementación:", idPerfil, reporte);
     return Promise.resolve({ data: { pendiente: true } });
   },
 };

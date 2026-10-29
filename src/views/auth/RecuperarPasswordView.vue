@@ -53,7 +53,7 @@ export default {
       this.errorMessage = "";
 
       try {
-        // TODO backend: aún no existe el endpoint de recuperación de contraseña.
+        // TODO: aún no existe el endpoint de recuperación de contraseña.
         // authService.recuperarPassword espera POST /auth/recuperar-password { correo }
         // y debería responder 200 sin importar si el correo existe o no (por seguridad).
         await authService.recuperarPassword(this.correo);

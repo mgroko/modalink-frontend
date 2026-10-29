@@ -585,7 +585,7 @@ export default {
 
       try {
         const response = await perfilService.crear(request);
-        // Flujo 1 (Caso A): si es el primer perfil, el backend lo asigna como activo.
+        // Flujo 1 (Caso A): si es el primer perfil, el sistema lo asigna como activo.
         await refrescarSesion();
 
         let avisoFoto = "";

@@ -131,7 +131,7 @@ import { etiquetaTipoPostulacion } from "../../utils/postulacionConstants.js";
 
 /*
  * Tabla de UC-74. Presentacional: no decide permisos, recibe
- * `puedeAceptar`/`puedeRechazar` del backend y deshabilita las acciones
+ * `puedeAceptar`/`puedeRechazar` del sistema y deshabilita las acciones
  * mientras hay una gestión en vuelo.
  */
 export default {

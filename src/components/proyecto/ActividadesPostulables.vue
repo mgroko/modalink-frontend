@@ -118,7 +118,7 @@
  * proyecto Publicado o Confirmado. La carga y el refresco viven acá; la
  * request de postulación la resuelve el dashboard, que abre el modal de
  * confirmación. La acción se gatea con `requerimiento.puedePostularse`
- * (fuente de verdad del backend); si el backend todavía no lo expone, se usa
+ * (fuente de verdad del sistema); si el sistema todavía no lo expone, se usa
  * el cupo como fallback. El 409 del dashboard sigue marcando localmente los
  * requerimientos sin cupo.
  */
@@ -308,7 +308,7 @@ export default {
       const clave = this.claveDe(requerimiento);
       return !!clave && !!this.requerimientosSinCupo?.[clave];
     },
-    /** Elegibilidad del backend por requerimiento + marca local tras 409. */
+    /** Elegibilidad del sistema por requerimiento + marca local tras 409. */
     puedePostularRequerimientoDe(requerimiento) {
       return (
         puedePostularRequerimiento(requerimiento) &&

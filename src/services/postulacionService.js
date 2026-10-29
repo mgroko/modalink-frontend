@@ -27,8 +27,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {number} faltantes max(0, cantidadRequerida - cubiertos)
  * @property {boolean} satisfecho cubiertos >= cantidadRequerida
  * @property {boolean} aportaCupo true si está ACEPTADA y su vínculo sigue activo
- * @property {boolean} puedeAceptar sugerencia de UI; el backend revalida
- * @property {boolean} puedeRechazar sugerencia de UI; el backend revalida
+ * @property {boolean} puedeAceptar sugerencia de UI; el sistema revalida
+ * @property {boolean} puedeRechazar sugerencia de UI; el sistema revalida
  */
 
 /**
@@ -99,7 +99,7 @@ const postulacionService = {
   /**
    * POST /proyectos/{idProyecto}/postulaciones/general/{idPostulacion}/aceptar
    * UC-34. Sin body. Crea la membresía del postulante, marca la postulación
-   * como ACEPTADA y, si completa el cupo, el backend rechaza las demás
+   * como ACEPTADA y, si completa el cupo, el sistema rechaza las demás
    * postulaciones PENDIENTE del requerimiento.
    *
    * Errores esperables: 401, 403, 404, 409 (ya gestionada, proyecto no

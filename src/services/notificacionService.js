@@ -3,7 +3,7 @@ import http from "./http";
 /*
  * Contrato de notificaciones
  * (docs/backend/ficha-tecnica-notificaciones-navegacion.md).
- * El backend agrega `idProyecto` (nullable) al final de la respuesta; es un
+ * El sistema agrega `idProyecto` (nullable) al final de la respuesta; es un
  * dato derivado en lectura a partir de `entidadTipo + entidadId`, no una
  * columna persistida. No debe inferirse desde `entidadId`.
  */

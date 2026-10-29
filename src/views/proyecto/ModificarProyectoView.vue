@@ -1009,8 +1009,8 @@ export default {
       }
 
       if (this.dirty.personal) {
-        // UC-36 pendiente (backend): si un requerimiento tiene `cubiertos > 0`
-        // pero `faltantes > 0`, este payload lo reenvía y el backend lo
+        // UC-36 pendiente: si un requerimiento tiene `cubiertos > 0`
+        // pero `faltantes > 0`, este payload lo reenvía y el sistema lo
         // elimina/recrea, lo que puede chocar con la FK de miembros. Hoy sólo
         // se excluyen los de cupo completo; no omitir los parciales porque
         // omitirlos también implica borrarlos. Ver nota en la ficha UC-26 §11.

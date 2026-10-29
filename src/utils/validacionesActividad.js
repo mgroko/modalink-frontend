@@ -159,7 +159,7 @@ export function validarActividadEdicion(
 }
 
 /**
- * Unicidad anticipada del nombre dentro de la planificación (409 backend).
+ * Unicidad anticipada del nombre dentro de la planificación (409 del sistema).
  * @param {string} nombre
  * @param {Array<{idActividad?:number,nombre:string}>} actividades
  * @param {number|string|null} [idExcluido] actividad que se está editando

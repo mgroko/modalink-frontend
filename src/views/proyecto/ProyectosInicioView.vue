@@ -318,7 +318,7 @@ export default {
         borderColor: colores.borde,
       };
     },
-    /** "18:00 – 20:00": el backend no envía la hora de fin calculada. */
+    /** "18:00 – 20:00": el sistema no envía la hora de fin calculada. */
     rangoHorario(actividad) {
       const inicio = horaCorta(String(actividad?.fechaHoraInicio || "").split("T")[1] || "");
       if (!inicio) return "";

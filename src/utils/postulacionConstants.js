@@ -13,13 +13,13 @@ import {
  * Se centralizan acá para no repetir la matriz de habilitación en la vista y
  * poder probarlas de forma aislada.
  *
- * El backend es la fuente de verdad:
+ * El sistema es la fuente de verdad:
  * - `requerimiento.puedePostularse` es la fuente de verdad por requerimiento.
  *   Ya contempla estado del proyecto/actividad, membresía/rol, profesión y
  *   cupo. El front no debe replicar esas reglas.
  * - `elegibleParaPostularse` queda como resumen global deprecado para el
  *   gating; no debe usarse para habilitar el botón de un requerimiento.
- * - Si el backend todavía no expone `puedePostularse` (rollout), se usa
+ * - Si el sistema todavía no expone `puedePostularse` (rollout), se usa
  *   `elegibleParaPostularse`/`hayCupo` como fallback.
  * - El cupo se lee de `satisfecho`/`faltantes` (definición §11 de la ficha:
  *   `satisfecho = cubiertos >= cantidad`). El front no lo deriva de `cantidad`
@@ -98,7 +98,7 @@ export function clavePostulacion(tipo, idRequerimiento) {
  *
  * - `satisfecho === true` → no hay cupo.
  * - `faltantes` numérico → hay cupo si es mayor a 0.
- * - Sin `satisfecho`/`faltantes` (p. ej. actividades hasta que el backend
+ * - Sin `satisfecho`/`faltantes` (p. ej. actividades hasta que el sistema
  *   exponga los campos) → no se bloquea la acción; el `409` es la red de
  *   seguridad.
  * @param {object|null|undefined} requerimiento
@@ -117,7 +117,7 @@ export function hayCupo(requerimiento) {
 }
 
 /**
- * Cupo completo según el backend (o marca local tras un 409 de cupo).
+ * Cupo completo según el sistema (o marca local tras un 409 de cupo).
  * @param {object|null|undefined} requerimiento
  * @returns {boolean}
  */
@@ -126,9 +126,9 @@ export function esCupoCompleto(requerimiento) {
 }
 
 /**
- * ¿El backend habilitó este requerimiento para el perfil activo?
+ * ¿El sistema habilitó este requerimiento para el perfil activo?
  *
- * `puedePostularse` es la fuente de verdad de Fase 1/2. Si el backend todavía
+ * `puedePostularse` es la fuente de verdad de Fase 1/2. Si el sistema todavía
  * no lo expone (rollout), se usa el cupo como fallback.
  * @param {object|null|undefined} requerimiento
  * @returns {boolean}
@@ -143,7 +143,7 @@ export function puedePostularRequerimiento(requerimiento) {
 
 /**
  * Texto para explicar por qué no se muestra la acción de postulación.
- * No intenta adivinar la causa cuando el backend sólo devuelve `false`.
+ * No intenta adivinar la causa cuando el sistema sólo devuelve `false`.
  * @param {object|null|undefined} requerimiento
  * @returns {string}
  */
@@ -157,7 +157,7 @@ export function motivoNoPostulable(requerimiento) {
 }
 
 /**
- * Postulación general (ficha §4.4): si el backend expone `puedePostularse`,
+ * Postulación general (ficha §4.4): si el sistema expone `puedePostularse`,
  * esa es la fuente de verdad. Si no, se conserva el fallback histórico con
  * `elegibleParaPostularse` + cupo.
  * @param {object|null|undefined} proyecto ProyectoResponse
@@ -190,13 +190,13 @@ export function proyectoAdmitePostulacionesActividad(proyecto) {
 }
 
 /**
- * Postulación a una actividad concreta (ficha §4.4): si el backend expone
+ * Postulación a una actividad concreta (ficha §4.4): si el sistema expone
  * `puedePostularse`, esa es la fuente de verdad. Si no, se conserva el
  * fallback histórico: proyecto Publicado/Confirmado, perfil no director,
  * actividad PENDIENTE y cupo disponible.
  *
  * La profesión, el duplicado y la disponibilidad los sigue validando el
- * backend; `puedePostularse` no garantiza el éxito de la request.
+ * sistema; `puedePostularse` no garantiza el éxito de la request.
  * @param {object|null|undefined} proyecto ProyectoResponse
  * @param {object|null|undefined} actividad ActividadBusquedaResponse
  * @param {object|null|undefined} requerimiento requerimiento de la actividad
@@ -229,7 +229,7 @@ export function esErrorPostulacionDuplicada(error) {
 
 /**
  * Detecta el 409 de cupo completo. Se registra localmente para ocultar la
- * acción aunque la respuesta del backend todavía no traiga `satisfecho`
+ * acción aunque la respuesta del sistema todavía no traiga `satisfecho`
  * (caso de actividades).
  * @param {object} error error Axios
  * @returns {boolean}
@@ -274,7 +274,7 @@ export function mensajeExitoPostulacion(tipo, nombreActividad = "") {
 
 /**
  * Texto del cupo para la UI: "1 / 2 cubiertos" cuando hay más de un lugar.
- * Sólo usa datos del backend; devuelve "" si no corresponde mostrarlo.
+ * Sólo usa datos del sistema; devuelve "" si no corresponde mostrarlo.
  * @param {object|null|undefined} requerimiento
  * @returns {string}
  */

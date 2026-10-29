@@ -33,7 +33,7 @@ export function formatUbicacion(origen) {
 /**
  * Decide si un texto libre de búsqueda corresponde al catálogo Georef.
  * Prioridad: provincia > localidad (más amplio primero).
- * La comparación replica el `contains` case-insensitive del backend.
+ * La comparación replica el `contains` case-insensitive del sistema.
  *
  * @param {string} texto Texto escrito por el usuario en el buscador
  * @param {Array<{nombre?: string}>} provincias Catálogo de provincias

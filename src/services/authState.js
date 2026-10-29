@@ -47,7 +47,7 @@ function permisosGlobales() {
   if (valor && typeof valor === "object") {
     return Object.values(valor).flat().filter(Boolean);
   }
-  // Si el backend no envía permisos (solo rol), se derivan del rol.
+  // Si el sistema no envía permisos (solo rol), se derivan del rol.
   if (esAdmin()) return PERMISOS_ADMIN;
   return [];
 }
@@ -100,7 +100,7 @@ function limpiarSesion() {
   restauracionEnCurso = null;
 }
 
-// Termina la sesión completa: invalida la cookie JWT en el backend
+// Termina la sesión completa: invalida la cookie JWT en el sistema
 // (POST /auth/logout) y limpia el estado local. El logout es best-effort:
 // si falla la red o no hay sesión, el estado local igual se limpia.
 async function finalizarSesion() {

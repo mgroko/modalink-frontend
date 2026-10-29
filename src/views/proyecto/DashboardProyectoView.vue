@@ -58,6 +58,15 @@
               Publicar
             </VaButton>
             <VaButton
+              v-if="puedeConfirmarProyecto"
+              preset="primary"
+              :disabled="confirmandoProyecto"
+              :loading="confirmandoProyecto"
+              @click="abrirConfirmacion"
+            >
+              Confirmar proyecto
+            </VaButton>
+            <VaButton
               v-if="puedeGestionarPostulaciones"
               preset="secondary"
               icon="mso-group"
@@ -290,6 +299,20 @@
           @confirmar="confirmarPublicacion"
         />
 
+        <ModalConfirmarProyecto
+          :model-value="modalConfirmacionVisible"
+          :preview="previewConfirmacion"
+          :cargando-preview="cargandoPreviewConfirmacion"
+          :actualizando-preview="actualizandoPreviewConfirmacion"
+          :error-preview="errorPreviewConfirmacion"
+          :puede-reintentar-preview="puedeReintentarPreviewConfirmacion"
+          :confirmando="confirmandoProyecto"
+          :error-confirmacion="errorConfirmacion"
+          @update:modelValue="onCambioVisibilidadConfirmacion"
+          @confirmar="confirmarProyecto"
+          @reintentar="reintentarPreviewConfirmacion"
+        />
+
         <ModalCancelarProyecto
           :model-value="modalCancelarVisible"
           :nombre-proyecto="proyecto.nombre"
@@ -322,7 +345,8 @@
 import proyectoService from "../../services/proyectoService";
 import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
-import { refrescarSesion } from "../../services/authState";
+import { idPerfilActivo, refrescarSesion } from "../../services/authState";
+import { cargarResumenPerfil } from "../../services/notificacionState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
@@ -331,6 +355,7 @@ import RequerimientoDetalle from "../../components/proyecto/RequerimientoDetalle
 import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
+import ModalConfirmarProyecto from "../../components/proyecto/ModalConfirmarProyecto.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
 import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
@@ -338,8 +363,13 @@ import actividadService from "../../services/actividadService.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
-import { formatearFechaCorta } from "../../utils/fechas.js";
+import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import {
+  CODIGOS_CONFIRMACION,
+  clasificarErrorConfirmacion,
+  normalizarPreview,
+} from "../../utils/confirmacionConstants.js";
 import {
   AVISO_DISPONIBILIDAD_PROVISORIA,
   TIPOS_POSTULACION,
@@ -368,6 +398,7 @@ let controladorPublicacion = null;
 let controladorCancelacion = null;
 let controladorEliminacion = null;
 let controladorPostulacion = null;
+let controladorConfirmacion = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -380,6 +411,7 @@ export default {
     CollageMoodboard,
     ModalGaleriaMoodboard,
     ModalPublicarProyecto,
+    ModalConfirmarProyecto,
     ModalCancelarProyecto,
     ModalEliminarActividad,
     ModalPostulacion,
@@ -407,6 +439,16 @@ data() {
       modalCancelarVisible: false,
       cancelando: false,
       errorCancelacion: "",
+      modalConfirmacionVisible: false,
+      previewConfirmacion: null,
+      cargandoPreviewConfirmacion: false,
+      actualizandoPreviewConfirmacion: false,
+      errorPreviewConfirmacion: "",
+      puedeReintentarPreviewConfirmacion: false,
+      confirmandoProyecto: false,
+      errorConfirmacion: "",
+      fechaInicioConfirmacion: null,
+      idCargaPreviewConfirmacion: 0,
       modalPostulacion: {
         visible: false,
         tipo: TIPOS_POSTULACION.GENERAL,
@@ -463,6 +505,15 @@ data() {
     },
     puedePublicar() {
       return this.permisos.includes("PUBLICAR_PROYECTO") && this.esBorrador;
+    },
+    /** UC-60 §5.2: el sistema valida permiso y director; acá se combina con estado. */
+    puedeConfirmarProyecto() {
+      return (
+        this.esMiembro &&
+        this.permisos.includes("CONFIRMAR_PROYECTO") &&
+        normalizarEstadoProyecto(this.proyecto?.estado) ===
+          ESTADOS_PROYECTO.PUBLICADO
+      );
     },
     esCancelado() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.CANCELADO;
@@ -527,6 +578,20 @@ data() {
       if (controladorPostulacion) {
         controladorPostulacion.abort();
         controladorPostulacion = null;
+      }
+      this.modalConfirmacionVisible = false;
+      this.previewConfirmacion = null;
+      this.cargandoPreviewConfirmacion = false;
+      this.actualizandoPreviewConfirmacion = false;
+      this.errorPreviewConfirmacion = "";
+      this.puedeReintentarPreviewConfirmacion = false;
+      this.confirmandoProyecto = false;
+      this.errorConfirmacion = "";
+      this.fechaInicioConfirmacion = null;
+      this.idCargaPreviewConfirmacion++;
+      if (controladorConfirmacion) {
+        controladorConfirmacion.abort();
+        controladorConfirmacion = null;
       }
       this.cargar();
     },
@@ -1009,6 +1074,304 @@ data() {
         "No se pudo cancelar el proyecto."
       );
     },
+    /** UC-60 §5.1: abre el diálogo y consulta el preview (solo lectura). */
+    abrirConfirmacion() {
+      if (!this.puedeConfirmarProyecto || this.confirmandoProyecto) return;
+      this.errorConfirmacion = "";
+      this.modalConfirmacionVisible = true;
+      this.cargarPreviewConfirmacion("inicial");
+    },
+    onCambioVisibilidadConfirmacion(valor) {
+      if (valor) {
+        this.modalConfirmacionVisible = true;
+        return;
+      }
+      if (this.confirmandoProyecto) return;
+
+      this.modalConfirmacionVisible = false;
+      this.idCargaPreviewConfirmacion++;
+      if (controladorConfirmacion) {
+        controladorConfirmacion.abort();
+        controladorConfirmacion = null;
+      }
+      this.previewConfirmacion = null;
+      this.cargandoPreviewConfirmacion = false;
+      this.actualizandoPreviewConfirmacion = false;
+      this.errorPreviewConfirmacion = "";
+      this.puedeReintentarPreviewConfirmacion = false;
+      this.errorConfirmacion = "";
+    },
+    reintentarPreviewConfirmacion() {
+      this.cargarPreviewConfirmacion("inicial");
+    },
+    /**
+     * GET /proyectos/{id}/confirmacion. Con `modo = "refresco"` reconsulta sin
+     * vaciar el contenido: se usa después de un 409 de bloqueo para que el
+     * modal siga mostrando los bloqueos mientras se actualiza.
+     */
+    async cargarPreviewConfirmacion(modo = "inicial") {
+      if (this.confirmandoProyecto) return;
+      const inicial = modo === "inicial";
+      const corrida = ++this.idCargaPreviewConfirmacion;
+
+      if (controladorConfirmacion) controladorConfirmacion.abort();
+      controladorConfirmacion = new AbortController();
+
+      if (inicial) {
+        this.previewConfirmacion = null;
+        this.cargandoPreviewConfirmacion = true;
+      } else {
+        this.actualizandoPreviewConfirmacion = true;
+      }
+      this.errorPreviewConfirmacion = "";
+      this.puedeReintentarPreviewConfirmacion = false;
+
+      try {
+        const response = await proyectoService.previsualizarConfirmacion(
+          this.idProyecto,
+          controladorConfirmacion.signal
+        );
+        if (corrida !== this.idCargaPreviewConfirmacion) return;
+        this.previewConfirmacion = normalizarPreview(response?.data);
+        this.errorConfirmacion = "";
+      } catch (error) {
+        if (
+          corrida !== this.idCargaPreviewConfirmacion ||
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+        this.manejarErrorPreviewConfirmacion(error);
+      } finally {
+        if (corrida === this.idCargaPreviewConfirmacion) {
+          this.cargandoPreviewConfirmacion = false;
+          this.actualizandoPreviewConfirmacion = false;
+        }
+      }
+    },
+    manejarErrorPreviewConfirmacion(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorConfirmacion(error);
+      const mensaje = clasificacion.mensaje;
+
+      if (status === 403) {
+        this.modalConfirmacionVisible = false;
+        this.toast.init({
+          title: "No se pudo verificar",
+          message:
+            mensaje ||
+            "No tenés permiso para confirmar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalConfirmacionVisible = false;
+
+        if (
+          clasificacion.codigo ===
+            CODIGOS_CONFIRMACION.PERFIL_ACTIVO_NO_SELECCIONADO ||
+          /perfil\s*activo/i.test(mensaje)
+        ) {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (
+          clasificacion.codigo ===
+            CODIGOS_CONFIRMACION.PROYECTO_NO_ENCONTRADO ||
+          /proyecto/i.test(mensaje)
+        ) {
+          this.proyecto = null;
+          this.estadoNoEncontrado = true;
+          this.mensajeError = mensaje || "El proyecto no existe.";
+          this.mostrarVolver = true;
+          return;
+        }
+      }
+
+      // 500/red o 404 no contemplado: el modal queda abierto con reintento.
+      this.errorPreviewConfirmacion = mensajeErrorApi(
+        error,
+        "No se pudo verificar el proyecto. Inténtalo nuevamente."
+      );
+      this.puedeReintentarPreviewConfirmacion = true;
+    },
+    /** UC-60: confirma y reemplaza el proyecto con la respuesta completa. */
+    async confirmarProyecto() {
+      if (this.confirmandoProyecto) return;
+      if (this.previewConfirmacion?.puedeConfirmar !== true) return;
+
+      this.confirmandoProyecto = true;
+      this.errorConfirmacion = "";
+      if (controladorConfirmacion) controladorConfirmacion.abort();
+      controladorConfirmacion = new AbortController();
+
+      try {
+        const response = await proyectoService.confirmar(
+          this.idProyecto,
+          controladorConfirmacion.signal
+        );
+        const data = response?.data || {};
+        this.fechaInicioConfirmacion = data.fechaInicioConfirmada || null;
+
+        if (data.proyecto) {
+          // Q1: la ficha devuelve un ProyectoResponse completo. Se conserva el
+          // contexto del consultante por si el DTO del POST lo omite.
+          this.proyecto = {
+            ...data.proyecto,
+            esMiembro: data.proyecto.esMiembro ?? this.proyecto?.esMiembro ?? false,
+            rolUsuario: data.proyecto.rolUsuario ?? this.proyecto?.rolUsuario ?? null,
+            permisos: Array.isArray(data.proyecto.permisos)
+              ? data.proyecto.permisos
+              : this.proyecto?.permisos || [],
+          };
+        } else {
+          await this.cargar();
+        }
+
+        this.modalConfirmacionVisible = false;
+        this.previewConfirmacion = null;
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion++;
+        });
+        this.refrescarNotificacionesPerfil();
+        this.refrescarActividades();
+
+        const inicio = this.fechaInicioConfirmacion
+          ? formatearFecha(this.fechaInicioConfirmacion)
+          : "";
+        this.toast.init({
+          title: "Proyecto confirmado",
+          message: inicio
+            ? `El proyecto se confirmó y las actividades quedaron agendadas. Inicio: ${inicio}.`
+            : "El proyecto se confirmó y las actividades quedaron agendadas.",
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorConfirmacion(error);
+      } finally {
+        this.confirmandoProyecto = false;
+      }
+    },
+    async manejarErrorConfirmacion(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorConfirmacion(error);
+      const mensaje = clasificacion.mensaje;
+
+      if (status === 403) {
+        this.modalConfirmacionVisible = false;
+        this.toast.init({
+          title: "No se pudo confirmar",
+          message:
+            mensaje ||
+            "No tenés permiso para confirmar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalConfirmacionVisible = false;
+
+        if (
+          clasificacion.codigo ===
+            CODIGOS_CONFIRMACION.PERFIL_ACTIVO_NO_SELECCIONADO ||
+          /perfil\s*activo/i.test(mensaje)
+        ) {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (
+          clasificacion.codigo ===
+            CODIGOS_CONFIRMACION.PROYECTO_NO_ENCONTRADO ||
+          /proyecto/i.test(mensaje)
+        ) {
+          this.proyecto = null;
+          this.estadoNoEncontrado = true;
+          this.mensajeError = mensaje || "El proyecto no existe.";
+          this.mostrarVolver = true;
+          return;
+        }
+
+        this.errorConfirmacion = mensajeErrorApi(
+          error,
+          "No se pudo confirmar el proyecto."
+        );
+        return;
+      }
+
+      if (status === 409) {
+        // §5.3: cambio de estado → cerrar, avisar y refrescar proyecto/cronograma.
+        if (clasificacion.esEstado) {
+          this.modalConfirmacionVisible = false;
+          this.toast.init({
+            title: "No se pudo confirmar",
+            message:
+              mensaje ||
+              "El proyecto ya no se encuentra en un estado confirmable.",
+            color: "danger",
+            position: "top-right",
+            duration: 6000,
+          });
+          await this.cargar();
+          await this.$nextTick(() => {
+            this.tokenRefrescoPlanificacion++;
+          });
+          return;
+        }
+
+        // Bloqueo corregible: el modal sigue abierto y se reconsulta el preview.
+        this.errorConfirmacion =
+          mensaje || "El proyecto todavía no se puede confirmar.";
+        const base = this.previewConfirmacion || normalizarPreview({});
+        this.previewConfirmacion = {
+          ...base,
+          puedeConfirmar: false,
+          bloqueos: clasificacion.bloqueos.length
+            ? clasificacion.bloqueos
+            : base.bloqueos,
+        };
+        // El POST ya terminó: liberar el guard antes de reconsultar.
+        this.confirmandoProyecto = false;
+        await this.cargarPreviewConfirmacion("refresco");
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorConfirmacion =
+          "Ocurrió un error al confirmar el proyecto. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorConfirmacion = mensajeErrorApi(
+        error,
+        "No se pudo confirmar el proyecto."
+      );
+    },
+    refrescarNotificacionesPerfil() {
+      const idPerfil = idPerfilActivo();
+      if (idPerfil == null) return;
+      cargarResumenPerfil(idPerfil);
+    },
     /** UC-26: abre la confirmación de postulación a un requerimiento general. */
     abrirPostulacionGeneral(requerimiento) {
       if (!this.puedePostularGeneralDe(requerimiento)) return;
@@ -1089,7 +1452,7 @@ data() {
       };
     },
     /**
-     * Oculta la acción cuando el backend respondió cupo completo aunque la
+     * Oculta la acción cuando el sistema respondió cupo completo aunque la
      * respuesta recargada todavía no traiga `satisfecho` (actividades).
      * La marca dura la sesión de la vista y se limpia al cambiar de proyecto.
      */
@@ -1446,6 +1809,7 @@ data() {
     if (controladorCancelacion) controladorCancelacion.abort();
     if (controladorEliminacion) controladorEliminacion.abort();
     if (controladorPostulacion) controladorPostulacion.abort();
+    if (controladorConfirmacion) controladorConfirmacion.abort();
   },
 };
 </script>

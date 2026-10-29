@@ -3,7 +3,7 @@
     <span class="material-symbols-outlined reportes-admin__icon">description</span>
     <h1>Reportes</h1>
     <p>Los reportes administrativos todavía no están disponibles.</p>
-    <small>El backend informa que esta funcionalidad aún no fue implementada.</small>
+    <small>El sistema informa que esta funcionalidad aún no fue implementada.</small>
   </section>
 </template>
 

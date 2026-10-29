@@ -117,7 +117,7 @@ export function puedeEditarActividad(estado) {
 }
 
 /**
- * El estado de actividad llega normalizado en mayúsculas desde el backend y
+ * El estado de actividad llega normalizado en mayúsculas desde el sistema y
  * los formularios, así que la comparación directa es suficiente.
  * @param {object|null|undefined} actividad
  * @returns {boolean}
@@ -203,7 +203,7 @@ export function parseFechaLocal(valor) {
 }
 
 /**
- * Fin del día de entrega, tal como programa el backend (23:59).
+ * Fin del día de entrega, tal como programa el sistema (23:59).
  * @param {string|Date|null|undefined} fechaEntrega
  * @returns {Date|null}
  */

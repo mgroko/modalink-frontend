@@ -3,7 +3,7 @@
  * (docs/backend/ficha-tecnica-cpm-disponibilidad-fase-3.md).
  *
  * El front no calcula CPM, holguras ni márgenes: sólo interpreta los flags y
- * los minutos que entrega el backend. Los booleanos pueden venir `null`, por
+ * los minutos que entrega el sistema. Los booleanos pueden venir `null`, por
  * eso todas las comprobaciones son estrictas (`=== true`).
  */
 
@@ -48,7 +48,7 @@ const COLOR_ESTADO_POR_DEFECTO = {
 
 /**
  * Etiqueta del estado del cronograma. Un valor desconocido se muestra crudo,
- * nunca como "—", para no ocultar información nueva del backend.
+ * nunca como "—", para no ocultar información nueva del sistema.
  * @param {string|null|undefined} valor
  * @returns {string}
  */
@@ -191,7 +191,7 @@ export function describirCpm(actividad) {
 }
 
 /**
- * El backend entrega `finProyectado` como fin exclusivo. Para mostrar el día
+ * El sistema entrega `finProyectado` como fin exclusivo. Para mostrar el día
  * inclusive se resta un día sólo cuando el fin cae exactamente a las 00:00.
  * @param {string|Date|null|undefined} valor
  * @returns {Date|null}
@@ -213,7 +213,7 @@ export function fechaFinInclusiva(valor) {
 
 /**
  * Rango visual "dd/mm/aaaa – dd/mm/aaaa" usando fechas absolutas ya calculadas
- * por el backend, con el fin mostrado como día inclusive.
+ * por el sistema, con el fin mostrado como día inclusive.
  * @param {string|null|undefined} inicio
  * @param {string|null|undefined} fin
  * @returns {string}

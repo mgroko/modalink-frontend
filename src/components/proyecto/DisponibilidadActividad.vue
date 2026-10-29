@@ -63,7 +63,7 @@
         class="disponibilidad-actividad__nota disponibilidad-actividad__nota--provisional"
       >
         La evaluación es provisional porque el proyecto todavía no confirmó su
-        fecha de inicio. El backend volverá a validar la disponibilidad al
+        fecha de inicio. El sistema volverá a validar la disponibilidad al
         confirmar la postulación o asignación.
       </p>
 
@@ -145,7 +145,7 @@ import {
 /*
  * Panel de disponibilidad (ficha CPM §6 y §10). Consulta de solo lectura: no
  * reserva ni asigna. Si la consulta falla por un error técnico, emite `null`
- * para que el contenedor pueda permitir continuar; el backend revalida igual.
+ * para que el contenedor pueda permitir continuar; el sistema revalida igual.
  */
 export default {
   name: "DisponibilidadActividad",
@@ -299,7 +299,7 @@ export default {
       if (status === 409) {
         return mensaje || "La actividad está cancelada.";
       }
-      return "No pudimos verificar la disponibilidad. El backend volverá a validarla al confirmar.";
+      return "No pudimos verificar la disponibilidad. El sistema volverá a validarla al confirmar.";
     },
     abortar() {
       if (this.controlador) {

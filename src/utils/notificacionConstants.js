@@ -2,7 +2,7 @@
  * Reglas de navegación de notificaciones
  * (docs/backend/ficha-tecnica-notificaciones-navegacion.md).
  *
- * El backend deriva `idProyecto` a partir de `entidadTipo + entidadId` y puede
+ * El sistema deriva `idProyecto` a partir de `entidadTipo + entidadId` y puede
  * enviarlo `null`. El frontend no infiere el proyecto desde `entidadId`: la
  * única regla de destino vive en `destinoNotificacion`.
  */
@@ -12,6 +12,7 @@ export const TIPOS_NOTIFICACION = {
   POSTULACION_ACEPTADA: "POSTULACION_ACEPTADA",
   POSTULACION_RECHAZADA: "POSTULACION_RECHAZADA",
   PROYECTO_CANCELADO: "PROYECTO_CANCELADO",
+  PROYECTO_CONFIRMADO: "PROYECTO_CONFIRMADO",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -42,6 +43,8 @@ function idProyectoValido(valor) {
  *
  * - `POSTULACION_RECIBIDA` → gestión de postulaciones, sólo con `idProyecto`.
  * - `PROYECTO_CANCELADO` → detalle del proyecto (`idProyecto ?? entidadId`).
+ * - `PROYECTO_CONFIRMADO` → detalle del proyecto, sólo con `idProyecto`
+ *   (UC-60: el sistema lo deriva de `entidadTipo = "PROYECTO"`).
  * - `POSTULACION_ACEPTADA` → detalle del proyecto.
  * - `POSTULACION_RECHAZADA`, `ACTIVIDAD_*`, `INVITACION_*`, `HITO_*` y el
  *   resto no tienen destino permitido.
@@ -66,6 +69,16 @@ export function destinoNotificacion(notificacion) {
       const id =
         idProyectoValido(notificacion.idProyecto) ??
         idProyectoValido(notificacion.entidadId);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver proyecto",
+            ruta: { name: RUTAS_NOTIFICACION.PROYECTO, params: { id } },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.PROYECTO_CONFIRMADO: {
+      const id = idProyectoValido(notificacion.idProyecto);
       return id == null
         ? null
         : {

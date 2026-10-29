@@ -101,7 +101,7 @@ const perfilService = {
   /**
    * Solicita la baja de un perfil (estado PendienteBaja).
    * @returns {Promise<{data: {mensaje: string, fechaLimite: string}}>} fechaLimite
-   * calculada por el backend con el diasBaja vigente.
+   * calculada por el sistema con el diasBaja vigente.
    */
   eliminar(idPerfil) {
     return http.delete(`/perfiles/${idPerfil}`);

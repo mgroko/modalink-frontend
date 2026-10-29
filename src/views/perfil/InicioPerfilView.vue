@@ -388,7 +388,7 @@ export default {
         }
         this.actualizarContadorBaja();
 
-        // Caso raro: el backend marca esPropietario pero el id no coincidía
+        // Caso raro: el sistema marca esPropietario pero el id no coincidía
         // con el perfil activo al disparar las peticiones → traer el resumen
         // en este punto (ya de forma secuencial).
         let resumenRes = resumenInicial;
@@ -425,10 +425,10 @@ export default {
       }
     },
     actualizarContadorBaja() {
-      // Prioriza la fecha exacta del backend (fechaLimite) si el endpoint la
+      // Prioriza la fecha exacta del sistema (fechaLimite) si el endpoint la
       // incluye. El contrato actual (UC-14 §2) solo envía fechaSolicitudBaja,
       // por lo que la expiración se calcula con DIAS_REACTIVACION (debe
-      // coincidir con la configuración diasBaja del backend).
+      // coincidir con la configuración diasBaja del sistema).
       const fechaLimite = this.perfil?.fechaLimite;
       const iso = this.perfil?.fechaSolicitudBaja;
       const expira = fechaLimite || (iso ? fechaExpiracionBaja(iso) : null);

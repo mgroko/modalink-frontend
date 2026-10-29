@@ -51,7 +51,7 @@ import http from "./http";
  * @property {string} descripcion máx. 200; no blanco
  * @property {"PUBLICO"|"PRIVADO"} privacidad en mayúsculas
  * @property {string} [fechaEntregaEstipulada] "YYYY-MM-DD"; si se envía no puede
- *           ser anterior a hoy. `fechaInicio` no se envía: la calcula el backend
+ *           ser anterior a hoy. `fechaInicio` no se envía: la calcula el sistema
  *           a partir de la planificación y responde null hasta entonces.
  * @property {boolean} [aceptaPostulacionGral] default false
  * @property {UbicacionProyectoRequest} [ubicacion] si se envía, localidadId no puede ir en blanco
@@ -195,7 +195,7 @@ import http from "./http";
  * @typedef {Object} CancelarProyectoRequest
  *   UC-35. Único campo del body: no enviar idPerfilActivo, idUsuario ni estado.
  * @property {string} motivoCancelacion obligatorio; no vacío ni sólo espacios;
- *           máx. 200 caracteres. El backend lo persiste sin espacios al
+ *           máx. 200 caracteres. El sistema lo persiste sin espacios al
  *           inicio/final y lo devuelve en `ProyectoResponse.motivoCancelacion`.
  */
 
@@ -236,6 +236,69 @@ import http from "./http";
  *           GET /proyectos/{idProyecto}, POST /proyectos, POST
  *           /proyectos/{idProyecto}/publicar y PUT /proyectos/{idProyecto}.
  *           `GET /proyectos/propios` usa otro DTO y NO lo incluye.
+ */
+
+/**
+ * @typedef {Object} BloqueoConfirmacionResponse
+ *   UC-60. Motivo por el que el proyecto todavía no puede confirmarse.
+ * @property {string} codigo uno de los códigos de la ficha §4
+ * @property {string} mensaje texto listo para mostrar
+ * @property {string|null} entidadTipo entidad afectada (p. ej.
+ *           "REQUERIMIENTO_GRAL"); no se usa para navegar
+ * @property {number|null} entidadId id de la entidad afectada
+ */
+
+/**
+ * @typedef {Object} RequerimientoConfirmacionResponse
+ *   UC-60. Mismo shape para requerimientos generales y de actividad.
+ * @property {number} idRequerimiento id del requerimiento (general o actividad)
+ * @property {number|null} idActividad null en los requerimientos generales
+ * @property {string|null} nombreActividad null en los requerimientos generales
+ * @property {number} idProfesion
+ * @property {string} nombreProfesion
+ * @property {number} cantidad
+ * @property {number} cubiertos
+ * @property {number} faltantes
+ * @property {boolean} satisfecho `cubiertos >= cantidad`
+ */
+
+/**
+ * @typedef {Object} PropuestaHorarioResponse
+ *   UC-60. Horario propuesto por el planificador; NO está persistido.
+ * @property {number} idActividad
+ * @property {string} nombre
+ * @property {string} inicio ISO-8601 local
+ * @property {string} fin ISO-8601 local
+ * @property {boolean} fija
+ */
+
+/**
+ * @typedef {Object} ConfirmacionPreviewResponse
+ *   UC-60 GET /proyectos/{id}/confirmacion. Siempre responde 200: los
+ *   problemas de negocio/planificación vienen en `bloqueos` con
+ *   `puedeConfirmar: false` (y `propuestaHorarios` vacío). Sólo 403/404 son
+ *   errores HTTP.
+ * @property {boolean} puedeConfirmar
+ * @property {string} estado forma legible ("Publicado", etc.)
+ * @property {string|null} fechaInicioPropuesta ISO-8601 local; null si no se
+ *           pudo calcular
+ * @property {string|null} fechaEntrega "YYYY-MM-DD"
+ * @property {BloqueoConfirmacionResponse[]} bloqueos
+ * @property {RequerimientoConfirmacionResponse[]} requerimientosGenerales
+ * @property {RequerimientoConfirmacionResponse[]} requerimientosActividad
+ * @property {PropuestaHorarioResponse[]} propuestaHorarios vacío si hay bloqueos
+ */
+
+/**
+ * @typedef {Object} ConfirmarProyectoResponse
+ *   UC-60 POST /proyectos/{id}/confirmar.
+ * @property {ProyectoResponse} proyecto proyecto completo ya confirmado;
+ *           reemplaza el estado local
+ * @property {string} fechaInicioConfirmada ISO-8601 local con hora exacta;
+ *           `ProyectoResponse.fechaInicio` sigue siendo "YYYY-MM-DD"
+ * @property {{resumen: object, actividades: object[], conflictos: object[]}} cronograma
+ *           Se ignora para render: el front reconsulta
+ *           GET /proyectos/{id}/cronograma para no duplicar la fuente de verdad
  */
 
 /**
@@ -289,7 +352,7 @@ import http from "./http";
 /**
  * @typedef {Object} ProyectoBusquedaItem
  *   Item de `GET /proyectos/buscar` (UC-29). La visibilidad la aplica el
- *   backend: solo aparecen proyectos visibles para el perfil activo
+ *   sistema: solo aparecen proyectos visibles para el perfil activo
  *   (miembro activo, o no-Borrador y Público).
  * @property {number} idProyecto
  * @property {string} nombre
@@ -333,7 +396,7 @@ const proyectoService = {
   /**
    * GET /proyectos/propios — lista los proyectos en los que participa el
    * perfil activo de la sesión como director o miembro (UC-29 bis).
-   * El id del perfil activo lo resuelve el backend desde la sesión: no se envía.
+   * El id del perfil activo lo resuelve el sistema desde la sesión: no se envía.
    *
    * Errores:
    * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
@@ -354,7 +417,7 @@ const proyectoService = {
    * Aplica la regla de visibilidad server-side: el proyecto aparece si el
    * perfil activo es miembro activo, o si no está en Borrador y es Público.
    * Los invisibles se omiten (no hay 403 por elemento). El id del perfil
-   * activo lo resuelve el backend desde la sesión: no se envía.
+   * activo lo resuelve el sistema desde la sesión: no se envía.
    *
    * Errores:
    * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
@@ -399,7 +462,7 @@ const proyectoService = {
   /**
    * POST /proyectos/{idProyecto}/postulaciones/general — UC-26.
    * Da de alta una postulación PENDIENTE a un requerimiento general. El
-   * backend resuelve el perfil activo desde la sesión: NO enviar idPerfil,
+   * sistema resuelve el perfil activo desde la sesión: NO enviar idPerfil,
    * idPerfilActivo, idUsuario, estado, tipo, tentativa ni idProyecto en el
    * body (el proyecto va en la URL). El body debe tener exactamente
    * `{ idRequerimientoGral }`.
@@ -430,7 +493,7 @@ const proyectoService = {
    * Da de alta una postulación PENDIENTE a un requerimiento de actividad.
    * Mismas reglas de sesión que la postulación general: el body debe tener
    * exactamente `{ idRequerimientoActividad }`. La actividad debe pertenecer
-   * al proyecto del path y estar PENDIENTE; el backend verifica además
+   * al proyecto del path y estar PENDIENTE; el sistema verifica además
    * profesión, cupo, duplicado y disponibilidad (con `tentativa` si el
    * proyecto aún no tiene fecha de inicio confirmada).
    *
@@ -511,6 +574,50 @@ const proyectoService = {
   },
 
   /**
+   * GET /proyectos/{idProyecto}/confirmacion — UC-60, previsualización.
+   * Requiere perfil activo y permiso CONFIRMAR_PROYECTO. Es de solo lectura:
+   * NO persiste horarios ni cambia el estado.
+   *
+   * Siempre responde 200. Los problemas de negocio o de planificación vienen
+   * en `bloqueos` con `puedeConfirmar: false` y `propuestaHorarios: []`.
+   * No usar `propuestaHorarios` como horarios persistidos: el POST replanifica.
+   *
+   * Errores:
+   * - 403 AccesoDenegadoProyectoException (sin CONFIRMAR_PROYECTO / no miembro)
+   * - 404 PerfilActivoNoSeleccionadoException / ProyectoNoEncontradoException
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ConfirmacionPreviewResponse}>} 200 OK
+   */
+  previsualizarConfirmacion(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/confirmacion`, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/confirmar — UC-60, confirmación atómica.
+   * Sin body. Requiere perfil Director activo con CONFIRMAR_PROYECTO y que el
+   * proyecto esté en estado Publicado. Vuelve a planificar (no reutiliza el
+   * preview), fija `fechaInicio` con el reloj del sistema, persiste horarios y
+   * pasa el proyecto a Confirmado.
+   *
+   * Errores (ficha §4). El sobre trae `{ message, httpStatus, timestamp,
+   * codigo, bloqueos }`; `codigo` corresponde al primer bloqueo y `bloqueos`
+   * puede traer varios con el mismo shape del preview:
+   * - 403 ACCESO_DENEGADO
+   * - 404 PROYECTO_NO_ENCONTRADO / PERFIL_ACTIVO_NO_SELECCIONADO
+   * - 409 PROYECTO_YA_CONFIRMADO / ESTADO_PROYECTO_INVALIDO
+   * - 409 SIN_ACTIVIDADES / REQUERIMIENTOS_INCOMPLETOS /
+   *   ACTIVIDADES_SIN_ASIGNACION / FECHA_ENTREGA_INVALIDA /
+   *   CRONOGRAMA_NO_VIABLE / SIN_DISPONIBILIDAD / DATOS_INCONSISTENTES
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ConfirmarProyectoResponse}>} 200 OK
+   */
+  confirmar(idProyecto, signal) {
+    return http.post(`/proyectos/${idProyecto}/confirmar`, null, { signal });
+  },
+
+  /**
    * POST /proyectos — crea un proyecto con el perfil activo de la sesión
    * (cookie JWT HttpOnly + header X-XSRF-TOKEN lo resuelve http.js).
    *
@@ -561,7 +668,7 @@ const proyectoService = {
    * en una sola petición multipart (ficha UC-24 §7.2). El nombre del campo
    * debe ser exactamente `archivos`. Las imágenes NO viajan en `crear()`: se
    * ejecuta después, sólo si hay archivos retenidos. Si el proyecto se creó
-   * sin moodboard, el backend lo crea al subir (descripcion queda null).
+   * sin moodboard, el sistema lo crea al subir (descripcion queda null).
    *
    * Límites: JPG/PNG/WEBP; ≤ 10 MB por imagen; ≤ 10 imágenes en total;
    * ≤ 110 MB por petición; lado ≤ 8000 px o ≤ 24 megapíxeles.

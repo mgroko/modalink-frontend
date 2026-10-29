@@ -220,7 +220,7 @@
           <div>
             <h3 class="cronograma-proyecto__titulo">Tabla CPM</h3>
             <p class="cronograma-proyecto__subtitulo">
-              Holgura calculada por el backend respecto del makespan. La columna
+              Holgura calculada por el sistema respecto del makespan. La columna
               Crítica usa la ruta crítica del cronograma.
             </p>
           </div>
@@ -328,7 +328,7 @@ import {
   formatearHolgura,
   formatearRangoCpm,
 } from "../../utils/cpmConstants.js";
-import { formatearFechaCorta } from "../../utils/fechas.js";
+import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 
 /*
@@ -409,12 +409,25 @@ export default {
       return formatearDuracionMinutos(this.resumen?.makespanMinutos);
     },
     rangoProyectado() {
-      const inicio = formatearFechaCorta(this.resumen?.fechaInicio);
+      const inicio = this.inicioProyectadoTexto;
       const fin = formatearFechaCorta(
         fechaFinInclusiva(this.resumen?.fechaFinProyectada)
       );
       if (inicio === "—" && fin === "—") return "Sin fechas proyectadas";
       return `${inicio} – ${fin}`;
+    },
+    /**
+     * Inicio del cronograma. Si el sistema envía una hora real (proyecto ya
+     * confirmado), se muestra; una medianoche se interpreta como fecha sin
+     * hora para no ensuciar el resumen.
+     */
+    inicioProyectadoTexto() {
+      const valor = this.resumen?.fechaInicio;
+      if (!valor) return "—";
+      const texto = String(valor);
+      const tieneHora =
+        /T\d{2}:\d{2}/.test(texto) && !/T00:00(?::00)?(?:\.\d+)?$/.test(texto);
+      return tieneHora ? formatearFecha(texto) : formatearFechaCorta(texto);
     },
     totalActividades() {
       const total = Number(this.resumen?.totalActividades);
