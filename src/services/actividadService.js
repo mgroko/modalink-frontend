@@ -40,7 +40,7 @@ import { serializarParams } from "../utils/queryParams.js";
 
 /**
  * @typedef {Object} CrearActividadRequest
- * @property {string} nombre no blanco, máx. 20, único en la planificación
+ * @property {string} nombre no blanco, máx. 100, único en la planificación
  * @property {string} [descripcion] máx. 200
  * @property {number} duracion entero > 0
  * @property {"DIAS"|"HORAS"} unidadDuracion
@@ -62,7 +62,7 @@ import { serializarParams } from "../utils/queryParams.js";
 
 /**
  * @typedef {Object} ModificarActividadRequest
- * @property {string} nombre no blanco, máx. 20, único en la planificación
+ * @property {string} nombre no blanco, máx. 100, único en la planificación
  *           excluyendo la propia actividad
  * @property {string|null} [descripcion] null/ausente borra la descripción
  * @property {number} duracion entero > 0
