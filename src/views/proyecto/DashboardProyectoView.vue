@@ -617,6 +617,9 @@ data() {
     "$route.query.editada"() {
       this.actualizarActividadResaltada();
     },
+    "$route.query.actividad"() {
+      this.actualizarActividadResaltada();
+    },
     esMiembro(valor) {
       if (!valor) {
         if (this.tabActiva === "planificacion") this.tabActiva = "informacion";
@@ -819,7 +822,9 @@ data() {
     },
     actualizarActividadResaltada() {
       const valor = Number(
-        this.$route.query.nueva ?? this.$route.query.editada
+        this.$route.query.nueva ??
+          this.$route.query.editada ??
+          this.$route.query.actividad
       );
       this.idActividadResaltada =
         Number.isFinite(valor) && valor > 0 ? valor : null;
@@ -855,6 +860,7 @@ data() {
       const query = { ...this.$route.query };
       delete query.nueva;
       delete query.editada;
+      delete query.actividad;
       this.reemplazarQuery(query);
     },
     irACrearActividad() {

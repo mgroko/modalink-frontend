@@ -105,15 +105,20 @@
 import BaseAlert from "../../components/AlertaBase.vue";
 import perfilService from "../../services/perfilService";
 import notificacionService from "../../services/notificacionService";
-import { idPerfilActivo, setPerfilActivo } from "../../services/authState";
 import {
   cargarResumenPerfil,
   cargarResumenUsuario,
 } from "../../services/notificacionState";
 import {
-  TIPOS_NOTIFICACION,
   destinoNotificacion,
+  etiquetaTipoNotificacion,
+  iconoNotificacion,
 } from "../../utils/notificacionConstants.js";
+import {
+  hrefNotificacion,
+  navegarANotificacion,
+} from "../../utils/notificacionNavegacion.js";
+import { formatearFechaNotificacion } from "../../utils/fechas.js";
 
 export default {
   name: "NotificacionesView",
@@ -230,53 +235,33 @@ export default {
       }
     },
     hrefDestino(notificacion) {
-      if (!notificacion?.destino) return "#";
-      return this.$router.resolve(notificacion.destino.ruta).href;
+      return hrefNotificacion(notificacion, this.$router) || "#";
     },
     /**
-     * La ruta del proyecto exige perfil activo. Si la notificación se abrió
-     * desde el listado de cuenta (que permite estar sin perfil), se activa el
-     * perfil de contexto de la notificación antes de navegar; si no, el guard
-     * del router redirige a dashboard-usuario y el link parece no funcionar.
+     * La ruta del proyecto exige perfil activo. La utilidad compartida activa
+     * el perfil de contexto de la notificación antes de navegar; si no, el
+     * guard del router redirige a dashboard-usuario.
      */
     async navegarA(notificacion) {
-      const destino = notificacion?.destino;
-      if (!destino || this.activandoNotificacion) return;
+      if (!notificacion?.destino || this.activandoNotificacion) return;
 
-      if (this.modoAdmin) {
-        this.marcarLeidaAlNavegar(notificacion);
-        this.$router.push(destino.ruta);
-        return;
-      }
+      this.activandoNotificacion = true;
+      this.error = "";
 
-      const idPerfil = notificacion?.idPerfilContexto;
-      const perfilActivo = idPerfilActivo();
-      const necesitaActivarPerfil =
-        idPerfil != null && String(perfilActivo) !== String(idPerfil);
+      const resultado = await navegarANotificacion(
+        notificacion,
+        this.$router,
+        { modoAdmin: this.modoAdmin }
+      );
 
-      if (necesitaActivarPerfil) {
-        this.activandoNotificacion = true;
-        this.error = "";
-        try {
-          const response = await perfilService.activar(idPerfil);
-          setPerfilActivo(response?.data || { idPerfil });
-        } catch (error) {
-          this.error =
-            error?.response?.data?.message ||
-            "No se pudo activar el perfil de la notificación. Elegí un perfil desde el dashboard.";
-          this.activandoNotificacion = false;
-          return;
-        }
-        this.activandoNotificacion = false;
-      }
+      this.activandoNotificacion = false;
 
-      if (idPerfilActivo() == null) {
-        this.error = "Seleccioná un perfil para abrir el proyecto.";
+      if (!resultado.ok) {
+        if (resultado.error) this.error = resultado.error;
         return;
       }
 
       this.marcarLeidaAlNavegar(notificacion);
-      this.$router.push(destino.ruta);
     },
     marcarLeidaAlNavegar(notificacion) {
       if (!notificacion.leida) {
@@ -304,50 +289,19 @@ export default {
       }
     },
     tituloNotificacion(notificacion) {
-      return notificacion?.titulo || this.etiquetaTipo(notificacion?.tipo);
+      return notificacion?.titulo || etiquetaTipoNotificacion(notificacion?.tipo);
     },
     etiquetaTipo(tipo) {
-      const etiquetas = {
-        [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "Postulación recibida",
-        [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "Postulación aceptada",
-        [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "Postulación rechazada",
-        [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "Proyecto cancelado",
-        [TIPOS_NOTIFICACION.PROYECTO_CONFIRMADO]: "Proyecto confirmado",
-        [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
-        INVITACION_RECHAZADA: "Invitación rechazada",
-        HITO_CUMPLIDO: "Hito cumplido",
-        ACTIVIDAD_ASIGNADA: "Actividad asignada",
-      };
-      return etiquetas[tipo] || String(tipo || "").replaceAll("_", " ");
+      return etiquetaTipoNotificacion(tipo);
     },
     iconoPorTipo(tipo) {
-      const iconos = {
-        [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "person_add",
-        [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "how_to_reg",
-        [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "person_remove",
-        [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "cancel",
-        [TIPOS_NOTIFICACION.PROYECTO_CONFIRMADO]: "event_available",
-        [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
-        INVITACION_RECHAZADA: "mail_off",
-        HITO_CUMPLIDO: "flag",
-        ACTIVIDAD_ASIGNADA: "assignment",
-      };
-      return iconos[tipo] || "notifications";
+      return iconoNotificacion(tipo);
     },
     nombrePerfil(idPerfil) {
       return this.perfiles.find((perfil) => perfil.idPerfil === idPerfil)?.nombreArtistico || "Perfil";
     },
     formatearFecha(fecha) {
-      if (!fecha) return "";
-      const valor = new Date(fecha);
-      if (Number.isNaN(valor.getTime())) return "";
-      return valor.toLocaleString("es-AR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      return formatearFechaNotificacion(fecha);
     },
   },
 };

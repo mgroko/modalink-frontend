@@ -127,6 +127,21 @@ const routes = [
     meta: { layout: HomeLayout, titulo: "Editar actividad", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
+    // Destino de notificaciones de actividad: abre la planificación del
+    // proyecto y resalta la actividad indicada.
+    path: "/proyectos/:id/actividades/:idActividad",
+    name: "actividad-proyecto",
+    redirect: (to) => ({
+      name: "dashboard-proyecto",
+      params: { id: to.params.id },
+      query: {
+        ...to.query,
+        tab: "planificacion",
+        actividad: to.params.idActividad,
+      },
+    }),
+  },
+  {
     path: "/proyectos/:id/postulaciones",
     name: "postulaciones-proyecto",
     component: PostulacionesProyectoView,

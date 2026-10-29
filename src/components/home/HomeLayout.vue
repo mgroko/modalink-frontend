@@ -1,5 +1,5 @@
 <template>
-  <div class="home-layout" @click="cerrarMenu">
+  <div class="home-layout" @click="cerrarPaneles">
     <header class="home-layout__topbar">
       <div class="home-layout__brand">
         <span class="material-symbols-outlined">apps</span>
@@ -47,15 +47,30 @@
           <span class="material-symbols-outlined">chat_bubble</span>
           <span>Mensajes</span>
         </button>
-        <button
-          class="home-layout__nav-item"
-          :class="{ 'home-layout__nav-item--active': navActiva === 'notificaciones' }"
-          @click.stop="$router.push({ name: 'notificaciones-perfil' })"
-        >
-          <span class="material-symbols-outlined">notifications</span>
-          <span>Notificaciones</span>
-          <span v-if="noLeidasPerfil > 0" class="home-layout__nav-badge">{{ noLeidasPerfil }}</span>
-        </button>
+        <div class="home-layout__notificaciones-wrapper" @click.stop>
+          <button
+            ref="notificacionesTrigger"
+            class="home-layout__nav-item"
+            :class="{ 'home-layout__nav-item--active': navActiva === 'notificaciones' }"
+            aria-haspopup="dialog"
+            aria-controls="notificaciones-popover"
+            :aria-expanded="notificacionesAbiertas ? 'true' : 'false'"
+            @click="alternarNotificaciones"
+          >
+            <span class="material-symbols-outlined">notifications</span>
+            <span>Notificaciones</span>
+            <span v-if="noLeidasPerfil > 0" class="home-layout__nav-badge">{{ noLeidasPerfil }}</span>
+          </button>
+
+          <NotificacionesPopover
+            id="notificaciones-popover"
+            :model-value="notificacionesAbiertas"
+            :id-perfil-contexto="idActivo"
+            :ruta-ver-todas="{ name: 'notificaciones-perfil' }"
+            :limite="6"
+            @update:model-value="alCambiarNotificaciones"
+          />
+        </div>
       </nav>
 
       <ThemeToggle class="home-layout__theme" />
@@ -211,11 +226,13 @@ import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import { nextTick } from "vue";
 import { useToast } from "vuestic-ui";
 import ThemeToggle from "../ThemeToggle.vue";
+import NotificacionesPopover from "../notificaciones/NotificacionesPopover.vue";
 
 export default {
   name: "HomeLayout",
   components: {
     ThemeToggle,
+    NotificacionesPopover,
   },
   setup() {
     return { toast: useToast() };
@@ -224,6 +241,7 @@ export default {
     return {
       busqueda: "",
       menuAbierto: false,
+      notificacionesAbiertas: false,
       perfilesAbiertos: false,
       perfiles: [],
       ubicacion: null,
@@ -304,7 +322,32 @@ export default {
       this.menuAbierto = false;
       this.perfilesAbiertos = false;
     },
+    cerrarPaneles() {
+      this.cerrarMenu();
+      if (this.notificacionesAbiertas) {
+        this.alCambiarNotificaciones(false);
+      }
+    },
+    alternarNotificaciones() {
+      if (this.notificacionesAbiertas) {
+        this.alCambiarNotificaciones(false);
+        return;
+      }
+      this.cerrarMenu();
+      this.alCambiarNotificaciones(true);
+    },
+    alCambiarNotificaciones(abierto) {
+      this.notificacionesAbiertas = abierto;
+      if (abierto) {
+        this.cerrarMenu();
+        return;
+      }
+      nextTick(() => this.$refs.notificacionesTrigger?.focus());
+    },
     async alternarMenu() {
+      if (!this.menuAbierto && this.notificacionesAbiertas) {
+        this.notificacionesAbiertas = false;
+      }
       this.menuAbierto = !this.menuAbierto;
       if (this.menuAbierto) {
         await this.recalcularPosicionDropdown();
@@ -385,6 +428,8 @@ export default {
 .home-layout__search { display: flex; align-items: center; gap: .5rem; width: 300px; padding: .5rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text-muted); }
 .home-layout__search input { width: 100%; border: 0; outline: 0; font-size: .8rem; }
 .home-layout__navigation { display: flex; align-self: stretch; gap: .7rem; }
+.home-layout__notificaciones-wrapper { position: relative; display: flex; align-self: stretch; }
+.home-layout__notificaciones-wrapper .home-layout__nav-item { height: 100%; }
 .home-layout__nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; min-width: 58px; background: transparent; border: 0; color: var(--color-text); font-size: .7rem; cursor: pointer; }
 .home-layout__nav-item .material-symbols-outlined { font-size: 1.35rem; }
 .home-layout__nav-item--active { border-bottom: 2px solid var(--color-primary); color: var(--color-primary); }

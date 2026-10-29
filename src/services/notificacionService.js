@@ -2,17 +2,17 @@ import http from "./http";
 
 /*
  * Contrato de notificaciones
- * (docs/backend/ficha-tecnica-notificaciones-navegacion.md).
- * El sistema agrega `idProyecto` (nullable) al final de la respuesta; es un
- * dato derivado en lectura a partir de `entidadTipo + entidadId`, no una
- * columna persistida. No debe inferirse desde `entidadId`.
+ * (docs/backend/ficha-tecnica-notificaciones-modal.md).
+ * El backend envía `titulo` y los IDs explícitos de cada entidad. `idProyecto`
+ * puede ser `null` en notificaciones históricas: no debe inferirse desde
+ * `entidadId` en postulaciones.
  */
 
 /**
  * @typedef {Object} NotificacionResponse
  * @property {number} idNotificacion
  * @property {string} tipo
- * @property {string} [titulo] título listo para UI (puede faltar en tipos viejos)
+ * @property {string|null} titulo título legible derivado de `tipo`
  * @property {string} mensaje
  * @property {string|null} entidadTipo
  * @property {number|null} entidadId en postulaciones es el id de la postulación
@@ -20,8 +20,11 @@ import http from "./http";
  * @property {string|null} fechaLeida
  * @property {string} origen
  * @property {string} fechaGenerada
- * @property {number|null} idPerfilContexto
- * @property {number|null} idProyecto proyecto asociado, derivado; puede ser null
+ * @property {number|null} idPerfilContexto perfil a activar antes de navegar
+ * @property {number|null} idProyecto proyecto asociado; puede ser null
+ * @property {number|null} idActividad actividad asociada, si corresponde
+ * @property {number|null} idHito hito asociado, si corresponde
+ * @property {number|null} idInvitacion invitación asociada, si corresponde
  */
 
 /**
@@ -38,16 +41,17 @@ import http from "./http";
 const notificacionService = {
   /**
    * GET /notificaciones — listado paginado.
-   * @param {{idPerfilContexto?: number|null, page?: number, size?: number}} [opciones]
+   * @param {{idPerfilContexto?: number|null, page?: number, size?: number, signal?: AbortSignal}} [opciones]
    * @returns {Promise<{data: PaginaNotificacionesResponse}>}
    */
-  listar({ idPerfilContexto = null, page = 0, size = 20 } = {}) {
+  listar({ idPerfilContexto = null, page = 0, size = 20, signal } = {}) {
     return http.get("/notificaciones", {
       params: {
         page,
         size,
         ...(idPerfilContexto != null ? { idPerfilContexto } : {}),
       },
+      ...(signal ? { signal } : {}),
     });
   },
 

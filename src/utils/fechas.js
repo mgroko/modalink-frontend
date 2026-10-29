@@ -65,6 +65,17 @@ export function formatearFechaCorta(valor) {
   return `${pad(p.dia)}/${pad(p.mes)}/${p.anio}`;
 }
 
+/**
+ * Formato compacto usado en notificaciones: `28 oct 2026, 17:48`.
+ * No interpreta la fecha como UTC: se usan las partes tal como llegan.
+ */
+export function formatearFechaNotificacion(valor) {
+  if (valor == null || valor === "") return "";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+  return `${p.dia} ${MESES_CORTOS[p.mes - 1]} ${p.anio}, ${pad(p.hora)}:${pad(p.minuto)}`;
+}
+
 function diasDesdeHoy(p) {
   const hoy = aPartes(new Date());
   return Math.round((soloFecha(p) - soloFecha(hoy)) / MS_POR_DIA);
