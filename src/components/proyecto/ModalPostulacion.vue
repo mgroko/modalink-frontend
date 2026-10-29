@@ -64,16 +64,26 @@
     </div>
 
     <p v-if="esActividad" class="postulacion-modal__nota">
-      La disponibilidad se verifica antes de postular. Si la consulta falla por
-      un error técnico, el sistema volverá a validarla al enviar. Si el proyecto
-      todavía no tiene fecha de inicio confirmada, la verificación será
-      provisoria.
+      La disponibilidad se verifica antes de postular. Si el proyecto no tiene
+      fecha de entrega, no se puede postular. Si la consulta falla por un error
+      técnico, el sistema volverá a validarla al enviar. Si el proyecto todavía
+      no tiene fecha de inicio confirmada, la verificación será provisoria.
+    </p>
+
+    <p
+      v-if="sinFechaEntrega"
+      class="postulacion-modal__aviso postulacion-modal__aviso--bloqueo"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+      El proyecto no tiene fecha de entrega. No se puede postular hasta que se
+      defina.
     </p>
 
     <DisponibilidadActividad
       v-if="esActividad && modelValue && idProyecto && actividad?.idActividad"
       :id-proyecto="idProyecto"
       :id-actividad="actividad.idActividad"
+      :sin-fecha-entrega="sinFechaEntrega"
       :token-refresco="tokenDisponibilidad"
       titulo="Mi disponibilidad"
       @actualizado="disponibilidad = $event"
@@ -110,9 +120,11 @@
           :loading="enviando"
           :disabled="confirmarDeshabilitado"
           :title="
-            disponibilidad?.disponible === false
-              ? 'No hay disponibilidad suficiente para esta actividad'
-              : undefined
+            sinFechaEntrega
+              ? 'El proyecto no tiene fecha de entrega'
+              : disponibilidad?.disponible === false
+                ? 'No hay disponibilidad suficiente para esta actividad'
+                : undefined
           "
           :aria-busy="enviando ? 'true' : 'false'"
           @click="confirmar"
@@ -180,6 +192,11 @@ export default {
     },
     /** Muestra el atajo a calendario cuando el sistema respondió sin disponibilidad. */
     sugerirCalendario: {
+      type: Boolean,
+      default: false,
+    },
+    /** El proyecto no tiene fecha de entrega: no se permite postular. */
+    sinFechaEntrega: {
       type: Boolean,
       default: false,
     },
@@ -256,7 +273,11 @@ export default {
       );
     },
     confirmarDeshabilitado() {
-      return this.enviando || this.disponibilidad?.disponible === false;
+      return (
+        this.enviando ||
+        this.sinFechaEntrega ||
+        this.disponibilidad?.disponible === false
+      );
     },
   },
   methods: {
@@ -370,6 +391,12 @@ export default {
 
 .postulacion-modal__aviso .material-symbols-outlined {
   font-size: 1rem;
+}
+
+.postulacion-modal__aviso--bloqueo {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
 }
 
 .postulacion-modal__alerta {

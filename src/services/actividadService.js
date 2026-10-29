@@ -129,7 +129,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {boolean|null} tentativo true cuando el origen del cálculo es estimado
  * @property {boolean|null} conflicto true si la ventana CPM no es factible
  * @property {string|null} motivoConflicto explicación del conflicto CPM
- * @property {boolean|null} parcial true si falta fecha de entrega
+ * @property {boolean|null} parcial true si el cálculo es parcial por otra
+ *           causa; en v2 sin fecha de entrega viene null y no se calcula CPM
  * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
  * @property {"NORMAL"|"ALERTA_DESBORDE"|"SIN_FECHA_ENTREGA"} [estadoCronograma]
@@ -260,6 +261,13 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} inicioSeleccionado
  * @property {string|null} finSeleccionado
  * @property {string|null} motivo
+ * @property {"SIN_PREFERENCIA"|"EXACTO"|"DESVIO"|"SIN_LUGAR"|null} resultadoPreferencia
+ * @property {number|null} desvioMinutos negativo = antes del preferido;
+ *           positivo = después; null sin preferencia o SIN_LUGAR
+ * @property {string|null} inicioPreferido fecha/hora absoluta de la preferencia
+ * @property {number[]} miembrosBloqueantes ids de usuario que impiden la
+ *           intersección; puede venir vacío aunque no haya hueco común. No
+ *           usarlo como criterio de bloqueo por sí solo.
  * @property {DetalleMiembroDisponibilidad[]} miembros
  */
 
@@ -415,10 +423,11 @@ const actividadService = {
    * Las actividades canceladas no aparecen.
    *
    * Errores:
+   * - 400 `SIN_FECHA_ENTREGA`: el proyecto no tiene fecha de entrega; no se
+   *   devuelve `resumen` ni `actividades` (ficha v2 §2/§8.2)
    * - 403 el perfil no es miembro activo del proyecto
    * - 404 proyecto inexistente o sin perfil activo
    * - 409 ciclo o cronograma inviable
-   * - 400 duración inválida
    * @param {number|string} idProyecto
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: CronogramaResponse}>} 200 OK
@@ -437,6 +446,8 @@ const actividadService = {
    * - Consultar otros perfiles requiere ser miembro activo del proyecto.
    *
    * Errores:
+   * - 400 `SIN_FECHA_ENTREGA`: el proyecto no tiene fecha de entrega; no se
+   *   puede evaluar disponibilidad (ficha v2 §2)
    * - 401 sesión inválida
    * - 403 perfil activo ausente, proyecto no visible o consulta de terceros
    *   sin membresía

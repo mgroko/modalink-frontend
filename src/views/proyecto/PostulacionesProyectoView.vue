@@ -88,6 +88,7 @@
         <GestionPostulaciones
           :id-proyecto="idProyecto"
           :nombre-proyecto="proyecto.nombre"
+          :sin-fecha-entrega="!proyecto.fechaEntregaEstipulada"
           @gestionada="cargar"
         />
       </template>

@@ -3,6 +3,7 @@
     <header class="disponibilidad-actividad__cabecera">
       <h4 class="disponibilidad-actividad__titulo">{{ titulo }}</h4>
       <VaButton
+        v-if="!sinFechaEntregaTotal"
         preset="secondary"
         size="small"
         :loading="cargando"
@@ -19,6 +20,23 @@
 
     <BaseAlert v-else-if="error" :message="error" type="error" />
 
+    <div
+      v-else-if="sinFechaEntregaTotal"
+      class="disponibilidad-actividad__sin-fecha"
+      role="status"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+      <div>
+        <p class="disponibilidad-actividad__sin-fecha-titulo">
+          Falta fecha de entrega
+        </p>
+        <p class="disponibilidad-actividad__sin-fecha-texto">
+          No se puede evaluar la disponibilidad hasta que el proyecto tenga una
+          fecha de entrega.
+        </p>
+      </div>
+    </div>
+
     <template v-else-if="resultado">
       <div class="disponibilidad-actividad__badges">
         <span
@@ -30,6 +48,19 @@
           "
         >
           {{ resultado.disponible ? "Disponible" : "Sin disponibilidad" }}
+        </span>
+        <span
+          v-if="etiquetaPreferencia"
+          class="disponibilidad-actividad__badge"
+          :class="
+            esPreferenciaExacta
+              ? 'disponibilidad-actividad__badge--ok'
+              : resultado.disponible
+                ? 'disponibilidad-actividad__badge--ajuste'
+                : 'disponibilidad-actividad__badge--no'
+          "
+        >
+          {{ etiquetaPreferencia }}
         </span>
         <span
           v-if="resultado.provisional"
@@ -47,6 +78,14 @@
         <div>
           <dt>Hueco seleccionado</dt>
           <dd>{{ huecoSeleccionado }}</dd>
+        </div>
+        <div v-if="inicioPreferidoTexto">
+          <dt>Horario preferido</dt>
+          <dd>{{ inicioPreferidoTexto }}</dd>
+        </div>
+        <div v-if="desvioTexto">
+          <dt>Ajuste</dt>
+          <dd>{{ desvioTexto }}</dd>
         </div>
       </dl>
 
@@ -81,7 +120,7 @@
             <strong>
               {{
                 miembro.idUsuario != null
-                  ? `Perfil #${miembro.idUsuario}`
+                  ? `Usuario #${miembro.idUsuario}`
                   : "Miembro"
               }}
             </strong>
@@ -135,12 +174,16 @@
 <script>
 import BaseAlert from "../AlertaBase.vue";
 import actividadService from "../../services/actividadService.js";
+import { esErrorSinFechaEntrega } from "../../utils/cpmConstants.js";
 import {
+  etiquetaResultadoPreferencia,
+  formatearDesvioMinutos,
   formatearHuecos,
   formatearVentana,
   mensajeMotivo,
   normalizarResultado,
 } from "../../utils/disponibilidadConstants.js";
+import { formatearFecha } from "../../utils/fechas.js";
 
 /*
  * Panel de disponibilidad (ficha CPM §6 y §10). Consulta de solo lectura: no
@@ -172,6 +215,11 @@ export default {
       type: Boolean,
       default: true,
     },
+    /** El proyecto no tiene fecha de entrega: no se consulta ni se evalúa. */
+    sinFechaEntrega: {
+      type: Boolean,
+      default: false,
+    },
     tokenRefresco: {
       type: Number,
       default: 0,
@@ -183,10 +231,14 @@ export default {
       resultado: null,
       cargando: false,
       error: "",
+      sinFechaEntregaError: false,
       idCarga: 0,
     };
   },
   computed: {
+    sinFechaEntregaTotal() {
+      return this.sinFechaEntrega || this.sinFechaEntregaError;
+    },
     miembros() {
       return this.resultado?.miembros || [];
     },
@@ -211,6 +263,24 @@ export default {
     mensaje() {
       return mensajeMotivo(this.resultado?.motivo);
     },
+    etiquetaPreferencia() {
+      return etiquetaResultadoPreferencia(
+        this.resultado?.resultadoPreferencia,
+        this.resultado?.desvioMinutos
+      );
+    },
+    esPreferenciaExacta() {
+      return this.resultado?.resultadoPreferencia === "EXACTO";
+    },
+    inicioPreferidoTexto() {
+      return this.resultado?.inicioPreferido
+        ? formatearFecha(this.resultado.inicioPreferido)
+        : "";
+    },
+    desvioTexto() {
+      if (this.resultado?.resultadoPreferencia !== "DESVIO") return "";
+      return formatearDesvioMinutos(this.resultado?.desvioMinutos);
+    },
   },
   watch: {
     idProyecto() {
@@ -228,12 +298,24 @@ export default {
     tokenRefresco() {
       this.reconsultarSiCorresponde();
     },
+    sinFechaEntrega(valor) {
+      this.sinFechaEntregaError = false;
+      this.resultado = null;
+      this.error = "";
+      if (valor) {
+        this.abortar();
+        this.cargando = false;
+        this.$emit("actualizado", null);
+        return;
+      }
+      if (this.autoCargar) this.cargar();
+    },
   },
   created() {
     this.controlador = null;
   },
   mounted() {
-    if (this.autoCargar) this.cargar();
+    if (this.autoCargar && !this.sinFechaEntregaTotal) this.cargar();
   },
   beforeUnmount() {
     this.abortar();
@@ -247,6 +329,15 @@ export default {
     },
     async cargar() {
       if (this.idProyecto == null || this.idActividad == null) return;
+      if (this.sinFechaEntrega) {
+        this.abortar();
+        this.cargando = false;
+        this.resultado = null;
+        this.error = "";
+        this.sinFechaEntregaError = false;
+        this.$emit("actualizado", null);
+        return;
+      }
 
       const corrida = ++this.idCarga;
       this.abortar();
@@ -254,6 +345,7 @@ export default {
 
       this.cargando = true;
       this.error = "";
+      this.sinFechaEntregaError = false;
       this.$emit("cargando", true);
 
       try {
@@ -271,7 +363,8 @@ export default {
         if (this.esCancelacion(error) || corrida !== this.idCarga) return;
 
         this.resultado = null;
-        this.error = this.mensajeError(error);
+        this.sinFechaEntregaError = esErrorSinFechaEntrega(error);
+        this.error = this.sinFechaEntregaError ? "" : this.mensajeError(error);
         this.$emit("actualizado", null);
       } finally {
         if (corrida === this.idCarga) {
@@ -298,6 +391,9 @@ export default {
       }
       if (status === 409) {
         return mensaje || "La actividad está cancelada.";
+      }
+      if (status === 400) {
+        return mensaje || "No se pudo consultar la disponibilidad.";
       }
       return "No pudimos verificar la disponibilidad. El sistema volverá a validarla al confirmar.";
     },
@@ -387,6 +483,39 @@ export default {
   border-color: var(--color-warning-border);
   background: var(--color-warning-soft);
   color: var(--color-warning-text);
+}
+
+.disponibilidad-actividad__badge--ajuste {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.disponibilidad-actividad__sin-fecha {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 8px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.disponibilidad-actividad__sin-fecha .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+.disponibilidad-actividad__sin-fecha-titulo {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.disponibilidad-actividad__sin-fecha-texto {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .disponibilidad-actividad__detalle {

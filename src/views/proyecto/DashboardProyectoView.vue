@@ -51,8 +51,13 @@
               v-if="puedePublicar"
               preset="primary"
               class="btn-publicar"
-              :disabled="publicando"
+              :disabled="publicando || !tieneFechaEntrega"
               :loading="publicando"
+              :title="
+                tieneFechaEntrega
+                  ? 'Publicar proyecto'
+                  : 'Definí la fecha de entrega para publicar el proyecto'
+              "
               @click="abrirPublicacion"
             >
               Publicar
@@ -329,6 +334,7 @@
           :nombre-proyecto="proyecto.nombre"
           :requerimiento="modalPostulacion.requerimiento"
           :actividad="modalPostulacion.actividad"
+          :sin-fecha-entrega="!tieneFechaEntrega"
           :enviando="enviandoPostulacion"
           :error="errorPostulacion"
           :sugerir-calendario="errorPostulacionEsDisponibilidad"
@@ -488,6 +494,10 @@ data() {
     esPrivado() {
       return this.proyecto?.privacidad === PRIVACIDADES.PRIVADO;
     },
+    /** La fecha de entrega es obligatoria para publicar y calcular CPM. */
+    tieneFechaEntrega() {
+      return !!this.proyecto?.fechaEntregaEstipulada;
+    },
     puedeEditar() {
       return this.permisos.includes("MODIFICAR_PROYECTO");
     },
@@ -534,7 +544,10 @@ data() {
     },
     /** UC-26: pestaña de actividades para no miembros y miembros MIEMBRO. */
     puedePostularActividad() {
-      return proyectoAdmitePostulacionesActividad(this.proyecto);
+      return (
+        this.tieneFechaEntrega &&
+        proyectoAdmitePostulacionesActividad(this.proyecto)
+      );
     },
     /** UC-34: sólo el director con GESTIONAR_POSTULACIONES gestiona postulaciones. */
     puedeGestionarPostulaciones() {
@@ -875,6 +888,7 @@ data() {
       });
     },
     abrirPublicacion() {
+      if (!this.tieneFechaEntrega) return;
       this.errorPublicacion = "";
       this.modalPublicarVisible = true;
     },
@@ -1393,6 +1407,7 @@ data() {
     },
     /** UC-26: abre la confirmación de postulación a un requerimiento de actividad. */
     abrirPostulacionActividad({ actividad, requerimiento } = {}) {
+      if (!this.tieneFechaEntrega) return;
       if (!esActividadPostulable(this.proyecto, actividad, requerimiento)) return;
       if (!requerimiento?.idRequerimiento) return;
       if (
@@ -1420,6 +1435,7 @@ data() {
       };
     },
     puedePostularGeneralDe(requerimiento) {
+      if (!this.tieneFechaEntrega) return false;
       const id = requerimiento?.idRequerimientoGral;
       if (id == null) return false;
       if (this.estaSinCupo(TIPOS_POSTULACION.GENERAL, id)) return false;
@@ -1535,9 +1551,8 @@ data() {
       const mensaje = error?.response?.data?.message || "";
       const clasificacion = clasificarErrorProyecto(error);
 
-      // 400: error de integración (el botón siempre envía un ID).
+      // 400: error de negocio (por ejemplo, proyecto sin fecha de entrega).
       if (status === 400) {
-        console.error("Error de integración al enviar una postulación:", error);
         this.errorPostulacion =
           mensaje ||
           "No se pudo enviar la postulación. Revisá los datos e intentá nuevamente.";

@@ -10,7 +10,8 @@
           Falta la fecha de entrega del proyecto
         </p>
         <p class="planificacion-proyecto__aviso-texto">
-          Para programar actividades primero definí la fecha de entrega estipulada.
+          Podés crear y ordenar actividades. El cronograma y la disponibilidad
+          se calcularán cuando definas la fecha de entrega.
         </p>
       </div>
       <VaButton
@@ -70,12 +71,7 @@
             v-if="puedeCrear"
             preset="primary"
             class="btn-agregar-actividad"
-            :disabled="!tieneFechaEntrega"
-            :title="
-              tieneFechaEntrega
-                ? 'Agregar actividad'
-                : 'Definí la fecha de entrega del proyecto para crear actividades'
-            "
+            title="Agregar actividad"
             @click="$emit('crear-actividad')"
           >
             <template #prepend>
@@ -140,6 +136,9 @@
         :id-proyecto="proyecto.idProyecto"
         :token-refresco="tokenRefresco"
         :activo="pestanaActiva === 'cronograma'"
+        :sin-fecha-entrega="!tieneFechaEntrega"
+        :puede-modificar="puedeModificar"
+        @ir-modificar-proyecto="$emit('ir-modificar-proyecto')"
       />
     </div>
   </section>

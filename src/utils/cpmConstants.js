@@ -16,6 +16,25 @@ export const ESTADOS_CRONOGRAMA = {
   SIN_FECHA_ENTREGA: "SIN_FECHA_ENTREGA",
 };
 
+/** Código del 400 cuando el proyecto no tiene fecha de entrega (ficha v2 §2). */
+export const CODIGO_SIN_FECHA_ENTREGA = "SIN_FECHA_ENTREGA";
+
+/**
+ * Detecta el 400 de cronograma/disponibilidad por falta de fecha de entrega.
+ * El `codigo` es la fuente de verdad; el mensaje queda como compatibilidad.
+ * @param {object} error error Axios
+ * @returns {boolean}
+ */
+export function esErrorSinFechaEntrega(error) {
+  const status = error?.response?.status;
+  const data = error?.response?.data;
+  if (status !== 400) return false;
+  if (data?.codigo === CODIGO_SIN_FECHA_ENTREGA) return true;
+  return /no tiene fecha de entrega|complete la fecha de entrega/i.test(
+    data?.message || ""
+  );
+}
+
 export const ETIQUETAS_ESTADO_CRONOGRAMA = {
   [ESTADOS_CRONOGRAMA.NORMAL]: "Normal",
   [ESTADOS_CRONOGRAMA.ALERTA_DESBORDE]: "Alerta por desborde",

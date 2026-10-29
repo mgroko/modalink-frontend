@@ -57,8 +57,22 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} AdvertenciaSobrecompromiso
+ *   UC-34 + ficha v2 §5.5. No bloquea la aceptación: son ventanas CPM
+ *   superpuestas con otras actividades del mismo profesional en otros
+ *   proyectos, todavía sin horario persistido.
+ * @property {number} idActividad
+ * @property {string} nombreActividad
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {string} inicioPotencial ISO local
+ * @property {string} finPotencial ISO local
+ */
+
+/**
  * Respuesta de aceptar/rechazar. En un rechazo `idMiembro` e
- * `idAsignacionActividad` son null.
+ * `idAsignacionActividad` son null. Los campos de preferencia y advertencias
+ * sólo aplican a la aceptación de postulaciones de actividad (ficha v2 §5).
  * @typedef {Object} PostulacionGestionadaResponse
  * @property {number} idPostulacion
  * @property {"GENERAL"|"ACTIVIDAD"} tipo
@@ -68,6 +82,10 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {number} idPerfil
  * @property {number|null} idMiembro
  * @property {number|null} idAsignacionActividad
+ * @property {"SIN_PREFERENCIA"|"EXACTO"|"DESVIO"|"SIN_LUGAR"|null} [resultadoPreferencia]
+ * @property {number|null} [desvioMinutos] negativo = antes del preferido;
+ *           positivo = después; null sin preferencia
+ * @property {AdvertenciaSobrecompromiso[]} [advertencias] no bloqueantes
  */
 
 const postulacionService = {
@@ -140,13 +158,18 @@ const postulacionService = {
 
   /**
    * POST /proyectos/{idProyecto}/postulaciones/actividad/{idPostulacion}/aceptar
-   * UC-34. Sin body. Revalida disponibilidad, crea la asignación (y la
+   * UC-34. Sin body. Revalida disponibilidad del postulante **y de todos los
+   * profesionales ya asignados** a la actividad; crea la asignación (y la
    * membresía si el postulante no es miembro) y marca la postulación como
    * ACEPTADA.
    *
+   * La respuesta 200 incluye `resultadoPreferencia`, `desvioMinutos` y
+   * `advertencias` (ficha v2 §5). Las advertencias no bloquean.
+   *
    * Errores esperables: 401, 403, 404, 409 (ya gestionada, proyecto no
    * habilitado, actividad no PENDIENTE, requerimiento satisfecho, director,
-   * asignación existente, sin disponibilidad, perfil inactivo).
+   * asignación existente, sin hueco común, fuera de tolerancia, perfil
+   * inactivo, proyecto sin fecha de entrega).
    * @param {number|string} idProyecto
    * @param {number|string} idPostulacion
    * @param {AbortSignal} [signal]

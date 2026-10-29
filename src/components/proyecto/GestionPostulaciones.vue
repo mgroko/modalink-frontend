@@ -20,6 +20,49 @@
 
     <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
 
+    <section
+      v-if="resultadoGestion"
+      class="gestion-postulaciones__resultado"
+      role="status"
+    >
+      <header class="gestion-postulaciones__resultado-cabecera">
+        <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+        <strong class="gestion-postulaciones__resultado-titulo">
+          Aceptación con observaciones
+        </strong>
+        <VaButton
+          preset="secondary"
+          size="small"
+          @click="resultadoGestion = null"
+        >
+          Cerrar
+        </VaButton>
+      </header>
+
+      <p v-if="resultadoGestion.ajuste" class="gestion-postulaciones__resultado-texto">
+        {{ resultadoGestion.ajuste }}
+      </p>
+
+      <ul
+        v-if="resultadoGestion.advertencias.length"
+        class="gestion-postulaciones__resultado-lista"
+      >
+        <li
+          v-for="(advertencia, indice) in resultadoGestion.advertencias"
+          :key="`${advertencia.idActividad ?? 'actividad'}-${indice}`"
+        >
+          Posible superposición con
+          «{{ advertencia.nombreActividad || "actividad" }}»
+          <template v-if="advertencia.nombreProyecto">
+            ({{ advertencia.nombreProyecto }})
+          </template>
+          <template v-if="ventanaAdvertencia(advertencia)">
+            · {{ ventanaAdvertencia(advertencia) }}
+          </template>.
+        </li>
+      </ul>
+    </section>
+
     <div v-if="puedeReintentar && !cargando" class="gestion-postulaciones__reintento">
       <VaButton preset="primary" icon="mso-refresh" @click="reintentar">
         Reintentar
@@ -99,6 +142,7 @@
       :postulacion="modal.postulacion"
       :nombre-proyecto="nombreProyecto"
       :actividad="actividadDetalle"
+      :sin-fecha-entrega="sinFechaEntrega"
       :cargando-actividad="cargandoActividad"
       :error-actividad="errorActividad"
       :enviando="enviando"
@@ -120,6 +164,11 @@ import FiltrosPostulaciones from "./FiltrosPostulaciones.vue";
 import TablaPostulaciones from "./TablaPostulaciones.vue";
 import ModalGestionPostulacion from "./ModalGestionPostulacion.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  RESULTADOS_PREFERENCIA,
+  formatearVentana,
+  mensajeAjustePreferencia,
+} from "../../utils/disponibilidadConstants.js";
 import {
   ACCIONES_GESTION,
   ESTADOS_POSTULACION,
@@ -167,6 +216,11 @@ export default {
       type: String,
       default: "",
     },
+    /** El proyecto no tiene fecha de entrega: no se permite aceptar. */
+    sinFechaEntrega: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ["gestionada"],
   setup() {
@@ -196,6 +250,8 @@ export default {
       },
       enviando: false,
       errorGestion: "",
+      /** Resultado de la última aceptación de actividad (ajuste/advertencias). */
+      resultadoGestion: null,
       actividadDetalle: null,
       cargandoActividad: false,
       errorActividad: "",
@@ -438,6 +494,7 @@ export default {
 
       this.modal = { visible: true, accion, postulacion };
       this.errorGestion = "";
+      this.resultadoGestion = null;
       this.actividadDetalle = null;
       this.errorActividad = "";
       this.cargandoActividad = false;
@@ -505,9 +562,11 @@ export default {
       const esActividad = postulacion.tipo === TIPOS_POSTULACION.ACTIVIDAD;
 
       try {
+        let respuesta = null;
+
         if (esActividad) {
           if (esAceptar) {
-            await postulacionService.aceptarActividad(
+            respuesta = await postulacionService.aceptarActividad(
               this.idProyecto,
               postulacion.idPostulacion,
               signal
@@ -520,7 +579,7 @@ export default {
             );
           }
         } else if (esAceptar) {
-          await postulacionService.aceptarGeneral(
+          respuesta = await postulacionService.aceptarGeneral(
             this.idProyecto,
             postulacion.idPostulacion,
             signal
@@ -536,6 +595,11 @@ export default {
         this.modal.visible = false;
         this.abortarActividad();
         this.errorGestion = "";
+        this.procesarResultadoGestion(
+          respuesta?.data || null,
+          postulacion,
+          esAceptar
+        );
         this.toast.init({
           title: esAceptar ? "Postulación aceptada" : "Postulación rechazada",
           message: this.mensajeExito(accion, postulacion),
@@ -562,6 +626,43 @@ export default {
       }
       return "La postulación fue aceptada y el postulante ya es miembro del proyecto.";
     },
+    procesarResultadoGestion(data, postulacion, esAceptar) {
+      if (
+        !esAceptar ||
+        postulacion?.tipo !== TIPOS_POSTULACION.ACTIVIDAD ||
+        !data
+      ) {
+        this.resultadoGestion = null;
+        return;
+      }
+
+      const ajuste =
+        data.resultadoPreferencia === RESULTADOS_PREFERENCIA.DESVIO
+          ? mensajeAjustePreferencia(
+              data.resultadoPreferencia,
+              data.desvioMinutos
+            )
+          : "";
+      const advertencias = Array.isArray(data.advertencias)
+        ? data.advertencias.filter(
+            (advertencia) => advertencia && typeof advertencia === "object"
+          )
+        : [];
+
+      if (!ajuste && !advertencias.length) {
+        this.resultadoGestion = null;
+        return;
+      }
+
+      this.resultadoGestion = { ajuste, advertencias };
+    },
+    ventanaAdvertencia(advertencia) {
+      const texto = formatearVentana(
+        advertencia?.inicioPotencial,
+        advertencia?.finPotencial
+      );
+      return texto === "—" ? "" : texto;
+    },
     async manejarErrorGestion(error) {
       const status = error?.response?.status;
       const mensaje = error?.response?.data?.message || "";
@@ -569,7 +670,6 @@ export default {
         /perfil/i.test(mensaje) && /inactiv/i.test(mensaje);
 
       if (status === 400) {
-        console.error("Error de integración al gestionar una postulación:", error);
         this.errorGestion =
           mensaje ||
           "No se pudo gestionar la postulación. Revisá los datos e intentá nuevamente.";
@@ -630,12 +730,16 @@ export default {
       }
 
       if (status === 409) {
-        // Sin disponibilidad: el modal queda abierto para leer el mensaje.
-        if (/disponibilidad/i.test(mensaje)) {
+        // Sin hueco común o fuera de tolerancia de preferencia: el modal queda
+        // abierto para leer el mensaje y reconsultar la disponibilidad.
+        const esDisponibilidad =
+          /intersecci[oó]n de disponibilidad|hueco com[uú]n|tolerancia|horario de preferencia/i.test(
+            mensaje
+          );
+        if (esDisponibilidad) {
           this.errorGestion =
             mensaje ||
             "El postulante no tiene disponibilidad suficiente para la actividad.";
-          // Mantiene el modal abierto y fuerza una nueva consulta del panel.
           this.tokenDisponibilidad += 1;
           return;
         }
@@ -688,6 +792,48 @@ export default {
 .gestion-postulaciones__reintento {
   display: flex;
   justify-content: center;
+}
+
+.gestion-postulaciones__resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 10px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.gestion-postulaciones__resultado-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.gestion-postulaciones__resultado-cabecera .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+.gestion-postulaciones__resultado-titulo {
+  flex: 1;
+  font-size: 0.88rem;
+}
+
+.gestion-postulaciones__resultado-texto {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.gestion-postulaciones__resultado-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 .gestion-postulaciones__estado {

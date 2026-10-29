@@ -4,6 +4,7 @@
  * traduce motivos conocidos. Un motivo desconocido usa un mensaje genérico.
  */
 
+import { formatearHolgura } from "./cpmConstants.js";
 import { formatearFecha } from "./fechas.js";
 
 export const MOTIVOS_DISPONIBILIDAD = {
@@ -12,7 +13,15 @@ export const MOTIVOS_DISPONIBILIDAD = {
   DURACION_EXCEDE_VENTANA: "DURACION_EXCEDE_VENTANA",
   SIN_HUECO: "SIN_HUECO",
   SIN_HUECO_COMUN: "SIN_HUECO_COMUN",
+  FUERA_TOLERANCIA_PREFERENCIA: "FUERA_TOLERANCIA_PREFERENCIA",
   CONFLICTO_FIJO: "CONFLICTO_FIJO",
+};
+
+export const RESULTADOS_PREFERENCIA = {
+  SIN_PREFERENCIA: "SIN_PREFERENCIA",
+  EXACTO: "EXACTO",
+  DESVIO: "DESVIO",
+  SIN_LUGAR: "SIN_LUGAR",
 };
 
 export const ETIQUETAS_MOTIVO_DISPONIBILIDAD = {
@@ -25,7 +34,9 @@ export const ETIQUETAS_MOTIVO_DISPONIBILIDAD = {
   [MOTIVOS_DISPONIBILIDAD.SIN_HUECO]:
     "Los bloqueos del perfil impiden encontrar un hueco.",
   [MOTIVOS_DISPONIBILIDAD.SIN_HUECO_COMUN]:
-    "No hay un horario común disponible para todos los miembros.",
+    "No se encontró una intersección de disponibilidad entre los profesionales para llevar a cabo la actividad.",
+  [MOTIVOS_DISPONIBILIDAD.FUERA_TOLERANCIA_PREFERENCIA]:
+    "Hay horario libre, pero no dentro de la tolerancia alrededor del horario de preferencia de la actividad.",
   [MOTIVOS_DISPONIBILIDAD.CONFLICTO_FIJO]:
     "El CPM detecta un conflicto con una actividad fija.",
 };
@@ -43,6 +54,71 @@ export function mensajeMotivo(motivo) {
 }
 
 /**
+ * Duración absoluta de un desvío, sin dirección.
+ * @param {number|string|null|undefined} minutos
+ * @returns {string} "" si no hay desvío o es 0
+ */
+export function formatearDuracionDesvio(minutos) {
+  if (minutos == null || minutos === "") return "";
+  const total = Math.round(Number(minutos));
+  if (!Number.isFinite(total) || total === 0) return "";
+  return formatearHolgura(Math.abs(total));
+}
+
+/**
+ * Desvío con dirección. El signo lo entrega el sistema: negativo = antes,
+ * positivo = después. El front no lo recalcula.
+ * @param {number|string|null|undefined} minutos
+ * @returns {string}
+ */
+export function formatearDesvioMinutos(minutos) {
+  if (minutos == null || minutos === "") return "";
+  const total = Math.round(Number(minutos));
+  if (!Number.isFinite(total)) return "";
+  if (total === 0) return "Sin desvío";
+  const duracion = formatearHolgura(Math.abs(total));
+  return `${duracion} ${total < 0 ? "más temprano" : "más tarde"}`;
+}
+
+/**
+ * Etiqueta corta para el badge de preferencia.
+ * @param {string|null|undefined} resultado
+ * @param {number|string|null|undefined} minutos
+ * @returns {string}
+ */
+export function etiquetaResultadoPreferencia(resultado, minutos) {
+  if (resultado === RESULTADOS_PREFERENCIA.EXACTO) return "Horario preferido";
+  if (resultado === RESULTADOS_PREFERENCIA.DESVIO) {
+    const duracion = formatearDuracionDesvio(minutos);
+    return duracion ? `Con ajuste de ${duracion}` : "Con ajuste de horario";
+  }
+  if (resultado === RESULTADOS_PREFERENCIA.SIN_LUGAR) {
+    return "Sin disponibilidad dentro de la tolerancia";
+  }
+  return "";
+}
+
+/**
+ * Texto de ajuste para la aceptación o el panel de disponibilidad.
+ * @param {string|null|undefined} resultado
+ * @param {number|string|null|undefined} minutos
+ * @returns {string}
+ */
+export function mensajeAjustePreferencia(resultado, minutos) {
+  if (resultado === RESULTADOS_PREFERENCIA.EXACTO) {
+    return "Se respetó el horario preferido.";
+  }
+  if (resultado === RESULTADOS_PREFERENCIA.DESVIO) {
+    const desvio = formatearDesvioMinutos(minutos);
+    if (!desvio || desvio === "Sin desvío") {
+      return "Se asignó un horario con ajuste respecto del preferido.";
+    }
+    return `Se asignó ${desvio} de lo preferido.`;
+  }
+  return "";
+}
+
+/**
  * Normaliza `ResultadoDisponibilidad` con defaults seguros.
  * @param {object|null|undefined} data
  * @returns {{
@@ -53,6 +129,10 @@ export function mensajeMotivo(motivo) {
  *   inicioSeleccionado: string|null,
  *   finSeleccionado: string|null,
  *   motivo: string|null,
+ *   resultadoPreferencia: string|null,
+ *   desvioMinutos: number|null,
+ *   inicioPreferido: string|null,
+ *   miembrosBloqueantes: number[],
  *   miembros: Array<{
  *     idUsuario: number|null,
  *     inicioEvaluado: string|null,
@@ -81,6 +161,13 @@ export function normalizarResultado(data) {
       }))
     : [];
 
+  const miembrosBloqueantes = Array.isArray(resultado.miembrosBloqueantes)
+    ? resultado.miembrosBloqueantes
+        .filter((idUsuario) => idUsuario != null && idUsuario !== "")
+        .map((idUsuario) => Number(idUsuario))
+        .filter((idUsuario) => Number.isFinite(idUsuario))
+    : [];
+
   return {
     disponible: resultado.disponible === true,
     provisional: resultado.provisional === true,
@@ -89,6 +176,10 @@ export function normalizarResultado(data) {
     inicioSeleccionado: resultado.inicioSeleccionado ?? null,
     finSeleccionado: resultado.finSeleccionado ?? null,
     motivo: resultado.motivo ?? null,
+    resultadoPreferencia: resultado.resultadoPreferencia ?? null,
+    desvioMinutos: resultado.desvioMinutos ?? null,
+    inicioPreferido: resultado.inicioPreferido ?? null,
+    miembrosBloqueantes,
     miembros,
   };
 }

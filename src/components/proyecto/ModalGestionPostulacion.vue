@@ -96,9 +96,19 @@
 
         <p v-if="errorActividad" class="gestion-postulacion-modal__nota">
           No se pudo cargar el horario de la actividad. Podés continuar con los
-          datos del listado.
+          datos del listado. La disponibilidad se revalidará con todos los
+          asignados al aceptar.
         </p>
       </template>
+
+      <p
+        v-if="esAceptar && esActividad && sinFechaEntrega"
+        class="gestion-postulacion-modal__aviso gestion-postulacion-modal__aviso--bloqueo"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+        El proyecto no tiene fecha de entrega. No se puede aceptar la postulación
+        hasta que se defina.
+      </p>
 
       <DisponibilidadActividad
         v-if="
@@ -111,8 +121,9 @@
         :id-proyecto="idProyecto"
         :id-actividad="postulacion.idActividad"
         :id-perfiles="idPerfilesDisponibilidad"
+        :sin-fecha-entrega="sinFechaEntrega"
         :token-refresco="tokenDisponibilidad"
-        titulo="Disponibilidad del postulante"
+        :titulo="tituloDisponibilidad"
         @actualizado="disponibilidad = $event"
       />
     </template>
@@ -207,6 +218,11 @@ export default {
       type: Object,
       default: null,
     },
+    /** El proyecto no tiene fecha de entrega: no se permite aceptar. */
+    sinFechaEntrega: {
+      type: Boolean,
+      default: false,
+    },
     cargandoActividad: {
       type: Boolean,
       default: false,
@@ -283,8 +299,27 @@ export default {
       return describirCpm(this.actividad);
     },
     idPerfilesDisponibilidad() {
-      const idPerfil = this.postulacion?.idPerfil;
-      return idPerfil != null ? [idPerfil] : [];
+      const ids = [];
+      const agregar = (idPerfil) => {
+        if (idPerfil == null) return;
+        const id = Number(idPerfil);
+        if (Number.isFinite(id) && !ids.includes(id)) ids.push(id);
+      };
+
+      agregar(this.postulacion?.idPerfil);
+      const asignados = Array.isArray(this.actividad?.profesionalesAsignados)
+        ? this.actividad.profesionalesAsignados
+        : [];
+      asignados.forEach((profesional) => agregar(profesional?.idPerfil));
+      return ids;
+    },
+    tituloDisponibilidad() {
+      const asignados = Array.isArray(this.actividad?.profesionalesAsignados)
+        ? this.actividad.profesionalesAsignados
+        : [];
+      return asignados.length
+        ? "Disponibilidad del postulante y asignados"
+        : "Disponibilidad del postulante";
     },
     duracion() {
       return formatearDuracionMinutos(this.actividad?.duracionMinutos);
@@ -306,6 +341,7 @@ export default {
     confirmarDeshabilitado() {
       return (
         this.enviando ||
+        (this.esAceptar && this.esActividad && this.sinFechaEntrega) ||
         (this.esActividad && this.cargandoActividad) ||
         (this.esAceptar &&
           this.esActividad &&

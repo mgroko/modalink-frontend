@@ -13,9 +13,35 @@
       <VaButton preset="primary" @click="cargar">Reintentar</VaButton>
     </div>
 
-    <template v-if="resumen">
+    <div
+      v-if="sinFechaEntregaTotal"
+      class="cronograma-proyecto__sin-fecha"
+      role="status"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+      <div class="cronograma-proyecto__sin-fecha-cuerpo">
+        <p class="cronograma-proyecto__sin-fecha-titulo">Falta fecha de entrega</p>
+        <p class="cronograma-proyecto__sin-fecha-texto">
+          Definí la fecha de entrega del proyecto para calcular el cronograma.
+          Sin esa fecha no se calculan CPM, ruta crítica, holguras ni margen.
+        </p>
+        <VaButton
+          v-if="puedeModificar"
+          preset="primary"
+          size="small"
+          @click="$emit('ir-modificar-proyecto')"
+        >
+          Completar fecha de entrega
+        </VaButton>
+        <p v-else class="cronograma-proyecto__sin-fecha-texto">
+          Pedile a un miembro con permiso de edición que complete la fecha.
+        </p>
+      </div>
+    </div>
+
+    <template v-else-if="resumen">
       <div
-        v-if="estadoCronograma === ESTADOS_CRONOGRAMA.SIN_FECHA_ENTREGA || parcial"
+        v-if="parcial"
         class="cronograma-proyecto__aviso"
         role="status"
       >
@@ -23,7 +49,7 @@
         <div>
           <p class="cronograma-proyecto__aviso-titulo">Cálculo parcial</p>
           <p class="cronograma-proyecto__aviso-texto">
-            El proyecto no tiene una fecha de entrega completa. Las fechas son
+            El cálculo no tiene una ventana de entrega completa. Las fechas son
             orientativas y no hay métricas de margen hasta la entrega.
           </p>
         </div>
@@ -323,6 +349,7 @@ import { formatearDuracionMinutos } from "../../utils/actividadConstants.js";
 import {
   ESTADOS_CRONOGRAMA,
   coloresEstadoCronograma,
+  esErrorSinFechaEntrega,
   etiquetaEstadoCronograma,
   fechaFinInclusiva,
   formatearHolgura,
@@ -352,7 +379,18 @@ export default {
       type: Boolean,
       default: true,
     },
+    /** El proyecto no tiene fecha de entrega: no se solicita el cronograma. */
+    sinFechaEntrega: {
+      type: Boolean,
+      default: false,
+    },
+    /** Habilita el CTA para completar la fecha desde el estado vacío. */
+    puedeModificar: {
+      type: Boolean,
+      default: false,
+    },
   },
+  emits: ["ir-modificar-proyecto"],
   data() {
     return {
       ESTADOS_CRONOGRAMA,
@@ -362,6 +400,7 @@ export default {
       puedeReintentar: false,
       cargado: false,
       desactualizado: false,
+      sinFechaEntregaError: false,
       idCarga: 0,
       seleccionadaId: null,
       detalleCompleto: null,
@@ -387,6 +426,13 @@ export default {
     },
     estadoCronograma() {
       return this.resumen?.estadoCronograma || null;
+    },
+    sinFechaEntregaTotal() {
+      return (
+        this.sinFechaEntrega ||
+        this.sinFechaEntregaError ||
+        this.estadoCronograma === ESTADOS_CRONOGRAMA.SIN_FECHA_ENTREGA
+      );
     },
     estiloEstadoCronograma() {
       const colores = coloresEstadoCronograma(this.estadoCronograma);
@@ -582,6 +628,22 @@ export default {
     activo(valor) {
       if (valor && (!this.cargado || this.desactualizado)) this.cargar();
     },
+    sinFechaEntrega(valor) {
+      this.sinFechaEntregaError = false;
+      if (valor) {
+        this.abortar();
+        this.abortarDetalle();
+        this.cronograma = null;
+        this.cargando = false;
+        this.error = "";
+        this.puedeReintentar = false;
+        this.cargado = true;
+        this.seleccionadaId = null;
+        this.detalleCompleto = null;
+        return;
+      }
+      if (this.activo) this.cargar();
+    },
     tokenRefresco() {
       if (this.activo) {
         this.cargar();
@@ -607,6 +669,16 @@ export default {
   },
   methods: {
     async cargar() {
+      if (this.sinFechaEntrega) {
+        this.cronograma = null;
+        this.cargando = false;
+        this.error = "";
+        this.puedeReintentar = false;
+        this.sinFechaEntregaError = false;
+        this.cargado = true;
+        return;
+      }
+
       const corrida = ++this.idCarga;
       this.abortar();
       this.controlador = new AbortController();
@@ -614,6 +686,7 @@ export default {
       this.cargando = true;
       this.error = "";
       this.puedeReintentar = false;
+      this.sinFechaEntregaError = false;
       this.detalleCompleto = null;
       this.errorDetalle = "";
       this.abortarDetalle();
@@ -649,6 +722,17 @@ export default {
       const status = error?.response?.status;
       const mensaje = error?.response?.data?.message || "";
       this.error = "";
+
+      if (status === 400) {
+        if (esErrorSinFechaEntrega(error)) {
+          this.sinFechaEntregaError = true;
+          this.cronograma = null;
+          this.puedeReintentar = false;
+          return;
+        }
+        this.error = mensaje || "No se pudo calcular el cronograma.";
+        return;
+      }
 
       if (status === 401) {
         this.error = "Tu sesión expiró. Iniciá sesión nuevamente.";
@@ -809,6 +893,40 @@ export default {
 .cronograma-proyecto__reintento {
   display: flex;
   justify-content: flex-start;
+}
+
+.cronograma-proyecto__sin-fecha {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 10px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.cronograma-proyecto__sin-fecha .material-symbols-outlined {
+  font-size: 1.25rem;
+}
+
+.cronograma-proyecto__sin-fecha-cuerpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.cronograma-proyecto__sin-fecha-titulo {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.cronograma-proyecto__sin-fecha-texto {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .cronograma-proyecto__aviso {

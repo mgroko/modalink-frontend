@@ -56,8 +56,9 @@
                   El proyecto no tiene fecha de entrega
                 </p>
                 <p class="crear-actividad__aviso-texto">
-                  La actividad se programa desde el final del proyecto. Completá la
-                  fecha de entrega para poder crearla.
+                  La actividad se creará sin programación. El cronograma y la
+                  disponibilidad se calcularán cuando definas la fecha de
+                  entrega del proyecto.
                 </p>
                 <VaButton
                   v-if="puedeModificar"
@@ -347,11 +348,11 @@
                   <dt>Duración</dt>
                   <dd>{{ duracionResumen }}</dd>
                 </div>
-                <div>
+                <div v-if="tieneFechaEntrega">
                   <dt>Inicio estimado</dt>
                   <dd>{{ inicioEstimadoTexto }}</dd>
                 </div>
-                <div>
+                <div v-if="tieneFechaEntrega">
                   <dt>Fin estimado</dt>
                   <dd>{{ finEstimadoTexto }}</dd>
                 </div>
@@ -364,6 +365,10 @@
                   <dd>{{ totalPersonasRequeridas }}</dd>
                 </div>
               </dl>
+
+              <p v-if="!tieneFechaEntrega" class="crear-actividad__resumen-aviso">
+                La programación se calculará cuando definas la fecha de entrega.
+              </p>
 
               <p v-if="advertenciaInicio" class="crear-actividad__resumen-aviso">
                 {{ advertenciaInicio }}
@@ -837,12 +842,6 @@ export default {
       this.mensajeError = "";
       this.errores = {};
       this.seccionErrores = {};
-
-      if (!this.tieneFechaEntrega) {
-        this.mensajeError =
-          "El proyecto necesita una fecha de entrega para programar actividades.";
-        return;
-      }
 
       if (this.mostrandoDraft) {
         if (this.draftTieneDatos) {

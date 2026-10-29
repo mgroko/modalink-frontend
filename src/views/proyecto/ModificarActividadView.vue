@@ -382,6 +382,14 @@
                 </div>
               </dl>
 
+              <p
+                v-if="sinFechaEntrega"
+                class="modificar-actividad__resumen-aviso"
+              >
+                El proyecto no tiene fecha de entrega: no se calculan fechas
+                proyectadas, holguras ni ruta crítica.
+              </p>
+
               <div
                 v-if="chipsCpm.length"
                 class="modificar-actividad__resumen-chips"
@@ -708,6 +716,12 @@ export default {
     },
     estadoCronogramaTexto() {
       return etiquetaEstadoCronograma(this.actividad?.estadoCronograma);
+    },
+    sinFechaEntrega() {
+      return (
+        this.actividad?.estadoCronograma ===
+        ESTADOS_CRONOGRAMA.SIN_FECHA_ENTREGA
+      );
     },
     fechaEntregaTexto() {
       return formatearFechaCorta(this.proyecto?.fechaEntregaEstipulada);
@@ -1904,6 +1918,17 @@ export default {
 .modificar-actividad__resumen-conflicto {
   margin: 0.55rem 0 0;
   color: var(--color-danger-text);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.modificar-actividad__resumen-aviso {
+  margin: 0.55rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 8px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
   font-size: 0.72rem;
   line-height: 1.4;
 }
