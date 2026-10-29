@@ -64,17 +64,21 @@
           </div>
           <p class="notificacion-card__mensaje">{{ notificacion.mensaje }}</p>
 
-          <RouterLink
+          <a
             v-if="!modoAdmin && notificacion.destino"
-            :to="notificacion.destino.ruta"
+            :href="hrefDestino(notificacion)"
             class="notificacion-card__enlace"
-            @click="marcarLeidaAlNavegar(notificacion)"
+            :class="{
+              'notificacion-card__enlace--cargando': activandoNotificacion,
+            }"
+            :aria-disabled="activandoNotificacion ? 'true' : 'false'"
+            @click.prevent="navegarA(notificacion)"
           >
             {{ notificacion.destino.etiqueta }}
             <span class="material-symbols-outlined" aria-hidden="true">
               arrow_forward
             </span>
-          </RouterLink>
+          </a>
 
           <span
             v-if="!modoPerfil && notificacion.idPerfilContexto != null"
@@ -101,7 +105,7 @@
 import BaseAlert from "../../components/AlertaBase.vue";
 import perfilService from "../../services/perfilService";
 import notificacionService from "../../services/notificacionService";
-import { idPerfilActivo } from "../../services/authState";
+import { idPerfilActivo, setPerfilActivo } from "../../services/authState";
 import {
   cargarResumenPerfil,
   cargarResumenUsuario,
@@ -125,6 +129,7 @@ export default {
       error: null,
       marcandoTodas: false,
       marcandoId: null,
+      activandoNotificacion: false,
     };
   },
   computed: {
@@ -215,6 +220,49 @@ export default {
       } finally {
         this.marcandoId = null;
       }
+    },
+    hrefDestino(notificacion) {
+      if (!notificacion?.destino) return "#";
+      return this.$router.resolve(notificacion.destino.ruta).href;
+    },
+    /**
+     * La ruta del proyecto exige perfil activo. Si la notificación se abrió
+     * desde el listado de cuenta (que permite estar sin perfil), se activa el
+     * perfil de contexto de la notificación antes de navegar; si no, el guard
+     * del router redirige a dashboard-usuario y el link parece no funcionar.
+     */
+    async navegarA(notificacion) {
+      const destino = notificacion?.destino;
+      if (!destino || this.activandoNotificacion) return;
+
+      const idPerfil = notificacion?.idPerfilContexto;
+      const perfilActivo = idPerfilActivo();
+      const necesitaActivarPerfil =
+        idPerfil != null && String(perfilActivo) !== String(idPerfil);
+
+      if (necesitaActivarPerfil) {
+        this.activandoNotificacion = true;
+        this.error = "";
+        try {
+          const response = await perfilService.activar(idPerfil);
+          setPerfilActivo(response?.data || { idPerfil });
+        } catch (error) {
+          this.error =
+            error?.response?.data?.message ||
+            "No se pudo activar el perfil de la notificación. Elegí un perfil desde el dashboard.";
+          this.activandoNotificacion = false;
+          return;
+        }
+        this.activandoNotificacion = false;
+      }
+
+      if (idPerfilActivo() == null) {
+        this.error = "Seleccioná un perfil para abrir el proyecto.";
+        return;
+      }
+
+      this.marcarLeidaAlNavegar(notificacion);
+      this.$router.push(destino.ruta);
     },
     marcarLeidaAlNavegar(notificacion) {
       if (!notificacion.leida) {
@@ -417,6 +465,12 @@ export default {
 
 .notificacion-card__enlace:hover {
   text-decoration: underline;
+}
+
+.notificacion-card__enlace--cargando {
+  cursor: wait;
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .notificacion-card__enlace .material-symbols-outlined {

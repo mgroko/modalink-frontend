@@ -93,6 +93,8 @@
 
     <ModalGestionPostulacion
       :model-value="modal.visible"
+      :id-proyecto="idProyecto"
+      :token-disponibilidad="tokenDisponibilidad"
       :accion="modal.accion"
       :postulacion="modal.postulacion"
       :nombre-proyecto="nombreProyecto"
@@ -166,6 +168,7 @@ export default {
       default: "",
     },
   },
+  emits: ["gestionada"],
   setup() {
     return { toast: useToast() };
   },
@@ -196,6 +199,7 @@ export default {
       actividadDetalle: null,
       cargandoActividad: false,
       errorActividad: "",
+      tokenDisponibilidad: 0,
       idCarga: 0,
       idActividadCarga: 0,
     };
@@ -437,6 +441,7 @@ export default {
       this.actividadDetalle = null;
       this.errorActividad = "";
       this.cargandoActividad = false;
+      this.tokenDisponibilidad = 0;
 
       if (postulacion.tipo === TIPOS_POSTULACION.ACTIVIDAD) {
         this.cargarActividad(postulacion);
@@ -540,6 +545,7 @@ export default {
         });
 
         await this.buscar(this.paginacion.paginaActual);
+        this.$emit("gestionada", { accion, postulacion });
       } catch (error) {
         if (this.esCancelacion(error)) return;
         await this.manejarErrorGestion(error);
@@ -629,6 +635,8 @@ export default {
           this.errorGestion =
             mensaje ||
             "El postulante no tiene disponibilidad suficiente para la actividad.";
+          // Mantiene el modal abierto y fuerza una nueva consulta del panel.
+          this.tokenDisponibilidad += 1;
           return;
         }
 

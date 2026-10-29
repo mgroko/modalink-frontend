@@ -73,13 +73,48 @@
             <dt>Duración</dt>
             <dd>{{ duracion }}</dd>
           </div>
+
+          <div v-if="rangoProyectado" class="gestion-postulacion-modal__fila">
+            <dt>Origen de fechas</dt>
+            <dd>Proyectadas por CPM (no persistidas)</dd>
+          </div>
         </dl>
+
+        <div
+          v-if="chipsActividad.length"
+          class="gestion-postulacion-modal__chips"
+        >
+          <span
+            v-for="chip in chipsActividad"
+            :key="chip.tipo"
+            class="gestion-postulacion-modal__chip-cpm"
+            :title="chip.detalle"
+          >
+            {{ chip.etiqueta }}
+          </span>
+        </div>
 
         <p v-if="errorActividad" class="gestion-postulacion-modal__nota">
           No se pudo cargar el horario de la actividad. Podés continuar con los
           datos del listado.
         </p>
       </template>
+
+      <DisponibilidadActividad
+        v-if="
+          esAceptar &&
+          modelValue &&
+          idProyecto &&
+          postulacion?.idActividad &&
+          postulacion?.idPerfil
+        "
+        :id-proyecto="idProyecto"
+        :id-actividad="postulacion.idActividad"
+        :id-perfiles="idPerfilesDisponibilidad"
+        :token-refresco="tokenDisponibilidad"
+        titulo="Disponibilidad del postulante"
+        @actualizado="disponibilidad = $event"
+      />
     </template>
 
     <p class="gestion-postulacion-modal__nota">{{ notaEfecto }}</p>
@@ -118,8 +153,13 @@
 
 <script>
 import BaseAlert from "../AlertaBase.vue";
+import DisponibilidadActividad from "./DisponibilidadActividad.vue";
 import { formatearDuracionMinutos } from "../../utils/actividadConstants.js";
-import { formatearFecha } from "../../utils/fechas.js";
+import {
+  describirCpm,
+  esProyectada,
+  formatearRangoCpm,
+} from "../../utils/cpmConstants.js";
 import {
   ACCIONES_GESTION,
   etiquetaEstadoPostulacion,
@@ -136,11 +176,19 @@ const ACCION_RECHAZAR = ACCIONES_GESTION.RECHAZAR;
  */
 export default {
   name: "ModalGestionPostulacion",
-  components: { BaseAlert },
+  components: { BaseAlert, DisponibilidadActividad },
   props: {
     modelValue: {
       type: Boolean,
       default: false,
+    },
+    idProyecto: {
+      type: [Number, String],
+      default: null,
+    },
+    tokenDisponibilidad: {
+      type: Number,
+      default: 0,
     },
     accion: {
       type: String,
@@ -177,6 +225,16 @@ export default {
     },
   },
   emits: ["update:modelValue", "confirmar"],
+  data() {
+    return {
+      disponibilidad: null,
+    };
+  },
+  watch: {
+    modelValue(valor) {
+      if (valor) this.disponibilidad = null;
+    },
+  },
   computed: {
     esAceptar() {
       return this.accion !== ACCION_RECHAZAR;
@@ -204,10 +262,29 @@ export default {
       return this.actividad?.nombre || this.postulacion?.nombreActividad || "";
     },
     rangoActividad() {
-      const inicio = formatearFecha(this.actividad?.fechaHoraInicio);
-      const fin = formatearFecha(this.actividad?.fechaHoraFin);
-      if (inicio === "—" && fin === "—") return "";
-      return `${inicio} – ${fin}`;
+      if (this.actividad?.fechaHoraInicio) {
+        return formatearRangoCpm(
+          this.actividad?.fechaHoraInicio,
+          this.actividad?.fechaHoraFin
+        );
+      }
+      if (this.actividad?.inicioProyectado) {
+        return formatearRangoCpm(
+          this.actividad?.inicioProyectado,
+          this.actividad?.finProyectado
+        );
+      }
+      return "";
+    },
+    rangoProyectado() {
+      return esProyectada(this.actividad);
+    },
+    chipsActividad() {
+      return describirCpm(this.actividad);
+    },
+    idPerfilesDisponibilidad() {
+      const idPerfil = this.postulacion?.idPerfil;
+      return idPerfil != null ? [idPerfil] : [];
     },
     duracion() {
       return formatearDuracionMinutos(this.actividad?.duracionMinutos);
@@ -227,7 +304,13 @@ export default {
       return "Al aceptar se completará el cupo y se rechazarán automáticamente las demás postulaciones pendientes de este requerimiento.";
     },
     confirmarDeshabilitado() {
-      return this.enviando || (this.esActividad && this.cargandoActividad);
+      return (
+        this.enviando ||
+        (this.esActividad && this.cargandoActividad) ||
+        (this.esAceptar &&
+          this.esActividad &&
+          this.disponibilidad?.disponible === false)
+      );
     },
   },
   methods: {
@@ -302,6 +385,25 @@ export default {
   color: var(--color-success-text);
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+.gestion-postulacion-modal__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 0.85rem;
+}
+
+.gestion-postulacion-modal__chip-cpm {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: 999px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .gestion-postulacion-modal__subtitulo {

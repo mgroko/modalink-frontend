@@ -88,6 +88,7 @@
         <GestionPostulaciones
           :id-proyecto="idProyecto"
           :nombre-proyecto="proyecto.nombre"
+          @gestionada="cargar"
         />
       </template>
     </template>

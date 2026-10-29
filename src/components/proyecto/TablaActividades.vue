@@ -5,7 +5,7 @@
         <tr>
           <th scope="col">#</th>
           <th scope="col">Actividad</th>
-          <th scope="col">Requerimientos</th>
+          <th scope="col">Responsables</th>
           <th scope="col">Dur.</th>
           <th scope="col">Depende de</th>
           <th scope="col">Inicio – Fin</th>
@@ -27,6 +27,8 @@
           :class="{
             'tabla-actividades__fila--resaltada':
               String(actividad.idActividad) === String(idActividadResaltada),
+            'tabla-actividades__fila--cancelada':
+              actividad.estado === 'CANCELADA',
           }"
         >
           <td>{{ indice + 1 }}</td>
@@ -39,13 +41,13 @@
           </td>
 
           <td>
-            <div v-if="resumenRequerimientos(actividad).length" class="tabla-actividades__chips">
+            <div v-if="responsables(actividad).length" class="tabla-actividades__chips">
               <span
-                v-for="requerimiento in resumenRequerimientos(actividad)"
-                :key="requerimiento"
+                v-for="responsable in responsables(actividad)"
+                :key="responsable.clave"
                 class="tabla-actividades__chip"
               >
-                {{ requerimiento }}
+                {{ responsable.texto }}
               </span>
             </div>
             <span v-else class="tabla-actividades__vacio-celda">—</span>
@@ -73,12 +75,6 @@
 
           <td class="tabla-actividades__fechas">
             <span>{{ rangoFechas(actividad) }}</span>
-            <small
-              v-if="!actividad.fechaHoraInicio && actividad.inicioProyectado"
-              class="tabla-actividades__fecha-proyectada"
-            >
-              Proyectada
-            </small>
           </td>
 
           <td>
@@ -126,6 +122,7 @@ import {
   formatearDuracionMinutos,
   puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
+import { idPerfilActivo } from "../../services/authState";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 
 export default {
@@ -180,19 +177,20 @@ export default {
       }
       return "Eliminar actividad";
     },
-    resumenRequerimientos(actividad) {
-      return (actividad?.requerimientos || []).map(
-        (requerimiento) =>
-          `${requerimiento.cantidad} × ${requerimiento.nombreProfesion}`
-      );
+    responsables(actividad) {
+      const activo = idPerfilActivo();
+      return (actividad?.responsables || []).map((responsable, indice) => {
+        const esVos =
+          activo != null && String(responsable?.idPerfil) === String(activo);
+        return {
+          clave: `${responsable?.idPerfil ?? "s"}-${responsable?.idUsuario ?? indice}`,
+          texto: `${responsable?.nombreArtistico || "Perfil"}${esVos ? " (Vos)" : ""}`,
+        };
+      });
     },
     rangoFechas(actividad) {
-      const inicio = formatearFechaCorta(
-        actividad?.fechaHoraInicio || actividad?.inicioProyectado
-      );
-      const fin = formatearFechaCorta(
-        actividad?.fechaHoraFin || actividad?.finProyectado
-      );
+      const inicio = formatearFechaCorta(actividad?.fechaHoraInicio);
+      const fin = formatearFechaCorta(actividad?.fechaHoraFin);
       if (inicio === "—" && fin === "—") return "—";
       return `${inicio} – ${fin}`;
     },
@@ -240,6 +238,10 @@ export default {
 
 .tabla-actividades__fila--resaltada {
   background: var(--color-info-soft);
+}
+
+.tabla-actividades__fila--cancelada {
+  opacity: 0.6;
 }
 
 .tabla-actividades__fila--resaltada td:first-child {

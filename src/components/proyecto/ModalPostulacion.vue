@@ -40,14 +40,51 @@
 
       <div v-if="esActividad && actividad" class="postulacion-modal__fila">
         <dt>Horario</dt>
-        <dd>{{ rangoFechas }}</dd>
+        <dd>
+          {{ rangoFechas }}
+          <span v-if="rangoProyectado" class="postulacion-modal__chip">
+            Proyectada
+          </span>
+        </dd>
       </div>
     </dl>
 
+    <div
+      v-if="esActividad && chipsActividad.length"
+      class="postulacion-modal__chips"
+    >
+      <span
+        v-for="chip in chipsActividad"
+        :key="chip.tipo"
+        class="postulacion-modal__chip"
+        :title="chip.detalle"
+      >
+        {{ chip.etiqueta }}
+      </span>
+    </div>
+
     <p v-if="esActividad" class="postulacion-modal__nota">
-      La disponibilidad se verificará al enviar la postulación. Si el proyecto
+      La disponibilidad se verifica antes de postular. Si la consulta falla por
+      un error técnico, el backend volverá a validarla al enviar. Si el proyecto
       todavía no tiene fecha de inicio confirmada, la verificación será
       provisoria.
+    </p>
+
+    <DisponibilidadActividad
+      v-if="esActividad && modelValue && idProyecto && actividad?.idActividad"
+      :id-proyecto="idProyecto"
+      :id-actividad="actividad.idActividad"
+      :token-refresco="tokenDisponibilidad"
+      titulo="Mi disponibilidad"
+      @actualizado="disponibilidad = $event"
+    />
+
+    <p
+      v-if="esActividad && disponibilidad?.disponible === false"
+      class="postulacion-modal__aviso"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">info</span>
+      {{ motivoNoDisponible }}
     </p>
 
     <BaseAlert
@@ -57,7 +94,7 @@
       class="postulacion-modal__alerta"
     />
 
-    <div v-if="sugerirCalendario" class="postulacion-modal__calendario">
+    <div v-if="mostrarCalendario" class="postulacion-modal__calendario">
       <VaButton preset="secondary" size="small" @click="revisarCalendario">
         Revisar mi calendario
       </VaButton>
@@ -71,6 +108,12 @@
         <VaButton
           preset="primary"
           :loading="enviando"
+          :disabled="confirmarDeshabilitado"
+          :title="
+            disponibilidad?.disponible === false
+              ? 'No hay disponibilidad suficiente para esta actividad'
+              : undefined
+          "
           :aria-busy="enviando ? 'true' : 'false'"
           @click="confirmar"
         >
@@ -89,17 +132,27 @@
  * error. Cerrar (X / overlay / ESC) se bloquea mientras `enviando`.
  */
 import BaseAlert from "../AlertaBase.vue";
+import DisponibilidadActividad from "./DisponibilidadActividad.vue";
 import { formatearDuracionMinutos } from "../../utils/actividadConstants.js";
-import { formatearFecha } from "../../utils/fechas.js";
+import {
+  describirCpm,
+  esProyectada,
+  formatearRangoCpm,
+} from "../../utils/cpmConstants.js";
+import { mensajeMotivo } from "../../utils/disponibilidadConstants.js";
 import { TIPOS_POSTULACION } from "../../utils/postulacionConstants.js";
 
 export default {
   name: "ModalPostulacion",
-  components: { BaseAlert },
+  components: { BaseAlert, DisponibilidadActividad },
   props: {
     modelValue: {
       type: Boolean,
       default: false,
+    },
+    idProyecto: {
+      type: [Number, String],
+      default: null,
     },
     tipo: {
       type: String,
@@ -132,6 +185,25 @@ export default {
     },
   },
   emits: ["update:modelValue", "confirmar", "revisar-calendario"],
+  data() {
+    return {
+      disponibilidad: null,
+      tokenDisponibilidad: 0,
+    };
+  },
+  watch: {
+    modelValue(valor) {
+      if (valor) this.disponibilidad = null;
+    },
+    "actividad.idActividad"() {
+      this.disponibilidad = null;
+    },
+    sugerirCalendario(valor) {
+      // Tras un 409 de disponibilidad, el contenedor activa este aviso: se
+      // vuelve a consultar para reflejar el estado real.
+      if (valor) this.tokenDisponibilidad += 1;
+    },
+  },
   computed: {
     esActividad() {
       return this.tipo === TIPOS_POSTULACION.ACTIVIDAD;
@@ -154,10 +226,37 @@ export default {
       return formatearDuracionMinutos(this.actividad?.duracionMinutos);
     },
     rangoFechas() {
-      const inicio = formatearFecha(this.actividad?.fechaHoraInicio);
-      const fin = formatearFecha(this.actividad?.fechaHoraFin);
-      if (inicio === "—" && fin === "—") return "—";
-      return `${inicio} – ${fin}`;
+      if (this.actividad?.fechaHoraInicio) {
+        return formatearRangoCpm(
+          this.actividad?.fechaHoraInicio,
+          this.actividad?.fechaHoraFin
+        );
+      }
+      if (this.actividad?.inicioProyectado) {
+        return formatearRangoCpm(
+          this.actividad?.inicioProyectado,
+          this.actividad?.finProyectado
+        );
+      }
+      return "—";
+    },
+    rangoProyectado() {
+      return esProyectada(this.actividad);
+    },
+    chipsActividad() {
+      return describirCpm(this.actividad);
+    },
+    motivoNoDisponible() {
+      return mensajeMotivo(this.disponibilidad?.motivo);
+    },
+    mostrarCalendario() {
+      return (
+        this.sugerirCalendario ||
+        this.disponibilidad?.disponible === false
+      );
+    },
+    confirmarDeshabilitado() {
+      return this.enviando || this.disponibilidad?.disponible === false;
     },
   },
   methods: {
@@ -170,7 +269,7 @@ export default {
       this.$emit("update:modelValue", false);
     },
     confirmar() {
-      if (this.enviando) return;
+      if (this.confirmarDeshabilitado) return;
       this.$emit("confirmar");
     },
     revisarCalendario() {
@@ -229,6 +328,48 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.8rem;
   line-height: 1.5;
+}
+
+.postulacion-modal__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.postulacion-modal__chip {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: 999px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.postulacion-modal__chips .postulacion-modal__chip {
+  margin-left: 0;
+}
+
+.postulacion-modal__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 8px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.postulacion-modal__aviso .material-symbols-outlined {
+  font-size: 1rem;
 }
 
 .postulacion-modal__alerta {

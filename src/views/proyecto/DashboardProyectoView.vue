@@ -301,6 +301,7 @@
 
         <ModalPostulacion
           :model-value="modalPostulacion.visible"
+          :id-proyecto="idProyecto"
           :tipo="modalPostulacion.tipo"
           :nombre-proyecto="proyecto.nombre"
           :requerimiento="modalPostulacion.requerimiento"

@@ -25,127 +25,123 @@
       </p>
     </div>
 
-    <div class="planificacion-proyecto__resumen">
-      <article class="planificacion-proyecto__metrica">
-        <span class="planificacion-proyecto__metrica-label">Actividades</span>
-        <strong class="planificacion-proyecto__metrica-valor">
-          {{ totalActividades }}
-        </strong>
-        <span v-if="textoCanceladas" class="planificacion-proyecto__metrica-hint">
-          {{ textoCanceladas }}
-        </span>
-      </article>
+    <nav class="planificacion-proyecto__pestanas" aria-label="Vistas de planificación">
+      <button
+        type="button"
+        class="planificacion-proyecto__pestana"
+        :class="{
+          'planificacion-proyecto__pestana--activa':
+            pestanaActiva === 'planificacion',
+        }"
+        :aria-current="pestanaActiva === 'planificacion' ? 'page' : undefined"
+        @click="cambiarPestana('planificacion')"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">list</span>
+        Planificación
+      </button>
+      <button
+        type="button"
+        class="planificacion-proyecto__pestana"
+        :class="{
+          'planificacion-proyecto__pestana--activa': pestanaActiva === 'cronograma',
+        }"
+        :aria-current="pestanaActiva === 'cronograma' ? 'page' : undefined"
+        @click="cambiarPestana('cronograma')"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">timeline</span>
+        Cronograma
+      </button>
+    </nav>
 
-      <article class="planificacion-proyecto__metrica">
-        <span class="planificacion-proyecto__metrica-label">Duración estimada</span>
-        <strong class="planificacion-proyecto__metrica-valor">{{ duracionTexto }}</strong>
-      </article>
+    <div v-show="pestanaActiva === 'planificacion'">
+      <section class="planificacion-proyecto__panel">
+        <header class="planificacion-proyecto__panel-cabecera">
+          <div>
+            <h2 class="planificacion-proyecto__titulo">Actividades</h2>
+            <p class="planificacion-proyecto__subtitulo">
+              {{ subtituloListado }}
+            </p>
+            <p v-if="textoCanceladas" class="planificacion-proyecto__subtitulo">
+              {{ textoCanceladas }}
+            </p>
+          </div>
 
-      <article class="planificacion-proyecto__metrica">
-        <span class="planificacion-proyecto__metrica-label">Margen hasta la entrega</span>
-        <strong
-          class="planificacion-proyecto__metrica-valor"
-          :class="{ 'planificacion-proyecto__metrica-valor--alerta': margenVencido }"
+          <VaButton
+            v-if="puedeCrear"
+            preset="primary"
+            class="btn-agregar-actividad"
+            :disabled="!tieneFechaEntrega"
+            :title="
+              tieneFechaEntrega
+                ? 'Agregar actividad'
+                : 'Definí la fecha de entrega del proyecto para crear actividades'
+            "
+            @click="$emit('crear-actividad')"
+          >
+            <template #prepend>
+              <span
+                class="material-symbols-outlined btn-agregar-actividad__icono"
+                aria-hidden="true"
+              >
+                add
+              </span>
+            </template>
+            Agregar actividad
+          </VaButton>
+        </header>
+
+        <p v-if="!estadoPermiteActividades" class="planificacion-proyecto__nota">
+          El proyecto está {{ estadoLegible.toLowerCase() }} y no admite nuevas
+          actividades.
+        </p>
+        <p v-else-if="!puedeCrear" class="planificacion-proyecto__nota">
+          No tenés permiso para crear actividades en este proyecto.
+        </p>
+
+        <BaseAlert v-if="error" :message="error" type="error" />
+
+        <div
+          v-if="error && puedeReintentar"
+          class="planificacion-proyecto__reintento"
         >
-          {{ margenTexto }}
-        </strong>
-      </article>
-
-      <article class="planificacion-proyecto__metrica">
-        <span class="planificacion-proyecto__metrica-label">Ruta crítica</span>
-        <strong class="planificacion-proyecto__metrica-valor planificacion-proyecto__metrica-valor--suave">
-          Próximamente
-        </strong>
-        <span class="planificacion-proyecto__metrica-hint">Se habilitará con UC-33</span>
-      </article>
-    </div>
-
-    <section class="planificacion-proyecto__panel">
-      <header class="planificacion-proyecto__panel-cabecera">
-        <div>
-          <h2 class="planificacion-proyecto__titulo">Actividades</h2>
-          <p class="planificacion-proyecto__subtitulo">
-            {{ subtituloListado }}
-          </p>
+          <VaButton preset="primary" @click="cargarTodo">Reintentar</VaButton>
         </div>
 
-        <VaButton
-          v-if="puedeCrear"
-          preset="primary"
-          class="btn-agregar-actividad"
-          :disabled="!tieneFechaEntrega"
-          :title="
-            tieneFechaEntrega
-              ? 'Agregar actividad'
-              : 'Definí la fecha de entrega del proyecto para crear actividades'
-          "
-          @click="$emit('crear-actividad')"
-        >
-          <template #prepend>
-            <span
-              class="material-symbols-outlined btn-agregar-actividad__icono"
-              aria-hidden="true"
-            >
-              add
-            </span>
-          </template>
-          Agregar actividad
-        </VaButton>
-      </header>
+        <FiltrosActividades
+          v-model:nombre="filtros.nombre"
+          v-model:estados="filtros.estados"
+          @buscar="buscarConFiltros"
+        />
 
-      <p v-if="!estadoPermiteActividades" class="planificacion-proyecto__nota">
-        El proyecto está {{ estadoLegible.toLowerCase() }} y no admite nuevas
-        actividades.
-      </p>
-      <p v-else-if="!puedeCrear" class="planificacion-proyecto__nota">
-        No tenés permiso para crear actividades en este proyecto.
-      </p>
+        <p v-if="buscando" class="planificacion-proyecto__actualizando">
+          Actualizando listado...
+        </p>
 
-      <BaseAlert v-if="error" :message="error" type="error" />
+        <div v-if="cargando" class="planificacion-proyecto__cargando">
+          <span class="material-symbols-outlined">hourglass_empty</span>
+          Cargando actividades...
+        </div>
 
-      <div v-if="error && puedeReintentar" class="planificacion-proyecto__reintento">
-        <VaButton preset="primary" @click="cargarTodo">Reintentar</VaButton>
-      </div>
+        <TablaActividades
+          v-else
+          :actividades="actividades"
+          :id-actividad-resaltada="idActividadResaltada"
+          :mensaje-vacio="mensajeVacio"
+          :puede-editar="puedeEditarActividad"
+          :puede-eliminar="puedeEliminarActividad"
+          @editar-actividad="$emit('editar-actividad', $event)"
+          @eliminar-actividad="$emit('eliminar-actividad', $event)"
+        />
+      </section>
+    </div>
 
-      <FiltrosActividades
-        v-model:nombre="filtros.nombre"
-        v-model:estados="filtros.estados"
-        @buscar="buscarConFiltros"
+    <div v-show="pestanaActiva === 'cronograma'">
+      <CronogramaProyecto
+        :id-proyecto="proyecto.idProyecto"
+        :token-refresco="tokenRefresco"
+        :activo="pestanaActiva === 'cronograma'"
       />
-
-      <p v-if="buscando" class="planificacion-proyecto__actualizando">
-        Actualizando listado...
-      </p>
-
-      <div v-if="cargando" class="planificacion-proyecto__cargando">
-        <span class="material-symbols-outlined">hourglass_empty</span>
-        Cargando actividades...
-      </div>
-
-      <TablaActividades
-        v-else
-        :actividades="actividades"
-        :id-actividad-resaltada="idActividadResaltada"
-        :mensaje-vacio="mensajeVacio"
-        :puede-editar="puedeEditarActividad"
-        :puede-eliminar="puedeEliminarActividad"
-        @editar-actividad="$emit('editar-actividad', $event)"
-        @eliminar-actividad="$emit('eliminar-actividad', $event)"
-      />
-    </section>
-
-    <section
-      v-if="!cargando && actividadesCronograma.length"
-      class="planificacion-proyecto__panel"
-    >
-      <h2 class="planificacion-proyecto__titulo">Cronograma</h2>
-      <p class="planificacion-proyecto__subtitulo">
-        Vista general de las actividades con fechas confirmadas o proyectadas.
-        No incluye actividades canceladas.
-      </p>
-
-      <CronogramaActividades :actividades="actividadesCronograma" />
-    </section>
+    </div>
   </section>
 </template>
 
@@ -155,11 +151,8 @@ import { refrescarSesion } from "../../services/authState";
 import BaseAlert from "../AlertaBase.vue";
 import FiltrosActividades from "./FiltrosActividades.vue";
 import TablaActividades from "./TablaActividades.vue";
-import CronogramaActividades from "./CronogramaActividades.vue";
-import {
-  calcularMetricasPlanificacion,
-  esActividadCancelada,
-} from "../../utils/actividadConstants.js";
+import CronogramaProyecto from "./CronogramaProyecto.vue";
+import { esActividadCancelada } from "../../utils/actividadConstants.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
   ESTADOS_PROYECTO,
@@ -178,7 +171,7 @@ export default {
     BaseAlert,
     FiltrosActividades,
     TablaActividades,
-    CronogramaActividades,
+    CronogramaProyecto,
   },
   props: {
     proyecto: {
@@ -203,8 +196,11 @@ export default {
   ],
   data() {
     return {
-      actividadesTotales: [],
+      pestanaActiva: "planificacion",
       actividades: [],
+      paginacion: {
+        totalElementos: 0,
+      },
       cargando: true,
       buscando: false,
       error: "",
@@ -252,51 +248,20 @@ export default {
     tieneFechaEntrega() {
       return !!this.proyecto?.fechaEntregaEstipulada;
     },
-    actividadesProgramables() {
-      return (this.actividadesTotales || []).filter(
-        (actividad) => !esActividadCancelada(actividad)
-      );
-    },
-    /** Lista filtrada de la tabla, sin canceladas, para el cronograma. */
-    actividadesCronograma() {
-      return (this.actividades || []).filter(
-        (actividad) => !esActividadCancelada(actividad)
-      );
-    },
     totalActividades() {
-      return (this.actividadesTotales || []).length;
+      const total = Number(this.paginacion.totalElementos);
+      return Number.isFinite(total) && total > 0
+        ? total
+        : this.actividades.length;
     },
     canceladas() {
-      return (this.actividadesTotales || []).filter(esActividadCancelada).length;
+      return this.actividades.filter(esActividadCancelada).length;
     },
     textoCanceladas() {
       if (!this.canceladas) return "";
       return this.canceladas === 1
-        ? "1 cancelada no incluida en el cronograma"
-        : `${this.canceladas} canceladas no incluidas en el cronograma`;
-    },
-    metricas() {
-      return calcularMetricasPlanificacion(
-        this.actividadesProgramables,
-        this.proyecto?.fechaEntregaEstipulada
-      );
-    },
-    duracionTexto() {
-      return this.metricas.duracionDias
-        ? `${this.metricas.duracionDias} días`
-        : "—";
-    },
-    margenVencido() {
-      return (
-        this.metricas.margenDias !== null && this.metricas.margenDias < 0
-      );
-    },
-    margenTexto() {
-      const margen = this.metricas.margenDias;
-      if (margen === null) return "—";
-      if (margen < 0) return `Vencido por ${Math.abs(margen)} días`;
-      if (margen === 0) return "Sin margen";
-      return `${margen} días`;
+        ? "1 actividad cancelada incluida en la tabla."
+        : `${this.canceladas} actividades canceladas incluidas en la tabla.`;
     },
     filtrosActivos() {
       return (
@@ -336,7 +301,11 @@ export default {
       },
     },
     tokenRefresco() {
-      this.cargarTodo();
+      if (this.filtrosActivos) {
+        this.buscarConFiltros();
+      } else {
+        this.cargarTodo();
+      }
     },
   },
   created() {
@@ -351,6 +320,10 @@ export default {
     if (this.controladorBusqueda) this.controladorBusqueda.abort();
   },
   methods: {
+    cambiarPestana(pestana) {
+      if (pestana === this.pestanaActiva) return;
+      this.pestanaActiva = pestana;
+    },
     async cargarTodo() {
       const corrida = ++this.idCarga;
       this.abortarBusqueda();
@@ -362,17 +335,16 @@ export default {
       this.puedeReintentar = false;
 
       try {
-        const response = await actividadService.buscar(
+        const response = await actividadService.listarPlanificacion(
           this.proyecto.idProyecto,
-          { todos: true },
+          { todos: true, size: 100 },
           this.controladorBusqueda.signal
         );
         if (corrida !== this.idCarga) return;
 
-        const contenido = response?.data?.contenido;
-        const lista = Array.isArray(contenido) ? contenido : [];
-        this.actividadesTotales = lista;
-        this.actividades = lista;
+        const data = response?.data || {};
+        this.actividades = Array.isArray(data.contenido) ? data.contenido : [];
+        this.paginacion.totalElementos = Number(data.totalElementos) || 0;
       } catch (error) {
         if (this.esCancelacion(error) || corrida !== this.idCarga) return;
         await this.manejarError(error);
@@ -392,21 +364,22 @@ export default {
       this.error = "";
       this.puedeReintentar = false;
 
-      const params = { todos: true };
+      const params = { todos: true, size: 100 };
       const nombre = String(this.filtros.nombre || "").trim();
       if (nombre) params.nombre = nombre;
       if (this.filtros.estados.length) params.estado = [...this.filtros.estados];
 
       try {
-        const response = await actividadService.buscar(
+        const response = await actividadService.listarPlanificacion(
           this.proyecto.idProyecto,
           params,
           this.controladorBusqueda.signal
         );
         if (corrida !== this.idCarga) return;
 
-        const contenido = response?.data?.contenido;
-        this.actividades = Array.isArray(contenido) ? contenido : [];
+        const data = response?.data || {};
+        this.actividades = Array.isArray(data.contenido) ? data.contenido : [];
+        this.paginacion.totalElementos = Number(data.totalElementos) || 0;
       } catch (error) {
         if (this.esCancelacion(error) || corrida !== this.idCarga) return;
         await this.manejarError(error);
@@ -510,46 +483,42 @@ export default {
   font-size: 0.82rem;
 }
 
-.planificacion-proyecto__resumen {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 0.75rem;
-}
-
-.planificacion-proyecto__metrica {
+.planificacion-proyecto__pestanas {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.9rem 1rem;
+  gap: 0.35rem;
+  padding: 0.3rem;
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: var(--color-surface);
+  background: var(--color-surface-muted);
+  align-self: flex-start;
 }
 
-.planificacion-proyecto__metrica-label {
+.planificacion-proyecto__pestana {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
   color: var(--color-text-muted);
-  font-size: 0.74rem;
-  font-weight: 500;
-}
-
-.planificacion-proyecto__metrica-valor {
-  color: var(--color-text);
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.planificacion-proyecto__metrica-valor--suave {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 600;
+  cursor: pointer;
 }
 
-.planificacion-proyecto__metrica-valor--alerta {
-  color: var(--color-danger-text);
+.planificacion-proyecto__pestana .material-symbols-outlined {
+  font-size: 1.1rem;
 }
 
-.planificacion-proyecto__metrica-hint {
-  color: var(--color-text-muted);
-  font-size: 0.7rem;
+.planificacion-proyecto__pestana:hover {
+  color: var(--color-text);
+}
+
+.planificacion-proyecto__pestana--activa {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .planificacion-proyecto__panel {

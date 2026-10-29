@@ -360,6 +360,14 @@
                   <dt>Estado del cronograma</dt>
                   <dd>{{ estadoCronogramaTexto }}</dd>
                 </div>
+                <div v-if="holguraMakespanTexto">
+                  <dt>Holgura makespan</dt>
+                  <dd>{{ holguraMakespanTexto }}</dd>
+                </div>
+                <div v-if="holguraEntregaTexto">
+                  <dt>Holgura entrega</dt>
+                  <dd>{{ holguraEntregaTexto }}</dd>
+                </div>
                 <div>
                   <dt>Requerimientos</dt>
                   <dd>{{ form.requerimientos.length }} cargados</dd>
@@ -374,11 +382,32 @@
                 </div>
               </dl>
 
+              <div
+                v-if="chipsCpm.length"
+                class="modificar-actividad__resumen-chips"
+              >
+                <span
+                  v-for="chip in chipsCpm"
+                  :key="chip.tipo"
+                  class="modificar-actividad__resumen-chip"
+                  :title="chip.detalle"
+                >
+                  {{ chip.etiqueta }}
+                </span>
+              </div>
+
+              <p
+                v-if="motivoConflicto"
+                class="modificar-actividad__resumen-conflicto"
+              >
+                {{ motivoConflicto }}
+              </p>
+
               <div class="modificar-actividad__resumen-fechas">
                 <span class="modificar-actividad__resumen-fechas-label">
                   Fechas actuales
                 </span>
-                <span>{{ rangoFechasActuales }}</span>
+                <span :title="textoFechasActuales">{{ rangoFechasActuales }}</span>
               </div>
 
               <p class="modificar-actividad__resumen-nota">
@@ -536,7 +565,6 @@ import {
   ESTADOS_ACTIVIDAD,
   ESTADOS_CRONOGRAMA,
   ETIQUETAS_ESTADO_ACTIVIDAD,
-  ETIQUETAS_ESTADO_CRONOGRAMA,
   ETIQUETAS_UNIDAD_DURACION,
   LIMITES_ACTIVIDAD,
   MINUTOS_POR_UNIDAD,
@@ -550,12 +578,20 @@ import {
   puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
 import {
+  describirCpm,
+  esProyectada,
+  etiquetaEstadoCronograma,
+  formatearHolgura,
+  formatearRangoCpm,
+  textoProyeccion,
+} from "../../utils/cpmConstants.js";
+import {
   buildModificarActividadRequest,
   mapearErroresActividad,
   validarActividadEdicion,
 } from "../../utils/validacionesActividad.js";
 import { validarRequerimiento } from "../../utils/validacionesProyecto.js";
-import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
+import { formatearFechaCorta } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
@@ -671,16 +707,45 @@ export default {
       }));
     },
     estadoCronogramaTexto() {
-      const estado = this.actividad?.estadoCronograma;
-      return ETIQUETAS_ESTADO_CRONOGRAMA[estado] || "—";
+      return etiquetaEstadoCronograma(this.actividad?.estadoCronograma);
     },
     fechaEntregaTexto() {
       return formatearFechaCorta(this.proyecto?.fechaEntregaEstipulada);
     },
     rangoFechasActuales() {
-      const inicio = formatearFecha(this.actividad?.fechaHoraInicio);
-      const fin = formatearFecha(this.actividad?.fechaHoraFin);
-      return `${inicio} – ${fin}`;
+      if (this.actividad?.fechaHoraInicio) {
+        return formatearRangoCpm(
+          this.actividad?.fechaHoraInicio,
+          this.actividad?.fechaHoraFin
+        );
+      }
+      if (this.actividad?.inicioProyectado) {
+        return `${formatearRangoCpm(
+          this.actividad?.inicioProyectado,
+          this.actividad?.finProyectado
+        )} (proyectada)`;
+      }
+      return "—";
+    },
+    textoFechasActuales() {
+      return esProyectada(this.actividad)
+        ? textoProyeccion(this.actividad)
+        : "Fechas persistidas de la actividad.";
+    },
+    chipsCpm() {
+      return describirCpm(this.actividad);
+    },
+    holguraMakespanTexto() {
+      return formatearHolgura(this.actividad?.holguraMakespan);
+    },
+    holguraEntregaTexto() {
+      return formatearHolgura(this.actividad?.holguraEntrega);
+    },
+    motivoConflicto() {
+      return this.actividad?.conflicto === true
+        ? this.actividad?.motivoConflicto ||
+            "La ventana CPM de la actividad no es factible."
+        : "";
     },
     totalPersonasRequeridas() {
       return this.form.requerimientos.reduce(
@@ -1813,6 +1878,34 @@ export default {
   font-size: 0.78rem;
   font-weight: 600;
   text-align: right;
+}
+
+.modificar-actividad__resumen-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.modificar-actividad__resumen-chip {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: 999px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.modificar-actividad__resumen-conflicto {
+  margin: 0.55rem 0 0;
+  color: var(--color-danger-text);
+  font-size: 0.72rem;
+  line-height: 1.4;
 }
 
 .modificar-actividad__resumen-fechas {
