@@ -11,7 +11,7 @@
         <input
           v-model="busqueda"
           type="search"
-          placeholder="Buscar perfiles o proyectos..."
+          placeholder="Buscar..."
           @keyup.enter="irABuscar"
         />
       </div>
@@ -33,11 +33,17 @@
           <span class="material-symbols-outlined">business_center</span>
           <span>Proyectos</span>
         </button>
-        <button class="home-layout__nav-item">
+        <button
+          class="home-layout__nav-item"
+          @click.stop="noDisponible('Mi red')"
+        >
           <span class="material-symbols-outlined">group</span>
           <span>Mi red</span>
         </button>
-        <button class="home-layout__nav-item">
+        <button
+          class="home-layout__nav-item"
+          @click.stop="noDisponible('Mensajes')"
+        >
           <span class="material-symbols-outlined">chat_bubble</span>
           <span>Mensajes</span>
         </button>
@@ -169,7 +175,7 @@
         <nav class="home-layout__quick-links">
           <button @click="$router.push({ name: 'inicioperfil' })"><span class="material-symbols-outlined">person</span>Mi perfil</button>
           <button @click="$router.push({ name: 'proyectos-inicio' })"><span class="material-symbols-outlined">business_center</span>Proyectos</button>
-          <button><span class="material-symbols-outlined">chat_bubble</span>Contactos</button>
+          <button @click.stop="noDisponible('Contactos')"><span class="material-symbols-outlined">chat_bubble</span>Contactos</button>
           <button @click="$router.push({ name: 'calendario' })"><span class="material-symbols-outlined">calendar_month</span>Calendario</button>
           <button @click="$router.push({ name: 'dashboard-usuario' })"><span class="material-symbols-outlined">dashboard</span>Dashboard</button>
         </nav>
@@ -201,13 +207,18 @@ import {
 } from "../../services/notificacionState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import { nextTick } from "vue";
+import { useToast } from "vuestic-ui";
 import ThemeToggle from "../ThemeToggle.vue";
 
 export default {
   name: "HomeLayout",
   components: {
     ThemeToggle,
+  },
+  setup() {
+    return { toast: useToast() };
   },
   data() {
     return {
@@ -325,6 +336,9 @@ export default {
       this.menuAbierto = false;
       this.perfilesAbiertos = false;
       this.$router.push({ name: "inicioperfil" });
+    },
+    noDisponible(nombre) {
+      mostrarNoDisponible(this.toast, nombre);
     },
     irABuscar() {
       const texto = this.busqueda.trim();

@@ -77,21 +77,29 @@ export default {
       default: "publicaciones",
     },
   },
-  emits: ["cambiar-seccion", "navegar-ruta", "cerrar-sesion", "conectar", "mensaje", "reportar"],
+  emits: [
+    "cambiar-seccion",
+    "navegar-ruta",
+    "cerrar-sesion",
+    "conectar",
+    "mensaje",
+    "reportar",
+    "funcionalidad-no-disponible",
+  ],
   computed: {
     itemsVisibles() {
       const itemsPropio = [
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
         { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "proyectos-inicio" },
         { key: "resenas", label: "Reseñas", icono: "star", tipo: "seccion" },
-        { key: "mi-red", label: "Mi red", icono: "group", tipo: "ruta" },
-        { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "modificar-datos" },
+        { key: "mi-red", label: "Mi red", icono: "group", tipo: "no-disponible" },
+        { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "editar-perfil-inicio" },
         { key: "panel", label: "Panel de usuario", icono: "person", tipo: "ruta", ruta: "dashboard-usuario" },
       ];
 
       const itemsAjeno = [
-        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "seccion" },
-        { key: "participaciones", label: "Participaciones", icono: "groups", tipo: "seccion" },
+        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "no-disponible" },
+        { key: "participaciones", label: "Participaciones", icono: "groups", tipo: "no-disponible" },
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
       ];
 
@@ -102,10 +110,10 @@ export default {
     navegar(item) {
       if (item.tipo === "seccion") {
         this.$emit("cambiar-seccion", item.key);
-      } else if (item.ruta) {
+      } else if (item.tipo === "ruta" && item.ruta) {
         this.$emit("navegar-ruta", item.ruta);
       } else {
-        this.$emit("navegar-ruta", null);
+        this.$emit("funcionalidad-no-disponible", item.label || "");
       }
     },
   },

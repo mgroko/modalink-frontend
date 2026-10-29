@@ -198,6 +198,7 @@
               :seccion-activa="seccion"
               @cambiar-seccion="cambiarSeccion"
               @navegar-ruta="navegarRuta"
+              @funcionalidad-no-disponible="noDisponible($event)"
               @cerrar-sesion="cerrarSesion"
             />
           </template>
@@ -206,10 +207,11 @@
               :es-propio="false"
               :seccion-activa="seccion"
               @cambiar-seccion="cambiarSeccion"
-            @navegar-ruta="navegarRuta"
-            @conectar="proximamente"
-            @mensaje="proximamente"
-            @reportar="modalReporte = true"
+              @navegar-ruta="navegarRuta"
+              @funcionalidad-no-disponible="noDisponible($event)"
+              @conectar="noDisponible('Conectar')"
+              @mensaje="noDisponible('Mensaje')"
+              @reportar="modalReporte = true"
             />
             <ResenasCard :resenas="resenas" />
           </template>
@@ -252,6 +254,13 @@ import {
 } from "../../utils/perfilConstants.js";
 import { diasRestantes, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { mostrarNoDisponible } from "../../utils/noDisponible.js";
+import { useToast } from "vuestic-ui";
+
+const SECCIONES_NO_DISPONIBLES = {
+  proyectos: "Proyectos",
+  participaciones: "Participaciones",
+};
 
 export default {
   name: "InicioPerfilView",
@@ -264,6 +273,9 @@ export default {
     ReportarPerfilModal,
     ResenasCard,
     SkeletonPerfil,
+  },
+  setup() {
+    return { toast: useToast() };
   },
   data() {
     return {
@@ -332,6 +344,7 @@ export default {
     },
   },
   async mounted() {
+    this.avisarSeccionNoDisponible();
     await this.cargarDatos();
     this.intervaloContador = setInterval(() => this.actualizarContadorBaja(), 60 * 60 * 1000);
   },
@@ -344,6 +357,7 @@ export default {
     },
     "$route.params.seccion"() {
       window.scrollTo({ top: 0, behavior: "smooth" });
+      this.avisarSeccionNoDisponible();
     },
   },
   methods: {
@@ -456,6 +470,12 @@ export default {
       }
     },
     cambiarSeccion(seccion) {
+      const noDisponible = SECCIONES_NO_DISPONIBLES[seccion];
+      if (noDisponible) {
+        this.noDisponible(noDisponible);
+        return;
+      }
+
       const idDeRuta = this.$route.params.id;
       if (idDeRuta) {
         this.$router.push({ name: "ver-perfil-seccion", params: { id: idDeRuta, seccion } });
@@ -464,23 +484,42 @@ export default {
       }
     },
     navegarRuta(ruta) {
+      if (ruta === "editar-perfil-inicio") {
+        if (!this.perfil?.idPerfil) return;
+        this.$router.push({
+          name: ruta,
+          params: { id: this.perfil.idPerfil },
+        });
+        return;
+      }
       if (ruta) {
         this.$router.push({ name: ruta });
-      } else {
-        this.proximamente();
+        return;
       }
+      this.noDisponible("Mi red");
+    },
+    avisarSeccionNoDisponible() {
+      const seccion = this.$route.params.seccion;
+      const nombre = SECCIONES_NO_DISPONIBLES[seccion];
+      if (!nombre) return;
+
+      this.noDisponible(nombre);
+      const id = this.$route.params.id;
+      this.$router.replace(
+        id ? { name: "ver-perfil", params: { id } } : { name: "inicioperfil" }
+      );
     },
     refrescarEventos() {
       this.$refs.proximosEventos?.cargar();
     },
-    proximamente() {
-      alert("Funcionalidad próximamente disponible.");
+    noDisponible(nombre) {
+      mostrarNoDisponible(this.toast, nombre);
     },
     alReportar() {
       this.mensajeExito = "Reporte enviado. Gracias por ayudarnos a mantener la comunidad.";
     },
     nuevaPublicacion() {
-      this.proximamente();
+      this.noDisponible("Nueva publicación");
     },
     irAEditar() {
       if (this.perfil?.idPerfil) {

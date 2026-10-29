@@ -89,9 +89,6 @@
                 <span class="material-symbols-outlined">check_circle</span>
                 En sesión
               </span>
-              <button class="perfil-card__header-btn" @click.stop>
-                <span class="material-symbols-outlined">add</span>
-              </button>
             </div>
           </div>
 
@@ -839,27 +836,6 @@ export default {
   font-size: 0.85rem;
   font-weight: 600;
   color: #fff;
-}
-
-.perfil-card__header-btn {
-  background: rgba(255, 255, 255, 0.25);
-  border: none;
-  border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #fff;
-}
-
-.perfil-card__header-btn:hover {
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.perfil-card__header-btn .material-symbols-outlined {
-  font-size: 1rem;
 }
 
 .perfil-card__header-right {
