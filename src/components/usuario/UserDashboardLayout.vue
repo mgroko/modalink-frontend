@@ -138,9 +138,7 @@
             </VaDropdownContent>
           </VaDropdown>
 
-          <div class="modalink-main__brand">
-            <BrandLogo :alto="38" variante="gradient" />
-          </div>
+          <h1 class="modalink-main__title">ModaLink</h1>
         </div>
       </header>
 
@@ -199,7 +197,6 @@ import {
   guardarBajaCuenta,
 } from "../../services/authState";
 import ThemeToggle from "../ThemeToggle.vue";
-import BrandLogo from "../BrandLogo.vue";
 import {
   state as notificacionState,
   cargarResumenUsuario,
@@ -209,7 +206,6 @@ export default {
   name: "UserDashboardLayout",
   components: {
     ThemeToggle,
-    BrandLogo,
   },
   props: {
     titulo: {
@@ -481,11 +477,17 @@ export default {
   text-decoration: underline;
 }
 
-/* ModaLink */
-.modalink-main__brand {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
+/*Modalink*/
+.modalink-main__title{
+font-size: 1.5rem;
+  font-weight: 750;
+  letter-spacing: 0.15em;
+  text-decoration: none;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Logout */

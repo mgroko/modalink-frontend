@@ -11,7 +11,7 @@
       />
 
       <RouterLink to="/" class="auth-layout__brand-link" aria-label="Ir al inicio">
-        <BrandLogo :alto="96" variante="light" />
+        <span class="auth-layout__brand-text">ModaLink</span>
       </RouterLink>
     </div>
 
@@ -27,7 +27,6 @@
 
 <script>
 import ThemeToggle from "./ThemeToggle.vue";
-import BrandLogo from "./BrandLogo.vue";
 import foto1 from "../assets/auth/DSC_0162.jpg";
 import foto2 from "../assets/auth/DSC_0102-2.jpg";
 import foto3 from "../assets/auth/DSC_0120.jpg";
@@ -44,7 +43,6 @@ export default {
   name: "AuthLayout",
   components: {
     ThemeToggle,
-    BrandLogo,
   },
   data() {
     return {
@@ -118,6 +116,14 @@ export default {
   justify-content: center;
   padding: 2rem;
   z-index: 1;
+}
+
+.auth-layout__brand-text {
+  color: #ecfeff;
+  font-size: 3rem;
+  font-weight: 1000;
+  letter-spacing: 0.20em;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
 }
 
 .auth-layout__content {
