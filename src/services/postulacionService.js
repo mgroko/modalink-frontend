@@ -88,6 +88,45 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {AdvertenciaSobrecompromiso[]} [advertencias] no bloqueantes
  */
 
+/**
+ * @typedef {Object} MiPostulacionResponse
+ *   UC-27. Postulación propia del perfil activo, en cualquier proyecto.
+ * @property {number} idPostulacion
+ * @property {"GENERAL"|"ACTIVIDAD"} tipo
+ * @property {"PENDIENTE"|"ACEPTADA"|"RECHAZADA"} estado
+ * @property {string} fechaPostulacion ISO-8601 del servidor
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {number} idRequerimiento idRequerimientoGral o de actividad
+ * @property {number} [cantidad] cantidad solicitada en el requerimiento
+ * @property {string} [nombreProfesion] profesión del requerimiento
+ * @property {string|null} descripcionRequerimiento
+ * @property {number|null} idActividad sólo en tipo ACTIVIDAD
+ * @property {string|null} nombreActividad sólo en tipo ACTIVIDAD
+ * @property {boolean} puedeDarseDeBaja true sólo en PENDIENTE
+ */
+
+/**
+ * @typedef {Object} PaginaMisPostulacionesResponse
+ * @property {MiPostulacionResponse[]} contenido
+ * @property {number} paginaActual base 0
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} BuscarMisPostulacionesParams
+ * @property {number|string} [idProyecto] acota a un proyecto
+ * @property {string} [estado] PENDIENTE | ACEPTADA | RECHAZADA
+ * @property {"GENERAL"|"ACTIVIDAD"} [tipo]
+ * @property {number} [page] base 0, default 0
+ * @property {number} [size] default 20
+ * @property {boolean} [todos] true = sin paginar
+ */
+
 const postulacionService = {
   /**
    * GET /proyectos/{idProyecto}/postulaciones/buscar — UC-74.
@@ -112,6 +151,77 @@ const postulacionService = {
       query ? `?${query}` : ""
     }`;
     return http.get(url, { signal });
+  },
+
+  /**
+   * GET /postulaciones/mias — UC-27.
+   * Postulaciones del perfil activo en todos los proyectos, ordenadas por
+   * `fechaPostulacion` descendente. Sin `idProyecto` devuelve las de todos.
+   *
+   * Errores:
+   * - 400 estado/tipo desconocidos o paginación inválida
+   * - 401 cuenta no activa
+   * - 404 sin perfil activo
+   * @param {BuscarMisPostulacionesParams} [params]
+   * @param {AbortSignal} [signal] cancela la búsqueda en vuelo
+   * @returns {Promise<{data: PaginaMisPostulacionesResponse}>} 200 OK
+   */
+  mias(params = {}, signal) {
+    const query = serializarParams(params);
+    const url = `/postulaciones/mias${query ? `?${query}` : ""}`;
+    return http.get(url, { signal });
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/postulaciones/general/{idPostulacion}
+   * UC-27. Baja física de una postulación general propia. Sin body.
+   *
+   * Errores esperables: 401, 404 (postulación inexistente o de otro perfil /
+   * proyecto), 409 (la postulación ya no está PENDIENTE).
+   * @param {number|string} idProyecto
+   * @param {number|string} idPostulacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data?: null}>} 204 No Content
+   */
+  darDeBajaGeneral(idProyecto, idPostulacion, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/postulaciones/general/${idPostulacion}`,
+      { signal }
+    );
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/postulaciones/actividad/{idPostulacion}
+   * UC-27. Baja física de una postulación de actividad propia. Sin body.
+   *
+   * Errores esperables: 401, 404, 409 (ya no está PENDIENTE).
+   * @param {number|string} idProyecto
+   * @param {number|string} idPostulacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data?: null}>} 204 No Content
+   */
+  darDeBajaActividad(idProyecto, idPostulacion, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/postulaciones/actividad/${idPostulacion}`,
+      { signal }
+    );
+  },
+
+  /**
+   * Atajo de UC-27: elige el endpoint de baja según `tipo`.
+   * @param {MiPostulacionResponse} postulacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data?: null}>} 204 No Content
+   */
+  darDeBaja(postulacion, signal) {
+    const idProyecto = postulacion?.idProyecto;
+    const idPostulacion = postulacion?.idPostulacion;
+    if (idProyecto == null || idPostulacion == null) {
+      return Promise.reject(new Error("Postulación sin proyecto o id."));
+    }
+    return String(postulacion?.tipo).toUpperCase() === "ACTIVIDAD"
+      ? postulacionService.darDeBajaActividad(idProyecto, idPostulacion, signal)
+      : postulacionService.darDeBajaGeneral(idProyecto, idPostulacion, signal);
   },
 
   /**

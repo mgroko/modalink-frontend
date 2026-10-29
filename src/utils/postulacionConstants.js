@@ -72,6 +72,34 @@ export const ETIQUETAS_TIPO_POSTULACION = {
   [TIPOS_POSTULACION.ACTIVIDAD]: "Actividad",
 };
 
+/**
+ * Origen que se muestra en "Mis postulaciones": una postulación general
+ * pertenece al proyecto; una de actividad, a una actividad concreta.
+ */
+export const ETIQUETAS_ORIGEN_POSTULACION = {
+  [TIPOS_POSTULACION.GENERAL]: "Proyecto",
+  [TIPOS_POSTULACION.ACTIVIDAD]: "Actividad",
+};
+
+/**
+ * Textos fijos de la pestaña Postulaciones y de "Mis postulaciones".
+ * Se centralizan para no repetirlos en los componentes.
+ */
+export const TEXTOS_POSTULACIONES = {
+  VACIO_PERSONAL_REQUERIDO:
+    "Este proyecto todavía no tiene personal requerido.",
+  VACIO_MIS_POSTULACIONES:
+    "Todavía no te postulaste a ningún proyecto.",
+  VACIO_PROYECTO_ESTADO: "No hay postulaciones en este estado.",
+  ERROR_PROYECTO: "No pudimos cargar las postulaciones.",
+  AVISO_MIEMBRO_INACTIVO:
+    "El miembro ya no está activo; el cupo puede estar libre.",
+  AVISO_ACTIVIDAD_CERRADA: "Esta actividad ya no acepta postulaciones.",
+  CUPO_COMPLETO: "Cupo completo",
+  NO_DISPONIBLE: "No disponible para tu perfil",
+  DAR_DE_BAJA: "Dar de baja",
+};
+
 export const AVISO_DISPONIBILIDAD_PROVISORIA =
   "Tu disponibilidad fue verificada de forma provisoria. Se confirmará cuando el proyecto defina su fecha de inicio.";
 
@@ -273,24 +301,6 @@ export function mensajeExitoPostulacion(tipo, nombreActividad = "") {
 }
 
 /**
- * Texto del cupo para la UI: "1 / 2 cubiertos" cuando hay más de un lugar.
- * Sólo usa datos del sistema; devuelve "" si no corresponde mostrarlo.
- * @param {object|null|undefined} requerimiento
- * @returns {string}
- */
-export function textoCupo(requerimiento) {
-  const cantidad = Number(requerimiento?.cantidad);
-  if (!Number.isFinite(cantidad) || cantidad <= 1) return "";
-
-  const cubiertos = Number(requerimiento?.cubiertos);
-  if (requerimiento?.cubiertos == null || !Number.isFinite(cubiertos)) {
-    return "";
-  }
-
-  return `${cubiertos} / ${cantidad} cubiertos`;
-}
-
-/**
  * Normaliza el estado de una postulación al enum canónico.
  * @param {string|null|undefined} estado
  * @returns {string}
@@ -332,4 +342,94 @@ export function etiquetaTipoPostulacion(tipo) {
   if (!tipo) return "";
   const clave = String(tipo).toUpperCase();
   return ETIQUETAS_TIPO_POSTULACION[clave] || String(tipo);
+}
+
+/**
+ * Etiqueta de origen para "Mis postulaciones": "Proyecto" o "Actividad".
+ * @param {string|null|undefined} tipo
+ * @returns {string}
+ */
+export function etiquetaOrigenPostulacion(tipo) {
+  if (!tipo) return "";
+  const clave = String(tipo).toUpperCase();
+  return ETIQUETAS_ORIGEN_POSTULACION[clave] || etiquetaTipoPostulacion(tipo);
+}
+
+/**
+ * Cantidad solicitada del requerimiento. Acepta el shape de gestión
+ * (`cantidadRequerida`) y el de mis postulaciones (`cantidad`).
+ * @param {object|null|undefined} elemento
+ * @returns {number|null}
+ */
+function cantidadDeCupo(elemento) {
+  const valor = elemento?.cantidadRequerida ?? elemento?.cantidad;
+  const cantidad = Number(valor);
+  return Number.isFinite(cantidad) && cantidad > 0 ? cantidad : null;
+}
+
+/**
+ * @param {object|null|undefined} elemento
+ * @returns {number|null}
+ */
+function cubiertosDeCupo(elemento) {
+  if (elemento?.cubiertos == null) return null;
+  const cubiertos = Number(elemento.cubiertos);
+  return Number.isFinite(cubiertos) ? cubiertos : null;
+}
+
+/**
+ * Cupo en el formato de la pestaña Postulaciones: "1 de 2 cubiertos".
+ * Se muestra siempre, incluso con `cantidad = 1`.
+ * @param {object|null|undefined} elemento
+ * @returns {string} "—" si faltan datos del sistema
+ */
+export function textoCupoCubiertos(elemento) {
+  const cantidad = cantidadDeCupo(elemento);
+  const cubiertos = cubiertosDeCupo(elemento);
+  if (cantidad === null || cubiertos === null) return "—";
+  return `${cubiertos} de ${cantidad} cubiertos`;
+}
+
+/**
+ * Avance del cupo para la barra de progreso.
+ * @param {object|null|undefined} elemento
+ * @returns {number} 0..100
+ */
+export function porcentajeCupo(elemento) {
+  const cantidad = cantidadDeCupo(elemento);
+  const cubiertos = cubiertosDeCupo(elemento);
+  if (cantidad === null || cubiertos === null) return 0;
+  const porcentaje = Math.round((cubiertos / cantidad) * 100);
+  return Math.min(100, Math.max(0, porcentaje));
+}
+
+/**
+ * Aceptada cuyo miembro/asignación ya no está activo: el cupo puede estar
+ * libre aunque la postulación siga ACEPTADA.
+ * @param {object|null|undefined} postulacion
+ * @returns {boolean}
+ */
+export function esAceptadaConMiembroInactivo(postulacion) {
+  return (
+    normalizarEstadoPostulacion(postulacion?.estado) ===
+      ESTADOS_POSTULACION.ACEPTADA && postulacion?.aportaCupo === false
+  );
+}
+
+/**
+ * Requerimiento en formato "2 · Modelo". Si el contrato todavía no expone
+ * `cantidad`/`nombreProfesion` (mis postulaciones), cae a
+ * `descripcionRequerimiento`.
+ * @param {object|null|undefined} elemento
+ * @returns {string}
+ */
+export function textoRequerimiento(elemento) {
+  const cantidad = cantidadDeCupo(elemento);
+  const profesion = String(elemento?.nombreProfesion || "").trim();
+
+  if (cantidad !== null && profesion) return `${cantidad} · ${profesion}`;
+  if (profesion) return profesion;
+
+  const descripcion = String(elemento?.descripcionRequerimiento || "").trim();
+  return descripcion || "Requerimiento";
 }

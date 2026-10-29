@@ -59,7 +59,7 @@
               <span class="material-symbols-outlined" aria-hidden="true">
                 check_circle
               </span>
-              Cupo completo
+              {{ textos.CUPO_COMPLETO }}
             </span>
             <span
               v-else-if="Number(postulacion.faltantes) > 0"
@@ -76,23 +76,22 @@
           <td data-label="Estado">
             <EstadoPostulacionBadge :estado="postulacion.estado" />
             <span
-              v-if="
-                postulacion.estado === 'ACEPTADA' && !postulacion.aportaCupo
-              "
-              class="tabla-postulaciones__cupo-liberado"
+              v-if="esAceptadaConMiembroInactivo(postulacion)"
+              class="tabla-postulaciones__inactivo"
             >
-              Cupo liberado
+              {{ textos.AVISO_MIEMBRO_INACTIVO }}
             </span>
           </td>
 
           <td data-label="Acciones" class="tabla-postulaciones__td-acciones">
             <div class="tabla-postulaciones__acciones">
               <VaButton
-                v-if="postulacion.puedeAceptar"
+                v-if="postulacion.estado === 'PENDIENTE'"
                 preset="primary"
                 size="small"
                 icon="mso-check"
-                :disabled="accionEnCurso"
+                :disabled="accionEnCurso || !postulacion.puedeAceptar"
+                :title="tituloAceptar(postulacion)"
                 :aria-label="`Aceptar la postulación de ${postulacion.nombreArtistico}`"
                 @click="$emit('aceptar', postulacion)"
               >
@@ -111,7 +110,9 @@
                 Rechazar
               </VaButton>
               <span
-                v-if="!postulacion.puedeAceptar && !postulacion.puedeRechazar"
+                v-if="
+                  postulacion.estado !== 'PENDIENTE' && !postulacion.puedeRechazar
+                "
                 class="tabla-postulaciones__sin-accion"
               >
                 —
@@ -127,7 +128,12 @@
 <script>
 import EstadoPostulacionBadge from "./EstadoPostulacionBadge.vue";
 import { formatearFecha } from "../../utils/fechas.js";
-import { etiquetaTipoPostulacion } from "../../utils/postulacionConstants.js";
+import {
+  TEXTOS_POSTULACIONES,
+  esAceptadaConMiembroInactivo,
+  etiquetaTipoPostulacion,
+  textoCupoCubiertos,
+} from "../../utils/postulacionConstants.js";
 
 /*
  * Tabla de UC-74. Presentacional: no decide permisos, recibe
@@ -148,14 +154,20 @@ export default {
     },
   },
   emits: ["aceptar", "rechazar"],
+  data() {
+    return { textos: TEXTOS_POSTULACIONES };
+  },
   methods: {
     etiquetaTipoPostulacion,
+    esAceptadaConMiembroInactivo,
     formatearFecha,
     textoCupo(postulacion) {
-      const cubiertos = Number(postulacion?.cubiertos);
-      const cantidad = Number(postulacion?.cantidadRequerida);
-      if (!Number.isFinite(cubiertos) || !Number.isFinite(cantidad)) return "—";
-      return `${cubiertos} / ${cantidad}`;
+      return textoCupoCubiertos(postulacion);
+    },
+    tituloAceptar(postulacion) {
+      if (postulacion?.puedeAceptar) return "";
+      if (postulacion?.satisfecho) return "Cupo completo: no se puede aceptar.";
+      return "La postulación no se puede aceptar.";
     },
   },
 };
@@ -232,8 +244,7 @@ export default {
   font-weight: 600;
 }
 
-.tabla-postulaciones__cupo-completo,
-.tabla-postulaciones__cupo-liberado {
+.tabla-postulaciones__cupo-completo {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -252,10 +263,15 @@ export default {
   color: var(--color-success-text);
 }
 
-.tabla-postulaciones__cupo-liberado {
-  border-color: var(--color-warning-border);
+.tabla-postulaciones__inactivo {
+  display: block;
+  margin-top: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
   background: var(--color-warning-soft);
   color: var(--color-warning-text);
+  font-size: 0.73rem;
+  line-height: 1.35;
 }
 
 .tabla-postulaciones__cupo-completo .material-symbols-outlined {

@@ -1,7 +1,9 @@
 <template>
   <div class="admin-layout" @click="cerrarPaneles">
     <aside class="admin-layout__sidebar">
-      <RouterLink to="/admin/dashboard" class="admin-layout__brand">ModaLink</RouterLink>
+      <RouterLink to="/admin/dashboard" class="admin-layout__brand" aria-label="ModaLink">
+        <BrandLogo :alto="40" />
+      </RouterLink>
 
       <div class="admin-layout__search" aria-label="Buscar">
         <span class="material-symbols-outlined">search</span>
@@ -121,6 +123,7 @@ import {
 } from "../../services/notificacionState";
 import ThemeToggle from "../ThemeToggle.vue";
 import NotificacionesPopover from "../notificaciones/NotificacionesPopover.vue";
+import BrandLogo from "../BrandLogo.vue";
 import { setThemeMode } from "../../services/themeState";
 
 export default {
@@ -128,6 +131,7 @@ export default {
   components: {
     ThemeToggle,
     NotificacionesPopover,
+    BrandLogo,
   },
   data() {
     return {
@@ -231,11 +235,9 @@ export default {
 }
 
 .admin-layout__brand {
+  display: flex;
+  align-items: center;
   padding: 0 0.5rem;
-  color: var(--color-primary);
-  font-size: 1.55rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
   text-decoration: none;
 }
 

@@ -66,6 +66,33 @@ export function formatearFechaCorta(valor) {
 }
 
 /**
+ * Fecha con día de semana abreviado, como en el detalle de actividad:
+ * "Sáb 14/11/2026".
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearFechaConDia(valor) {
+  if (valor == null || valor === "") return "—";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+  const dia = DIAS_CORTOS[aFecha(p).getDay()];
+  return `${dia} ${pad(p.dia)}/${pad(p.mes)}/${p.anio}`;
+}
+
+/**
+ * Rango horario "10:00–14:00". Si falta el fin, usa el inicio.
+ * @param {string|Date|null|undefined} inicio
+ * @param {string|Date|null|undefined} fin
+ * @returns {string} "—" si no hay inicio válido
+ */
+export function formatearRangoHoras(inicio, fin) {
+  const pIni = aPartes(inicio);
+  if (!pIni) return "—";
+  const pFin = aPartes(fin) || pIni;
+  return `${pad(pIni.hora)}:${pad(pIni.minuto)}–${pad(pFin.hora)}:${pad(pFin.minuto)}`;
+}
+
+/**
  * Formato compacto usado en notificaciones: `28 oct 2026, 17:48`.
  * No interpreta la fecha como UTC: se usan las partes tal como llegan.
  */

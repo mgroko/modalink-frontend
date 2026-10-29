@@ -2,9 +2,14 @@
   <div class="proyectos-inicio">
     <header class="proyectos-inicio__header">
       <h1 class="proyectos-inicio__titulo">Proyectos / Inicio</h1>
-      <VaButton color="#5CA4A9" text-color="#17161F" icon="mso-add" @click="irACrearProyecto">
-        Crear proyecto
-      </VaButton>
+      <div class="proyectos-inicio__acciones">
+        <VaButton preset="secondary" icon="mso-assignment" @click="irAMisPostulaciones">
+          Mis postulaciones
+        </VaButton>
+        <VaButton color="#5CA4A9" text-color="#17161F" icon="mso-add" @click="irACrearProyecto">
+          Crear proyecto
+        </VaButton>
+      </div>
     </header>
 
     <section class="proyectos-inicio__panel">
@@ -329,6 +334,9 @@ export default {
     irACrearProyecto() {
       this.$router.push({ name: "crear-proyecto" });
     },
+    irAMisPostulaciones() {
+      this.$router.push({ name: "mis-postulaciones" });
+    },
     irAProyecto(proyecto) {
       if (proyecto?.idProyecto) {
         this.$router.push({
@@ -502,7 +510,15 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.25rem;
+}
+
+.proyectos-inicio__acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .proyectos-inicio__titulo {

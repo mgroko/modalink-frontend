@@ -35,6 +35,9 @@
         @click="$emit('cambiar-tab', tab.id)"
       >
         {{ tab.label }}
+        <span v-if="tab.badge" class="proyecto-encabezado__badge">
+          {{ tab.badge }}
+        </span>
       </button>
     </nav>
   </section>
@@ -67,10 +70,10 @@ export default {
       type: Boolean,
       default: true,
     },
-    /** Pestaña pública de actividades para postularse (no miembros). */
-    mostrarActividades: {
+    /** Pestaña de postulaciones: personal requerido o gestión según el rol. */
+    mostrarPostulaciones: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     /** Texto opcional; si no llega, se compone con rol, privacidad, ubicación y entrega. */
     subtitulo: {
@@ -85,8 +88,12 @@ export default {
       if (this.mostrarPlanificacion) {
         tabs.push({ id: "planificacion", label: "Planificación" });
       }
-      if (this.mostrarActividades) {
-        tabs.push({ id: "actividades", label: "Actividades" });
+      if (this.mostrarPostulaciones) {
+        tabs.push({
+          id: "postulaciones",
+          label: "Postulaciones",
+          badge: this.proyecto?.postulacionesPendientes,
+        });
       }
       return tabs;
     },
@@ -198,6 +205,9 @@ export default {
 }
 
 .proyecto-encabezado__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.8rem 0.1rem 0.7rem;
   border: 0;
   border-bottom: 3px solid transparent;
@@ -208,6 +218,21 @@ export default {
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.proyecto-encabezado__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.32rem;
+  border-radius: 999px;
+  background: var(--color-danger-fill);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .proyecto-encabezado__tab:hover {

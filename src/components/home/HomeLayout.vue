@@ -2,8 +2,7 @@
   <div class="home-layout" @click="cerrarPaneles">
     <header class="home-layout__topbar">
       <div class="home-layout__brand">
-        <span class="material-symbols-outlined">apps</span>
-        <strong>ModaLink</strong>
+        <BrandLogo :alto="36" />
       </div>
 
       <div class="home-layout__search">
@@ -227,12 +226,14 @@ import { nextTick } from "vue";
 import { useToast } from "vuestic-ui";
 import ThemeToggle from "../ThemeToggle.vue";
 import NotificacionesPopover from "../notificaciones/NotificacionesPopover.vue";
+import BrandLogo from "../BrandLogo.vue";
 
 export default {
   name: "HomeLayout",
   components: {
     ThemeToggle,
     NotificacionesPopover,
+    BrandLogo,
   },
   setup() {
     return { toast: useToast() };
@@ -422,8 +423,7 @@ export default {
 <style scoped>
 .home-layout { min-height: 100vh; background: var(--color-bg); color: var(--color-text); }
 .home-layout__topbar { min-height: 72px; display: flex; align-items: center; justify-content: center; gap: 4rem; padding: 0 3rem; background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
-.home-layout__brand { display: flex; align-items: center; gap: .4rem; min-width: 130px; color: var(--color-primary); font-size: 1.2rem; }
-.home-layout__brand .material-symbols-outlined { font-size: 1.5rem; }
+.home-layout__brand { display: flex; align-items: center; min-width: 130px; }
 .home-layout__theme { flex-shrink: 0; }
 .home-layout__search { display: flex; align-items: center; gap: .5rem; width: 300px; padding: .5rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text-muted); }
 .home-layout__search input { width: 100%; border: 0; outline: 0; font-size: .8rem; }

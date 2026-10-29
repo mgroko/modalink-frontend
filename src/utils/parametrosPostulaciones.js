@@ -81,3 +81,46 @@ export function construirParamsPostulaciones(filtros = {}) {
   params.size = cantidad > 0 ? cantidad : TAMANO_POR_DEFECTO;
   return params;
 }
+
+/**
+ * Traduce los filtros de "Mis postulaciones" a los query params de
+ * `GET /postulaciones/mias` (UC-27).
+ * @param {Object} [filtros]
+ * @param {number|string} [filtros.idProyecto] acota a un proyecto
+ * @param {string} [filtros.estado] PENDIENTE | ACEPTADA | RECHAZADA | "" (todas)
+ * @param {string} [filtros.tipo] GENERAL | ACTIVIDAD | "" (todos)
+ * @param {number} [filtros.pagina] base 0
+ * @param {number} [filtros.tamano] 0 = todos
+ * @returns {Record<string, unknown>}
+ */
+export function construirParamsMisPostulaciones(filtros = {}) {
+  const {
+    idProyecto,
+    estado,
+    tipo,
+    pagina = 0,
+    tamano = TAMANO_POR_DEFECTO,
+  } = filtros;
+
+  const params = {};
+
+  if (
+    idProyecto !== undefined &&
+    idProyecto !== null &&
+    idProyecto !== ""
+  ) {
+    params.idProyecto = idProyecto;
+  }
+  if (estado) params.estado = estado;
+  if (tipo) params.tipo = tipo;
+
+  const cantidad = Number(tamano);
+  if (cantidad === 0) {
+    params.todos = true;
+    return params;
+  }
+
+  params.page = Math.max(0, Number(pagina) || 0);
+  params.size = cantidad > 0 ? cantidad : TAMANO_POR_DEFECTO;
+  return params;
+}

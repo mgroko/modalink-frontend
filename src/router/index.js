@@ -19,7 +19,8 @@ import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
 import CrearActividadView from "../views/proyecto/CrearActividadView.vue";
 import ModificarActividadView from "../views/proyecto/ModificarActividadView.vue";
 import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
-import PostulacionesProyectoView from "../views/proyecto/PostulacionesProyectoView.vue";
+import ActividadDetalleView from "../views/proyecto/ActividadDetalleView.vue";
+import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
 import NotificacionesView from "../views/usuario/NotificacionesView.vue";
@@ -142,10 +143,35 @@ const routes = [
     }),
   },
   {
+    path: "/proyectos/mis-postulaciones",
+    name: "mis-postulaciones",
+    component: MisPostulacionesView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Mis postulaciones",
+      requiresActiveProfile: true,
+      navActiva: "proyectos",
+    },
+  },
+  {
+    path: "/proyectos/:id/actividades/:idActividad/detalle",
+    name: "actividad-detalle",
+    component: ActividadDetalleView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Actividad",
+      requiresActiveProfile: true,
+      navActiva: "proyectos",
+    },
+  },
+  {
     path: "/proyectos/:id/postulaciones",
     name: "postulaciones-proyecto",
-    component: PostulacionesProyectoView,
-    meta: { layout: HomeLayout, titulo: "Postulaciones", requiresActiveProfile: true, navActiva: "proyectos" },
+    redirect: (to) => ({
+      name: "dashboard-proyecto",
+      params: { id: to.params.id },
+      query: { tab: "postulaciones" },
+    }),
   },
   {
     path: "/proyectos/:id",

@@ -5,6 +5,7 @@
       :profesiones="profesiones"
       :cargando-profesiones="cargandoProfesiones"
       :error-fechas="errorFechas"
+      :conteos="conteos"
       @cambio="cambiarFiltro"
       @limpiar="limpiarFiltros"
       @buscar-ahora="buscar(0)"
@@ -85,7 +86,11 @@
           inbox
         </span>
         <p class="gestion-postulaciones__vacio-titulo">
-          No hay postulaciones para los filtros seleccionados.
+          {{
+            hayFiltrosActivos
+              ? "No hay postulaciones para los filtros seleccionados."
+              : textos.VACIO_PROYECTO_ESTADO
+          }}
         </p>
         <VaButton
           v-if="hayFiltrosActivos"
@@ -172,6 +177,7 @@ import {
 import {
   ACCIONES_GESTION,
   ESTADOS_POSTULACION,
+  TEXTOS_POSTULACIONES,
   TIPOS_POSTULACION,
 } from "../../utils/postulacionConstants.js";
 import {
@@ -229,6 +235,9 @@ export default {
   data() {
     return {
       filtros: filtrosIniciales(),
+      textos: TEXTOS_POSTULACIONES,
+      /** Conteos por estado del contrato nuevo; vacío mientras no exista. */
+      conteos: {},
       postulaciones: [],
       paginacion: {
         paginaActual: 0,
@@ -348,6 +357,40 @@ export default {
         error?.name === "AbortError"
       );
     },
+    /**
+     * Normaliza `conteosPorEstado` del contrato nuevo. Si el backend todavía
+     * no lo devuelve, deja los tres estados en null y las tabs se muestran sin
+     * número.
+     * @param {object|null|undefined} valor
+     * @returns {Record<string, number|null>}
+     */
+    normalizarConteos(valor) {
+      const conteos = {};
+      for (const estado of Object.values(ESTADOS_POSTULACION)) {
+        const total = valor?.[estado];
+        const numero = Number(total);
+        conteos[estado] =
+          total === null || total === undefined || !Number.isFinite(numero)
+            ? null
+            : numero;
+      }
+
+      const totalDirecto = Number(valor?.TOTAL);
+      const suma = Object.values(conteos).reduce(
+        (acumulado, numero) => acumulado + (numero || 0),
+        0
+      );
+      const hayDatos = Object.values(ESTADOS_POSTULACION).some((estado) =>
+        Number.isFinite(Number(valor?.[estado]))
+      );
+      conteos.TOTAL = hayDatos
+        ? Number.isFinite(totalDirecto)
+          ? totalDirecto
+          : suma
+        : null;
+
+      return conteos;
+    },
     async buscar(pagina = 0) {
       clearTimeout(this.debounceHandle);
       if (this.errorFechas) {
@@ -392,6 +435,7 @@ export default {
           primera: data.primera !== false,
           ultima: data.ultima !== false,
         };
+        this.conteos = this.normalizarConteos(data.conteosPorEstado);
 
         // Si una gestión vació la última página, retroceder una.
         if (!contenido.length && this.paginacion.paginaActual > 0) {

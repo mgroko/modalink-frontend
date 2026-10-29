@@ -7,7 +7,7 @@
         aria-label="Filtrar por estado"
       >
         <button
-          v-for="opcion in opcionesEstado"
+          v-for="opcion in opcionesEstadoConConteo"
           :key="opcion.value || 'todas'"
           type="button"
           class="filtros-postulaciones__chip"
@@ -19,6 +19,9 @@
           @click="cambiar('estado', opcion.value)"
         >
           {{ opcion.text }}
+          <span v-if="opcion.total !== null" class="filtros-postulaciones__conteo">
+            · {{ opcion.total }}
+          </span>
         </button>
       </div>
 
@@ -131,6 +134,15 @@ export default {
       type: String,
       default: "",
     },
+    /**
+     * Conteos por estado que devuelve `postulaciones/buscar` cuando el
+     * contrato los expone: `{ PENDIENTE, ACEPTADA, RECHAZADA }`. Si llega
+     * vacío, las tabs se muestran sin número.
+     */
+    conteos: {
+      type: Object,
+      default: () => ({}),
+    },
   },
   emits: ["cambio", "limpiar", "buscar-ahora"],
   data() {
@@ -150,6 +162,12 @@ export default {
     };
   },
   computed: {
+    opcionesEstadoConConteo() {
+      return this.opcionesEstado.map((opcion) => ({
+        ...opcion,
+        total: this.totalDeEstado(opcion.value),
+      }));
+    },
     opcionesProfesion() {
       return [
         { text: "Todas", value: "" },
@@ -173,6 +191,13 @@ export default {
     },
   },
   methods: {
+    /** Sin contrato de conteos: no se muestra número. */
+    totalDeEstado(estado) {
+      const valor = estado ? this.conteos?.[estado] : this.conteos?.TOTAL;
+      if (valor === null || valor === undefined) return null;
+      const numero = Number(valor);
+      return Number.isFinite(numero) ? numero : null;
+    },
     cambiar(campo, valor) {
       this.$emit("cambio", { campo, valor });
     },

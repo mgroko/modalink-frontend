@@ -34,7 +34,6 @@
           :proyecto="proyecto"
           :tab-activa="tabActiva"
           :mostrar-planificacion="esMiembro"
-          :mostrar-actividades="puedePostularActividad"
           @cambiar-tab="cambiarTab"
         >
           <template #acciones>
@@ -70,14 +69,6 @@
               @click="abrirConfirmacion"
             >
               Confirmar proyecto
-            </VaButton>
-            <VaButton
-              v-if="puedeGestionarPostulaciones"
-              preset="secondary"
-              icon="mso-group"
-              @click="irAPostulaciones"
-            >
-              Postulaciones
             </VaButton>
           </template>
         </ProyectoEncabezado>
@@ -166,52 +157,13 @@
               v-if="(proyecto.requerimientosGral || []).length"
               class="dashboard-proyecto__requerimientos"
             >
-              <RequerimientoDetalle
+              <RequerimientoCard
                 v-for="requerimiento in proyecto.requerimientosGral"
                 :key="requerimiento.idRequerimientoGral"
                 :requerimiento="requerimiento"
                 :habilidades="habilidades"
                 :catalogo-caracteristicas="catalogosCaracteristicas[requerimiento.idProfesion] || null"
-                :mostrar-accion="puedePostularGeneralDe(requerimiento)"
-                :sin-cupo="estaSinCupoGeneral(requerimiento)"
-              >
-                <template #accion>
-                  <VaButton
-                    preset="primary"
-                    size="small"
-                    :disabled="
-                      estaPostulado(
-                        TIPOS_POSTULACION.GENERAL,
-                        requerimiento.idRequerimientoGral
-                      ) || enviandoPostulacion
-                    "
-                    :loading="
-                      estaEnviando(
-                        TIPOS_POSTULACION.GENERAL,
-                        requerimiento.idRequerimientoGral
-                      )
-                    "
-                    :aria-busy="
-                      estaEnviando(
-                        TIPOS_POSTULACION.GENERAL,
-                        requerimiento.idRequerimientoGral
-                      )
-                        ? 'true'
-                        : 'false'
-                    "
-                    @click="abrirPostulacionGeneral(requerimiento)"
-                  >
-                    {{
-                      estaPostulado(
-                        TIPOS_POSTULACION.GENERAL,
-                        requerimiento.idRequerimientoGral
-                      )
-                        ? "Postulación enviada"
-                        : "Postularme"
-                    }}
-                  </VaButton>
-                </template>
-              </RequerimientoDetalle>
+              />
             </div>
             <p v-else class="dashboard-proyecto__vacio">
               Este proyecto no tiene personal requerido cargado.
@@ -268,16 +220,32 @@
           @eliminar-actividad="abrirModalEliminarActividad"
         />
 
-        <ActividadesPostulables
-          v-else-if="tabActiva === 'actividades' && puedePostularActividad"
-          ref="actividadesPostulables"
-          :id-proyecto="idProyecto"
-          :postulaciones-enviadas="postulacionesEnviadas"
-          :requerimientos-sin-cupo="requerimientosSinCupo"
-          :enviando-clave="claveEnviando"
-          :puede-postular="puedePostularActividad"
-          @postular="abrirPostulacionActividad"
-        />
+        <template v-else-if="tabActiva === 'postulaciones'">
+          <template v-if="puedeGestionarPostulaciones">
+            <h2 class="dashboard-proyecto__titulo">Postulaciones del proyecto</h2>
+            <GestionPostulaciones
+              :id-proyecto="idProyecto"
+              :nombre-proyecto="proyecto.nombre"
+              :sin-fecha-entrega="!tieneFechaEntrega"
+              @gestionada="cargar"
+            />
+          </template>
+
+          <PersonalRequerido
+            v-else
+            ref="personalRequerido"
+            :proyecto="proyecto"
+            :id-proyecto="idProyecto"
+            :habilidades="habilidades"
+            :catalogos-caracteristicas="catalogosCaracteristicas"
+            :postulaciones-enviadas="postulacionesEnviadas"
+            :requerimientos-sin-cupo="requerimientosSinCupo"
+            :enviando-clave="claveEnviando"
+            :puede-postular="tieneFechaEntrega"
+            @postular="abrirPostulacion"
+            @ver-actividad="irADetalleActividad"
+          />
+        </template>
 
         <ModalEliminarActividad
           :model-value="modalEliminarActividadVisible"
@@ -356,8 +324,9 @@ import { cargarResumenPerfil } from "../../services/notificacionState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
-import ActividadesPostulables from "../../components/proyecto/ActividadesPostulables.vue";
-import RequerimientoDetalle from "../../components/proyecto/RequerimientoDetalle.vue";
+import PersonalRequerido from "../../components/proyecto/PersonalRequerido.vue";
+import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
+import GestionPostulaciones from "../../components/proyecto/GestionPostulaciones.vue";
 import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
@@ -386,7 +355,6 @@ import {
   mensajeExitoPostulacion,
   puedePostularActividad as esActividadPostulable,
   puedePostularGeneral as esElegibleParaPostularGeneral,
-  proyectoAdmitePostulacionesActividad,
 } from "../../utils/postulacionConstants.js";
 import {
   ETIQUETAS_PRIVACIDAD,
@@ -412,8 +380,9 @@ export default {
     BaseAlert,
     ProyectoEncabezado,
     PlanificacionProyecto,
-    ActividadesPostulables,
-    RequerimientoDetalle,
+    PersonalRequerido,
+    RequerimientoCard,
+    GestionPostulaciones,
     CollageMoodboard,
     ModalGaleriaMoodboard,
     ModalPublicarProyecto,
@@ -542,13 +511,6 @@ data() {
         ? `Proyecto cancelado. Motivo: ${motivo}`
         : "Proyecto cancelado. Sin motivo registrado.";
     },
-    /** UC-26: pestaña de actividades para no miembros y miembros MIEMBRO. */
-    puedePostularActividad() {
-      return (
-        this.tieneFechaEntrega &&
-        proyectoAdmitePostulacionesActividad(this.proyecto)
-      );
-    },
     /** UC-34: sólo el director con GESTIONAR_POSTULACIONES gestiona postulaciones. */
     puedeGestionarPostulaciones() {
       return (
@@ -627,20 +589,6 @@ data() {
         return;
       }
       this.aplicarTabDesdeQuery();
-    },
-    puedePostularActividad(valor) {
-      if (valor) {
-        this.aplicarTabDesdeQuery();
-        return;
-      }
-      if (this.tabActiva !== "actividades") return;
-
-      this.tabActiva = "informacion";
-      const query = { ...this.$route.query };
-      if (query.tab === "actividades") {
-        delete query.tab;
-        this.reemplazarQuery(query);
-      }
     },
   },
   created() {
@@ -807,14 +755,10 @@ data() {
     },
     aplicarTabDesdeQuery() {
       const solicitada = this.$route.query.tab;
-      const permitidas = ["informacion", "planificacion", "actividades"];
+      const permitidas = ["informacion", "planificacion", "postulaciones"];
       const tab = permitidas.includes(solicitada) ? solicitada : "informacion";
 
       if (tab === "planificacion" && !this.esMiembro) {
-        this.tabActiva = "informacion";
-        return;
-      }
-      if (tab === "actividades" && !this.puedePostularActividad) {
         this.tabActiva = "informacion";
         return;
       }
@@ -840,7 +784,6 @@ data() {
     },
     cambiarTab(tab) {
       if (tab === "planificacion" && !this.esMiembro) return;
-      if (tab === "actividades" && !this.puedePostularActividad) return;
       if (this.tabActiva === tab) return;
 
       this.tabActiva = tab;
@@ -851,16 +794,16 @@ data() {
     },
     limpiarActividadResaltada() {
       this.idActividadResaltada = null;
-      if (
-        this.$route.query.nueva === undefined &&
-        this.$route.query.editada === undefined
-      ) {
+
+      // Limpiar las tres claves, no solo nueva/editada: las notificaciones de
+      // actividad llegan con `?actividad=...` y también deben quedar limpias.
+      const claves = ["nueva", "editada", "actividad"];
+      if (!claves.some((clave) => this.$route.query[clave] !== undefined)) {
         return;
       }
+
       const query = { ...this.$route.query };
-      delete query.nueva;
-      delete query.editada;
-      delete query.actividad;
+      claves.forEach((clave) => delete query[clave]);
       this.reemplazarQuery(query);
     },
     irACrearActividad() {
@@ -1263,7 +1206,7 @@ data() {
           this.tokenRefrescoPlanificacion++;
         });
         this.refrescarNotificacionesPerfil();
-        this.refrescarActividades();
+        this.refrescarPersonalRequerido();
 
         const inicio = this.fechaInicioConfirmacion
           ? formatearFecha(this.fechaInicioConfirmacion)
@@ -1392,13 +1335,25 @@ data() {
       if (idPerfil == null) return;
       cargarResumenPerfil(idPerfil);
     },
+    /** UC-26: despacha la postulación emitida por PersonalRequerido. */
+    abrirPostulacion({ tipo, requerimiento, actividad } = {}) {
+      if (tipo === TIPOS_POSTULACION.ACTIVIDAD) {
+        this.abrirPostulacionActividad({ actividad, requerimiento });
+        return;
+      }
+      this.abrirPostulacionGeneral(requerimiento);
+    },
     /** UC-26: abre la confirmación de postulación a un requerimiento general. */
     abrirPostulacionGeneral(requerimiento) {
-      if (!this.puedePostularGeneralDe(requerimiento)) return;
+      if (!this.tieneFechaEntrega) return;
+      const idRequerimiento = requerimiento?.idRequerimientoGral;
+      if (idRequerimiento == null) return;
+      if (this.estaSinCupo(TIPOS_POSTULACION.GENERAL, idRequerimiento)) return;
+      if (!esElegibleParaPostularGeneral(this.proyecto, requerimiento)) return;
 
       const clave = clavePostulacion(
         TIPOS_POSTULACION.GENERAL,
-        requerimiento.idRequerimientoGral
+        idRequerimiento
       );
       if (this.postulacionesEnviadas[clave]) return;
 
@@ -1440,30 +1395,20 @@ data() {
         actividad,
       };
     },
-    puedePostularGeneralDe(requerimiento) {
-      if (!this.tieneFechaEntrega) return false;
-      const id = requerimiento?.idRequerimientoGral;
-      if (id == null) return false;
-      if (this.estaSinCupo(TIPOS_POSTULACION.GENERAL, id)) return false;
-      return esElegibleParaPostularGeneral(this.proyecto, requerimiento);
-    },
-    estaSinCupoGeneral(requerimiento) {
-      return this.estaSinCupo(
-        TIPOS_POSTULACION.GENERAL,
-        requerimiento?.idRequerimientoGral
-      );
+    /** Abre el detalle de la actividad desde el link "Ver actividad". */
+    irADetalleActividad({ actividad } = {}) {
+      if (!actividad?.idActividad) return;
+      this.$router.push({
+        name: "actividad-detalle",
+        params: {
+          id: this.idProyecto,
+          idActividad: actividad.idActividad,
+        },
+      });
     },
     estaSinCupo(tipo, idRequerimiento) {
       const clave = clavePostulacion(tipo, idRequerimiento);
       return !!clave && !!this.requerimientosSinCupo[clave];
-    },
-    estaPostulado(tipo, idRequerimiento) {
-      const clave = clavePostulacion(tipo, idRequerimiento);
-      return !!clave && !!this.postulacionesEnviadas[clave];
-    },
-    estaEnviando(tipo, idRequerimiento) {
-      const clave = clavePostulacion(tipo, idRequerimiento);
-      return !!clave && this.claveEnviando === clave;
     },
     registrarPostulacionEnviada(tipo, idRequerimiento) {
       const clave = clavePostulacion(tipo, idRequerimiento);
@@ -1606,7 +1551,7 @@ data() {
           duration: 6000,
         });
         await this.cargar();
-        this.refrescarActividades();
+        this.refrescarPersonalRequerido();
         return;
       }
 
@@ -1615,7 +1560,7 @@ data() {
         if (esErrorDisponibilidad(error)) {
           this.errorPostulacion = mensaje;
           this.errorPostulacionEsDisponibilidad = true;
-          this.refrescarActividades();
+          this.refrescarPersonalRequerido();
           return;
         }
 
@@ -1657,7 +1602,7 @@ data() {
         }
 
         await this.cargar();
-        this.refrescarActividades();
+        this.refrescarPersonalRequerido();
         return;
       }
 
@@ -1672,8 +1617,8 @@ data() {
         "No se pudo enviar la postulación."
       );
     },
-    refrescarActividades() {
-      const componente = this.$refs.actividadesPostulables;
+    refrescarPersonalRequerido() {
+      const componente = this.$refs.personalRequerido;
       if (componente?.refrescar) componente.refrescar();
     },
     irACalendario() {
@@ -1682,12 +1627,6 @@ data() {
     },
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
-    },
-    irAPostulaciones() {
-      this.$router.push({
-        name: "postulaciones-proyecto",
-        params: { id: this.idProyecto },
-      });
     },
     async abrirModalEliminarActividad(actividad) {
       this.actividadEliminar = actividad;

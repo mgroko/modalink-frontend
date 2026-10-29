@@ -155,7 +155,7 @@
           :aria-busy="enviando ? 'true' : 'false'"
           @click="confirmar"
         >
-          {{ esAceptar ? "Confirmar aceptación" : "Confirmar rechazo" }}
+          {{ textoConfirmar }}
         </VaButton>
       </div>
     </template>
@@ -175,6 +175,7 @@ import {
   ACCIONES_GESTION,
   etiquetaEstadoPostulacion,
   etiquetaTipoPostulacion,
+  textoCupoCubiertos,
 } from "../../utils/postulacionConstants.js";
 
 const ACCION_ACEPTAR = ACCIONES_GESTION.ACEPTAR;
@@ -265,14 +266,11 @@ export default {
       return this.esAceptar ? "Aceptar postulación" : "Rechazar postulación";
     },
     cupo() {
-      const cubiertos = Number(this.postulacion?.cubiertos);
-      const cantidad = Number(this.postulacion?.cantidadRequerida);
-      if (!Number.isFinite(cubiertos) || !Number.isFinite(cantidad)) return "—";
-      const faltantes = Number(this.postulacion?.faltantes);
-      const detalle = Number.isFinite(faltantes)
-        ? ` · faltan ${faltantes}`
-        : "";
-      return `${cubiertos} / ${cantidad}${detalle}`;
+      return textoCupoCubiertos(this.postulacion);
+    },
+    textoConfirmar() {
+      if (this.enviando) return this.esAceptar ? "Aceptando…" : "Rechazando…";
+      return this.esAceptar ? "Confirmar aceptación" : "Confirmar rechazo";
     },
     nombreActividad() {
       return this.actividad?.nombre || this.postulacion?.nombreActividad || "";
