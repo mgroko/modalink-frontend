@@ -2,6 +2,7 @@
   <div
     v-if="modelValue"
     class="notificaciones-popover"
+    :class="`notificaciones-popover--${alineacion}`"
     role="dialog"
     aria-label="Notificaciones"
     @click.stop
@@ -110,6 +111,15 @@ export default {
       type: Number,
       default: 6,
     },
+    modoAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    alineacion: {
+      type: String,
+      default: "derecha",
+      validator: (valor) => ["derecha", "izquierda"].includes(valor),
+    },
   },
   emits: ["update:modelValue"],
   data() {
@@ -139,7 +149,6 @@ export default {
   },
   watch: {
     modelValue: {
-      immediate: true,
       handler(abierto) {
         if (abierto) this.alAbrir();
         else this.abortarSolicitud();
@@ -155,6 +164,9 @@ export default {
   },
   mounted() {
     window.addEventListener("keydown", this.alPresionarTecla);
+    // El admin monta el popover directamente abierto; la carga se hace acá
+    // para que `created()` ya haya inicializado el controlador de la request.
+    if (this.modelValue) this.alAbrir();
   },
   beforeUnmount() {
     window.removeEventListener("keydown", this.alPresionarTecla);
@@ -259,7 +271,9 @@ export default {
       this.activandoId = notificacion.idNotificacion;
       this.errorAccion = null;
 
-      const resultado = await navegarANotificacion(notificacion, this.$router);
+      const resultado = await navegarANotificacion(notificacion, this.$router, {
+        modoAdmin: this.modoAdmin,
+      });
       this.activandoId = null;
 
       if (!resultado.ok) {
@@ -309,6 +323,11 @@ export default {
   border: 1px solid var(--color-border);
   border-radius: 12px;
   box-shadow: 0 14px 34px var(--color-shadow);
+}
+
+.notificaciones-popover--izquierda {
+  right: auto;
+  left: 0;
 }
 
 .notificaciones-popover__cabecera {

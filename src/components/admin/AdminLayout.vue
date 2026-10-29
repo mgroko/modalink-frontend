@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-layout">
+  <div class="admin-layout" @click="cerrarPaneles">
     <aside class="admin-layout__sidebar">
       <RouterLink to="/admin/dashboard" class="admin-layout__brand">ModaLink</RouterLink>
 
@@ -20,7 +20,7 @@
         <RouterLink to="/admin/notificaciones" class="admin-layout__link">
           <span class="material-symbols-outlined">notifications</span>
           <span>Notificaciones</span>
-          <span v-if="notificaciones > 0" class="admin-layout__badge">{{ notificaciones }}</span>
+          <span v-if="notificaciones > 0" class="admin-layout__badge admin-layout__badge--enlace">{{ notificaciones }}</span>
         </RouterLink>
         <RouterLink to="/admin/dashboard" class="admin-layout__link">
           <span class="material-symbols-outlined">dashboard</span>
@@ -69,10 +69,32 @@
         </div>
 
         <div class="admin-layout__actions">
-          <RouterLink to="/admin/notificaciones" class="admin-layout__notifications" aria-label="Notificaciones">
-            <span class="material-symbols-outlined">notifications</span>
-            <span v-if="notificaciones > 0" class="admin-layout__badge">{{ notificaciones }}</span>
-          </RouterLink>
+          <div class="admin-layout__notificaciones-header" @click.stop>
+            <button
+              ref="notificacionesHeaderTrigger"
+              type="button"
+              class="admin-layout__notifications"
+              aria-label="Notificaciones"
+              aria-haspopup="dialog"
+              aria-controls="admin-notificaciones-header"
+              :aria-expanded="notificacionesOrigen === 'header' ? 'true' : 'false'"
+              @click="alternarNotificaciones('header')"
+            >
+              <span class="material-symbols-outlined">notifications</span>
+              <span v-if="notificaciones > 0" class="admin-layout__badge">{{ notificaciones }}</span>
+            </button>
+
+            <NotificacionesPopover
+              v-if="notificacionesOrigen === 'header'"
+              id="admin-notificaciones-header"
+              :model-value="true"
+              :id-perfil-contexto="null"
+              :ruta-ver-todas="{ name: 'notificaciones-admin' }"
+              :limite="6"
+              modo-admin
+              @update:model-value="alCambiarNotificaciones('header', $event)"
+            />
+          </div>
           <ThemeToggle />
           <div class="admin-layout__profile">
             <span class="admin-layout__avatar">{{ iniciales }}</span>
@@ -90,25 +112,34 @@
 </template>
 
 <script>
+import { nextTick } from "vue";
 import authService from "../../services/authService";
-import notificacionService from "../../services/notificacionService";
 import { state, limpiarSesion } from "../../services/authState";
+import {
+  state as notificacionState,
+  cargarResumenUsuario,
+} from "../../services/notificacionState";
 import ThemeToggle from "../ThemeToggle.vue";
+import NotificacionesPopover from "../notificaciones/NotificacionesPopover.vue";
 import { setThemeMode } from "../../services/themeState";
 
 export default {
   name: "AdminLayout",
   components: {
     ThemeToggle,
+    NotificacionesPopover,
   },
   data() {
     return {
-      notificaciones: 0,
+      notificacionesOrigen: null,
     };
   },
   computed: {
     usuario() {
       return state.usuario;
+    },
+    notificaciones() {
+      return notificacionState.noLeidasUsuario;
     },
     nombreCompleto() {
       const nombreCompleto = [this.usuario?.nombre, this.usuario?.apellido]
@@ -141,14 +172,31 @@ export default {
       setThemeMode("dark");
     }
 
-    try {
-      const response = await notificacionService.resumen();
-      this.notificaciones = response?.data?.noLeidas ?? 0;
-    } catch {
-      this.notificaciones = 0;
-    }
+    await cargarResumenUsuario();
   },
   methods: {
+    alternarNotificaciones(origen) {
+      this.notificacionesOrigen =
+        this.notificacionesOrigen === origen ? null : origen;
+    },
+    alCambiarNotificaciones(origen, abierto) {
+      if (abierto) {
+        this.notificacionesOrigen = origen;
+        return;
+      }
+
+      if (this.notificacionesOrigen !== origen) return;
+      this.notificacionesOrigen = null;
+
+      nextTick(() => {
+        this.$refs.notificacionesHeaderTrigger?.focus();
+      });
+    },
+    cerrarPaneles() {
+      if (this.notificacionesOrigen) {
+        this.alCambiarNotificaciones(this.notificacionesOrigen, false);
+      }
+    },
     async cerrarSesion() {
       try {
         await authService.cerrarSesion();
@@ -225,6 +273,11 @@ export default {
 .admin-layout__nav {
   display: grid;
   gap: 0.35rem;
+}
+
+.admin-layout__notificaciones-header {
+  position: relative;
+  display: flex;
 }
 
 .admin-layout__link {
@@ -362,9 +415,27 @@ export default {
 
 .admin-layout__notifications {
   position: relative;
-  display: grid;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
   color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 50%;
+  cursor: pointer;
   text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.admin-layout__notifications:hover {
+  background: var(--color-chip);
+}
+
+.admin-layout__notifications .material-symbols-outlined {
+  font-size: 1.25rem;
 }
 
 .admin-layout__profile {
@@ -418,6 +489,42 @@ export default {
   border-radius: 50%;
   font-size: 0.65rem;
   text-align: center;
+}
+
+/* En el menú lateral el contador va en línea, junto al texto, para que no
+   quede flotando al extremo de la fila. */
+.admin-layout__badge--enlace {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 0.15rem;
+  padding: 0 0.3rem;
+  color: var(--color-on-primary);
+  background: var(--color-danger-fill);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.admin-layout__notifications .admin-layout__badge {
+  top: -0.2rem;
+  right: -0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.2rem;
+  color: var(--color-on-primary);
+  background: var(--color-danger-fill);
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .admin-layout__content {
