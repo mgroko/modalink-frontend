@@ -1,16 +1,16 @@
 export const UNIDADES_DURACION = {
-  DIAS: "DIAS",
   HORAS: "HORAS",
+  MINUTOS: "MINUTOS",
 };
 
 export const ETIQUETAS_UNIDAD_DURACION = {
-  [UNIDADES_DURACION.DIAS]: "Días",
   [UNIDADES_DURACION.HORAS]: "Horas",
+  [UNIDADES_DURACION.MINUTOS]: "Minutos",
 };
 
 export const MINUTOS_POR_UNIDAD = {
-  [UNIDADES_DURACION.DIAS]: 1440,
   [UNIDADES_DURACION.HORAS]: 60,
+  [UNIDADES_DURACION.MINUTOS]: 1,
 };
 
 export const LIMITES_ACTIVIDAD = {
@@ -128,9 +128,9 @@ export function esActividadCancelada(actividad) {
 
 /**
  * Reconstruye duración y unidad desde `duracionMinutos`.
- * Múltiplos de 1440 se muestran en DIAS; el resto en HORAS.
+ * Los múltiplos de 60 se muestran en HORAS; el resto en MINUTOS.
  * @param {number} duracionMinutos
- * @returns {{duracion: number|string, unidadDuracion: "DIAS"|"HORAS"}}
+ * @returns {{duracion: number|string, unidadDuracion: "HORAS"|"MINUTOS"}}
  */
 export function descomponerDuracionMinutos(duracionMinutos) {
   const total = Math.round(Number(duracionMinutos));
@@ -138,17 +138,43 @@ export function descomponerDuracionMinutos(duracionMinutos) {
     return { duracion: "", unidadDuracion: UNIDADES_DURACION.HORAS };
   }
 
-  if (total % MINUTOS_POR_UNIDAD.DIAS === 0) {
+  if (total % MINUTOS_POR_UNIDAD.HORAS === 0) {
     return {
-      duracion: total / MINUTOS_POR_UNIDAD.DIAS,
-      unidadDuracion: UNIDADES_DURACION.DIAS,
+      duracion: total / MINUTOS_POR_UNIDAD.HORAS,
+      unidadDuracion: UNIDADES_DURACION.HORAS,
     };
   }
 
   return {
-    duracion: total / MINUTOS_POR_UNIDAD.HORAS,
-    unidadDuracion: UNIDADES_DURACION.HORAS,
+    duracion: total,
+    unidadDuracion: UNIDADES_DURACION.MINUTOS,
   };
+}
+
+/**
+ * Convierte una cantidad entre unidades preservando el total de minutos.
+ * Devuelve null si la conversión no produce un entero.
+ * @param {number|string} duracion
+ * @param {"HORAS"|"MINUTOS"} unidadOrigen
+ * @param {"HORAS"|"MINUTOS"} unidadDestino
+ * @returns {number|null}
+ */
+export function convertirDuracion(duracion, unidadOrigen, unidadDestino) {
+  const cantidad = Number(duracion);
+  const origen = MINUTOS_POR_UNIDAD[unidadOrigen];
+  const destino = MINUTOS_POR_UNIDAD[unidadDestino];
+
+  if (
+    !Number.isFinite(cantidad) ||
+    cantidad <= 0 ||
+    !origen ||
+    !destino
+  ) {
+    return null;
+  }
+
+  const total = cantidad * origen;
+  return total % destino === 0 ? total / destino : null;
 }
 
 export function etiquetaEstadoActividad(estado) {
@@ -162,7 +188,7 @@ export function coloresEstadoActividad(estado) {
 }
 
 /**
- * "3 d", "1 h 30 min", "2 d 4 h". Devuelve "—" si no hay duración válida.
+ * "1 h", "1 h 30 min", "45 min". Devuelve "—" si no hay duración válida.
  * @param {number} minutos
  * @returns {string}
  */
@@ -170,13 +196,10 @@ export function formatearDuracionMinutos(minutos) {
   const total = Math.round(Number(minutos));
   if (!Number.isFinite(total) || total <= 0) return "—";
 
-  const dias = Math.floor(total / MINUTOS_POR_UNIDAD.DIAS);
-  const resto = total % MINUTOS_POR_UNIDAD.DIAS;
-  const horas = Math.floor(resto / 60);
-  const mins = resto % 60;
+  const horas = Math.floor(total / MINUTOS_POR_UNIDAD.HORAS);
+  const mins = total % MINUTOS_POR_UNIDAD.HORAS;
 
   const partes = [];
-  if (dias) partes.push(`${dias} d`);
   if (horas) partes.push(`${horas} h`);
   if (mins) partes.push(`${mins} min`);
   return partes.join(" ");
@@ -218,7 +241,7 @@ export function finDelDiaEntrega(fechaEntrega) {
  * Inicio estimado de la nueva actividad: entrega 23:59 - duración.
  * @param {string} fechaEntrega "YYYY-MM-DD" o ISO local
  * @param {number|string} duracion
- * @param {"DIAS"|"HORAS"} unidadDuracion
+ * @param {"HORAS"|"MINUTOS"} unidadDuracion
  * @returns {Date|null}
  */
 export function calcularInicioEstimado(fechaEntrega, duracion, unidadDuracion) {

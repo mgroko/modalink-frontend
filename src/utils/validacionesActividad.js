@@ -70,7 +70,7 @@ export function validarActividad(form, catalogosPorProfesion = {}, actividades =
   }
 
   if (!Object.values(UNIDADES_DURACION).includes(form?.unidadDuracion)) {
-    campos.unidadDuracion = "Seleccioná una unidad de duración válida.";
+    campos.unidadDuracion = "Seleccioná Horas o Minutos.";
   }
 
   const errorHorario = validarHorarioPreferencia(form?.horarioPreferenciaInicio);

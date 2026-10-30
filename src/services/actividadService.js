@@ -43,7 +43,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} nombre no blanco, máx. 100, único en la planificación
  * @property {string} [descripcion] máx. 200
  * @property {number} duracion entero > 0
- * @property {"DIAS"|"HORAS"} unidadDuracion
+ * @property {"HORAS"|"MINUTOS"} unidadDuracion
  * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {UbicacionActividadRequest} [ubicacion]
  * @property {number[]} [predecesoras]
@@ -66,7 +66,7 @@ import { serializarParams } from "../utils/queryParams.js";
  *           excluyendo la propia actividad
  * @property {string|null} [descripcion] null/ausente borra la descripción
  * @property {number} duracion entero > 0
- * @property {"DIAS"|"HORAS"} unidadDuracion
+ * @property {"HORAS"|"MINUTOS"} unidadDuracion
  * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha; null borra la preferencia
  * @property {UbicacionActividadRequest|null} [ubicacion] null/ausente borra la ubicación
  * @property {number[]} predecesoras obligatorio; [] borra todas

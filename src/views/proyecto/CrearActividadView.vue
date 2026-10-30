@@ -92,7 +92,7 @@
                     v-model="form.duracion"
                     type="number"
                     label="Duración*"
-                    placeholder="Ej: 3"
+                    placeholder="Ej: 2"
                     min="1"
                     step="1"
                     :error="!!errores.duracion"
@@ -111,7 +111,7 @@
                           'crear-actividad__unidad-boton--activa':
                             form.unidadDuracion === unidad,
                         }"
-                        @click="form.unidadDuracion = unidad"
+                        @click="cambiarUnidadDuracion(unidad)"
                       >
                         {{ ETIQUETAS_UNIDAD_DURACION[unidad] }}
                       </button>
@@ -420,6 +420,7 @@ import {
   MINUTOS_POR_UNIDAD,
   UNIDADES_DURACION,
   calcularInicioEstimado,
+  convertirDuracion,
   etiquetaEstadoActividad,
   finDelDiaEntrega,
   formatearDuracionMinutos,
@@ -478,7 +479,7 @@ export default {
         nombre: "",
         descripcion: "",
         duracion: "",
-        unidadDuracion: UNIDADES_DURACION.DIAS,
+        unidadDuracion: UNIDADES_DURACION.HORAS,
         horarioPreferenciaInicio: "",
         ubicacion: null,
         predecesoras: [],
@@ -593,6 +594,41 @@ export default {
     if (controladorCarga) controladorCarga.abort();
   },
   methods: {
+    cambiarUnidadDuracion(unidad) {
+      if (unidad === this.form.unidadDuracion) return;
+
+      const actual = Number(this.form.duracion);
+      if (!Number.isFinite(actual) || actual <= 0) {
+        this.form.unidadDuracion = unidad;
+        return;
+      }
+
+      const convertida = convertirDuracion(
+        this.form.duracion,
+        this.form.unidadDuracion,
+        unidad
+      );
+
+      if (convertida == null) {
+        if (unidad === UNIDADES_DURACION.MINUTOS) {
+          this.form.duracion =
+            actual * MINUTOS_POR_UNIDAD[this.form.unidadDuracion];
+          this.form.unidadDuracion = unidad;
+          return;
+        }
+
+        this.errores = {
+          ...this.errores,
+          unidadDuracion:
+            "Para usar horas, la duración total debe ser múltiplo de 60 minutos.",
+        };
+        return;
+      }
+
+      this.form.duracion = convertida;
+      this.form.unidadDuracion = unidad;
+      this.errores = { ...this.errores, unidadDuracion: undefined };
+    },
     nuevoRequerimiento(uid) {
       return {
         uid,
