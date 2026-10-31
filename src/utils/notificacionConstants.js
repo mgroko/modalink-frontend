@@ -105,6 +105,7 @@ function idValido(valor) {
  * Reglas destacadas:
  * - `POSTULACION_RECIBIDA` → gestión de postulaciones.
  * - `ACTIVIDAD_MODIFICADA`, `AJUSTE_HORARIO`, `SOBRECOMPROMISO` → actividad.
+ * - `ACTIVIDAD_ASIGNADA` → actividad (usa `entidadId` si falta `idActividad`).
  * - `ACTIVIDAD_ELIMINADA` → sólo el proyecto (la actividad ya no existe).
  * - `POSTULACION_RECHAZADA` e `INVITACION_RECHAZADA` → sin link.
  * - `HITO_CUMPLIDO` → proyecto (no hay pantalla de hitos).
@@ -162,6 +163,26 @@ export function destinoNotificacion(notificacion) {
     case TIPOS_NOTIFICACION.SOBRECOMPROMISO: {
       const idProyecto = idValido(notificacion.idProyecto);
       const idActividad = idValido(notificacion.idActividad);
+      if (idProyecto == null || idActividad == null) return null;
+      return {
+        etiqueta: "Ver actividad",
+        ruta: {
+          name: RUTAS_NOTIFICACION.ACTIVIDAD,
+          params: { id: idProyecto, idActividad },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA: {
+      // El trigger inserta `entidad_tipo = 'ACTIVIDAD'` y
+      // `entidad_id = id_actividad`; `idActividad` puede venir por el mapper
+      // de lectura o deducirse de la entidad. `idProyecto` no se infiere.
+      const idProyecto = idValido(notificacion.idProyecto);
+      const idActividad =
+        idValido(notificacion.idActividad) ??
+        (notificacion.entidadTipo === "ACTIVIDAD"
+          ? idValido(notificacion.entidadId)
+          : null);
       if (idProyecto == null || idActividad == null) return null;
       return {
         etiqueta: "Ver actividad",
