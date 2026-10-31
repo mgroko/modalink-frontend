@@ -1,4 +1,5 @@
 import http from "./http";
+import { serializarParams } from "../utils/queryParams.js";
 
 /*
  * Contrato UC-24 — Crear Proyecto (docs/backend/ficha-tecnica-crear-proyecto.md).
@@ -392,7 +393,73 @@ import http from "./http";
  * @property {boolean} [todos] true (o size ≤ 0) devuelve todo sin paginar
  */
 
+/**
+ * @typedef {Object} MiembroProyectoResponse
+ *   Item de `GET /proyectos/{idProyecto}/miembros` (UC-70). Sólo incluye
+ *   miembros con participación ACTIVA.
+ * @property {number} idMiembro
+ * @property {number} idPerfil clave para el POST de asignación
+ * @property {number} idUsuario
+ * @property {string} nombreArtistico
+ * @property {string} nombreUsuario
+ * @property {string} apellidoUsuario
+ * @property {number} idProfesion
+ * @property {string} nombreProfesion
+ * @property {"DIRECTOR"|"MIEMBRO"} rol
+ * @property {"ACTIVO"|string} estadoParticipacion
+ */
+
+/**
+ * @typedef {Object} PaginaMiembrosResponse
+ * @property {MiembroProyectoResponse[]} contenido
+ * @property {number} paginaActual base 0
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} BuscarMiembrosParams
+ * @property {string} [nombre] busca por nombre artístico, nombre o apellido
+ * @property {"DIRECTOR"|"MIEMBRO"} [rol]
+ * @property {number|string} [idProfesion]
+ * @property {number} [page] base 0, default 0
+ * @property {number} [size] default 20
+ * @property {boolean} [todos] true devuelve todo sin paginar
+ */
+
 const proyectoService = {
+  /**
+   * GET /proyectos/{idProyecto}/miembros — UC-70.
+   * Puebla el selector de destinatario de una actividad. Devuelve sólo
+   * miembros ACTIVOS y requiere `VER_PROYECTO`.
+   *
+   * Errores:
+   * - 400 filtro de rol o profesión inválido
+   * - 403 sin perfil activo, sin membresía activa o sin `VER_PROYECTO`
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {BuscarMiembrosParams} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PaginaMiembrosResponse}>} 200 OK
+   */
+  listarMiembros(idProyecto, params = {}, signal) {
+    const query = serializarParams({
+      nombre: String(params.nombre || "").trim(),
+      rol: params.rol || "",
+      idProfesion: params.idProfesion ?? "",
+      page: params.page ?? 0,
+      size: params.size ?? 20,
+      todos: params.todos === true ? true : undefined,
+    });
+    return http.get(
+      `/proyectos/${idProyecto}/miembros${query ? `?${query}` : ""}`,
+      { signal }
+    );
+  },
+
   /**
    * GET /proyectos/propios — lista los proyectos en los que participa el
    * perfil activo de la sesión como director o miembro (UC-29 bis).

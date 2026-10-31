@@ -272,6 +272,31 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} AsignacionActividadResponse
+ *   Respuesta de `POST /proyectos/{idProyecto}/actividades/{idActividad}/asignaciones`
+ *   (UC-70). La asignación no agenda ni reserva horario.
+ * @property {number} idAsignacionActividad
+ * @property {number} idProyecto
+ * @property {number} idActividad
+ * @property {number} idMiembro
+ * @property {number} idPerfil
+ * @property {number} idUsuario
+ * @property {number|null} idRequerimientoActividad requerimiento cubierto; null
+ *           si no hubo coincidencia de profesión o si el miembro es director
+ * @property {boolean} requerimientoSatisfecho true si el requerimiento quedó
+ *           cubierto después de la asignación
+ * @property {boolean} provisional true si el proyecto no tiene fecha de inicio
+ *           confirmada; el rango evaluado fue [ahora, fechaEntrega]
+ * @property {string|null} inicioSeleccionado hueco usado para validar; no se
+ *           persiste en la actividad
+ * @property {string|null} finSeleccionado hueco usado para validar; no se
+ *           persiste en la actividad
+ * @property {"SIN_PREFERENCIA"|"EXACTO"|"DESVIO"|"SIN_LUGAR"|null} resultadoPreferencia
+ * @property {number|null} desvioMinutos negativo = antes del preferido;
+ *           positivo = después; null sin preferencia o SIN_LUGAR
+ */
+
+/**
  * Resultado de `GET /actividades/buscar` (UC-52): sólo búsqueda de candidatos.
  * No incluye CPM, proyecciones ni responsables.
  * @typedef {Object} ActividadBusquedaResponse
@@ -470,6 +495,38 @@ const actividadService = {
       query ? `?${query}` : ""
     }`;
     return http.get(url, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/actividades/{idActividad}/asignaciones — UC-70.
+   * Asigna directamente una actividad a un miembro activo del proyecto. El
+   * body sólo lleva `{ idPerfil }`: no enviar idMiembro, idUsuario, idProyecto,
+   * idActividad ni horarios.
+   *
+   * La asignación no agenda ni reserva un horario. `inicioSeleccionado` y
+   * `finSeleccionado` de la respuesta son el hueco usado para validar y no se
+   * persisten en la actividad.
+   *
+   * Errores:
+   * - 400 `idPerfil` nulo/inválido o proyecto sin fecha de entrega
+   * - 403 sin perfil activo, sin membresía o sin `ASIGNAR_ACTIVIDAD`
+   * - 404 proyecto, actividad o perfil inexistente
+   * - 409 perfil no es miembro activo, usuario/perfil inactivo, duplicado,
+   *   estado del proyecto/actividad no permitido, sin agenda o sin
+   *   disponibilidad (incluye `motivo`, `provisional`, `inicioEvaluado`,
+   *   `finEvaluado` y `miembrosBloqueantes`)
+   * @param {number|string} idProyecto
+   * @param {number|string} idActividad
+   * @param {number|string} idPerfil
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: AsignacionActividadResponse}>} 201 Created
+   */
+  asignar(idProyecto, idActividad, idPerfil, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/actividades/${idActividad}/asignaciones`,
+      { idPerfil },
+      { signal }
+    );
   },
 
   /**

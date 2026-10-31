@@ -125,8 +125,11 @@
           :mensaje-vacio="mensajeVacio"
           :puede-editar="puedeEditarActividad"
           :puede-eliminar="puedeEliminarActividad"
+          :puede-asignar="puedeAsignar"
+          :motivo-no-asignar="motivoNoAsignar"
           @editar-actividad="$emit('editar-actividad', $event)"
           @eliminar-actividad="$emit('eliminar-actividad', $event)"
+          @asignar-actividad="$emit('asignar-actividad', $event)"
         />
       </section>
     </div>
@@ -152,6 +155,10 @@ import FiltrosActividades from "./FiltrosActividades.vue";
 import TablaActividades from "./TablaActividades.vue";
 import CronogramaProyecto from "./CronogramaProyecto.vue";
 import { esActividadCancelada } from "../../utils/actividadConstants.js";
+import {
+  motivoNoAsignable,
+  puedeAsignarActividad,
+} from "../../utils/asignacionConstants.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
   ESTADOS_PROYECTO,
@@ -190,6 +197,7 @@ export default {
     "crear-actividad",
     "editar-actividad",
     "eliminar-actividad",
+    "asignar-actividad",
     "ir-modificar-proyecto",
     "limpiar-resaltado",
   ],
@@ -243,6 +251,20 @@ export default {
         this.permisos.includes("ELIMINAR_ACTIVIDAD") &&
         this.estadoPermiteActividades
       );
+    },
+    puedeAsignar() {
+      return puedeAsignarActividad({
+        proyecto: this.proyecto,
+        actividad: null,
+        tieneFechaEntrega: this.tieneFechaEntrega,
+      });
+    },
+    motivoNoAsignar() {
+      return motivoNoAsignable({
+        proyecto: this.proyecto,
+        actividad: null,
+        tieneFechaEntrega: this.tieneFechaEntrega,
+      });
     },
     tieneFechaEntrega() {
       return !!this.proyecto?.fechaEntregaEstipulada;

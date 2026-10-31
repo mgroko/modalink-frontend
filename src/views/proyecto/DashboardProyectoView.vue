@@ -218,6 +218,7 @@
           @ir-modificar-proyecto="irAModificar"
           @limpiar-resaltado="limpiarActividadResaltada"
           @eliminar-actividad="abrirModalEliminarActividad"
+          @asignar-actividad="abrirModalAsignar"
         />
 
         <template v-else-if="tabActiva === 'postulaciones'">
@@ -295,6 +296,21 @@
           @confirmar="confirmarCancelacion"
         />
 
+        <ModalAsignarActividad
+          :model-value="modalAsignarVisible"
+          :id-proyecto="idProyecto"
+          :actividad="actividadAsignar"
+          :nombre-proyecto="proyecto.nombre"
+          :id-perfiles-asignados="perfilesAsignadosActividad"
+          :tiene-fecha-entrega="tieneFechaEntrega"
+          :asignando="asignando"
+          :error="errorAsignar"
+          :token-refresco-miembros="tokenRefrescoMiembros"
+          :token-refresco-disponibilidad="tokenRefrescoDisponibilidad"
+          @update:model-value="onCambioVisibilidadAsignar"
+          @confirmar="confirmarAsignacion"
+        />
+
         <ModalPostulacion
           :model-value="modalPostulacion.visible"
           :id-proyecto="idProyecto"
@@ -333,10 +349,18 @@ import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyec
 import ModalConfirmarProyecto from "../../components/proyecto/ModalConfirmarProyecto.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
 import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
+import ModalAsignarActividad from "../../components/proyecto/ModalAsignarActividad.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import actividadService from "../../services/actividadService.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  TIPOS_ERROR_ASIGNACION,
+  clasificarErrorAsignacion,
+  mensajeExitoAsignacion,
+  perfilesAsignadosDe,
+  puedeAsignarActividad,
+} from "../../utils/asignacionConstants.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
@@ -371,6 +395,7 @@ let controladorCarga = null;
 let controladorPublicacion = null;
 let controladorCancelacion = null;
 let controladorEliminacion = null;
+let controladorAsignacion = null;
 let controladorPostulacion = null;
 let controladorConfirmacion = null;
 
@@ -389,6 +414,7 @@ export default {
     ModalConfirmarProyecto,
     ModalCancelarProyecto,
     ModalEliminarActividad,
+    ModalAsignarActividad,
     ModalPostulacion,
   },
   setup() {
@@ -444,6 +470,13 @@ data() {
       actividadEliminar: {},
       eliminandoActividad: false,
       errorEliminarActividad: "",
+      modalAsignarVisible: false,
+      actividadAsignar: null,
+      perfilesAsignadosActividad: [],
+      asignando: false,
+      errorAsignar: "",
+      tokenRefrescoMiembros: 0,
+      tokenRefrescoDisponibilidad: 0,
       tokenRefrescoPlanificacion: 0,
     };
   },
@@ -553,6 +586,17 @@ data() {
       if (controladorPostulacion) {
         controladorPostulacion.abort();
         controladorPostulacion = null;
+      }
+      this.modalAsignarVisible = false;
+      this.actividadAsignar = null;
+      this.perfilesAsignadosActividad = [];
+      this.asignando = false;
+      this.errorAsignar = "";
+      this.tokenRefrescoMiembros = 0;
+      this.tokenRefrescoDisponibilidad = 0;
+      if (controladorAsignacion) {
+        controladorAsignacion.abort();
+        controladorAsignacion = null;
       }
       this.modalConfirmacionVisible = false;
       this.previewConfirmacion = null;
@@ -1628,6 +1672,245 @@ data() {
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
     },
+    async abrirModalAsignar(actividad) {
+      if (!actividad?.idActividad || this.asignando) return;
+      if (
+        !puedeAsignarActividad({
+          proyecto: this.proyecto,
+          actividad,
+          tieneFechaEntrega: this.tieneFechaEntrega,
+        })
+      ) {
+        return;
+      }
+
+      this.actividadAsignar = { ...actividad };
+      this.perfilesAsignadosActividad = perfilesAsignadosDe(actividad);
+      this.errorAsignar = "";
+      this.modalAsignarVisible = true;
+    },
+    onCambioVisibilidadAsignar(valor) {
+      if (this.asignando && !valor) return;
+      if (valor) {
+        this.modalAsignarVisible = true;
+        return;
+      }
+      this.cerrarModalAsignar();
+    },
+    cerrarModalAsignar() {
+      if (this.asignando) return;
+      this.modalAsignarVisible = false;
+      this.actividadAsignar = null;
+      this.perfilesAsignadosActividad = [];
+      this.errorAsignar = "";
+      if (controladorAsignacion) {
+        controladorAsignacion.abort();
+        controladorAsignacion = null;
+      }
+    },
+    async confirmarAsignacion({ idPerfil, miembro } = {}) {
+      if (this.asignando) return;
+      const actividad = this.actividadAsignar;
+      if (!actividad?.idActividad || idPerfil == null || idPerfil === "") {
+        return;
+      }
+
+      this.asignando = true;
+      this.errorAsignar = "";
+      if (controladorAsignacion) controladorAsignacion.abort();
+      controladorAsignacion = new AbortController();
+
+      try {
+        const response = await actividadService.asignar(
+          this.idProyecto,
+          actividad.idActividad,
+          idPerfil,
+          controladorAsignacion.signal
+        );
+        const data = response?.data || {};
+
+        this.modalAsignarVisible = false;
+        this.actividadAsignar = null;
+        this.perfilesAsignadosActividad = [];
+
+        this.toast.init({
+          title: "Actividad asignada",
+          message: mensajeExitoAsignacion(data, miembro, actividad),
+          color: "success",
+          position: "top-right",
+          duration: 7000,
+        });
+
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+
+        if (String(idPerfil) === String(idPerfilActivo())) {
+          this.refrescarNotificacionesPerfil();
+        }
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorAsignacion(error);
+      } finally {
+        this.asignando = false;
+      }
+    },
+    async manejarErrorAsignacion(error) {
+      const clasificacion = clasificarErrorAsignacion(error);
+      const { tipo, mensaje } = clasificacion;
+
+      const cerrar = () => {
+        this.modalAsignarVisible = false;
+        this.actividadAsignar = null;
+        this.perfilesAsignadosActividad = [];
+        this.errorAsignar = "";
+      };
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SESION) {
+        cerrar();
+        await refrescarSesion();
+        this.mensajeError = "Tu sesión expiró. Volvé a iniciar sesión.";
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.CUENTA) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.CSRF) {
+        this.errorAsignar = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SIN_PERMISO) {
+        cerrar();
+        this.toast.init({
+          title: "Sin permiso",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.PERFIL_ACTIVO_NO_ENCONTRADO) {
+        cerrar();
+        await refrescarSesion();
+        this.mensajeError =
+          "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.PERFIL_NO_ENCONTRADO) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.PROYECTO_NO_ENCONTRADO) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.RECURSO_NO_ENCONTRADO) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (
+        tipo === TIPOS_ERROR_ASIGNACION.PERFIL_INVALIDO ||
+        tipo === TIPOS_ERROR_ASIGNACION.VALIDACION ||
+        tipo === TIPOS_ERROR_ASIGNACION.SIN_FECHA_ENTREGA ||
+        tipo === TIPOS_ERROR_ASIGNACION.SIN_AGENDA ||
+        tipo === TIPOS_ERROR_ASIGNACION.CONFLICTO ||
+        tipo === TIPOS_ERROR_ASIGNACION.DESCONOCIDO
+      ) {
+        this.errorAsignar = mensaje;
+        return;
+      }
+
+      if (
+        tipo === TIPOS_ERROR_ASIGNACION.MIEMBRO_INACTIVO ||
+        tipo === TIPOS_ERROR_ASIGNACION.PERFIL_INACTIVO
+      ) {
+        this.errorAsignar = mensaje;
+        this.tokenRefrescoMiembros += 1;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.DUPLICADO) {
+        this.errorAsignar = mensaje;
+        this.tokenRefrescoMiembros += 1;
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.ESTADO_INVALIDO) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SIN_DISPONIBILIDAD) {
+        this.errorAsignar = mensaje;
+        this.tokenRefrescoDisponibilidad += 1;
+        return;
+      }
+
+      this.errorAsignar = mensaje || "No se pudo asignar la actividad.";
+    },
     async abrirModalEliminarActividad(actividad) {
       this.actividadEliminar = actividad;
       // Cargar detalle de la actividad para mostrar profesionales asignados, etc.
@@ -1768,6 +2051,7 @@ data() {
     if (controladorPublicacion) controladorPublicacion.abort();
     if (controladorCancelacion) controladorCancelacion.abort();
     if (controladorEliminacion) controladorEliminacion.abort();
+    if (controladorAsignacion) controladorAsignacion.abort();
     if (controladorPostulacion) controladorPostulacion.abort();
     if (controladorConfirmacion) controladorConfirmacion.abort();
   },

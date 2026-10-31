@@ -88,6 +88,17 @@
               <button
                 type="button"
                 class="tabla-actividades__accion"
+                :class="{ 'tabla-actividades__accion--habilitada': puedeAsignarFila(actividad) }"
+                :disabled="!puedeAsignarFila(actividad)"
+                :title="motivoNoAsignableFila(actividad)"
+                aria-label="Asignar miembro"
+                @click="$emit('asignar-actividad', actividad)"
+              >
+                <span class="material-symbols-outlined">person_add</span>
+              </button>
+              <button
+                type="button"
+                class="tabla-actividades__accion"
                 :class="{ 'tabla-actividades__accion--habilitada': puedeEditarFila(actividad) }"
                 :disabled="!puedeEditarFila(actividad)"
                 :title="motivoNoEditable(actividad)"
@@ -148,11 +159,31 @@ export default {
       type: Boolean,
       default: false,
     },
+    puedeAsignar: {
+      type: Boolean,
+      default: false,
+    },
+    motivoNoAsignar: {
+      type: String,
+      default: "No podés asignar miembros a esta actividad.",
+    },
   },
-  emits: ["editar-actividad", "eliminar-actividad"],
+  emits: ["editar-actividad", "eliminar-actividad", "asignar-actividad"],
   methods: {
     formatearDuracionMinutos,
     etiquetaEstadoActividad,
+    puedeAsignarFila(actividad) {
+      return this.puedeAsignar && puedeEditarActividad(actividad?.estado);
+    },
+    motivoNoAsignableFila(actividad) {
+      if (!this.puedeAsignar) {
+        return this.motivoNoAsignar;
+      }
+      if (!puedeEditarActividad(actividad?.estado)) {
+        return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede asignar.`;
+      }
+      return "Asignar miembro";
+    },
     puedeEditarFila(actividad) {
       return this.puedeEditar && puedeEditarActividad(actividad?.estado);
     },
