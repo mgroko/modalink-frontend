@@ -13,7 +13,7 @@
 
     <p class="eliminar-actividad-modal__intro">
       Se eliminará la actividad
-      <strong>{{ actividad.nombre }}</strong> y se recalculará el cronograma.
+      <strong>{{ actividadVista.nombre }}</strong> y se recalculará el cronograma.
     </p>
 
     <BaseAlert
@@ -25,17 +25,17 @@
 
     <div class="eliminar-actividad-modal__contenido">
       <div class="eliminar-actividad-modal__ficha">
-        <p><strong>Descripción:</strong> {{ actividad.descripcion || "-" }}</p>
-        <p><strong>Fechas:</strong> {{ formatearFechaCorta(actividad.fechaHoraInicio) }} - {{ formatearFechaCorta(actividad.fechaHoraFin) }}</p>
-        <p><strong>Estado:</strong> {{ etiquetaEstadoActividad(actividad.estado) }}</p>
+        <p><strong>Descripción:</strong> {{ actividadVista.descripcion || "-" }}</p>
+        <p><strong>Fechas:</strong> {{ formatearFechaCorta(actividadVista.fechaHoraInicio) }} - {{ formatearFechaCorta(actividadVista.fechaHoraFin) }}</p>
+        <p><strong>Estado:</strong> {{ etiquetaEstadoActividad(actividadVista.estado) }}</p>
         <p><strong>Requerimientos:</strong>
-          {{ actividad.requerimientos.length > 0
-            ? actividad.requerimientos.map(r => `${r.nombreProfesion}: ${r.cantidad}`).join(", ")
+          {{ actividadVista.requerimientos.length > 0
+            ? actividadVista.requerimientos.map(r => `${r.nombreProfesion}: ${r.cantidad}`).join(", ")
             : "Ninguno" }}
         </p>
-        <p v-if="actividad.profesionalesAsignados">
+        <p v-if="actividadVista.profesionalesAsignados.length">
           <strong>Profesionales asignados:</strong>
-          {{ actividad.profesionalesAsignados.map(p => `${p.nombreArtistico} (${p.nombreProfesion})`).join(", ") || "Ninguno" }}
+          {{ actividadVista.profesionalesAsignados.map(p => `${p.nombreArtistico} (${p.nombreProfesion})`).join(", ") }}
         </p>
       </div>
 
@@ -90,9 +90,9 @@
 <script>
 /*
  * Confirmación de eliminación de actividad (UC-51, ficha técnica §2.2-2.3).
- * Exige motivo obligatorio (máx. 200 chars). Al confirmar, envía DELETE
- * y emite "confirmar" con el motivo. Los errores 400 mantienen el modal
- * abierto. Los 403/404 cierran y refrescan la planificación.
+ * Exige motivo obligatorio (máx. 200 chars). Al confirmar, emite "confirmar"
+ * con idProyecto/idActividad/motivo; el padre ejecuta el DELETE y maneja los
+ * errores. El modal se mantiene abierto ante errores corregibles (400/5xx).
  */
 import BaseAlert from "../AlertaBase.vue";
 
@@ -129,7 +129,7 @@ export default {
       default: "",
     },
   },
-  emits: ["update:modelValue", "confirmar"],
+  emits: ["update:modelValue", "confirmar", "limpiar-error"],
   data() {
     return {
       LIMITE_MOTIVO,
@@ -137,17 +137,37 @@ export default {
     };
   },
   computed: {
+    /**
+     * El listado de Planificación entrega un objeto liviano sin `requerimientos`
+     * ni `profesionalesAsignados`. Normalizamos acá para que el modal siempre
+     * pueda renderizarse aunque el detalle no se haya podido cargar.
+     */
+    actividadVista() {
+      const actividad = this.actividad || {};
+      return {
+        ...actividad,
+        requerimientos: Array.isArray(actividad.requerimientos)
+          ? actividad.requerimientos
+          : [],
+        profesionalesAsignados: Array.isArray(actividad.profesionalesAsignados)
+          ? actividad.profesionalesAsignados
+          : [],
+      };
+    },
     puedeConfirmar() {
       const motivo = this.motivo.trim();
       return (
         !this.eliminando &&
         !!motivo &&
-        motivo.length <= LIMITE_MOTIVO &&
-        !this.error
+        motivo.length <= LIMITE_MOTIVO
       );
     },
   },
   watch: {
+    motivo() {
+      // Al corregir el motivo se oculta el error anterior para permitir reintentar.
+      if (this.error) this.$emit("limpiar-error");
+    },
     modelValue(visible) {
       if (!visible) this.limpiar();
     },
@@ -159,46 +179,20 @@ export default {
     },
     limpiar() {
       this.motivo = "";
-      this.error = "";
     },
     cerrar() {
       if (this.eliminando) return;
       this.$emit("update:modelValue", false);
     },
-    async confirmar() {
-      if (!this.puedeConfirmar) return;
-      this.error = "";
-      this.eliminando = true;
-      try {
-        this.$emit("confirmar", {
-          idProyecto: this.actividad.idProyecto,
-          idActividad: this.actividad.idActividad,
-          motivo: this.motivo.trim(),
-        });
-      } catch (err) {
-        this.eliminando = false;
-        if (err.response) {
-          const status = err.response.status;
-          if (status === 400) {
-            this.error = "Motivo vacío o inválido";
-          } else if (status === 403) {
-            this.error = "Sin permiso para eliminar la actividad";
-            this.$emit("update:modelValue", false);
-          } else if (status === 404) {
-            this.error = "Proyecto o actividad no encontrados";
-            this.$emit("update:modelValue", false);
-          } else if (status === 409) {
-            this.error = err.response.data?.message || "No se puede eliminar la actividad";
-            this.$emit("update:modelValue", false);
-          } else {
-            this.error = "Error inesperado";
-            this.$emit("update:modelValue", false);
-          }
-        } else {
-          this.error = "Error de conexión";
-          this.$emit("update:modelValue", false);
-        }
-      }
+    confirmar() {
+      if (!this.puedeConfirmar || this.eliminando) return;
+      // El padre es quien ejecuta el DELETE y controla los errores; el modal
+      // sólo emite la intención con las coordenadas que conoce.
+      this.$emit("confirmar", {
+        idProyecto: this.actividadVista.idProyecto,
+        idActividad: this.actividadVista.idActividad,
+        motivo: this.motivo.trim(),
+      });
     },
   },
 };

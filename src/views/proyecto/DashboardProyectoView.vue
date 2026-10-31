@@ -253,7 +253,8 @@
           :actividad="actividadEliminar"
           :eliminando="eliminandoActividad"
           :error="errorEliminarActividad"
-          @update:modelValue="modalEliminarActividadVisible = $event"
+          @update:modelValue="onCambioVisibilidadEliminar"
+          @limpiar-error="errorEliminarActividad = ''"
           @confirmar="confirmarEliminarActividad"
         />
 
@@ -395,6 +396,7 @@ let controladorCarga = null;
 let controladorPublicacion = null;
 let controladorCancelacion = null;
 let controladorEliminacion = null;
+let controladorDetalleEliminacion = null;
 let controladorAsignacion = null;
 let controladorPostulacion = null;
 let controladorConfirmacion = null;
@@ -470,6 +472,7 @@ data() {
       actividadEliminar: {},
       eliminandoActividad: false,
       errorEliminarActividad: "",
+      idCargaDetalleEliminacion: 0,
       modalAsignarVisible: false,
       actividadAsignar: null,
       perfilesAsignadosActividad: [],
@@ -592,6 +595,19 @@ data() {
       this.perfilesAsignadosActividad = [];
       this.asignando = false;
       this.errorAsignar = "";
+      this.modalEliminarActividadVisible = false;
+      this.actividadEliminar = {};
+      this.eliminandoActividad = false;
+      this.errorEliminarActividad = "";
+      this.idCargaDetalleEliminacion++;
+      if (controladorDetalleEliminacion) {
+        controladorDetalleEliminacion.abort();
+        controladorDetalleEliminacion = null;
+      }
+      if (controladorEliminacion) {
+        controladorEliminacion.abort();
+        controladorEliminacion = null;
+      }
       this.tokenRefrescoMiembros = 0;
       this.tokenRefrescoDisponibilidad = 0;
       if (controladorAsignacion) {
@@ -1912,32 +1928,132 @@ data() {
       this.errorAsignar = mensaje || "No se pudo asignar la actividad.";
     },
     async abrirModalEliminarActividad(actividad) {
-      this.actividadEliminar = actividad;
-      // Cargar detalle de la actividad para mostrar profesionales asignados, etc.
-      try {
-        const detalle = await actividadService.obtener(
-          actividad.idProyecto,
-          actividad.idActividad,
-          null
-        );
-        this.actividadEliminar = { ...actividad, ...detalle };
-      } catch (e) {
-        // Si falla el detalle, conservamos los datos del listado (se mostrará lo disponible).
-      }
+      const idProyecto = this.idProyecto;
+      const idActividad = actividad?.idActividad;
+      if (!idProyecto || !idActividad) return;
+
+      // El listado de Planificación no incluye `idProyecto` ni el detalle.
+      // Abrimos el modal de inmediato con los datos disponibles y usamos el
+      // proyecto de la ruta como fuente de verdad.
+      this.actividadEliminar = {
+        ...actividad,
+        idProyecto,
+        requerimientos: Array.isArray(actividad.requerimientos)
+          ? actividad.requerimientos
+          : [],
+        profesionalesAsignados: Array.isArray(actividad.profesionalesAsignados)
+          ? actividad.profesionalesAsignados
+          : [],
+      };
       this.errorEliminarActividad = "";
       this.modalEliminarActividadVisible = true;
+
+      // Cancelar cualquier detalle previo antes de abrir otro modal.
+      const corrida = ++this.idCargaDetalleEliminacion;
+      if (controladorDetalleEliminacion) {
+        controladorDetalleEliminacion.abort();
+        controladorDetalleEliminacion = null;
+      }
+
+      // El detalle es complementario (profesionales asignados, etc.): si falla
+      // el modal sigue siendo utilizable con los datos del listado. Sólo se pide
+      // cuando el perfil puede leerlo (GET exige MODIFICAR_ACTIVIDAD).
+      if (!this.permisos.includes("MODIFICAR_ACTIVIDAD")) return;
+
+      controladorDetalleEliminacion = new AbortController();
+
+      try {
+        const response = await actividadService.obtener(
+          idProyecto,
+          idActividad,
+          controladorDetalleEliminacion.signal
+        );
+        if (corrida !== this.idCargaDetalleEliminacion) return;
+        if (String(this.actividadEliminar?.idActividad) !== String(idActividad)) {
+          return;
+        }
+
+        const detalle = response?.data;
+        if (!detalle || typeof detalle !== "object") return;
+        if (
+          detalle.idActividad != null &&
+          String(detalle.idActividad) !== String(idActividad)
+        ) {
+          return;
+        }
+
+        this.actividadEliminar = {
+          ...this.actividadEliminar,
+          ...detalle,
+          idProyecto,
+          requerimientos: Array.isArray(detalle.requerimientos)
+            ? detalle.requerimientos
+            : this.actividadEliminar.requerimientos,
+          profesionalesAsignados: Array.isArray(detalle.profesionalesAsignados)
+            ? detalle.profesionalesAsignados
+            : this.actividadEliminar.profesionalesAsignados,
+        };
+      } catch (error) {
+        if (
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+        // Silencioso: el detalle no es necesario para confirmar la eliminación.
+      }
     },
-    async confirmarEliminarActividad({ idProyecto, idActividad, motivo }) {
+    onCambioVisibilidadEliminar(valor) {
+      if (this.eliminandoActividad && !valor) return;
+      if (valor) {
+        this.modalEliminarActividadVisible = true;
+        return;
+      }
+      this.cerrarModalEliminarActividad();
+    },
+    cerrarModalEliminarActividad() {
+      this.modalEliminarActividadVisible = false;
+      this.errorEliminarActividad = "";
+      this.idCargaDetalleEliminacion += 1;
+      if (controladorDetalleEliminacion) {
+        controladorDetalleEliminacion.abort();
+        controladorDetalleEliminacion = null;
+      }
+      this.actividadEliminar = {};
+    },
+    async confirmarEliminarActividad({ idActividad, motivo } = {}) {
       if (this.eliminandoActividad) return;
+
+      // El id del proyecto sale de la ruta (el item del listado no lo trae).
+      const idProyecto = this.idProyecto;
+      const idActividadFinal = idActividad ?? this.actividadEliminar?.idActividad;
+      const motivoFinal = String(motivo ?? "").trim();
+
+      if (!idProyecto || !idActividadFinal) {
+        this.errorEliminarActividad =
+          "No se pudo identificar la actividad a eliminar. Recargá la página e intentá nuevamente.";
+        return;
+      }
+      if (!motivoFinal) {
+        this.errorEliminarActividad = "El motivo de la eliminación es obligatorio.";
+        return;
+      }
+      if (motivoFinal.length > 200) {
+        this.errorEliminarActividad =
+          "El motivo de la eliminación no puede superar los 200 caracteres.";
+        return;
+      }
+
       this.eliminandoActividad = true;
       this.errorEliminarActividad = "";
       if (controladorEliminacion) controladorEliminacion.abort();
       controladorEliminacion = new AbortController();
+
       try {
         await actividadService.eliminar(
           idProyecto,
-          idActividad,
-          motivo,
+          idActividadFinal,
+          motivoFinal,
           controladorEliminacion.signal
         );
         // Refrescar la planificación y el proyecto
@@ -1945,7 +2061,7 @@ data() {
         await this.$nextTick(() => {
           this.tokenRefrescoPlanificacion++;
         });
-        this.modalEliminarActividadVisible = false;
+        this.cerrarModalEliminarActividad();
         this.toast.init({
           title: "Actividad eliminada",
           message: "La actividad fue eliminada correctamente y el cronograma se recalculó.",
@@ -1968,18 +2084,29 @@ data() {
 
       if (status === 400) {
         this.errorEliminarActividad =
-          data?.motivo || mensaje || "El motivo de la eliminación es obligatorio.";
+          mensaje ||
+          data?.motivo ||
+          "No se pudo eliminar la actividad: el motivo es obligatorio o no es válido.";
         // El modal se mantiene abierto para que el usuario corrija el motivo.
         return;
       }
 
+      if (status === 401) {
+        this.errorEliminarActividad = mensajeErrorApi(
+          error,
+          "Tu cuenta no se encuentra activa."
+        );
+        return;
+      }
+
       if (status === 403) {
-        this.errorEliminarActividad =
-          "No tenés permiso para eliminar esta actividad o tu perfil no está activo.";
-        this.modalEliminarActividadVisible = false;
+        this.cerrarModalEliminarActividad();
         this.toast.init({
           title: "No se pudo eliminar",
-          message: mensaje || "No tenés permiso para esta acción.",
+          message: mensajeErrorApi(
+            error,
+            "No tenés permiso para eliminar esta actividad."
+          ),
           color: "danger",
           position: "top-right",
           duration: 6000,
@@ -1988,14 +2115,15 @@ data() {
       }
 
       if (status === 404) {
-        this.modalEliminarActividadVisible = false;
         if (clasificacion?.tipo === "perfil-activo") {
+          this.cerrarModalEliminarActividad();
           this.mensajeError =
             "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
           this.$router.push({ name: "dashboard-usuario" });
           return;
         }
         if (clasificacion?.tipo === "perfil-no-encontrado") {
+          this.cerrarModalEliminarActividad();
           await refrescarSesion();
           this.mensajeError =
             "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
@@ -2003,21 +2131,34 @@ data() {
           return;
         }
         if (/proyecto/i.test(mensaje)) {
+          this.cerrarModalEliminarActividad();
           this.proyecto = null;
           this.estadoNoEncontrado = true;
           this.mensajeError = mensaje;
           this.mostrarVolver = true;
           return;
         }
-        this.errorEliminarActividad = mensajeErrorApi(
-          error,
-          "No se pudo eliminar la actividad."
-        );
+        // Actividad o planificación inexistente: cerrar y refrescar el listado.
+        this.cerrarModalEliminarActividad();
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: mensajeErrorApi(
+            error,
+            "La actividad ya no existe o no está disponible."
+          ),
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
         return;
       }
 
       if (status === 409) {
-        this.modalEliminarActividadVisible = false;
+        this.cerrarModalEliminarActividad();
         this.toast.init({
           title: "No se pudo eliminar",
           message:
@@ -2030,6 +2171,9 @@ data() {
           duration: 6000,
         });
         await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
         return;
       }
 
@@ -2051,6 +2195,7 @@ data() {
     if (controladorPublicacion) controladorPublicacion.abort();
     if (controladorCancelacion) controladorCancelacion.abort();
     if (controladorEliminacion) controladorEliminacion.abort();
+    if (controladorDetalleEliminacion) controladorDetalleEliminacion.abort();
     if (controladorAsignacion) controladorAsignacion.abort();
     if (controladorPostulacion) controladorPostulacion.abort();
     if (controladorConfirmacion) controladorConfirmacion.abort();
