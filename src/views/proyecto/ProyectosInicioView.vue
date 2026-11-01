@@ -314,7 +314,10 @@ export default {
     await this.buscar();
   },
   methods: {
+    // Expuestas al template (Options API): sin esto el render falla con
+    // "_ctx.formatearFechaCorta is not a function" y la vista queda en el spinner.
     etiquetaRolProyecto,
+    formatearFechaCorta,
     estiloRol(rol) {
       const colores = coloresRolProyecto(rol);
       return {

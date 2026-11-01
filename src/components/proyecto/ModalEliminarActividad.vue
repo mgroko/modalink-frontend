@@ -69,7 +69,7 @@
       <div class="eliminar-actividad-modal__acciones">
         <VaButton
           preset="secondary"
-          :disabled="eliminando || !puedeConfirmar"
+          :disabled="eliminando"
           @click="cerrar"
         >
           Volver
@@ -95,8 +95,10 @@
  * errores. El modal se mantiene abierto ante errores corregibles (400/5xx).
  */
 import BaseAlert from "../AlertaBase.vue";
+import { formatearFechaCorta } from "../../utils/fechas.js";
 import {
   esProfesionalHistorico,
+  etiquetaEstadoActividad,
   etiquetaParticipacionProfesional,
 } from "../../utils/actividadConstants.js";
 
@@ -177,6 +179,10 @@ export default {
     },
   },
   methods: {
+    // Expuestas al template (Options API): sin esto el render falla con
+    // "_ctx.formatearFechaCorta is not a function" y el modal queda en blanco.
+    formatearFechaCorta,
+    etiquetaEstadoActividad,
     textoProfesional(profesional) {
       const base = `${profesional?.nombreArtistico || "Perfil"} (${
         profesional?.nombreProfesion || "Sin profesión"

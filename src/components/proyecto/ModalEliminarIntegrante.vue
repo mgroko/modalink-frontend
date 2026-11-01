@@ -42,7 +42,7 @@
         v-model="motivo"
         label="Motivo de la eliminación"
         placeholder="Contanos por qué eliminás a este integrante..."
-        :max-length="LIMITE_MOTIVO"
+        :max-length="LIMITE_MOTIVO_BAJA"
         counter
         :rows="3"
         :disabled="eliminando"
@@ -110,7 +110,7 @@ export default {
   emits: ["update:modelValue", "confirmar"],
   data() {
     return {
-      LIMITE_MOTIVO,
+      LIMITE_MOTIVO_BAJA,
       motivo: "",
     };
   },
@@ -127,7 +127,7 @@ export default {
       return (
         !this.eliminando &&
         !!motivo &&
-        motivo.length <= this.LIMITE_MOTIVO
+        motivo.length <= this.LIMITE_MOTIVO_BAJA
       );
     },
   },
