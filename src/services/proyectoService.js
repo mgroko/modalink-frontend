@@ -407,6 +407,11 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} nombreProfesion
  * @property {"DIRECTOR"|"MIEMBRO"} rol
  * @property {"ACTIVO"|string} estadoParticipacion
+ * @property {boolean} eliminable fuente de verdad para habilitar la baja
+ *           (UC-38). No recalcular en el frontend.
+ * @property {"SIN_PERMISO"|"PROYECTO_NO_PERMITE_BAJA"|"AUTOELIMINACION"|
+ *           "ULTIMO_DIRECTOR"|null} motivoNoEliminable motivo cuando
+ *           `eliminable` es false.
  */
 
 /**
@@ -446,18 +451,45 @@ const proyectoService = {
    * @returns {Promise<{data: PaginaMiembrosResponse}>} 200 OK
    */
   listarMiembros(idProyecto, params = {}, signal) {
+    const todos = params.todos === true;
     const query = serializarParams({
       nombre: String(params.nombre || "").trim(),
       rol: params.rol || "",
       idProfesion: params.idProfesion ?? "",
-      page: params.page ?? 0,
-      size: params.size ?? 20,
-      todos: params.todos === true ? true : undefined,
+      page: todos ? undefined : params.page ?? 0,
+      size: todos ? undefined : params.size ?? 20,
+      todos: todos ? true : undefined,
     });
     return http.get(
       `/proyectos/${idProyecto}/miembros${query ? `?${query}` : ""}`,
       { signal }
     );
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/miembros/{idMiembro} — UC-38.
+   * Da de baja a un integrante activo del proyecto. El backend es la fuente de
+   * verdad: el frontend sólo debe enviar el motivo y refrescar después del 204.
+   *
+   * Errores:
+   * - 400 motivo vacío/sólo espacios o mayor a 100 caracteres
+   * - 401 sesión ausente/vencida
+   * - 403 sin `ELIMINAR_INTEGRANTE`, sin membresía activa o sin Director activo
+   * - 404 sin perfil activo / perfil inexistente / proyecto inexistente /
+   *   miembro inexistente o de otro proyecto
+   * - 409 miembro ya inactivo, proyecto en estado no permitido,
+   *   autoeliminación o último Director activo
+   * @param {number|string} idProyecto
+   * @param {number|string} idMiembro
+   * @param {string} motivo se envía normalizado con trim()
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  eliminarIntegrante(idProyecto, idMiembro, motivo, signal) {
+    return http.delete(`/proyectos/${idProyecto}/miembros/${idMiembro}`, {
+      data: { motivo: String(motivo || "").trim() },
+      signal,
+    });
   },
 
   /**

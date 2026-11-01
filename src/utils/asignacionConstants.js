@@ -1,5 +1,6 @@
 import {
   ESTADOS_ACTIVIDAD,
+  esProfesionalHistorico,
   etiquetaEstadoActividad,
   normalizarEstadoActividad,
 } from "./actividadConstants.js";
@@ -181,12 +182,17 @@ export function perfilesAsignadosDe(actividad) {
     ids.push(id);
   };
 
-  const responsables = Array.isArray(actividad?.responsables)
+  // Sólo cuentan las asignaciones vigentes. Los profesionales históricos
+  // (eliminados o baja voluntaria) no bloquean una nueva asignación ni
+  // inflan el conteo de “ya asignados”.
+  const responsables = (Array.isArray(actividad?.responsables)
     ? actividad.responsables
-    : [];
-  const profesionales = Array.isArray(actividad?.profesionalesAsignados)
+    : []
+  ).filter((elemento) => !esProfesionalHistorico(elemento));
+  const profesionales = (Array.isArray(actividad?.profesionalesAsignados)
     ? actividad.profesionalesAsignados
-    : [];
+    : []
+  ).filter((elemento) => !esProfesionalHistorico(elemento));
 
   responsables.forEach(agregar);
   profesionales.forEach(agregar);
@@ -299,14 +305,17 @@ export function clasificarErrorAsignacion(error) {
     mensaje: mensaje || mensajeBackend || TEXTOS_ASIGNACION.ERROR_GENERICO,
   });
 
-  if (error?._esSesionExpirada) {
+  if (error?._esSesionExpirada || status === 401) {
     return crear(
       TIPOS_ERROR_ASIGNACION.SESION,
       "Tu sesión expiró. Volvé a iniciar sesión."
     );
   }
 
-  if (error?._esCuentaNoActiva || status === 401) {
+  if (
+    error?._esCuentaNoActiva ||
+    payload?.codigo === "CUENTA_PENDIENTE_BAJA"
+  ) {
     return crear(
       TIPOS_ERROR_ASIGNACION.CUENTA,
       mensajeBackend || "Tu cuenta no se encuentra activa."

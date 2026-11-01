@@ -105,6 +105,8 @@ import { serializarParams } from "../utils/queryParams.js";
 
 /**
  * @typedef {Object} ProfesionalAsignadoActividadResponse
+ *   UC-38: puede ser un profesional histórico si `activo` es false. No debe
+ *   contarse como recurso actual ni ofrecerse para acciones operativas.
  * @property {number} idAsignacionActividad
  * @property {number} idMiembroProyecto
  * @property {number} idPerfil
@@ -112,6 +114,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} nombreArtistico
  * @property {number} idProfesion
  * @property {string} nombreProfesion
+ * @property {"ACTIVO"|"ELIMINADO"|"BAJA_VOLUNTARIA"|string} [estadoParticipacion]
+ * @property {boolean} [activo] true sólo si sigue activo en el proyecto
  */
 
 /**
@@ -158,11 +162,17 @@ import { serializarParams } from "../utils/queryParams.js";
 
 /**
  * @typedef {Object} ResponsableActividad
+ *   UC-38: en actividades EN_CURSO/FINALIZADA/CANCELADA puede incluir
+ *   profesionales históricos (`activo = false`). En PENDIENTE no se muestran.
+ * @property {number} [idAsignacionActividad]
+ * @property {number} [idMiembroProyecto]
  * @property {number} idPerfil
  * @property {number} idUsuario
  * @property {string} nombreArtistico
  * @property {number} idProfesion
  * @property {string} nombreProfesion
+ * @property {"ACTIVO"|"ELIMINADO"|"BAJA_VOLUNTARIA"|string} [estadoParticipacion]
+ * @property {boolean} [activo] true sólo si sigue activo en el proyecto
  */
 
 /**

@@ -75,6 +75,11 @@ export default {
       type: Boolean,
       default: true,
     },
+    /** Pestaña Integrantes (UC-38/UC-40). Sólo miembros activos. */
+    mostrarIntegrantes: {
+      type: Boolean,
+      default: false,
+    },
     /** Texto opcional; si no llega, se compone con rol, privacidad, ubicación y entrega. */
     subtitulo: {
       type: String,
@@ -87,6 +92,9 @@ export default {
       const tabs = [{ id: "informacion", label: "Información general" }];
       if (this.mostrarPlanificacion) {
         tabs.push({ id: "planificacion", label: "Planificación" });
+      }
+      if (this.mostrarIntegrantes) {
+        tabs.push({ id: "integrantes", label: "Integrantes" });
       }
       if (this.mostrarPostulaciones) {
         tabs.push({

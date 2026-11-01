@@ -126,6 +126,47 @@
           Esta actividad todavía no tiene requerimientos cargados.
         </p>
 
+        <h2 class="actividad-detalle__subtitulo">
+          Profesionales asignados
+        </h2>
+
+        <div
+          v-if="profesionalesVisibles.length"
+          class="actividad-detalle__profesionales"
+        >
+          <article
+            v-for="profesional in profesionalesVisibles"
+            :key="
+              profesional.idAsignacionActividad ??
+              `${profesional.idPerfil}-${profesional.idUsuario}`
+            "
+            class="profesional-actividad"
+          >
+            <div class="profesional-actividad__datos">
+              <p class="profesional-actividad__nombre">
+                {{ profesional.nombreArtistico || "Perfil" }}
+              </p>
+              <p
+                v-if="profesional.nombreProfesion"
+                class="profesional-actividad__profesion"
+              >
+                {{ profesional.nombreProfesion }}
+              </p>
+            </div>
+
+            <span
+              v-if="esHistorico(profesional)"
+              class="profesional-actividad__historico"
+            >
+              {{ etiquetaParticipacion(profesional) }}
+            </span>
+          </article>
+        </div>
+
+        <p v-else class="actividad-detalle__vacio">
+          Sin profesionales asignados.
+        </p>
+
         <p
           v-if="requerimientos.length && !aceptaPostulaciones"
           class="actividad-detalle__cerrada"
@@ -179,8 +220,12 @@ import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
   coloresEstadoActividad,
+  esProfesionalHistorico,
   etiquetaEstadoActividad,
+  etiquetaParticipacionProfesional,
   formatearDuracionMinutos,
+  mostrarHistoricosEnActividad,
+  profesionalesActuales,
 } from "../../utils/actividadConstants.js";
 import {
   formatearFechaConDia,
@@ -263,6 +308,16 @@ export default {
     duracionActividad() {
       return formatearDuracionMinutos(this.actividad?.duracionMinutos);
     },
+    profesionalesVisibles() {
+      const lista = Array.isArray(this.actividad?.profesionalesAsignados)
+        ? this.actividad.profesionalesAsignados
+        : [];
+      // En PENDIENTE no se muestran históricos; en EN_CURSO/FINALIZADA/
+      // CANCELADA sí, con etiqueta y sin acciones operativas.
+      return mostrarHistoricosEnActividad(this.actividad?.estado)
+        ? lista
+        : profesionalesActuales(lista);
+    },
     esProyectada() {
       return (
         this.actividad?.tentativo === true ||
@@ -305,6 +360,12 @@ export default {
   },
   methods: {
     etiquetaEstadoActividad,
+    esHistorico(profesional) {
+      return esProfesionalHistorico(profesional);
+    },
+    etiquetaParticipacion(profesional) {
+      return etiquetaParticipacionProfesional(profesional);
+    },
     async cargar() {
       const corrida = ++this.idCarga;
       if (this.controlador) this.controlador.abort();
@@ -793,6 +854,52 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.88rem;
   text-align: center;
+}
+
+.actividad-detalle__profesionales {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profesional-actividad {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.profesional-actividad__datos {
+  min-width: 0;
+}
+
+.profesional-actividad__nombre {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.profesional-actividad__profesion {
+  margin: 0.1rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.profesional-actividad__historico {
+  flex: 0 0 auto;
+  padding: 0.12rem 0.5rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-style: italic;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .actividad-detalle__cerrada {

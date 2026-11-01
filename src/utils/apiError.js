@@ -1,28 +1,30 @@
-import { state } from "../services/authState";
-
 export function esSesionExpirada(error) {
-  return !!error?._esSesionExpirada || (error?.response?.status === 403 && !state.usuario);
+  if (error?._esCuentaNoActiva) return false;
+  // El interceptor marca `_esSesionExpirada` cuando un 403 implica que no hay
+  // sesión. Un 403 con sesión es permiso/cuenta, no sesión vencida.
+  return !!error?._esSesionExpirada || error?.response?.status === 401;
 }
 
 export function esCuentaNoActiva(error) {
-  return !!error?._esCuentaNoActiva || error?.response?.status === 401;
+  const codigo = error?.response?.data?.codigo;
+  return !!error?._esCuentaNoActiva || codigo === "CUENTA_PENDIENTE_BAJA";
 }
 
 export function mensajeErrorApi(error, fallback = "Ocurrió un error inesperado.") {
   const status = error?.response?.status;
   const mensajeBackend = error?.response?.data?.message;
 
-  if (error?._esSesionExpirada) {
+  if (esSesionExpirada(error)) {
     return "Tu sesión expiró. Volvé a iniciar sesión.";
   }
-  if (error?._esCuentaNoActiva || status === 401) {
+  if (esCuentaNoActiva(error)) {
     return mensajeBackend || "Tu cuenta no se encuentra activa.";
   }
   if (error?._esCsrf) {
     return "No se pudo completar la operación. Recargá la página e intentá nuevamente.";
   }
   if (error?._esPermiso) {
-    return "No tenés permisos para realizar esta acción.";
+    return mensajeBackend || "No tenés permisos para realizar esta acción.";
   }
   if (mensajeBackend) {
     return mensajeBackend;

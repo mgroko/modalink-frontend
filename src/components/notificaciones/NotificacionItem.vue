@@ -48,6 +48,7 @@
 <script>
 import {
   destinoNotificacion,
+  esNotificacionSinNavegacion,
   etiquetaTipoNotificacion,
   iconoNotificacion,
 } from "../../utils/notificacionConstants.js";
@@ -85,6 +86,7 @@ export default {
       return formatearFechaNotificacion(this.notificacion?.fechaGenerada);
     },
     destino() {
+      if (esNotificacionSinNavegacion(this.notificacion?.tipo)) return null;
       return this.notificacion?.destino ?? destinoNotificacion(this.notificacion);
     },
     enlace() {

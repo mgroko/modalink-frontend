@@ -46,8 +46,18 @@
                 v-for="responsable in responsables(actividad)"
                 :key="responsable.clave"
                 class="tabla-actividades__chip"
+                :class="{
+                  'tabla-actividades__chip--historico': responsable.historico,
+                }"
+                :title="responsable.etiqueta || undefined"
               >
                 {{ responsable.texto }}
+                <small
+                  v-if="responsable.historico"
+                  class="tabla-actividades__chip-estado"
+                >
+                  {{ responsable.etiqueta }}
+                </small>
               </span>
             </div>
             <span v-else class="tabla-actividades__vacio-celda">—</span>
@@ -129,8 +139,12 @@
 <script>
 import {
   coloresEstadoActividad,
+  esProfesionalHistorico,
   etiquetaEstadoActividad,
+  etiquetaParticipacionProfesional,
   formatearDuracionMinutos,
+  mostrarHistoricosEnActividad,
+  profesionalesActuales,
   puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
 import { idPerfilActivo } from "../../services/authState";
@@ -210,12 +224,24 @@ export default {
     },
     responsables(actividad) {
       const activo = idPerfilActivo();
-      return (actividad?.responsables || []).map((responsable, indice) => {
+      const lista = Array.isArray(actividad?.responsables)
+        ? actividad.responsables
+        : [];
+      const visibles = mostrarHistoricosEnActividad(actividad?.estado)
+        ? lista
+        : profesionalesActuales(lista);
+
+      return visibles.map((responsable, indice) => {
         const esVos =
           activo != null && String(responsable?.idPerfil) === String(activo);
+        const historico = esProfesionalHistorico(responsable);
         return {
           clave: `${responsable?.idPerfil ?? "s"}-${responsable?.idUsuario ?? indice}`,
           texto: `${responsable?.nombreArtistico || "Perfil"}${esVos ? " (Vos)" : ""}`,
+          historico,
+          etiqueta: historico
+            ? etiquetaParticipacionProfesional(responsable)
+            : "",
         };
       });
     },
@@ -314,6 +340,20 @@ export default {
   border-color: var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
+}
+
+.tabla-actividades__chip--historico {
+  border-style: dashed;
+  border-color: var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.tabla-actividades__chip-estado {
+  margin-left: 0.3rem;
+  font-size: 0.64rem;
+  font-style: italic;
+  font-weight: 600;
 }
 
 .tabla-actividades__duracion,

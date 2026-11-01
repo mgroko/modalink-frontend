@@ -35,7 +35,7 @@
         </p>
         <p v-if="actividadVista.profesionalesAsignados.length">
           <strong>Profesionales asignados:</strong>
-          {{ actividadVista.profesionalesAsignados.map(p => `${p.nombreArtistico} (${p.nombreProfesion})`).join(", ") }}
+          {{ actividadVista.profesionalesAsignados.map(textoProfesional).join(", ") }}
         </p>
       </div>
 
@@ -95,6 +95,10 @@
  * errores. El modal se mantiene abierto ante errores corregibles (400/5xx).
  */
 import BaseAlert from "../AlertaBase.vue";
+import {
+  esProfesionalHistorico,
+  etiquetaParticipacionProfesional,
+} from "../../utils/actividadConstants.js";
 
 const LIMITE_MOTIVO = 200;
 
@@ -173,6 +177,14 @@ export default {
     },
   },
   methods: {
+    textoProfesional(profesional) {
+      const base = `${profesional?.nombreArtistico || "Perfil"} (${
+        profesional?.nombreProfesion || "Sin profesión"
+      })`;
+      return esProfesionalHistorico(profesional)
+        ? `${base} · ${etiquetaParticipacionProfesional(profesional)}`
+        : base;
+    },
     onCambioVisibilidad(valor) {
       if (this.eliminando && !valor) return;
       this.$emit("update:modelValue", valor);

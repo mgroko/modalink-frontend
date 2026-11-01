@@ -165,7 +165,10 @@
 <script>
 import BaseAlert from "../AlertaBase.vue";
 import DisponibilidadActividad from "./DisponibilidadActividad.vue";
-import { formatearDuracionMinutos } from "../../utils/actividadConstants.js";
+import {
+  formatearDuracionMinutos,
+  profesionalesActuales,
+} from "../../utils/actividadConstants.js";
 import {
   describirCpm,
   esProyectada,
@@ -296,6 +299,10 @@ export default {
     chipsActividad() {
       return describirCpm(this.actividad);
     },
+    asignadosActivos() {
+      // La disponibilidad sólo se calcula con recursos actuales.
+      return profesionalesActuales(this.actividad?.profesionalesAsignados);
+    },
     idPerfilesDisponibilidad() {
       const ids = [];
       const agregar = (idPerfil) => {
@@ -305,17 +312,13 @@ export default {
       };
 
       agregar(this.postulacion?.idPerfil);
-      const asignados = Array.isArray(this.actividad?.profesionalesAsignados)
-        ? this.actividad.profesionalesAsignados
-        : [];
-      asignados.forEach((profesional) => agregar(profesional?.idPerfil));
+      this.asignadosActivos.forEach((profesional) =>
+        agregar(profesional?.idPerfil)
+      );
       return ids;
     },
     tituloDisponibilidad() {
-      const asignados = Array.isArray(this.actividad?.profesionalesAsignados)
-        ? this.actividad.profesionalesAsignados
-        : [];
-      return asignados.length
+      return this.asignadosActivos.length
         ? "Disponibilidad del postulante y asignados"
         : "Disponibilidad del postulante";
     },

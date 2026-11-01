@@ -34,6 +34,7 @@
           :proyecto="proyecto"
           :tab-activa="tabActiva"
           :mostrar-planificacion="esMiembro"
+          :mostrar-integrantes="esMiembro"
           @cambiar-tab="cambiarTab"
         >
           <template #acciones>
@@ -221,6 +222,14 @@
           @asignar-actividad="abrirModalAsignar"
         />
 
+        <IntegrantesProyecto
+          v-else-if="tabActiva === 'integrantes' && esMiembro"
+          ref="integrantes"
+          :id-proyecto="idProyecto"
+          :token-refresco="tokenRefrescoIntegrantes"
+          @eliminar="abrirEliminarIntegrante"
+        />
+
         <template v-else-if="tabActiva === 'postulaciones'">
           <template v-if="puedeGestionarPostulaciones">
             <h2 class="dashboard-proyecto__titulo">Postulaciones del proyecto</h2>
@@ -297,6 +306,17 @@
           @confirmar="confirmarCancelacion"
         />
 
+        <ModalEliminarIntegrante
+          :model-value="modalEliminarIntegranteVisible"
+          :miembro="integranteEliminar"
+          :nombre-proyecto="proyecto.nombre"
+          :eliminando="eliminandoIntegrante"
+          :error="errorEliminarIntegrante"
+          :error-motivo="errorMotivoEliminarIntegrante"
+          @update:model-value="onCambioVisibilidadEliminarIntegrante"
+          @confirmar="confirmarEliminarIntegrante"
+        />
+
         <ModalAsignarActividad
           :model-value="modalAsignarVisible"
           :id-proyecto="idProyecto"
@@ -341,6 +361,7 @@ import { cargarResumenPerfil } from "../../services/notificacionState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
+import IntegrantesProyecto from "../../components/proyecto/IntegrantesProyecto.vue";
 import PersonalRequerido from "../../components/proyecto/PersonalRequerido.vue";
 import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
 import GestionPostulaciones from "../../components/proyecto/GestionPostulaciones.vue";
@@ -349,6 +370,7 @@ import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboa
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
 import ModalConfirmarProyecto from "../../components/proyecto/ModalConfirmarProyecto.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
+import ModalEliminarIntegrante from "../../components/proyecto/ModalEliminarIntegrante.vue";
 import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
 import ModalAsignarActividad from "../../components/proyecto/ModalAsignarActividad.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
@@ -363,6 +385,11 @@ import {
   puedeAsignarActividad,
 } from "../../utils/asignacionConstants.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
+import {
+  LIMITE_MOTIVO_BAJA,
+  TIPOS_ERROR_ELIMINAR_INTEGRANTE,
+  clasificarErrorEliminarIntegrante,
+} from "../../utils/integranteConstants.js";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
@@ -395,6 +422,7 @@ import {
 let controladorCarga = null;
 let controladorPublicacion = null;
 let controladorCancelacion = null;
+let controladorEliminarIntegrante = null;
 let controladorEliminacion = null;
 let controladorDetalleEliminacion = null;
 let controladorAsignacion = null;
@@ -407,6 +435,7 @@ export default {
     BaseAlert,
     ProyectoEncabezado,
     PlanificacionProyecto,
+    IntegrantesProyecto,
     PersonalRequerido,
     RequerimientoCard,
     GestionPostulaciones,
@@ -415,6 +444,7 @@ export default {
     ModalPublicarProyecto,
     ModalConfirmarProyecto,
     ModalCancelarProyecto,
+    ModalEliminarIntegrante,
     ModalEliminarActividad,
     ModalAsignarActividad,
     ModalPostulacion,
@@ -442,6 +472,12 @@ data() {
       modalCancelarVisible: false,
       cancelando: false,
       errorCancelacion: "",
+      modalEliminarIntegranteVisible: false,
+      integranteEliminar: null,
+      eliminandoIntegrante: false,
+      errorEliminarIntegrante: "",
+      errorMotivoEliminarIntegrante: "",
+      tokenRefrescoIntegrantes: 0,
       modalConfirmacionVisible: false,
       previewConfirmacion: null,
       cargandoPreviewConfirmacion: false,
@@ -595,6 +631,16 @@ data() {
       this.perfilesAsignadosActividad = [];
       this.asignando = false;
       this.errorAsignar = "";
+      this.modalEliminarIntegranteVisible = false;
+      this.integranteEliminar = null;
+      this.eliminandoIntegrante = false;
+      this.errorEliminarIntegrante = "";
+      this.errorMotivoEliminarIntegrante = "";
+      this.tokenRefrescoIntegrantes = 0;
+      if (controladorEliminarIntegrante) {
+        controladorEliminarIntegrante.abort();
+        controladorEliminarIntegrante = null;
+      }
       this.modalEliminarActividadVisible = false;
       this.actividadEliminar = {};
       this.eliminandoActividad = false;
@@ -644,7 +690,9 @@ data() {
     },
     esMiembro(valor) {
       if (!valor) {
-        if (this.tabActiva === "planificacion") this.tabActiva = "informacion";
+        if (["planificacion", "integrantes"].includes(this.tabActiva)) {
+          this.tabActiva = "informacion";
+        }
         this.aplicarTabDesdeQuery();
         return;
       }
@@ -767,9 +815,17 @@ data() {
       }
 
       if (status === 403) {
+        if (error?._esCuentaNoActiva) {
+          this.mensajeError = mensajeErrorApi(
+            error,
+            "Tu cuenta no se encuentra activa."
+          );
+          this.mostrarVolver = true;
+          return;
+        }
         this.mensajeError = /perfil/i.test(mensaje)
           ? "El perfil no se encuentra activo."
-          : "No tenés acceso a este proyecto: es privado o está en borrador y no sos miembro del equipo.";
+          : "No tenés acceso a este proyecto o ya no participás en él.";
         this.mostrarVolver = true;
         return;
       }
@@ -815,10 +871,15 @@ data() {
     },
     aplicarTabDesdeQuery() {
       const solicitada = this.$route.query.tab;
-      const permitidas = ["informacion", "planificacion", "postulaciones"];
+      const permitidas = [
+        "informacion",
+        "planificacion",
+        "integrantes",
+        "postulaciones",
+      ];
       const tab = permitidas.includes(solicitada) ? solicitada : "informacion";
 
-      if (tab === "planificacion" && !this.esMiembro) {
+      if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) {
         this.tabActiva = "informacion";
         return;
       }
@@ -843,7 +904,7 @@ data() {
         .catch(() => {});
     },
     cambiarTab(tab) {
-      if (tab === "planificacion" && !this.esMiembro) return;
+      if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) return;
       if (this.tabActiva === tab) return;
 
       this.tabActiva = tab;
@@ -1096,6 +1157,197 @@ data() {
         error,
         "No se pudo cancelar el proyecto."
       );
+    },
+    /** UC-38: abre la confirmación de baja de un integrante. */
+    abrirEliminarIntegrante(miembro) {
+      if (this.eliminandoIntegrante) return;
+      if (miembro?.eliminable !== true) return;
+      if (miembro?.idMiembro == null) return;
+
+      this.integranteEliminar = { ...miembro };
+      this.errorEliminarIntegrante = "";
+      this.errorMotivoEliminarIntegrante = "";
+      this.modalEliminarIntegranteVisible = true;
+    },
+    onCambioVisibilidadEliminarIntegrante(valor) {
+      if (this.eliminandoIntegrante && !valor) return;
+      if (valor) {
+        this.modalEliminarIntegranteVisible = true;
+        return;
+      }
+      this.cerrarModalEliminarIntegrante();
+    },
+    cerrarModalEliminarIntegrante(forzar = false) {
+      if (this.eliminandoIntegrante && !forzar) return;
+      this.modalEliminarIntegranteVisible = false;
+      this.integranteEliminar = null;
+      this.errorEliminarIntegrante = "";
+      this.errorMotivoEliminarIntegrante = "";
+      if (controladorEliminarIntegrante) {
+        controladorEliminarIntegrante.abort();
+        controladorEliminarIntegrante = null;
+      }
+    },
+    /** UC-38: ejecuta el DELETE y refresca miembros, proyecto y planificación. */
+    async confirmarEliminarIntegrante(motivo) {
+      if (this.eliminandoIntegrante) return;
+
+      const miembro = this.integranteEliminar;
+      const texto = String(motivo ?? "").trim();
+
+      if (!miembro?.idMiembro) {
+        this.errorEliminarIntegrante =
+          "No se pudo identificar al integrante. Recargá la página e intentá nuevamente.";
+        return;
+      }
+      if (!texto) {
+        this.errorMotivoEliminarIntegrante =
+          "El motivo de eliminación es obligatorio.";
+        return;
+      }
+      if (texto.length > LIMITE_MOTIVO_BAJA) {
+        this.errorMotivoEliminarIntegrante =
+          "El motivo de eliminación no puede superar los 100 caracteres.";
+        return;
+      }
+
+      this.eliminandoIntegrante = true;
+      this.errorEliminarIntegrante = "";
+      this.errorMotivoEliminarIntegrante = "";
+      if (controladorEliminarIntegrante) controladorEliminarIntegrante.abort();
+      controladorEliminarIntegrante = new AbortController();
+
+      try {
+        await proyectoService.eliminarIntegrante(
+          this.idProyecto,
+          miembro.idMiembro,
+          texto,
+          controladorEliminarIntegrante.signal
+        );
+
+        this.modalEliminarIntegranteVisible = false;
+        this.integranteEliminar = null;
+        this.errorEliminarIntegrante = "";
+        this.errorMotivoEliminarIntegrante = "";
+
+        this.toast.init({
+          title: "Integrante eliminado",
+          message: "El integrante fue desvinculado del proyecto.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        // El backend es la fuente de verdad: se recargan lista, proyecto y
+        // planificación en vez de modificar el estado local a mano.
+        this.tokenRefrescoIntegrantes += 1;
+        this.tokenRefrescoPlanificacion += 1;
+        await this.cargar();
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorEliminarIntegrante(error);
+      } finally {
+        this.eliminandoIntegrante = false;
+      }
+    },
+    async manejarErrorEliminarIntegrante(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorEliminarIntegrante(error);
+      const { tipo, mensaje } = clasificacion;
+
+      const cerrarYRefrescar = async (refrescarProyecto = false) => {
+        this.cerrarModalEliminarIntegrante(true);
+        this.tokenRefrescoIntegrantes += 1;
+        if (refrescarProyecto) await this.cargar();
+      };
+
+      const mostrarToast = (title) => {
+        this.toast.init({
+          title,
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+      };
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.SESION) {
+        // El interceptor global ya limpió la sesión y redirigió a login.
+        this.cerrarModalEliminarIntegrante(true);
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.CUENTA) {
+        await cerrarYRefrescar();
+        mostrarToast("Cuenta no habilitada");
+        return;
+      }
+
+      // Error corregible: el modal sigue abierto y conserva el motivo.
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.MOTIVO) {
+        this.errorMotivoEliminarIntegrante = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.PERMISO) {
+        await cerrarYRefrescar(true);
+        mostrarToast("No se pudo eliminar");
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.PERFIL_ACTIVO) {
+        this.cerrarModalEliminarIntegrante(true);
+        this.mensajeError =
+          "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.PERFIL_NO_ENCONTRADO) {
+        this.cerrarModalEliminarIntegrante(true);
+        await refrescarSesion();
+        this.mensajeError =
+          "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.PROYECTO_NO_ENCONTRADO) {
+        this.cerrarModalEliminarIntegrante(true);
+        this.proyecto = null;
+        this.estadoNoEncontrado = true;
+        this.mensajeError = mensaje;
+        this.mostrarVolver = true;
+        return;
+      }
+
+      if (
+        [
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.MIEMBRO_NO_ENCONTRADO,
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.MIEMBRO_INACTIVO,
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.ESTADO_PROYECTO,
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.AUTOELIMINACION,
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.ULTIMO_DIRECTOR,
+        ].includes(tipo)
+      ) {
+        await cerrarYRefrescar(true);
+        mostrarToast("No se pudo eliminar");
+        return;
+      }
+
+      // La ficha manda cerrar ante 403/404/409 aunque el mensaje no coincida
+      // con ningún patrón conocido: el backend sigue siendo la fuente de
+      // verdad y la lista/proyecto se recargan.
+      if ([403, 404, 409].includes(status)) {
+        await cerrarYRefrescar(true);
+        mostrarToast("No se pudo eliminar");
+        return;
+      }
+
+      // 5xx o error no clasificado: el modal queda abierto para reintentar.
+      this.errorEliminarIntegrante = mensaje;
     },
     /** UC-60 §5.1: abre el diálogo y consulta el preview (solo lectura). */
     abrirConfirmacion() {

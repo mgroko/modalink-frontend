@@ -345,7 +345,10 @@ import BaseAlert from "../AlertaBase.vue";
 import CronogramaActividades from "./CronogramaActividades.vue";
 import actividadService from "../../services/actividadService.js";
 import { refrescarSesion } from "../../services/authState";
-import { formatearDuracionMinutos } from "../../utils/actividadConstants.js";
+import {
+  formatearDuracionMinutos,
+  profesionalesActuales,
+} from "../../utils/actividadConstants.js";
 import {
   ESTADOS_CRONOGRAMA,
   coloresEstadoCronograma,
@@ -601,7 +604,11 @@ export default {
       return nombres.length ? nombres.join(", ") : "—";
     },
     responsablesDetalle() {
-      const responsables = this.detalleCompleto?.profesionalesAsignados || [];
+      // El Cronograma muestra sólo recursos actuales; los históricos se
+      // conservan para auditoría y se muestran en Planificación/detalle.
+      const responsables = profesionalesActuales(
+        this.detalleCompleto?.profesionalesAsignados
+      );
       if (!responsables.length) return "Sin responsables asignados.";
       return responsables
         .map((responsable) => responsable?.nombreArtistico)

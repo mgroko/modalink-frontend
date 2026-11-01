@@ -126,6 +126,64 @@ export function esActividadCancelada(actividad) {
   return actividad?.estado === ESTADOS_ACTIVIDAD.CANCELADA;
 }
 
+export const ESTADOS_PARTICIPACION = {
+  ACTIVO: "ACTIVO",
+  ELIMINADO: "ELIMINADO",
+  BAJA_VOLUNTARIA: "BAJA_VOLUNTARIA",
+};
+
+/**
+ * Un profesional es histórico cuando el backend lo marca inactivo o con una
+ * participación distinta de ACTIVO. Si `activo` no viene, se asume activo
+ * para no romper respuestas antiguas.
+ * @param {object|null|undefined} profesional
+ * @returns {boolean}
+ */
+export function esProfesionalHistorico(profesional) {
+  if (!profesional) return false;
+  if (profesional.activo === false) return true;
+  const estado = String(profesional.estadoParticipacion || "").toUpperCase();
+  return (
+    estado === ESTADOS_PARTICIPACION.ELIMINADO ||
+    estado === ESTADOS_PARTICIPACION.BAJA_VOLUNTARIA
+  );
+}
+
+/**
+ * Etiqueta para mostrar junto a un profesional histórico.
+ * @param {object|null|undefined} profesional
+ * @returns {string}
+ */
+export function etiquetaParticipacionProfesional(profesional) {
+  const estado = String(profesional?.estadoParticipacion || "").toUpperCase();
+  if (estado === ESTADOS_PARTICIPACION.BAJA_VOLUNTARIA) {
+    return "Baja voluntaria";
+  }
+  return "Eliminado del proyecto";
+}
+
+/**
+ * @param {Array<object>|null|undefined} lista
+ * @returns {Array<object>}
+ */
+export function profesionalesActuales(lista) {
+  return (Array.isArray(lista) ? lista : []).filter(
+    (profesional) => !esProfesionalHistorico(profesional)
+  );
+}
+
+/**
+ * En actividades PENDIENTE no se muestran históricos. En EN_CURSO,
+ * FINALIZADA y CANCELADA sí, con etiqueta.
+ * @param {string|null|undefined} estadoActividad
+ * @returns {boolean}
+ */
+export function mostrarHistoricosEnActividad(estadoActividad) {
+  return (
+    normalizarEstadoActividad(estadoActividad) !== ESTADOS_ACTIVIDAD.PENDIENTE
+  );
+}
+
 /**
  * Reconstruye duración y unidad desde `duracionMinutos`.
  * Los múltiplos de 60 se muestran en HORAS; el resto en MINUTOS.

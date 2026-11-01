@@ -21,6 +21,7 @@ export const TIPOS_NOTIFICACION = {
   HITO_CUMPLIDO: "HITO_CUMPLIDO",
   ACTIVIDAD_ASIGNADA: "ACTIVIDAD_ASIGNADA",
   PERFIL_REPORTADO: "PERFIL_REPORTADO",
+  INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -44,6 +45,7 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.HITO_CUMPLIDO]: "Hito cumplido",
   [TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA]: "Actividad asignada",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
+  [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
 };
 
 const ICONOS_TIPO = {
@@ -60,6 +62,7 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.HITO_CUMPLIDO]: "flag",
   [TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA]: "assignment",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
+  [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
 };
 
 /**
@@ -99,6 +102,16 @@ function idValido(valor) {
  */
 
 /**
+ * Tipos que nunca deben ofrecer navegación, incluso si el backend envía
+ * `destino` (ficha UC-38 §5: el perfil eliminado puede recibir 403).
+ * @param {string|null|undefined} tipo
+ * @returns {boolean}
+ */
+export function esNotificacionSinNavegacion(tipo) {
+  return tipo === TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO;
+}
+
+/**
  * Decide si una notificación debe mostrar una label clickeable y a dónde
  * lleva. Ver §5 de la ficha.
  *
@@ -109,6 +122,7 @@ function idValido(valor) {
  * - `ACTIVIDAD_ELIMINADA` → sólo el proyecto (la actividad ya no existe).
  * - `POSTULACION_RECHAZADA` e `INVITACION_RECHAZADA` → sin link.
  * - `HITO_CUMPLIDO` → proyecto (no hay pantalla de hitos).
+ * - `INTEGRANTE_ELIMINADO` → sin link (el perfil puede no tener acceso).
  * - Sin `idPerfilContexto` no se muestra link (ficha §4), salvo reportes
  *   administrativos, que no dependen de un perfil activo.
  * @param {object|null|undefined} notificacion NotificacionResponse
@@ -116,6 +130,7 @@ function idValido(valor) {
  */
 export function destinoNotificacion(notificacion) {
   if (!notificacion) return null;
+  if (esNotificacionSinNavegacion(notificacion.tipo)) return null;
 
   const tipo = notificacion.tipo;
   const esReporteAdmin = tipo === TIPOS_NOTIFICACION.PERFIL_REPORTADO;
