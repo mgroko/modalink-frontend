@@ -125,6 +125,7 @@
           :mensaje-vacio="mensajeVacio"
           :puede-editar="puedeEditarActividad"
           :puede-eliminar="puedeEliminarActividad"
+          :estado-proyecto="estadoNormalizado"
           :puede-asignar="puedeAsignar"
           :motivo-no-asignar="motivoNoAsignar"
           @editar-actividad="$emit('editar-actividad', $event)"
@@ -247,10 +248,9 @@ export default {
       );
     },
     puedeEliminarActividad() {
-      return (
-        this.permisos.includes("ELIMINAR_ACTIVIDAD") &&
-        this.estadoPermiteActividades
-      );
+      // Sólo permiso: el estado del proyecto y de la actividad se evalúan por
+      // fila en TablaActividades (incluye Confirmado + EN_CURSO).
+      return this.permisos.includes("ELIMINAR_ACTIVIDAD");
     },
     puedeAsignar() {
       return puedeAsignarActividad({

@@ -337,6 +337,36 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {boolean} [todos] true = sin paginar
  */
 
+/**
+ * Integrante exclusivo de una actividad (UC-51).
+ * `puedeEliminar` y `motivoNoEliminable` son la fuente de verdad; no
+ * recalcular en el frontend.
+ * @typedef {Object} MiembroExclusivoActividadResponse
+ * @property {number} idAsignacionActividad
+ * @property {number} idMiembro
+ * @property {number} idPerfil
+ * @property {number} idUsuario
+ * @property {string} nombreArtistico
+ * @property {number} idProfesion
+ * @property {string} nombreProfesion
+ * @property {boolean} puedeEliminar
+ * @property {"AUTOELIMINACION"|"ULTIMO_DIRECTOR"|"PROYECTO_BORRADOR"|null} motivoNoEliminable
+ */
+
+/**
+ * @typedef {Object} DecisionEliminarActividadRequest
+ * @property {number} idMiembro
+ * @property {"ELIMINAR"|"GUARDAR"} accion
+ * @property {string} [motivoBaja] máximo 100; si falta se usa `motivo`
+ */
+
+/**
+ * @typedef {Object} EliminarActividadRequest
+ * @property {string} motivo obligatorio, no vacío, máximo 200
+ * @property {DecisionEliminarActividadRequest[]} decisiones una por cada
+ *           integrante exclusivo; `[]` si no hay ninguno
+ */
+
 const actividadService = {
   /**
    * GET /proyectos/{idProyecto}/actividades/{idActividad} — UC-50.
@@ -540,29 +570,75 @@ const actividadService = {
   },
 
   /**
-   * DELETE /proyectos/{idProyecto}/actividades/{idActividad}?motivo={motivo} — UC-51.
-   * Elimina una actividad de la planificación. Requiere motivo obligatorio.
-   * Es transaccional: si falla una parte, no se aplica ningún cambio.
-   * Efectos: elimina actividad, conecta predecesoras con sucesoras,
-   * recalcula cronograma, elimina asignaciones (miembros conservados en proyecto),
-   * elimina postulaciones/invitaciones y genera notificaciones.
+   * GET /proyectos/{idProyecto}/actividades/{idActividad}/miembros-exclusivos
+   * — UC-51.
+   *
+   * Devuelve sólo integrantes ACTIVOS que participan únicamente de esta
+   * actividad en el proyecto. Los miembros con otras actividades no canceladas
+   * se conservan automáticamente y no aparecen.
+   *
+   * `puedeEliminar` y `motivoNoEliminable` son la fuente de verdad: no
+   * recalcular en el frontend.
    *
    * Errores:
-   * - 400 motivo vacío o inválido
-   * - 403 sin perfil activo, membresía activa o permiso ELIMINAR_ACTIVIDAD
-   * - 404 proyecto, planificación o actividad inexistente
-   * - 409 actividad FINALIZADA o CANCELADA, proyecto en estado no permitido
+   * - 401 sesión ausente/vencida
+   * - 403 sin perfil activo, sin membresía activa o sin `ELIMINAR_ACTIVIDAD`
+   * - 404 perfil activo, proyecto o actividad inexistente
    *
    * @param {number|string} idProyecto
    * @param {number|string} idActividad
-   * @param {string} motivo motivo de la eliminación (máx. 200 chars, no vacío ni solo espacios)
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: MiembroExclusivoActividadResponse[]}>} 200 OK;
+   *           puede ser `[]`
+   */
+  listarMiembrosExclusivos(idProyecto, idActividad, signal) {
+    return http.get(
+      `/proyectos/${idProyecto}/actividades/${idActividad}/miembros-exclusivos`,
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/actividades/{idActividad}/eliminar — UC-51.
+   *
+   * Elimina la actividad y resuelve en una sola transacción qué hacer con los
+   * integrantes exclusivos. Reemplaza al antiguo
+   * `DELETE .../actividades/{idActividad}?motivo=`, que ya no existe.
+   *
+   * Reglas del body:
+   * - `motivo` obligatorio, no vacío, máximo 200; no truncar.
+   * - `decisiones` obligatorio (puede ser `[]`); una por cada integrante
+   *   exclusivo activo, sin duplicados ni miembros ajenos.
+   * - `ELIMINAR` sólo si `puedeEliminar === true`.
+   * - `motivoBaja` opcional, máximo 100; si falta se usa `motivo`.
+   * - Si `motivo` supera 100 y una decisión `ELIMINAR` no trae `motivoBaja`,
+   *   el backend responde 400.
+   *
+   * Errores:
+   * - 400 `motivo` inválido (`errores.motivo`) o decisiones inválidas
+   *   (`errores["decisiones[i].motivoBaja"]` o `message` con el id en texto)
+   * - 401 sesión ausente/vencida
+   * - 403 sin perfil activo, sin membresía o sin `ELIMINAR_ACTIVIDAD`; si hay
+   *   decisiones `ELIMINAR`, UC-38 también exige `ELIMINAR_INTEGRANTE` y rol
+   *   Director
+   * - 404 proyecto, planificación, actividad o miembro inexistente
+   * - 409 actividad FINALIZADA/CANCELADA, proyecto no permitido, actividad
+   *   EN_CURSO en proyecto CONFIRMADO o integrante no eliminable
+   *
+   * @param {number|string} idProyecto
+   * @param {number|string} idActividad
+   * @param {EliminarActividadRequest} request
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: null}>} 204 No Content sin body
    */
-  eliminar(idProyecto, idActividad, motivo, signal) {
-    const query = encodeURIComponent(String(motivo ?? "").trim());
-    return http.delete(
-      `/proyectos/${idProyecto}/actividades/${idActividad}?motivo=${query}`,
+  eliminarConDecisiones(idProyecto, idActividad, request = {}, signal) {
+    const motivo = String(request.motivo ?? "").trim();
+    const decisiones = Array.isArray(request.decisiones)
+      ? request.decisiones
+      : [];
+    return http.post(
+      `/proyectos/${idProyecto}/actividades/${idActividad}/eliminar`,
+      { motivo, decisiones },
       { signal }
     );
   }

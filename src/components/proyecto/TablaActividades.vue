@@ -149,6 +149,10 @@ import {
 } from "../../utils/actividadConstants.js";
 import { idPerfilActivo } from "../../services/authState";
 import { formatearFechaCorta } from "../../utils/fechas.js";
+import {
+  motivoNoEliminableActividad,
+  puedeEliminarActividad,
+} from "../../utils/eliminacionActividadConstants.js";
 
 export default {
   name: "TablaActividades",
@@ -172,6 +176,11 @@ export default {
     puedeEliminar: {
       type: Boolean,
       default: false,
+    },
+    /** Estado del proyecto en forma legible ("Confirmado", "Borrador", ...). */
+    estadoProyecto: {
+      type: String,
+      default: "",
     },
     puedeAsignar: {
       type: Boolean,
@@ -211,16 +220,18 @@ export default {
       return "Editar actividad";
     },
     puedeEliminarFila(actividad) {
-      return this.puedeEliminar && puedeEditarActividad(actividad?.estado);
+      return puedeEliminarActividad({
+        tienePermiso: this.puedeEliminar,
+        estadoProyecto: this.estadoProyecto,
+        estadoActividad: actividad?.estado,
+      });
     },
     motivoNoEliminable(actividad) {
-      if (!this.puedeEliminar) {
-        return "No tenés permiso para eliminar actividades en este proyecto.";
-      }
-      if (!puedeEditarActividad(actividad?.estado)) {
-        return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede eliminar.`;
-      }
-      return "Eliminar actividad";
+      return motivoNoEliminableActividad({
+        tienePermiso: this.puedeEliminar,
+        estadoProyecto: this.estadoProyecto,
+        estadoActividad: actividad?.estado,
+      });
     },
     responsables(actividad) {
       const activo = idPerfilActivo();

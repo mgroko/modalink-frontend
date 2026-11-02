@@ -58,6 +58,27 @@
             <p v-if="actividad.descripcion" class="actividad-detalle__descripcion">
               {{ actividad.descripcion }}
             </p>
+
+            <div
+              v-if="tienePermisoEliminar"
+              class="actividad-detalle__acciones-cabecera"
+            >
+              <VaButton
+                color="danger"
+                preset="secondary"
+                size="small"
+                :disabled="!puedeEliminarActividad"
+                :title="motivoNoEliminable"
+                @click="abrirModalEliminar"
+              >
+                <template #prepend>
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    delete
+                  </span>
+                </template>
+                Eliminar actividad
+              </VaButton>
+            </div>
           </header>
 
           <dl class="actividad-detalle__meta">
@@ -201,6 +222,26 @@
           @confirmar="confirmarPostulacion"
           @revisar-calendario="revisarCalendario"
         />
+
+        <ModalEliminarActividad
+          :model-value="modalEliminarVisible"
+          :id-proyecto="idProyecto"
+          :actividad="actividad"
+          :nombre-proyecto="nombreProyecto"
+          :eliminando="eliminandoActividad"
+          :error="errorEliminarActividad"
+          :error-motivo="errorMotivoEliminarActividad"
+          :errores-por-miembro="erroresMiembroEliminarActividad"
+          :conflicto-en-curso="conflictoEliminarActividadEnCurso"
+          :puede-ir-actividad="tienePermisoModificar"
+          :token-refresco-exclusivos="tokenRefrescoExclusivos"
+          @update:modelValue="onCambioVisibilidadEliminar"
+          @limpiar-error="limpiarErroresEliminar"
+          @limpiar-errores-filas="erroresMiembroEliminarActividad = {}"
+          @ir-actividad="irActividadDesdeEliminacion"
+          @recargar="volverAPlanificacion"
+          @confirmar="confirmarEliminarActividad"
+        />
       </template>
     </template>
   </div>
@@ -216,8 +257,17 @@ import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
 import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
+import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
+import {
+  TIPOS_ERROR_ELIMINAR_ACTIVIDAD,
+  clasificarErrorEliminarActividad,
+  idsEliminarSinMotivo,
+  mensajeExitoEliminarActividad,
+  motivoNoEliminableActividad as evaluarMotivoNoEliminableActividad,
+  puedeEliminarActividad as evaluarPuedeEliminarActividad,
+} from "../../utils/eliminacionActividadConstants.js";
 import {
   coloresEstadoActividad,
   esProfesionalHistorico,
@@ -250,7 +300,7 @@ import {
  */
 export default {
   name: "ActividadDetalleView",
-  components: { BaseAlert, RequerimientoCard, ModalPostulacion },
+  components: { BaseAlert, RequerimientoCard, ModalPostulacion, ModalEliminarActividad },
   setup() {
     return { toast: useToast() };
   },
@@ -273,6 +323,13 @@ export default {
       errorEsDisponibilidad: false,
       postulacionesEnviadas: {},
       requerimientosSinCupo: {},
+      modalEliminarVisible: false,
+      eliminandoActividad: false,
+      errorEliminarActividad: "",
+      errorMotivoEliminarActividad: "",
+      erroresMiembroEliminarActividad: {},
+      conflictoEliminarActividadEnCurso: false,
+      tokenRefrescoExclusivos: 0,
       idCarga: 0,
     };
   },
@@ -332,6 +389,26 @@ export default {
         (requerimiento) => puedePostularRequerimiento(requerimiento)
       );
     },
+    tienePermisoEliminar() {
+      return (this.proyecto?.permisos || []).includes("ELIMINAR_ACTIVIDAD");
+    },
+    tienePermisoModificar() {
+      return (this.proyecto?.permisos || []).includes("MODIFICAR_ACTIVIDAD");
+    },
+    puedeEliminarActividad() {
+      return evaluarPuedeEliminarActividad({
+        tienePermiso: this.tienePermisoEliminar,
+        estadoProyecto: this.proyecto?.estado,
+        estadoActividad: this.actividad?.estado,
+      });
+    },
+    motivoNoEliminable() {
+      return evaluarMotivoNoEliminableActividad({
+        tienePermiso: this.tienePermisoEliminar,
+        estadoProyecto: this.proyecto?.estado,
+        estadoActividad: this.actividad?.estado,
+      });
+    },
     estiloEstado() {
       const colores = coloresEstadoActividad(this.actividad?.estado);
       return {
@@ -350,6 +427,7 @@ export default {
   created() {
     this.controlador = null;
     this.controladorPostulacion = null;
+    this.controladorEliminacion = null;
   },
   mounted() {
     this.cargar();
@@ -357,6 +435,7 @@ export default {
   beforeUnmount() {
     if (this.controlador) this.controlador.abort();
     if (this.controladorPostulacion) this.controladorPostulacion.abort();
+    if (this.controladorEliminacion) this.controladorEliminacion.abort();
   },
   methods: {
     etiquetaEstadoActividad,
@@ -367,6 +446,7 @@ export default {
       return etiquetaParticipacionProfesional(profesional);
     },
     async cargar() {
+      if (this.modalEliminarVisible) this.cerrarModalEliminar();
       const corrida = ++this.idCarga;
       if (this.controlador) this.controlador.abort();
       this.controlador = new AbortController();
@@ -681,6 +761,237 @@ export default {
       this.modal.visible = false;
       this.$router.push({ name: "calendario" });
     },
+    abrirModalEliminar() {
+      if (!this.puedeEliminarActividad) return;
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
+      this.modalEliminarVisible = true;
+    },
+    onCambioVisibilidadEliminar(valor) {
+      if (this.eliminandoActividad && !valor) return;
+      if (valor) {
+        this.modalEliminarVisible = true;
+        return;
+      }
+      this.cerrarModalEliminar();
+    },
+    cerrarModalEliminar() {
+      this.modalEliminarVisible = false;
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
+      if (this.controladorEliminacion) {
+        this.controladorEliminacion.abort();
+        this.controladorEliminacion = null;
+      }
+    },
+    limpiarErroresEliminar() {
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+    },
+    async confirmarEliminarActividad({ motivo, decisiones } = {}) {
+      if (this.eliminandoActividad) return;
+
+      const motivoFinal = String(motivo ?? "").trim();
+      const decisionesFinal = Array.isArray(decisiones) ? decisiones : [];
+      const nombreActividad = this.actividad?.nombre || "";
+
+      if (!motivoFinal) {
+        this.errorMotivoEliminarActividad =
+          "El motivo de la eliminación es obligatorio.";
+        return;
+      }
+      if (motivoFinal.length > 200) {
+        this.errorMotivoEliminarActividad =
+          "El motivo de la eliminación no puede superar los 200 caracteres.";
+        return;
+      }
+
+      this.eliminandoActividad = true;
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
+      if (this.controladorEliminacion) this.controladorEliminacion.abort();
+      this.controladorEliminacion = new AbortController();
+
+      try {
+        await actividadService.eliminarConDecisiones(
+          this.idProyecto,
+          this.idActividad,
+          { motivo: motivoFinal, decisiones: decisionesFinal },
+          this.controladorEliminacion.signal
+        );
+
+        const eliminados = decisionesFinal.filter(
+          (decision) => decision?.accion === "ELIMINAR"
+        ).length;
+
+        this.cerrarModalEliminar();
+        this.toast.init({
+          title: "Actividad eliminada",
+          message: mensajeExitoEliminarActividad({
+            nombreActividad,
+            eliminados,
+          }),
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.$router.push({
+          name: "dashboard-proyecto",
+          params: { id: this.idProyecto },
+          query: { tab: "planificacion" },
+        });
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        await this.manejarErrorEliminarActividad(error, decisionesFinal);
+      } finally {
+        this.eliminandoActividad = false;
+      }
+    },
+    async manejarErrorEliminarActividad(error, decisiones = []) {
+      const resultado = clasificarErrorEliminarActividad(error, {
+        decisiones,
+      });
+
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.SESION ||
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.CUENTA
+      ) {
+        this.errorEliminarActividad = resultado.mensaje;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.MOTIVO) {
+        this.errorMotivoEliminarActividad = resultado.mensaje;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.DECISIONES) {
+        this.errorEliminarActividad = resultado.mensaje;
+        this.erroresMiembroEliminarActividad = {};
+        this.tokenRefrescoExclusivos += 1;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.MOTIVO_BAJA) {
+        this.erroresMiembroEliminarActividad = {
+          ...(resultado.erroresPorMiembro || {}),
+        };
+        if (resultado.mensajeCampo) {
+          this.errorMotivoEliminarActividad = resultado.mensajeCampo;
+        }
+        if (
+          Object.keys(this.erroresMiembroEliminarActividad).length === 0 &&
+          !resultado.mensajeCampo
+        ) {
+          this.errorEliminarActividad = resultado.mensaje;
+        }
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.FALLBACK_MOTIVO) {
+        const errores = {};
+        for (const id of idsEliminarSinMotivo(decisiones)) {
+          errores[String(id)] =
+            "Ingresá un motivo de baja de hasta 100 caracteres: el motivo de la actividad supera ese límite.";
+        }
+        this.erroresMiembroEliminarActividad = errores;
+        if (Object.keys(errores).length === 0) {
+          this.errorEliminarActividad = resultado.mensaje;
+        }
+        return;
+      }
+
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.EN_CURSO_CONFIRMADO
+      ) {
+        this.errorEliminarActividad = resultado.mensaje;
+        this.conflictoEliminarActividadEnCurso = true;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.NO_ELIMINABLE) {
+        this.errorEliminarActividad = resultado.mensaje;
+        this.tokenRefrescoExclusivos += 1;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERMISO) {
+        this.cerrarModalEliminar();
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message:
+            resultado.mensaje ||
+            "No tenés permiso para eliminar esta actividad.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERFIL_ACTIVO) {
+        this.cerrarModalEliminar();
+        this.mensajeError =
+          resultado.mensaje ||
+          "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERFIL_NO_ENCONTRADO
+      ) {
+        this.cerrarModalEliminar();
+        await refrescarSesion();
+        this.mensajeError =
+          "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.NO_ENCONTRADO ||
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.ESTADO
+      ) {
+        this.cerrarModalEliminar();
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: resultado.mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      this.errorEliminarActividad =
+        resultado.mensaje ||
+        "Ocurrió un error al eliminar la actividad. Inténtalo nuevamente.";
+    },
+    irActividadDesdeEliminacion() {
+      const idActividad = this.idActividad;
+      this.cerrarModalEliminar();
+      this.$router.push({
+        name: "modificar-actividad",
+        params: { id: this.idProyecto, idActividad },
+      });
+    },
+    volverAPlanificacion() {
+      this.cerrarModalEliminar();
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: this.idProyecto },
+        query: { tab: "planificacion" },
+      });
+    },
     volverAlProyecto() {
       this.$router.push({
         name: "dashboard-proyecto",
@@ -788,6 +1099,12 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.88rem;
   line-height: 1.5;
+}
+
+.actividad-detalle__acciones-cabecera {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.75rem;
 }
 
 .actividad-detalle__meta {

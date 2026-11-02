@@ -261,11 +261,21 @@
 
         <ModalEliminarActividad
           :model-value="modalEliminarActividadVisible"
+          :id-proyecto="idProyecto"
           :actividad="actividadEliminar"
+          :nombre-proyecto="proyecto?.nombre || ''"
           :eliminando="eliminandoActividad"
           :error="errorEliminarActividad"
+          :error-motivo="errorMotivoEliminarActividad"
+          :errores-por-miembro="erroresMiembroEliminarActividad"
+          :conflicto-en-curso="conflictoEliminarActividadEnCurso"
+          :puede-ir-actividad="puedeIrActividadEliminacion"
+          :token-refresco-exclusivos="tokenRefrescoExclusivos"
           @update:modelValue="onCambioVisibilidadEliminar"
-          @limpiar-error="errorEliminarActividad = ''"
+          @limpiar-error="limpiarErroresEliminarActividad"
+          @limpiar-errores-filas="erroresMiembroEliminarActividad = {}"
+          @ir-actividad="irActividadDesdeEliminacion"
+          @recargar="refrescarTrasEliminar"
           @confirmar="confirmarEliminarActividad"
         />
 
@@ -392,6 +402,12 @@ import {
   TIPOS_ERROR_ELIMINAR_INTEGRANTE,
   clasificarErrorEliminarIntegrante,
 } from "../../utils/integranteConstants.js";
+import {
+  TIPOS_ERROR_ELIMINAR_ACTIVIDAD,
+  clasificarErrorEliminarActividad,
+  idsEliminarSinMotivo,
+  mensajeExitoEliminarActividad,
+} from "../../utils/eliminacionActividadConstants.js";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
@@ -426,7 +442,6 @@ let controladorPublicacion = null;
 let controladorCancelacion = null;
 let controladorEliminarIntegrante = null;
 let controladorEliminacion = null;
-let controladorDetalleEliminacion = null;
 let controladorAsignacion = null;
 let controladorPostulacion = null;
 let controladorConfirmacion = null;
@@ -510,7 +525,10 @@ data() {
       actividadEliminar: {},
       eliminandoActividad: false,
       errorEliminarActividad: "",
-      idCargaDetalleEliminacion: 0,
+      errorMotivoEliminarActividad: "",
+      erroresMiembroEliminarActividad: {},
+      conflictoEliminarActividadEnCurso: false,
+      tokenRefrescoExclusivos: 0,
       modalAsignarVisible: false,
       actividadAsignar: null,
       perfilesAsignadosActividad: [],
@@ -543,6 +561,10 @@ data() {
     },
     puedeEditar() {
       return this.permisos.includes("MODIFICAR_PROYECTO");
+    },
+    /** CTA de UC-51: cancelar la actividad requiere poder modificarla. */
+    puedeIrActividadEliminacion() {
+      return this.permisos.includes("MODIFICAR_ACTIVIDAD");
     },
     estadoModificable() {
       const estado = normalizarEstadoProyecto(this.proyecto?.estado);
@@ -655,11 +677,9 @@ data() {
       this.actividadEliminar = {};
       this.eliminandoActividad = false;
       this.errorEliminarActividad = "";
-      this.idCargaDetalleEliminacion++;
-      if (controladorDetalleEliminacion) {
-        controladorDetalleEliminacion.abort();
-        controladorDetalleEliminacion = null;
-      }
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
       if (controladorEliminacion) {
         controladorEliminacion.abort();
         controladorEliminacion = null;
@@ -2194,76 +2214,17 @@ data() {
       const idActividad = actividad?.idActividad;
       if (!idProyecto || !idActividad) return;
 
-      // El listado de Planificación no incluye `idProyecto` ni el detalle.
-      // Abrimos el modal de inmediato con los datos disponibles y usamos el
-      // proyecto de la ruta como fuente de verdad.
+      // UC-51: el modal carga los integrantes exclusivos. No se pide el detalle
+      // de la actividad (dependía de MODIFICAR_ACTIVIDAD y ya no es necesario).
       this.actividadEliminar = {
         ...actividad,
         idProyecto,
-        requerimientos: Array.isArray(actividad.requerimientos)
-          ? actividad.requerimientos
-          : [],
-        profesionalesAsignados: Array.isArray(actividad.profesionalesAsignados)
-          ? actividad.profesionalesAsignados
-          : [],
       };
       this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
       this.modalEliminarActividadVisible = true;
-
-      // Cancelar cualquier detalle previo antes de abrir otro modal.
-      const corrida = ++this.idCargaDetalleEliminacion;
-      if (controladorDetalleEliminacion) {
-        controladorDetalleEliminacion.abort();
-        controladorDetalleEliminacion = null;
-      }
-
-      // El detalle es complementario (profesionales asignados, etc.): si falla
-      // el modal sigue siendo utilizable con los datos del listado. Sólo se pide
-      // cuando el perfil puede leerlo (GET exige MODIFICAR_ACTIVIDAD).
-      if (!this.permisos.includes("MODIFICAR_ACTIVIDAD")) return;
-
-      controladorDetalleEliminacion = new AbortController();
-
-      try {
-        const response = await actividadService.obtener(
-          idProyecto,
-          idActividad,
-          controladorDetalleEliminacion.signal
-        );
-        if (corrida !== this.idCargaDetalleEliminacion) return;
-        if (String(this.actividadEliminar?.idActividad) !== String(idActividad)) {
-          return;
-        }
-
-        const detalle = response?.data;
-        if (!detalle || typeof detalle !== "object") return;
-        if (
-          detalle.idActividad != null &&
-          String(detalle.idActividad) !== String(idActividad)
-        ) {
-          return;
-        }
-
-        this.actividadEliminar = {
-          ...this.actividadEliminar,
-          ...detalle,
-          idProyecto,
-          requerimientos: Array.isArray(detalle.requerimientos)
-            ? detalle.requerimientos
-            : this.actividadEliminar.requerimientos,
-          profesionalesAsignados: Array.isArray(detalle.profesionalesAsignados)
-            ? detalle.profesionalesAsignados
-            : this.actividadEliminar.profesionalesAsignados,
-        };
-      } catch (error) {
-        if (
-          error?.code === "ERR_CANCELED" ||
-          error?.name === "CanceledError"
-        ) {
-          return;
-        }
-        // Silencioso: el detalle no es necesario para confirmar la eliminación.
-      }
     },
     onCambioVisibilidadEliminar(valor) {
       if (this.eliminandoActividad && !valor) return;
@@ -2274,22 +2235,48 @@ data() {
       this.cerrarModalEliminarActividad();
     },
     cerrarModalEliminarActividad() {
+      const refrescar = this.conflictoEliminarActividadEnCurso;
       this.modalEliminarActividadVisible = false;
       this.errorEliminarActividad = "";
-      this.idCargaDetalleEliminacion += 1;
-      if (controladorDetalleEliminacion) {
-        controladorDetalleEliminacion.abort();
-        controladorDetalleEliminacion = null;
-      }
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
       this.actividadEliminar = {};
+      if (controladorEliminacion) {
+        controladorEliminacion.abort();
+        controladorEliminacion = null;
+      }
+      // El 409 de EN_CURSO no cambia datos, pero la ficha pide refrescar al
+      // salir para no dejar estado viejo en la planificación.
+      if (refrescar) this.refrescarTrasEliminar();
     },
-    async confirmarEliminarActividad({ idActividad, motivo } = {}) {
+    limpiarErroresEliminarActividad() {
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+    },
+    refrescarTrasEliminar() {
+      this.cargar();
+      this.$nextTick(() => {
+        this.tokenRefrescoPlanificacion += 1;
+      });
+    },
+    irActividadDesdeEliminacion() {
+      const idActividad = this.actividadEliminar?.idActividad;
+      this.cerrarModalEliminarActividad();
+      if (!idActividad) return;
+      this.$router.push({
+        name: "modificar-actividad",
+        params: { id: this.idProyecto, idActividad },
+      });
+    },
+    async confirmarEliminarActividad({ motivo, decisiones } = {}) {
       if (this.eliminandoActividad) return;
 
-      // El id del proyecto sale de la ruta (el item del listado no lo trae).
       const idProyecto = this.idProyecto;
-      const idActividadFinal = idActividad ?? this.actividadEliminar?.idActividad;
+      const idActividadFinal = this.actividadEliminar?.idActividad;
+      const nombreActividad = this.actividadEliminar?.nombre || "";
       const motivoFinal = String(motivo ?? "").trim();
+      const decisionesFinal = Array.isArray(decisiones) ? decisiones : [];
 
       if (!idProyecto || !idActividadFinal) {
         this.errorEliminarActividad =
@@ -2297,137 +2284,130 @@ data() {
         return;
       }
       if (!motivoFinal) {
-        this.errorEliminarActividad = "El motivo de la eliminación es obligatorio.";
+        this.errorMotivoEliminarActividad =
+          "El motivo de la eliminación es obligatorio.";
         return;
       }
       if (motivoFinal.length > 200) {
-        this.errorEliminarActividad =
+        this.errorMotivoEliminarActividad =
           "El motivo de la eliminación no puede superar los 200 caracteres.";
         return;
       }
 
       this.eliminandoActividad = true;
       this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
       if (controladorEliminacion) controladorEliminacion.abort();
       controladorEliminacion = new AbortController();
 
       try {
-        await actividadService.eliminar(
+        await actividadService.eliminarConDecisiones(
           idProyecto,
           idActividadFinal,
-          motivoFinal,
+          { motivo: motivoFinal, decisiones: decisionesFinal },
           controladorEliminacion.signal
         );
-        // Refrescar la planificación y el proyecto
+
+        const eliminados = decisionesFinal.filter(
+          (decision) => decision?.accion === "ELIMINAR"
+        ).length;
+
         await this.cargar();
         await this.$nextTick(() => {
-          this.tokenRefrescoPlanificacion++;
+          this.tokenRefrescoPlanificacion += 1;
         });
+        if (eliminados > 0) {
+          this.tokenRefrescoIntegrantes += 1;
+        }
+
         this.cerrarModalEliminarActividad();
         this.toast.init({
           title: "Actividad eliminada",
-          message: "La actividad fue eliminada correctamente y el cronograma se recalculó.",
+          message: mensajeExitoEliminarActividad({
+            nombreActividad,
+            eliminados,
+          }),
           color: "success",
           position: "top-right",
-          duration: 5000,
+          duration: 6000,
         });
       } catch (error) {
-        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
-        await this.manejarErrorEliminarActividad(error);
+        if (
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+        await this.manejarErrorEliminarActividad(error, decisionesFinal);
       } finally {
         this.eliminandoActividad = false;
       }
     },
-    async manejarErrorEliminarActividad(error) {
-      const status = error?.response?.status;
-      const data = error?.response?.data;
-      const mensaje = data?.message || "";
-      const clasificacion = clasificarErrorProyecto(error);
+    async manejarErrorEliminarActividad(error, decisiones = []) {
+      const resultado = clasificarErrorEliminarActividad(error, {
+        decisiones,
+      });
 
-      if (status === 400) {
-        this.errorEliminarActividad =
-          mensaje ||
-          data?.motivo ||
-          "No se pudo eliminar la actividad: el motivo es obligatorio o no es válido.";
-        // El modal se mantiene abierto para que el usuario corrija el motivo.
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.SESION ||
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.CUENTA
+      ) {
+        this.errorEliminarActividad = resultado.mensaje;
         return;
       }
 
-      if (status === 401) {
-        this.errorEliminarActividad = mensajeErrorApi(
-          error,
-          "Tu cuenta no se encuentra activa."
-        );
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.MOTIVO) {
+        this.errorMotivoEliminarActividad = resultado.mensaje;
         return;
       }
 
-      if (status === 403) {
-        this.cerrarModalEliminarActividad();
-        this.toast.init({
-          title: "No se pudo eliminar",
-          message: mensajeErrorApi(
-            error,
-            "No tenés permiso para eliminar esta actividad."
-          ),
-          color: "danger",
-          position: "top-right",
-          duration: 6000,
-        });
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.DECISIONES) {
+        this.errorEliminarActividad = resultado.mensaje;
+        this.erroresMiembroEliminarActividad = {};
+        // El backend devuelve un único error: recargar la lista para que el
+        // usuario vuelva a decidir sobre el estado actual.
+        this.tokenRefrescoExclusivos += 1;
         return;
       }
 
-      if (status === 404) {
-        if (clasificacion?.tipo === "perfil-activo") {
-          this.cerrarModalEliminarActividad();
-          this.mensajeError =
-            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
-          this.$router.push({ name: "dashboard-usuario" });
-          return;
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.MOTIVO_BAJA) {
+        this.erroresMiembroEliminarActividad = {
+          ...(resultado.erroresPorMiembro || {}),
+        };
+        if (resultado.mensajeCampo) {
+          this.errorMotivoEliminarActividad = resultado.mensajeCampo;
         }
-        if (clasificacion?.tipo === "perfil-no-encontrado") {
-          this.cerrarModalEliminarActividad();
-          await refrescarSesion();
-          this.mensajeError =
-            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
-          this.$router.push({ name: "dashboard-usuario" });
-          return;
+        if (
+          Object.keys(this.erroresMiembroEliminarActividad).length === 0 &&
+          !resultado.mensajeCampo
+        ) {
+          this.errorEliminarActividad = resultado.mensaje;
         }
-        if (/proyecto/i.test(mensaje)) {
-          this.cerrarModalEliminarActividad();
-          this.proyecto = null;
-          this.estadoNoEncontrado = true;
-          this.mensajeError = mensaje;
-          this.mostrarVolver = true;
-          return;
-        }
-        // Actividad o planificación inexistente: cerrar y refrescar el listado.
-        this.cerrarModalEliminarActividad();
-        this.toast.init({
-          title: "No se pudo eliminar",
-          message: mensajeErrorApi(
-            error,
-            "La actividad ya no existe o no está disponible."
-          ),
-          color: "danger",
-          position: "top-right",
-          duration: 6000,
-        });
-        await this.cargar();
-        await this.$nextTick(() => {
-          this.tokenRefrescoPlanificacion += 1;
-        });
         return;
       }
 
-      if (status === 409) {
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.FALLBACK_MOTIVO) {
+        const errores = {};
+        for (const id of idsEliminarSinMotivo(decisiones)) {
+          errores[String(id)] =
+            "Ingresá un motivo de baja de hasta 100 caracteres: el motivo de la actividad supera ese límite.";
+        }
+        this.erroresMiembroEliminarActividad = errores;
+        if (Object.keys(errores).length === 0) {
+          this.errorEliminarActividad = resultado.mensaje;
+        }
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERMISO) {
         this.cerrarModalEliminarActividad();
         this.toast.init({
           title: "No se pudo eliminar",
           message:
-            mensaje ||
-            (clasificacion?.tipo === "estado-no-cancelable"
-              ? "La actividad no se puede eliminar (estado FINALIZADA o CANCELADA)."
-              : "El proyecto no admite la operación."),
+            resultado.mensaje ||
+            "No tenés permiso para eliminar esta actividad.",
           color: "danger",
           position: "top-right",
           duration: 6000,
@@ -2439,17 +2419,85 @@ data() {
         return;
       }
 
-      if (!status || status >= 500) {
-        this.errorEliminarActividad =
-          "Ocurrió un error al eliminar la actividad. Inténtalo nuevamente.";
-        // Mantener el modal abierto ante errores de red/servidor.
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERFIL_ACTIVO) {
+        this.cerrarModalEliminarActividad();
+        this.mensajeError =
+          resultado.mensaje ||
+          "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+        this.$router.push({ name: "dashboard-usuario" });
         return;
       }
 
-      this.errorEliminarActividad = mensajeErrorApi(
-        error,
-        "No se pudo eliminar la actividad."
-      );
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERFIL_NO_ENCONTRADO
+      ) {
+        this.cerrarModalEliminarActividad();
+        await refrescarSesion();
+        this.mensajeError =
+          "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.NO_ENCONTRADO) {
+        if (/proyecto/i.test(resultado.mensaje || "")) {
+          this.cerrarModalEliminarActividad();
+          this.proyecto = null;
+          this.estadoNoEncontrado = true;
+          this.mensajeError = resultado.mensaje;
+          this.mostrarVolver = true;
+          return;
+        }
+        this.cerrarModalEliminarActividad();
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: resultado.mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.ESTADO) {
+        this.cerrarModalEliminarActividad();
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: resultado.mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.EN_CURSO_CONFIRMADO
+      ) {
+        // Mantener el modal abierto: el CTA "Ir a la actividad" permite
+        // cancelarla primero desde Modificar actividad.
+        this.errorEliminarActividad = resultado.mensaje;
+        this.conflictoEliminarActividadEnCurso = true;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.NO_ELIMINABLE) {
+        this.errorEliminarActividad = resultado.mensaje;
+        this.tokenRefrescoExclusivos += 1;
+        return;
+      }
+
+      this.errorEliminarActividad =
+        resultado.mensaje ||
+        "Ocurrió un error al eliminar la actividad. Inténtalo nuevamente.";
     },
   },
   beforeUnmount() {
@@ -2457,7 +2505,6 @@ data() {
     if (controladorPublicacion) controladorPublicacion.abort();
     if (controladorCancelacion) controladorCancelacion.abort();
     if (controladorEliminacion) controladorEliminacion.abort();
-    if (controladorDetalleEliminacion) controladorDetalleEliminacion.abort();
     if (controladorAsignacion) controladorAsignacion.abort();
     if (controladorPostulacion) controladorPostulacion.abort();
     if (controladorConfirmacion) controladorConfirmacion.abort();
