@@ -1,4 +1,5 @@
 import { esCuentaNoActiva, esSesionExpirada } from "./apiError.js";
+import { etiquetaRolProyecto } from "./proyectoConstants.js";
 
 /*
  * Reglas de presentación y errores de UC-38
@@ -12,12 +13,24 @@ export const LIMITE_MOTIVO_BAJA = 100;
 
 export const MOTIVOS_NO_ELIMINABLE = {
   SIN_PERMISO:
-    "No tenés permiso para eliminar integrantes en este proyecto.",
+    "No tenés permiso para eliminar miembros en este proyecto.",
   PROYECTO_NO_PERMITE_BAJA:
-    "El proyecto no está en un estado que permita dar de baja integrantes.",
+    "El proyecto no está en un estado que permita dar de baja miembros.",
   AUTOELIMINACION: "No podés eliminarte a vos mismo del proyecto.",
   ULTIMO_DIRECTOR: "El proyecto debe conservar al menos un director activo.",
 };
+
+/*
+ * Paleta de avatares del listado de miembros (mockup "Miembros - *").
+ * Tonos fijos con inicial blanca: funcionan igual en tema claro y oscuro.
+ */
+export const COLORES_AVATAR_MIEMBRO = [
+  "#7B5A6E",
+  "#4F6D7A",
+  "#56694A",
+  "#7A5C3E",
+  "#5C5A8A",
+];
 
 /**
  * Texto para el tooltip de una acción deshabilitada. Si el backend agrega un
@@ -69,6 +82,52 @@ export function inicialesMiembro(miembro) {
   ).trim();
   const partes = base.split(/\s+/).filter(Boolean).slice(0, 2);
   return partes.map((parte) => parte[0]).join("").toUpperCase() || "?";
+}
+
+/**
+ * Color determinista del avatar según el perfil, para que cada miembro
+ * conserve siempre el mismo tono entre recargas.
+ * @param {number|string|null|undefined} idPerfil
+ * @returns {string} color hex
+ */
+export function colorAvatarMiembro(idPerfil) {
+  const clave = String(idPerfil ?? "");
+  let hash = 0;
+  for (let i = 0; i < clave.length; i += 1) {
+    hash = (hash * 31 + clave.charCodeAt(i)) % 100000;
+  }
+  return COLORES_AVATAR_MIEMBRO[hash % COLORES_AVATAR_MIEMBRO.length];
+}
+
+/**
+ * `true` si la fila corresponde al perfil activo de la sesión (chip "Vos").
+ * @param {object|null|undefined} miembro
+ * @param {number|string|null|undefined} idPerfilActivo
+ * @returns {boolean}
+ */
+export function esPerfilActivoDelMiembro(miembro, idPerfilActivo) {
+  if (miembro?.idPerfil == null || idPerfilActivo == null) return false;
+  return String(miembro.idPerfil) === String(idPerfilActivo);
+}
+
+/**
+ * Rol del miembro dentro del proyecto, en formato legible
+ * ("DIRECTOR" → "Director", "MIEMBRO" → "Miembro").
+ * @param {object|null|undefined} miembro
+ * @returns {string}
+ */
+export function textoRolMiembro(miembro) {
+  const rol = miembro?.rol;
+  return rol ? etiquetaRolProyecto(rol) : "Miembro";
+}
+
+/**
+ * "Ver perfil" sólo necesita el id del perfil: si no llega, se oculta.
+ * @param {object|null|undefined} miembro
+ * @returns {boolean}
+ */
+export function puedeVerPerfilMiembro(miembro) {
+  return miembro?.idPerfil != null;
 }
 
 export const TIPOS_ERROR_ELIMINAR_INTEGRANTE = {
@@ -137,7 +196,7 @@ export function clasificarErrorEliminarIntegrante(error) {
       tipo: TIPOS_ERROR_ELIMINAR_INTEGRANTE.PERMISO,
       mensaje:
         mensaje ||
-        "No tenés permiso para eliminar este integrante o no sos miembro activo.",
+        "No tenés permiso para eliminar este miembro o no sos miembro activo.",
       mensajeCampo: "",
     };
   }
@@ -206,7 +265,7 @@ export function clasificarErrorEliminarIntegrante(error) {
         tipo: TIPOS_ERROR_ELIMINAR_INTEGRANTE.MIEMBRO_INACTIVO,
         mensaje:
           mensaje ||
-          "El integrante ya no tiene una participación activa en el proyecto.",
+          "El miembro ya no tiene una participación activa en el proyecto.",
         mensajeCampo: "",
       };
     }
@@ -215,7 +274,7 @@ export function clasificarErrorEliminarIntegrante(error) {
         tipo: TIPOS_ERROR_ELIMINAR_INTEGRANTE.ESTADO_PROYECTO,
         mensaje:
           mensaje ||
-          "El proyecto no se encuentra en un estado que permita dar de baja integrantes.",
+          "El proyecto no se encuentra en un estado que permita dar de baja miembros.",
         mensajeCampo: "",
       };
     }
@@ -230,7 +289,7 @@ export function clasificarErrorEliminarIntegrante(error) {
     tipo: TIPOS_ERROR_ELIMINAR_INTEGRANTE.DESCONOCIDO,
     mensaje:
       mensaje ||
-      "Ocurrió un error al eliminar al integrante. Inténtalo nuevamente.",
+      "Ocurrió un error al eliminar al miembro. Inténtalo nuevamente.",
     mensajeCampo: "",
   };
 }

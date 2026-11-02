@@ -10,7 +10,7 @@
   >
     <template #header>
       <h3 class="va-h5 eliminar-integrante-modal__titulo">
-        Eliminar integrante
+        Eliminar miembro
       </h3>
     </template>
 
@@ -41,7 +41,7 @@
       <VaTextarea
         v-model="motivo"
         label="Motivo de la eliminación"
-        placeholder="Contanos por qué eliminás a este integrante..."
+        placeholder="Contanos por qué eliminás a este miembro..."
         :max-length="LIMITE_MOTIVO_BAJA"
         counter
         :rows="3"
@@ -63,7 +63,7 @@
           :aria-busy="eliminando ? 'true' : 'false'"
           @click="confirmar"
         >
-          Eliminar integrante
+          Eliminar miembro
         </VaButton>
       </div>
     </template>
@@ -119,7 +119,7 @@ export default {
       return (
         this.miembro?.nombreArtistico ||
         this.miembro?.nombreUsuario ||
-        "este integrante"
+        "este miembro"
       );
     },
     puedeConfirmar() {

@@ -1,77 +1,99 @@
 <template>
-  <section class="integrantes-proyecto">
-    <header class="integrantes-proyecto__cabecera">
-      <div>
-        <h2 class="integrantes-proyecto__titulo">Integrantes</h2>
-        <p v-if="!cargando" class="integrantes-proyecto__subtitulo">
-          {{ resumenCantidad }}
-        </p>
-      </div>
+  <section class="miembros-proyecto">
+    <header class="miembros-proyecto__cabecera">
+      <h2 class="miembros-proyecto__titulo">
+        Miembros
+        <span v-if="!cargando && !error" class="miembros-proyecto__contador">
+          · {{ miembros.length }}
+        </span>
+      </h2>
 
-      <VaButton
-        preset="secondary"
-        size="small"
-        icon="mso-refresh"
-        :disabled="cargando"
-        @click="refrescar"
+      <span
+        v-if="puedeInvitar"
+        class="miembros-proyecto__tooltip"
+        title="Próximamente: la invitación de miembros estará disponible en una próxima versión."
       >
-        Actualizar
-      </VaButton>
+        <VaButton preset="primary" size="small" disabled>
+          Invitar miembro
+        </VaButton>
+      </span>
     </header>
 
     <BaseAlert v-if="error" :message="error" type="error" />
 
-    <div v-if="error && puedeReintentar" class="integrantes-proyecto__reintento">
+    <div v-if="error && puedeReintentar" class="miembros-proyecto__reintento">
       <VaButton preset="primary" size="small" @click="refrescar">
         Reintentar
       </VaButton>
     </div>
 
-    <p v-if="cargando && !miembros.length" class="integrantes-proyecto__nota">
-      Cargando integrantes...
+    <p v-if="cargando && !miembros.length" class="miembros-proyecto__nota">
+      Cargando miembros...
     </p>
 
     <p
       v-else-if="!error && !miembros.length"
-      class="integrantes-proyecto__vacio"
+      class="miembros-proyecto__vacio"
     >
-      Este proyecto todavía no tiene integrantes activos.
+      Este proyecto todavía no tiene miembros activos.
     </p>
 
-    <ul v-else-if="!error" class="integrantes-proyecto__lista">
+    <ul
+      v-else-if="!error"
+      class="miembros-proyecto__lista"
+      aria-label="Miembros activos del proyecto"
+    >
       <li
         v-for="miembro in miembros"
         :key="claveMiembro(miembro)"
-        class="integrante-card"
+        class="miembro-fila"
       >
-        <span class="integrante-card__avatar" aria-hidden="true">
+        <span
+          class="miembro-fila__avatar"
+          :style="{ background: colorAvatar(miembro) }"
+          aria-hidden="true"
+        >
           {{ inicialesMiembro(miembro) }}
         </span>
 
-        <div class="integrante-card__datos">
-          <p class="integrante-card__nombre">
-            {{ miembro.nombreArtistico || "Perfil" }}
-          </p>
-
-          <p class="integrante-card__secundario">
-            {{ nombreCompletoMiembro(miembro) || `Usuario #${miembro.idUsuario}` }}
-            <template v-if="miembro.nombreProfesion">
-              · {{ miembro.nombreProfesion }}
-            </template>
-          </p>
-
-          <div class="integrante-card__chips">
-            <span class="integrante-card__chip">
-              {{ etiquetaRolProyecto(miembro.rol) || "Miembro" }}
+        <div class="miembro-fila__datos">
+          <p
+            class="miembro-fila__nombre"
+            :title="nombreCompletoMiembro(miembro) || undefined"
+          >
+            <span class="miembro-fila__nombre-texto">
+              {{ nombreArtisticoMiembro(miembro) }}
             </span>
-          </div>
+            <span v-if="esVos(miembro)" class="miembro-fila__vos">Vos</span>
+          </p>
+
+          <p class="miembro-fila__rol">{{ textoRolMiembro(miembro) }}</p>
         </div>
 
-        <div class="integrante-card__accion">
+        <span
+          class="miembro-fila__chip"
+          :title="miembro.nombreProfesion || undefined"
+        >
+          {{ miembro.nombreProfesion || "Sin profesión" }}
+        </span>
+
+        <div class="miembro-fila__acciones">
+          <VaButton
+            v-if="puedeVerPerfilMiembro(miembro)"
+            preset="secondary"
+            size="small"
+            :aria-label="`Ver perfil de ${nombreArtisticoMiembro(miembro)}`"
+            @click="verPerfil(miembro)"
+          >
+            Ver perfil
+          </VaButton>
+
           <VaButton
             v-if="estadoAccion(miembro) === 'habilitada'"
+            preset="secondary"
             color="danger"
             size="small"
+            :aria-label="`Eliminar a ${nombreArtisticoMiembro(miembro)} del proyecto`"
             @click="$emit('eliminar', miembro)"
           >
             Eliminar
@@ -79,10 +101,10 @@
 
           <span
             v-else-if="estadoAccion(miembro) === 'deshabilitada'"
-            class="integrante-card__tooltip"
+            class="miembro-fila__tooltip"
             :title="textoMotivoNoEliminable(miembro.motivoNoEliminable)"
           >
-            <VaButton color="danger" size="small" disabled>
+            <VaButton preset="secondary" color="danger" size="small" disabled>
               Eliminar
             </VaButton>
           </span>
@@ -97,18 +119,22 @@ import BaseAlert from "../AlertaBase.vue";
 import proyectoService from "../../services/proyectoService.js";
 import { refrescarSesion } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
-import { etiquetaRolProyecto } from "../../utils/proyectoConstants.js";
 import {
+  colorAvatarMiembro,
+  esPerfilActivoDelMiembro,
   estadoAccionIntegrante,
   inicialesMiembro,
   nombreCompletoMiembro,
+  puedeVerPerfilMiembro,
   textoMotivoNoEliminable,
+  textoRolMiembro,
 } from "../../utils/integranteConstants.js";
 
 /*
- * Listado de integrantes activos del proyecto (UC-38).
+ * Listado de miembros activos del proyecto (UC-38).
  * La acción de eliminar se decide exclusivamente con `eliminable` y
  * `motivoNoEliminable`; acá no se recalculan permisos ni reglas de negocio.
+ * "Invitar miembro" queda deshabilitado hasta que exista UC-31.
  */
 export default {
   name: "IntegrantesProyecto",
@@ -123,6 +149,16 @@ export default {
       type: Number,
       default: 0,
     },
+    /** Permiso `INVITAR_MIEMBRO` del rol en el proyecto. */
+    puedeInvitar: {
+      type: Boolean,
+      default: false,
+    },
+    /** Habilita el chip "Vos" en la fila del perfil activo. */
+    idPerfilActivo: {
+      type: [Number, String],
+      default: null,
+    },
   },
   emits: ["eliminar"],
   data() {
@@ -133,13 +169,6 @@ export default {
       puedeReintentar: false,
       idCarga: 0,
     };
-  },
-  computed: {
-    resumenCantidad() {
-      const total = this.miembros.length;
-      if (total === 1) return "1 integrante activo";
-      return `${total} integrantes activos`;
-    },
   },
   watch: {
     idProyecto() {
@@ -159,15 +188,33 @@ export default {
     this.abortar();
   },
   methods: {
-    etiquetaRolProyecto,
+    colorAvatarMiembro,
     inicialesMiembro,
     nombreCompletoMiembro,
+    puedeVerPerfilMiembro,
     textoMotivoNoEliminable,
+    textoRolMiembro,
     estadoAccion(miembro) {
       return estadoAccionIntegrante(miembro);
     },
+    esVos(miembro) {
+      return esPerfilActivoDelMiembro(miembro, this.idPerfilActivo);
+    },
+    colorAvatar(miembro) {
+      return colorAvatarMiembro(miembro?.idPerfil);
+    },
+    nombreArtisticoMiembro(miembro) {
+      return miembro?.nombreArtistico || "Perfil";
+    },
     claveMiembro(miembro) {
       return `${miembro.idMiembro ?? "miembro"}-${miembro.idPerfil ?? "perfil"}`;
+    },
+    verPerfil(miembro) {
+      if (!puedeVerPerfilMiembro(miembro)) return;
+      this.$router.push({
+        name: "ver-perfil",
+        params: { id: miembro.idPerfil },
+      });
     },
     refrescar() {
       this.cargar();
@@ -227,7 +274,7 @@ export default {
       if (status === 403) {
         this.error =
           mensaje ||
-          "No tenés permiso para ver los integrantes de este proyecto.";
+          "No tenés permiso para ver los miembros de este proyecto.";
         return;
       }
 
@@ -245,13 +292,13 @@ export default {
       if (!status || status >= 500) {
         this.puedeReintentar = true;
         this.error =
-          "Ocurrió un error al cargar los integrantes. Inténtalo nuevamente.";
+          "Ocurrió un error al cargar los miembros. Inténtalo nuevamente.";
         return;
       }
 
       this.error = mensajeErrorApi(
         error,
-        "No se pudieron cargar los integrantes del proyecto."
+        "No se pudieron cargar los miembros del proyecto."
       );
     },
     abortar() {
@@ -272,126 +319,173 @@ export default {
 </script>
 
 <style scoped>
-.integrantes-proyecto {
+.miembros-proyecto {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
-  padding: 1.35rem 1.5rem;
+  gap: 0.35rem;
+  padding: 1.15rem 1.5rem 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
-.integrantes-proyecto__cabecera {
+.miembros-proyecto__cabecera {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding-bottom: 0.9rem;
 }
 
-.integrantes-proyecto__titulo {
+.miembros-proyecto__titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
   margin: 0;
   color: var(--color-text);
   font-size: 1.05rem;
   font-weight: 700;
 }
 
-.integrantes-proyecto__subtitulo {
-  margin: 0.2rem 0 0;
+.miembros-proyecto__contador {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
-.integrantes-proyecto__nota,
-.integrantes-proyecto__vacio {
+.miembros-proyecto__tooltip {
+  display: inline-flex;
+}
+
+.miembros-proyecto__nota,
+.miembros-proyecto__vacio {
   margin: 0;
+  padding-bottom: 1.1rem;
   color: var(--color-text-muted);
   font-size: 0.86rem;
 }
 
-.integrantes-proyecto__reintento {
+.miembros-proyecto__reintento {
   display: flex;
   justify-content: flex-start;
+  padding-bottom: 0.9rem;
 }
 
-.integrantes-proyecto__lista {
+.miembros-proyecto__lista {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  margin: 0;
-  padding: 0;
+  margin: 0 -1.5rem;
+  padding: 0 0 0.35rem;
   list-style: none;
 }
 
-.integrante-card {
+.miembro-fila {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  padding: 0.8rem 0.9rem;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface-soft);
+  gap: 0.9rem;
+  padding: 0.85rem 1.5rem;
+  border-top: 1px solid var(--color-border-soft);
 }
 
-.integrante-card__avatar {
+.miembro-fila__avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--color-info-soft, #eef2ff);
-  color: var(--color-primary, #3730a3);
-  font-size: 0.78rem;
+  color: #fff;
+  font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
-.integrante-card__datos {
+.miembro-fila__datos {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.integrante-card__nombre {
+.miembro-fila__nombre {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0;
   color: var(--color-text);
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   font-weight: 700;
   line-height: 1.3;
 }
 
-.integrante-card__secundario {
-  margin: 0.12rem 0 0;
+.miembro-fila__nombre-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.miembro-fila__vos {
+  flex: 0 0 auto;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.miembro-fila__rol {
+  margin: 0.15rem 0 0;
   color: var(--color-text-muted);
   font-size: 0.8rem;
   line-height: 1.35;
 }
 
-.integrante-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-top: 0.35rem;
-}
-
-.integrante-card__chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.1rem 0.45rem;
-  border: 1px solid var(--color-border);
+.miembro-fila__chip {
+  flex: 0 0 auto;
+  max-width: 16rem;
+  overflow: hidden;
+  padding: 0.2rem 0.65rem;
   border-radius: 999px;
-  background: var(--color-chip, var(--color-bg));
-  color: var(--color-text-muted);
-  font-size: 0.7rem;
+  background: var(--color-chip);
+  color: var(--color-primary);
+  font-size: 0.72rem;
   font-weight: 600;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.integrante-card__accion {
+.miembro-fila__acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   flex: 0 0 auto;
 }
 
-.integrante-card__tooltip {
+.miembro-fila__tooltip {
   display: inline-flex;
+}
+
+@media (max-width: 720px) {
+  .miembro-fila {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+
+  .miembro-fila__datos {
+    flex: 1 1 10rem;
+  }
+
+  .miembro-fila__chip {
+    order: 3;
+    max-width: 100%;
+  }
+
+  .miembro-fila__acciones {
+    order: 4;
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>

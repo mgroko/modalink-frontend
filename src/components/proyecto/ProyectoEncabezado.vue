@@ -75,7 +75,7 @@ export default {
       type: Boolean,
       default: true,
     },
-    /** Pestaña Integrantes (UC-38/UC-40). Sólo miembros activos. */
+    /** Pestaña Miembros (UC-38/UC-40). Sólo miembros activos. */
     mostrarIntegrantes: {
       type: Boolean,
       default: false,
@@ -94,7 +94,7 @@ export default {
         tabs.push({ id: "planificacion", label: "Planificación" });
       }
       if (this.mostrarIntegrantes) {
-        tabs.push({ id: "integrantes", label: "Integrantes" });
+        tabs.push({ id: "integrantes", label: "Miembros" });
       }
       if (this.mostrarPostulaciones) {
         tabs.push({

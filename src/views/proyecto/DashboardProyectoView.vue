@@ -227,6 +227,8 @@
           ref="integrantes"
           :id-proyecto="idProyecto"
           :token-refresco="tokenRefrescoIntegrantes"
+          :puede-invitar="puedeInvitarIntegrante"
+          :id-perfil-activo="idPerfilActivoSesion"
           @eliminar="abrirEliminarIntegrante"
         />
 
@@ -589,6 +591,14 @@ data() {
         this.proyecto?.rolUsuario === ROLES_PROYECTO.DIRECTOR &&
         this.permisos.includes("GESTIONAR_POSTULACIONES")
       );
+    },
+    /** UC-31 pendiente: el botón "Invitar miembro" se muestra deshabilitado. */
+    puedeInvitarIntegrante() {
+      return this.permisos.includes("INVITAR_MIEMBRO");
+    },
+    /** Perfil activo de la sesión: habilita el chip "Vos" en el listado. */
+    idPerfilActivoSesion() {
+      return idPerfilActivo();
     },
     ubicacionTexto() {
       const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
@@ -1231,8 +1241,8 @@ data() {
         this.errorMotivoEliminarIntegrante = "";
 
         this.toast.init({
-          title: "Integrante eliminado",
-          message: "El integrante fue desvinculado del proyecto.",
+          title: "Miembro eliminado",
+          message: "El miembro fue desvinculado del proyecto.",
           color: "success",
           position: "top-right",
           duration: 5000,
