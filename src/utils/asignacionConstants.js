@@ -167,6 +167,213 @@ export function motivoNoAsignable({
   return "No se puede asignar la actividad.";
 }
 
+export const TEXTOS_DESASIGNACION = {
+  SIN_PERMISO:
+    "No tenés permiso para desasignar miembros de actividades en este proyecto.",
+  SIN_DIRECTOR: "Sólo el director activo del proyecto puede desasignar miembros.",
+  SIN_ASIGNACION: "La asignación ya no existe o no pertenece a esta actividad.",
+  MIEMBRO_HISTORICO:
+    "El miembro ya no está activo en el proyecto; la asignación es histórica.",
+  ESTADO_INVALIDO:
+    "El proyecto o la actividad ya no admiten desasignaciones.",
+  ERROR_GENERICO: "No se pudo desasignar al miembro de la actividad.",
+};
+
+/**
+ * ¿Se puede quitar una asignación concreta?
+ *
+ * No exige fecha de entrega: desasignar no necesita calcular disponibilidad.
+ * @param {{proyecto?: object|null, actividad?: object|null, responsable?: object|null}} [contexto]
+ * @returns {boolean}
+ */
+export function puedeDesasignarActividad({
+  proyecto = null,
+  actividad = null,
+  responsable = null,
+} = {}) {
+  if (!proyecto) return false;
+  if (proyecto.rolUsuario !== ROLES_PROYECTO.DIRECTOR) return false;
+
+  const permisos = Array.isArray(proyecto.permisos) ? proyecto.permisos : [];
+  if (!permisos.includes(PERMISO_ASIGNAR_ACTIVIDAD)) return false;
+
+  const estadoProyecto = normalizarEstadoProyecto(proyecto.estado);
+  if (!ESTADOS_PROYECTO_ASIGNABLES.includes(estadoProyecto)) return false;
+
+  if (
+    actividad &&
+    ESTADOS_ACTIVIDAD_NO_ASIGNABLES.includes(
+      normalizarEstadoActividad(actividad.estado)
+    )
+  ) {
+    return false;
+  }
+
+  if (responsable) {
+    if (responsable.idAsignacionActividad == null) return false;
+    if (responsable.activo === false) return false;
+    if (esProfesionalHistorico(responsable)) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Motivo por el que no se puede quitar una asignación. Vacío si se puede.
+ * @param {{proyecto?: object|null, actividad?: object|null, responsable?: object|null}} [contexto]
+ * @returns {string}
+ */
+export function motivoNoDesasignable({
+  proyecto = null,
+  actividad = null,
+  responsable = null,
+} = {}) {
+  if (puedeDesasignarActividad({ proyecto, actividad, responsable })) {
+    return "";
+  }
+  if (!proyecto) return "No se pudo cargar el proyecto.";
+  if (proyecto.rolUsuario !== ROLES_PROYECTO.DIRECTOR) {
+    return TEXTOS_DESASIGNACION.SIN_DIRECTOR;
+  }
+
+  const permisos = Array.isArray(proyecto.permisos) ? proyecto.permisos : [];
+  if (!permisos.includes(PERMISO_ASIGNAR_ACTIVIDAD)) {
+    return TEXTOS_DESASIGNACION.SIN_PERMISO;
+  }
+
+  const estadoProyecto = normalizarEstadoProyecto(proyecto.estado);
+  if (!ESTADOS_PROYECTO_ASIGNABLES.includes(estadoProyecto)) {
+    return TEXTOS_DESASIGNACION.ESTADO_INVALIDO;
+  }
+
+  if (
+    actividad &&
+    ESTADOS_ACTIVIDAD_NO_ASIGNABLES.includes(
+      normalizarEstadoActividad(actividad.estado)
+    )
+  ) {
+    return TEXTOS_DESASIGNACION.ESTADO_INVALIDO;
+  }
+
+  if (responsable) {
+    if (responsable.idAsignacionActividad == null) {
+      return TEXTOS_DESASIGNACION.SIN_ASIGNACION;
+    }
+    if (responsable.activo === false || esProfesionalHistorico(responsable)) {
+      return TEXTOS_DESASIGNACION.MIEMBRO_HISTORICO;
+    }
+  }
+
+  return "No se puede desasignar al miembro.";
+}
+
+/**
+ * Clasifica el error del DELETE para que la vista decida si refresca o muestra
+ * el mensaje dentro del modal.
+ * @param {object} error error Axios
+ * @returns {{tipo: string, status: number|null, mensaje: string}}
+ */
+export function clasificarErrorDesasignacion(error) {
+  const status = error?.response?.status ?? null;
+  const data = error?.response?.data;
+  const payload = data && typeof data === "object" ? data : {};
+  const mensajeBackend =
+    typeof payload.message === "string" ? payload.message.trim() : "";
+
+  const crear = (tipo, mensaje) => ({
+    tipo,
+    status,
+    mensaje: mensaje || mensajeBackend || TEXTOS_DESASIGNACION.ERROR_GENERICO,
+  });
+
+  if (error?._esSesionExpirada || status === 401) {
+    return crear(
+      TIPOS_ERROR_ASIGNACION.SESION,
+      "Tu sesión expiró. Volvé a iniciar sesión."
+    );
+  }
+
+  if (status === 403) {
+    return crear(
+      TIPOS_ERROR_ASIGNACION.SIN_PERMISO,
+      mensajeBackend || TEXTOS_DESASIGNACION.SIN_PERMISO
+    );
+  }
+
+  if (status === 404) {
+    return crear(
+      TIPOS_ERROR_ASIGNACION.RECURSO_NO_ENCONTRADO,
+      mensajeBackend || TEXTOS_DESASIGNACION.SIN_ASIGNACION
+    );
+  }
+
+  if (status === 409) {
+    if (/hist[oó]ric|miembro.*activo|ya no est[aá] activo/i.test(mensajeBackend)) {
+      return crear(
+        TIPOS_ERROR_ASIGNACION.MIEMBRO_INACTIVO,
+        mensajeBackend || TEXTOS_DESASIGNACION.MIEMBRO_HISTORICO
+      );
+    }
+    if (/estado|no admite|no permite|cancelad|finalizad|confirmad|borrador/i.test(
+      mensajeBackend
+    )) {
+      return crear(
+        TIPOS_ERROR_ASIGNACION.ESTADO_INVALIDO,
+        mensajeBackend || TEXTOS_DESASIGNACION.ESTADO_INVALIDO
+      );
+    }
+    return crear(
+      TIPOS_ERROR_ASIGNACION.CONFLICTO,
+      mensajeBackend || TEXTOS_DESASIGNACION.ERROR_GENERICO
+    );
+  }
+
+  if (status === 400) {
+    return crear(
+      TIPOS_ERROR_ASIGNACION.VALIDACION,
+      mensajeBackend || "Revisá los datos de la desasignación."
+    );
+  }
+
+  return crear(
+    TIPOS_ERROR_ASIGNACION.DESCONOCIDO,
+    "Ocurrió un error al desasignar al miembro. Intentá nuevamente."
+  );
+}
+
+/**
+ * Texto del toast de éxito de la desasignación.
+ * @param {object|null|undefined} data respuesta del DELETE
+ * @param {{nombreArtistico?: string}|null|undefined} miembro
+ * @param {{nombre?: string}|null|undefined} actividad
+ * @returns {string}
+ */
+export function mensajeExitoDesasignacion(data, miembro, actividad) {
+  const nombreMiembro =
+    String(miembro?.nombreArtistico || "").trim() || "El miembro";
+  const nombreActividad = String(actividad?.nombre || "").trim();
+
+  const partes = [
+    nombreActividad
+      ? `${nombreMiembro} fue desasignado de la actividad "${nombreActividad}".`
+      : `${nombreMiembro} fue desasignado de la actividad.`,
+  ];
+
+  const advertencias = Array.isArray(data?.advertencias)
+    ? data.advertencias.filter((item) => typeof item === "string" && item.trim())
+    : [];
+  if (advertencias.length) {
+    partes.push(...advertencias.map((item) => item.trim()));
+  } else if (data?.cupo && data.cupo.satisfecho === false) {
+    const faltantes = Number(data.cupo.faltantes);
+    if (Number.isFinite(faltantes) && faltantes > 0) {
+      partes.push(`El requerimiento quedó con ${faltantes} vacante(s).`);
+    }
+  }
+
+  return partes.join(" ");
+}
+
 /**
  * Perfiles ya vinculados a la actividad, sin duplicados. Acepta tanto el shape
  * de Planificación (`responsables`) como el detalle (`profesionalesAsignados`).

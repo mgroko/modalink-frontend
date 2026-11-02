@@ -220,6 +220,7 @@
           @limpiar-resaltado="limpiarActividadResaltada"
           @eliminar-actividad="abrirModalEliminarActividad"
           @asignar-actividad="abrirModalAsignar"
+          @desasignar-actividad="abrirModalDesasignar"
         />
 
         <IntegrantesProyecto
@@ -344,6 +345,18 @@
           @confirmar="confirmarAsignacion"
         />
 
+        <ModalDesasignarActividad
+          :model-value="modalDesasignarVisible"
+          :actividad="actividadDesasignar"
+          :responsable="responsableDesasignar"
+          :nombre-proyecto="proyecto.nombre"
+          :proyecto-confirmado="proyectoConfirmado"
+          :desasignando="desasignando"
+          :error="errorDesasignar"
+          @update:model-value="onCambioVisibilidadDesasignar"
+          @confirmar="confirmarDesasignacion"
+        />
+
         <ModalPostulacion
           :model-value="modalPostulacion.visible"
           :id-proyecto="idProyecto"
@@ -385,6 +398,7 @@ import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyec
 import ModalEliminarIntegrante from "../../components/proyecto/ModalEliminarIntegrante.vue";
 import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
 import ModalAsignarActividad from "../../components/proyecto/ModalAsignarActividad.vue";
+import ModalDesasignarActividad from "../../components/proyecto/ModalDesasignarActividad.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import actividadService from "../../services/actividadService.js";
 import { useToast } from "vuestic-ui";
@@ -392,9 +406,12 @@ import { mensajeErrorApi } from "../../utils/apiError";
 import {
   TIPOS_ERROR_ASIGNACION,
   clasificarErrorAsignacion,
+  clasificarErrorDesasignacion,
   mensajeExitoAsignacion,
+  mensajeExitoDesasignacion,
   perfilesAsignadosDe,
   puedeAsignarActividad,
+  puedeDesasignarActividad,
 } from "../../utils/asignacionConstants.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
@@ -443,6 +460,7 @@ let controladorCancelacion = null;
 let controladorEliminarIntegrante = null;
 let controladorEliminacion = null;
 let controladorAsignacion = null;
+let controladorDesasignacion = null;
 let controladorPostulacion = null;
 let controladorConfirmacion = null;
 
@@ -464,6 +482,7 @@ export default {
     ModalEliminarIntegrante,
     ModalEliminarActividad,
     ModalAsignarActividad,
+    ModalDesasignarActividad,
     ModalPostulacion,
   },
   setup() {
@@ -535,6 +554,11 @@ data() {
       asignando: false,
       errorAsignar: "",
       tokenRefrescoMiembros: 0,
+      modalDesasignarVisible: false,
+      actividadDesasignar: null,
+      responsableDesasignar: null,
+      desasignando: false,
+      errorDesasignar: "",
       tokenRefrescoDisponibilidad: 0,
       tokenRefrescoPlanificacion: 0,
     };
@@ -592,6 +616,12 @@ data() {
     },
     esCancelado() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.CANCELADO;
+    },
+    proyectoConfirmado() {
+      return (
+        normalizarEstadoProyecto(this.proyecto?.estado) ===
+        ESTADOS_PROYECTO.CONFIRMADO
+      );
     },
     /** UC-35 §8.1: combinar permiso con estado (los permisos son del rol). */
     puedeCancelar() {
@@ -663,6 +693,15 @@ data() {
       this.perfilesAsignadosActividad = [];
       this.asignando = false;
       this.errorAsignar = "";
+      this.modalDesasignarVisible = false;
+      this.actividadDesasignar = null;
+      this.responsableDesasignar = null;
+      this.desasignando = false;
+      this.errorDesasignar = "";
+      if (controladorDesasignacion) {
+        controladorDesasignacion.abort();
+        controladorDesasignacion = null;
+      }
       this.modalEliminarIntegranteVisible = false;
       this.integranteEliminar = null;
       this.eliminandoIntegrante = false;
@@ -2055,6 +2094,145 @@ data() {
         this.asignando = false;
       }
     },
+    abrirModalDesasignar({ actividad, responsable } = {}) {
+      if (this.desasignando) return;
+      if (
+        !actividad?.idActividad ||
+        !responsable?.idAsignacionActividad ||
+        !puedeDesasignarActividad({
+          proyecto: this.proyecto,
+          actividad,
+          responsable,
+        })
+      ) {
+        return;
+      }
+
+      this.actividadDesasignar = { ...actividad };
+      this.responsableDesasignar = responsable;
+      this.errorDesasignar = "";
+      this.modalDesasignarVisible = true;
+    },
+    onCambioVisibilidadDesasignar(valor) {
+      if (this.desasignando && !valor) return;
+      if (valor) {
+        this.modalDesasignarVisible = true;
+        return;
+      }
+      this.cerrarModalDesasignar();
+    },
+    cerrarModalDesasignar() {
+      if (this.desasignando) return;
+      this.modalDesasignarVisible = false;
+      this.actividadDesasignar = null;
+      this.responsableDesasignar = null;
+      this.errorDesasignar = "";
+      if (controladorDesasignacion) {
+        controladorDesasignacion.abort();
+        controladorDesasignacion = null;
+      }
+    },
+    async confirmarDesasignacion() {
+      if (this.desasignando) return;
+      const actividad = this.actividadDesasignar;
+      const responsable = this.responsableDesasignar;
+      if (!actividad?.idActividad || !responsable?.idAsignacionActividad) {
+        return;
+      }
+
+      this.desasignando = true;
+      this.errorDesasignar = "";
+      if (controladorDesasignacion) controladorDesasignacion.abort();
+      controladorDesasignacion = new AbortController();
+
+      try {
+        const response = await actividadService.desasignar(
+          this.idProyecto,
+          actividad.idActividad,
+          responsable.idAsignacionActividad,
+          controladorDesasignacion.signal
+        );
+        const data = response?.data || {};
+
+        this.modalDesasignarVisible = false;
+        this.actividadDesasignar = null;
+        this.responsableDesasignar = null;
+
+        this.toast.init({
+          title: "Miembro desasignado",
+          message: mensajeExitoDesasignacion(data, responsable, actividad),
+          color: "success",
+          position: "top-right",
+          duration: 7000,
+        });
+
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+          this.tokenRefrescoDisponibilidad += 1;
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorDesasignacion(error);
+      } finally {
+        this.desasignando = false;
+      }
+    },
+    async manejarErrorDesasignacion(error) {
+      const { tipo, mensaje } = clasificarErrorDesasignacion(error);
+
+      const cerrar = () => {
+        this.modalDesasignarVisible = false;
+        this.actividadDesasignar = null;
+        this.responsableDesasignar = null;
+        this.errorDesasignar = "";
+      };
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SESION) {
+        cerrar();
+        await refrescarSesion();
+        this.mensajeError = "Tu sesión expiró. Volvé a iniciar sesión.";
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SIN_PERMISO) {
+        cerrar();
+        this.toast.init({
+          title: "Sin permiso",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (
+        tipo === TIPOS_ERROR_ASIGNACION.RECURSO_NO_ENCONTRADO ||
+        tipo === TIPOS_ERROR_ASIGNACION.ESTADO_INVALIDO ||
+        tipo === TIPOS_ERROR_ASIGNACION.MIEMBRO_INACTIVO ||
+        tipo === TIPOS_ERROR_ASIGNACION.CONFLICTO
+      ) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo desasignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      this.errorDesasignar = mensaje;
+    },
     async manejarErrorAsignacion(error) {
       const clasificacion = clasificarErrorAsignacion(error);
       const { tipo, mensaje } = clasificacion;
@@ -2506,6 +2684,7 @@ data() {
     if (controladorCancelacion) controladorCancelacion.abort();
     if (controladorEliminacion) controladorEliminacion.abort();
     if (controladorAsignacion) controladorAsignacion.abort();
+    if (controladorDesasignacion) controladorDesasignacion.abort();
     if (controladorPostulacion) controladorPostulacion.abort();
     if (controladorConfirmacion) controladorConfirmacion.abort();
   },

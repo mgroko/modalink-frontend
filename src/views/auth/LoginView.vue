@@ -16,7 +16,7 @@
         v-model="credenciales.password"
         :rules="[reglas.requerido]"
         :type="isPasswordVisible.value ? 'text' : 'password'"
-        class="mb-1"
+        class="mb-4"
         label="Contraseña"
         @clickAppendInner.stop="isPasswordVisible.value = !isPasswordVisible.value"
       >
@@ -30,11 +30,7 @@
       </VaInput>
     </VaValue>
 
-    <p class="text-xs mb-4 text-left">
-      <RouterLink :to="{ name: 'recuperar-password' }" class="link-recuperar">Olvidé mi contraseña</RouterLink>
-    </p>
-
-   <VaButton type="submit" size="medium" class="auth-button">Iniciar sesión</VaButton>
+    <VaButton type="submit" size="medium" class="auth-button">Iniciar sesión</VaButton>
 
     <p class="text-base mb-4 leading-9 text-center" color="gray-700">
       ¿Nuevo en ModaLink?
@@ -266,18 +262,6 @@ export default {
   justify-content: center;
   align-items: center;
   margin: 0 auto;
-}
-
-.link-recuperar {
-  font-size: 12px; 
-  color: var(--color-text-muted); 
-  text-decoration: none; 
-  transition: color 0.2s ease; 
-}
-
-.link-recuperar:hover {
-  color: var(--color-text); 
-  text-decoration: underline;
 }
 
 </style>

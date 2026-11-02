@@ -20,6 +20,7 @@ export const TIPOS_NOTIFICACION = {
   INVITACION_RECHAZADA: "INVITACION_RECHAZADA",
   HITO_CUMPLIDO: "HITO_CUMPLIDO",
   ACTIVIDAD_ASIGNADA: "ACTIVIDAD_ASIGNADA",
+  ACTIVIDAD_DESASIGNADA: "ACTIVIDAD_DESASIGNADA",
   PERFIL_REPORTADO: "PERFIL_REPORTADO",
   INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
 };
@@ -44,6 +45,7 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.INVITACION_RECHAZADA]: "Invitación rechazada",
   [TIPOS_NOTIFICACION.HITO_CUMPLIDO]: "Hito cumplido",
   [TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA]: "Actividad asignada",
+  [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "Actividad desasignada",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
 };
@@ -61,6 +63,7 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.INVITACION_RECHAZADA]: "mail_off",
   [TIPOS_NOTIFICACION.HITO_CUMPLIDO]: "flag",
   [TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA]: "assignment",
+  [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "person_remove",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
 };
@@ -188,7 +191,8 @@ export function destinoNotificacion(notificacion) {
       };
     }
 
-    case TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA: {
+    case TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA:
+    case TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA: {
       // El trigger inserta `entidad_tipo = 'ACTIVIDAD'` y
       // `entidad_id = id_actividad`; `idActividad` puede venir por el mapper
       // de lectura o deducirse de la entidad. `idProyecto` no se infiere.

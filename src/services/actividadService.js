@@ -307,6 +307,22 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} DesasignacionActividadResponse
+ *   Respuesta de `DELETE /proyectos/{idProyecto}/actividades/{idActividad}/asignaciones/{idAsignacionActividad}`.
+ *   La desasignación es física y no reabre postulaciones rechazadas.
+ * @property {number} idAsignacionActividad
+ * @property {number} idProyecto
+ * @property {number} idActividad
+ * @property {number} idMiembro
+ * @property {number|null} idPerfil
+ * @property {number|null} idUsuario
+ * @property {number|null} idRequerimientoActividad
+ * @property {boolean} requerimientoSatisfecho
+ * @property {{cantidad:number,cubiertos:number,faltantes:number,satisfecho:boolean}|null} cupo
+ * @property {string[]} advertencias
+ */
+
+/**
  * Resultado de `GET /actividades/buscar` (UC-52): sólo búsqueda de candidatos.
  * No incluye CPM, proyecciones ni responsables.
  * @typedef {Object} ActividadBusquedaResponse
@@ -565,6 +581,29 @@ const actividadService = {
     return http.post(
       `/proyectos/${idProyecto}/actividades/${idActividad}/asignaciones`,
       { idPerfil },
+      { signal }
+    );
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/actividades/{idActividad}/asignaciones/{idAsignacionActividad} - UC-70.
+   * Quita físicamente una asignación. No requiere fecha de entrega ni motivo.
+   * Si la asignación cubría un requerimiento, el backend devuelve el cupo
+   * recalculado y las advertencias no bloqueantes.
+   *
+   * Errores:
+   * - 403 sin perfil activo, sin membresía o sin `ASIGNAR_ACTIVIDAD`
+   * - 404 proyecto, actividad o asignación inexistente
+   * - 409 proyecto/actividad no permitidos o miembro histórico
+   * @param {number|string} idProyecto
+   * @param {number|string} idActividad
+   * @param {number|string} idAsignacionActividad
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: DesasignacionActividadResponse}>} 200 OK
+   */
+  desasignar(idProyecto, idActividad, idAsignacionActividad, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/actividades/${idActividad}/asignaciones/${idAsignacionActividad}`,
       { signal }
     );
   },

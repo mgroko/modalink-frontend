@@ -51,13 +51,32 @@
                 }"
                 :title="responsable.etiqueta || undefined"
               >
-                {{ responsable.texto }}
+                <span class="tabla-actividades__chip-texto">
+                  {{ responsable.texto }}
+                </span>
                 <small
                   v-if="responsable.historico"
                   class="tabla-actividades__chip-estado"
                 >
                   {{ responsable.etiqueta }}
                 </small>
+                <button
+                  v-if="puedeDesasignarResponsable(actividad, responsable)"
+                  type="button"
+                  class="tabla-actividades__chip-quitar"
+                  :title="motivoNoDesasignableResponsable(actividad, responsable)"
+                  :aria-label="`Quitar a ${responsable.texto} de la actividad`"
+                  @click.stop="
+                    $emit('desasignar-actividad', {
+                      actividad,
+                      responsable,
+                    })
+                  "
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    person_remove
+                  </span>
+                </button>
               </span>
             </div>
             <span v-else class="tabla-actividades__vacio-celda">—</span>
@@ -190,8 +209,21 @@ export default {
       type: String,
       default: "No podés asignar miembros a esta actividad.",
     },
+    puedeDesasignar: {
+      type: Boolean,
+      default: false,
+    },
+    motivoNoDesasignar: {
+      type: String,
+      default: "No podés desasignar miembros de esta actividad.",
+    },
   },
-  emits: ["editar-actividad", "eliminar-actividad", "asignar-actividad"],
+  emits: [
+    "editar-actividad",
+    "eliminar-actividad",
+    "asignar-actividad",
+    "desasignar-actividad",
+  ],
   methods: {
     formatearDuracionMinutos,
     etiquetaEstadoActividad,
@@ -206,6 +238,25 @@ export default {
         return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede asignar.`;
       }
       return "Asignar miembro";
+    },
+    puedeDesasignarResponsable(actividad, responsable) {
+      return (
+        this.puedeDesasignar &&
+        puedeEditarActividad(actividad?.estado) &&
+        responsable?.idAsignacionActividad != null &&
+        !responsable?.historico &&
+        responsable?.activo !== false
+      );
+    },
+    motivoNoDesasignableResponsable(actividad, responsable) {
+      if (!this.puedeDesasignar) return this.motivoNoDesasignar;
+      if (!puedeEditarActividad(actividad?.estado)) {
+        return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede desasignar.`;
+      }
+      if (responsable?.historico || responsable?.activo === false) {
+        return "El miembro ya no está activo en el proyecto.";
+      }
+      return `Quitar a ${responsable?.texto || "este miembro"} de la actividad`;
     },
     puedeEditarFila(actividad) {
       return this.puedeEditar && puedeEditarActividad(actividad?.estado);
@@ -253,6 +304,11 @@ export default {
           etiqueta: historico
             ? etiquetaParticipacionProfesional(responsable)
             : "",
+          idAsignacionActividad: responsable?.idAsignacionActividad ?? null,
+          idPerfil: responsable?.idPerfil ?? null,
+          idUsuario: responsable?.idUsuario ?? null,
+          activo: responsable?.activo,
+          estadoParticipacion: responsable?.estadoParticipacion ?? null,
         };
       });
     },
@@ -365,6 +421,36 @@ export default {
   font-size: 0.64rem;
   font-style: italic;
   font-weight: 600;
+}
+
+.tabla-actividades__chip-texto {
+  vertical-align: middle;
+}
+
+.tabla-actividades__chip-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.tabla-actividades__chip-quitar:hover,
+.tabla-actividades__chip-quitar:focus-visible {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  outline: none;
+}
+
+.tabla-actividades__chip-quitar .material-symbols-outlined {
+  font-size: 0.88rem;
 }
 
 .tabla-actividades__duracion,

@@ -128,9 +128,12 @@
           :estado-proyecto="estadoNormalizado"
           :puede-asignar="puedeAsignar"
           :motivo-no-asignar="motivoNoAsignar"
+          :puede-desasignar="puedeDesasignar"
+          :motivo-no-desasignar="motivoNoDesasignar"
           @editar-actividad="$emit('editar-actividad', $event)"
           @eliminar-actividad="$emit('eliminar-actividad', $event)"
           @asignar-actividad="$emit('asignar-actividad', $event)"
+          @desasignar-actividad="$emit('desasignar-actividad', $event)"
         />
       </section>
     </div>
@@ -158,7 +161,9 @@ import CronogramaProyecto from "./CronogramaProyecto.vue";
 import { esActividadCancelada } from "../../utils/actividadConstants.js";
 import {
   motivoNoAsignable,
+  motivoNoDesasignable,
   puedeAsignarActividad,
+  puedeDesasignarActividad,
 } from "../../utils/asignacionConstants.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
@@ -199,6 +204,7 @@ export default {
     "editar-actividad",
     "eliminar-actividad",
     "asignar-actividad",
+    "desasignar-actividad",
     "ir-modificar-proyecto",
     "limpiar-resaltado",
   ],
@@ -264,6 +270,18 @@ export default {
         proyecto: this.proyecto,
         actividad: null,
         tieneFechaEntrega: this.tieneFechaEntrega,
+      });
+    },
+    puedeDesasignar() {
+      return puedeDesasignarActividad({
+        proyecto: this.proyecto,
+        actividad: null,
+      });
+    },
+    motivoNoDesasignar() {
+      return motivoNoDesasignable({
+        proyecto: this.proyecto,
+        actividad: null,
       });
     },
     tieneFechaEntrega() {
