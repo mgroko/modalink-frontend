@@ -183,7 +183,7 @@ import {
   mensajeMotivo,
   normalizarResultado,
 } from "../../utils/disponibilidadConstants.js";
-import { formatearFecha } from "../../utils/fechas.js";
+import { formatearHora } from "../../utils/fechas.js";
 
 /*
  * Panel de disponibilidad (ficha CPM §6 y §10). Consulta de solo lectura: no
@@ -274,7 +274,7 @@ export default {
     },
     inicioPreferidoTexto() {
       return this.resultado?.inicioPreferido
-        ? formatearFecha(this.resultado.inicioPreferido)
+        ? formatearHora(this.resultado.inicioPreferido)
         : "";
     },
     desvioTexto() {

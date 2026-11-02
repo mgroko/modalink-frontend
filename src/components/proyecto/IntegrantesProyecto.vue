@@ -53,7 +53,14 @@
           :style="{ background: colorAvatar(miembro) }"
           aria-hidden="true"
         >
-          {{ inicialesMiembro(miembro) }}
+          <img
+            v-if="fotoMiembro(miembro) && !fotoRota(miembro)"
+            :src="fotoMiembro(miembro)"
+            alt=""
+            class="miembro-fila__avatar-img"
+            @error="marcarFotoRota(miembro)"
+          />
+          <template v-else>{{ inicialesMiembro(miembro) }}</template>
         </span>
 
         <div class="miembro-fila__datos">
@@ -117,8 +124,10 @@
 <script>
 import BaseAlert from "../AlertaBase.vue";
 import proyectoService from "../../services/proyectoService.js";
+import perfilService from "../../services/perfilService.js";
 import { refrescarSesion } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
   colorAvatarMiembro,
   esPerfilActivoDelMiembro,
@@ -168,6 +177,9 @@ export default {
       error: "",
       puedeReintentar: false,
       idCarga: 0,
+      fotosPorPerfil: {},
+      fotosIntentadas: {},
+      fotosRotas: {},
     };
   },
   watch: {
@@ -202,6 +214,72 @@ export default {
     },
     colorAvatar(miembro) {
       return colorAvatarMiembro(miembro?.idPerfil);
+    },
+    fotoMiembro(miembro) {
+      const idPerfil = miembro?.idPerfil;
+      if (idPerfil == null || this.fotosRotas[idPerfil]) return null;
+
+      const fotoDirecta =
+        miembro?.fotoUrl || miembro?.urlFoto || miembro?.fotoPerfil;
+      return resolverFotoUrl(fotoDirecta || this.fotosPorPerfil[idPerfil]);
+    },
+    fotoRota(miembro) {
+      return !!this.fotosRotas[miembro?.idPerfil];
+    },
+    marcarFotoRota(miembro) {
+      if (miembro?.idPerfil == null) return;
+      this.fotosRotas = {
+        ...this.fotosRotas,
+        [miembro.idPerfil]: true,
+      };
+    },
+    async cargarFotos(lista, corrida) {
+      const miembrosPorPerfil = new Map();
+      (lista || []).forEach((miembro) => {
+        if (miembro?.idPerfil != null && !miembrosPorPerfil.has(miembro.idPerfil)) {
+          miembrosPorPerfil.set(miembro.idPerfil, miembro);
+        }
+      });
+
+      const pendientes = [...miembrosPorPerfil.entries()].filter(
+        ([idPerfil, miembro]) =>
+          !this.fotosIntentadas[idPerfil] &&
+          !miembro?.fotoUrl &&
+          !miembro?.urlFoto &&
+          !miembro?.fotoPerfil
+      );
+      if (!pendientes.length) return;
+
+      pendientes.forEach(([idPerfil]) => {
+        this.fotosIntentadas = {
+          ...this.fotosIntentadas,
+          [idPerfil]: true,
+        };
+      });
+
+      await Promise.allSettled(
+        pendientes.map(async ([idPerfil]) => {
+          try {
+            const response = await perfilService.obtener(idPerfil);
+            if (corrida !== this.idCarga) return;
+            const foto =
+              response?.data?.fotoUrl ||
+              response?.data?.urlFoto ||
+              response?.data?.fotoPerfil ||
+              null;
+            this.fotosPorPerfil = {
+              ...this.fotosPorPerfil,
+              [idPerfil]: foto,
+            };
+          } catch {
+            if (corrida !== this.idCarga) return;
+            this.fotosPorPerfil = {
+              ...this.fotosPorPerfil,
+              [idPerfil]: null,
+            };
+          }
+        })
+      );
     },
     nombreArtisticoMiembro(miembro) {
       return miembro?.nombreArtistico || "Perfil";
@@ -241,6 +319,7 @@ export default {
         const data = response?.data;
         const lista = Array.isArray(data) ? data : data?.contenido;
         this.miembros = this.ordenar(Array.isArray(lista) ? lista : []);
+        void this.cargarFotos(this.miembros, corrida);
       } catch (error) {
         if (this.esCancelacion(error) || corrida !== this.idCarga) return;
         await this.manejarError(error);
@@ -394,11 +473,19 @@ export default {
   flex: 0 0 auto;
   width: 40px;
   height: 40px;
+  overflow: hidden;
   border-radius: 50%;
   color: #fff;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+}
+
+.miembro-fila__avatar-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .miembro-fila__datos {

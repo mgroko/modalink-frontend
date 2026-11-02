@@ -274,7 +274,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {"SIN_PREFERENCIA"|"EXACTO"|"DESVIO"|"SIN_LUGAR"|null} resultadoPreferencia
  * @property {number|null} desvioMinutos negativo = antes del preferido;
  *           positivo = después; null sin preferencia o SIN_LUGAR
- * @property {string|null} inicioPreferido fecha/hora absoluta de la preferencia
+ * @property {string|null} inicioPreferido fecha/hora de referencia del día
+ *           evaluado; la tolerancia se mide contra su hora, no contra la fecha
  * @property {number[]} miembrosBloqueantes ids de usuario que impiden la
  *           intersección; puede venir vacío aunque no haya hueco común. No
  *           usarlo como criterio de bloqueo por sí solo.

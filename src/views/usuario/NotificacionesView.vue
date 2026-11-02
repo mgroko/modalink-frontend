@@ -105,6 +105,7 @@
 import BaseAlert from "../../components/AlertaBase.vue";
 import perfilService from "../../services/perfilService";
 import notificacionService from "../../services/notificacionService";
+import { idPerfilActivo } from "../../services/authState";
 import {
   cargarResumenPerfil,
   cargarResumenUsuario,
@@ -188,14 +189,21 @@ export default {
       }
     },
     async cargar() {
-      if (this.modoPerfil && this.idPerfilContexto == null) return;
-
       this.cargando = true;
       this.error = null;
 
       try {
+        const idPerfilContexto = this.idPerfilContexto;
+
+        if (this.modoPerfil && idPerfilContexto == null) {
+          this.notificaciones = [];
+          this.error =
+            "No hay un perfil activo para mostrar las notificaciones.";
+          return;
+        }
+
         const response = await notificacionService.listar({
-          idPerfilContexto: this.idPerfilContexto,
+          idPerfilContexto,
           page: 0,
           size: 100,
         });
@@ -213,10 +221,14 @@ export default {
       }
     },
     async cargarResumen() {
-      if (this.modoPerfil) {
-        await cargarResumenPerfil(this.idPerfilContexto);
-      } else {
-        await cargarResumenUsuario();
+      try {
+        if (this.modoPerfil) {
+          await cargarResumenPerfil(this.idPerfilContexto);
+        } else {
+          await cargarResumenUsuario();
+        }
+      } catch {
+        // El resumen no debe bloquear el listado de notificaciones.
       }
     },
     async marcarLeida(notificacion) {

@@ -58,6 +58,19 @@ export function formatearFecha(valor) {
   return `${pad(p.dia)}/${pad(p.mes)}/${p.anio} ${pad(p.hora)}:${pad(p.minuto)}`;
 }
 
+/**
+ * Solo la hora en formato HH:mm. Acepta una hora (`08:00`) o un ISO-8601
+ * (`2026-11-02T08:00:00`) y descarta la fecha.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearHora(valor) {
+  if (valor == null || valor === "") return "—";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+  return `${pad(p.hora)}:${pad(p.minuto)}`;
+}
+
 export function formatearFechaCorta(valor) {
   if (valor == null || valor === "") return "—";
   const p = aPartes(valor);
