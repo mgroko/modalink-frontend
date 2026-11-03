@@ -109,7 +109,10 @@ preferido 15:00, elegido 15:00 → 0
 ### 3.3. `inicioPreferido`
 
 - Fecha/hora absoluta construida a partir de `horarioPreferenciaInicio`.
-- Su fecha de referencia es la del primer hueco común (`ES_DISPONIBLE`).
+- Su fecha es la del hueco evaluado/seleccionado, no la del primer hueco común.
+- La tolerancia se mide contra la hora preferida en la fecha de cada hueco:
+  un hueco del 03/11 a las 08:00 se compara contra las 08:00 del 03/11.
+- En la UI, `horarioPreferenciaInicio` debe mostrarse solo como `HH:mm`.
 - `null` si la actividad no tiene preferencia.
 
 ### 3.4. `miembrosBloqueantes`
@@ -143,16 +146,18 @@ Orden de prioridad actual:
    - si existe un hueco que empieza exactamente en la hora preferida → `EXACTO`;
    - si no, se busca el hueco más cercano dentro de `DISPONIBILIDAD_TOLERANCIA_PREFERENCIA_MIN` (seed: `120`) → `DESVIO`;
    - si no hay ninguno → `SIN_LUGAR`.
-3. Solo se relaja la preferencia. **Nunca** se relajan:
+3. La tolerancia se aplica a la hora preferida en la fecha de cada hueco,
+   no a una única fecha ancla.
+4. Solo se relaja la preferencia. **Nunca** se relajan:
    - fecha de entrega;
    - jornada;
    - bloqueos manuales;
    - asignaciones;
    - precedencias;
    - margen.
-4. La preferencia no reserva ni persiste horarios.
-5. Si se acepta una postulación con `DESVIO`, se notifica a todos los directores.
-6. La notificación no se dispara desde el `GET` de disponibilidad, sino al concretar la aceptación.
+5. La preferencia no reserva ni persiste horarios.
+6. Si se acepta una postulación con `DESVIO`, se notifica a todos los directores.
+7. La notificación no se dispara desde el `GET` de disponibilidad, sino al concretar la aceptación.
 
 ---
 
