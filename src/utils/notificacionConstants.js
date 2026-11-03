@@ -23,6 +23,7 @@ export const TIPOS_NOTIFICACION = {
   ACTIVIDAD_DESASIGNADA: "ACTIVIDAD_DESASIGNADA",
   PERFIL_REPORTADO: "PERFIL_REPORTADO",
   INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
+  INTEGRANTE_BAJA_VOLUNTARIA: "INTEGRANTE_BAJA_VOLUNTARIA",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -48,6 +49,7 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "Actividad desasignada",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
+  [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "Baja voluntaria de integrante",
 };
 
 const ICONOS_TIPO = {
@@ -66,6 +68,7 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "person_remove",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
+  [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "person_remove",
 };
 
 /**
@@ -106,12 +109,16 @@ function idValido(valor) {
 
 /**
  * Tipos que nunca deben ofrecer navegación, incluso si el backend envía
- * `destino` (ficha UC-38 §5: el perfil eliminado puede recibir 403).
+ * `destino` (ficha UC-38 §5: el perfil eliminado puede recibir 403; ficha
+ * UC-40 §11: la baja voluntaria no debe navegar a un proyecto privado).
  * @param {string|null|undefined} tipo
  * @returns {boolean}
  */
 export function esNotificacionSinNavegacion(tipo) {
-  return tipo === TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO;
+  return [
+    TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO,
+    TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA,
+  ].includes(tipo);
 }
 
 /**
@@ -125,7 +132,8 @@ export function esNotificacionSinNavegacion(tipo) {
  * - `ACTIVIDAD_ELIMINADA` → sólo el proyecto (la actividad ya no existe).
  * - `POSTULACION_RECHAZADA` e `INVITACION_RECHAZADA` → sin link.
  * - `HITO_CUMPLIDO` → proyecto (no hay pantalla de hitos).
- * - `INTEGRANTE_ELIMINADO` → sin link (el perfil puede no tener acceso).
+ * - `INTEGRANTE_ELIMINADO` e `INTEGRANTE_BAJA_VOLUNTARIA` → sin link (el
+ *   perfil puede no tener acceso o el proyecto puede ser privado).
  * - Sin `idPerfilContexto` no se muestra link (ficha §4), salvo reportes
  *   administrativos, que no dependen de un perfil activo.
  * @param {object|null|undefined} notificacion NotificacionResponse

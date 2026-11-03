@@ -232,6 +232,11 @@ import { serializarParams } from "../utils/queryParams.js";
  *           requerimiento: para el gating usar
  *           `requerimientosGral[].puedePostularse`. Sólo en
  *           GET /proyectos/{idProyecto}
+ * @property {boolean} [puedeDarseDeBaja] UC-40: fuente de verdad para mostrar
+ *           la acción "Darse de baja". Sólo presente en
+ *           GET /proyectos/{idProyecto}. No recalcular en el frontend: el
+ *           backend evalúa estado del proyecto, membresía activa y último
+ *           Director.
  * @property {string|null} [motivoCancelacion] UC-35: motivo ingresado al
  *           cancelar; null si el proyecto no está cancelado. Presente en
  *           GET /proyectos/{idProyecto}, POST /proyectos, POST
@@ -668,6 +673,37 @@ const proyectoService = {
     return http.post(
       `/proyectos/${idProyecto}/cancelar`,
       { motivoCancelacion: String(motivoCancelacion || "").trim() },
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/baja — UC-40.
+   * Da de baja voluntariamente al perfil activo de la sesión. El backend
+   * resuelve el perfil y la membresía: NO enviar idPerfilActivo, idUsuario,
+   * idMiembro, idProyecto ni motivoBaja en el body. El body debe tener
+   * exactamente `{ motivo }`.
+   *
+   * Efectos (transaccionales): la membresía pasa a `BAJA_VOLUNTARIA`, se
+   * guarda motivo y fecha, las asignaciones se conservan como historial y se
+   * notifica a los directores activos restantes.
+   *
+   * Errores:
+   * - 400 motivo vacío, sólo espacios o mayor a 100 caracteres
+   * - 401 sesión ausente o vencida
+   * - 403 sin perfil activo o sin membresía activa
+   * - 404 proyecto inexistente
+   * - 409 proyecto no Publicado/Confirmado, membresía ya dada de baja o
+   *   último Director activo
+   * @param {number|string} idProyecto
+   * @param {string} motivo se envía normalizado con trim()
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  darseDeBajaProyecto(idProyecto, motivo, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/baja`,
+      { motivo: String(motivo || "").trim() },
       { signal }
     );
   },

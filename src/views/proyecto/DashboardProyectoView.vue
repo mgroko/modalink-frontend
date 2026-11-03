@@ -190,22 +190,41 @@
           </section>
 
           <section
-            v-if="puedeCancelar"
+            v-if="puedeCancelar || puedeDarseDeBaja"
             class="dashboard-proyecto__panel dashboard-proyecto__peligro"
           >
             <h2 class="dashboard-proyecto__titulo">Zona de peligro</h2>
-            <p class="dashboard-proyecto__parrafo">
-              Cancelar el proyecto es irreversible: se cancelarán las actividades
-              pendientes o en curso y se rechazarán las postulaciones e
-              invitaciones pendientes.
-            </p>
-            <VaButton
-              color="danger"
-              class="dashboard-proyecto__peligro-boton"
-              @click="abrirCancelacion"
-            >
-              Cancelar proyecto
-            </VaButton>
+
+            <template v-if="puedeCancelar">
+              <p class="dashboard-proyecto__parrafo">
+                Cancelar el proyecto es irreversible: se cancelarán las actividades
+                pendientes o en curso y se rechazarán las postulaciones e
+                invitaciones pendientes.
+              </p>
+              <VaButton
+                color="danger"
+                class="dashboard-proyecto__peligro-boton"
+                @click="abrirCancelacion"
+              >
+                Cancelar proyecto
+              </VaButton>
+            </template>
+
+            <template v-if="puedeDarseDeBaja">
+              <p class="dashboard-proyecto__parrafo">
+                Darte de baja te desvincula del proyecto. Tus asignaciones
+                quedarán como historial y las vacantes se reabrirán
+                automáticamente.
+              </p>
+              <VaButton
+                color="danger"
+                preset="secondary"
+                class="dashboard-proyecto__peligro-boton"
+                @click="abrirDarseDeBaja"
+              >
+                Darse de baja
+              </VaButton>
+            </template>
           </section>
         </template>
 
@@ -330,6 +349,16 @@
           @confirmar="confirmarEliminarIntegrante"
         />
 
+        <ModalDarseDeBajaProyecto
+          :model-value="modalDarseDeBajaVisible"
+          :nombre-proyecto="proyecto.nombre"
+          :dando-de-baja="dandoDeBaja"
+          :error="errorDarseDeBaja"
+          :error-motivo="errorMotivoDarseDeBaja"
+          @update:model-value="onCambioVisibilidadDarseDeBaja"
+          @confirmar="confirmarDarseDeBaja"
+        />
+
         <ModalAsignarActividad
           :model-value="modalAsignarVisible"
           :id-proyecto="idProyecto"
@@ -396,6 +425,7 @@ import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyec
 import ModalConfirmarProyecto from "../../components/proyecto/ModalConfirmarProyecto.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
 import ModalEliminarIntegrante from "../../components/proyecto/ModalEliminarIntegrante.vue";
+import ModalDarseDeBajaProyecto from "../../components/proyecto/ModalDarseDeBajaProyecto.vue";
 import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
 import ModalAsignarActividad from "../../components/proyecto/ModalAsignarActividad.vue";
 import ModalDesasignarActividad from "../../components/proyecto/ModalDesasignarActividad.vue";
@@ -419,6 +449,10 @@ import {
   TIPOS_ERROR_ELIMINAR_INTEGRANTE,
   clasificarErrorEliminarIntegrante,
 } from "../../utils/integranteConstants.js";
+import {
+  TIPOS_ERROR_DARSE_DE_BAJA,
+  clasificarErrorDarseDeBaja,
+} from "../../utils/bajaProyectoConstants.js";
 import {
   TIPOS_ERROR_ELIMINAR_ACTIVIDAD,
   clasificarErrorEliminarActividad,
@@ -458,6 +492,7 @@ let controladorCarga = null;
 let controladorPublicacion = null;
 let controladorCancelacion = null;
 let controladorEliminarIntegrante = null;
+let controladorDarseDeBaja = null;
 let controladorEliminacion = null;
 let controladorAsignacion = null;
 let controladorDesasignacion = null;
@@ -480,6 +515,7 @@ export default {
     ModalConfirmarProyecto,
     ModalCancelarProyecto,
     ModalEliminarIntegrante,
+    ModalDarseDeBajaProyecto,
     ModalEliminarActividad,
     ModalAsignarActividad,
     ModalDesasignarActividad,
@@ -514,6 +550,10 @@ data() {
       errorEliminarIntegrante: "",
       errorMotivoEliminarIntegrante: "",
       tokenRefrescoIntegrantes: 0,
+      modalDarseDeBajaVisible: false,
+      dandoDeBaja: false,
+      errorDarseDeBaja: "",
+      errorMotivoDarseDeBaja: "",
       modalConfirmacionVisible: false,
       previewConfirmacion: null,
       cargandoPreviewConfirmacion: false,
@@ -637,6 +677,14 @@ data() {
         ? `Proyecto cancelado. Motivo: ${motivo}`
         : "Proyecto cancelado. Sin motivo registrado.";
     },
+    /**
+     * UC-40: el backend es la fuente de verdad. Sólo se muestra la acción si
+     * `puedeDarseDeBaja` es exactamente true; no se recalcula estado,
+     * membresía ni regla del último Director en el frontend.
+     */
+    puedeDarseDeBaja() {
+      return this.proyecto?.puedeDarseDeBaja === true;
+    },
     /** UC-34: sólo el director con GESTIONAR_POSTULACIONES gestiona postulaciones. */
     puedeGestionarPostulaciones() {
       return (
@@ -711,6 +759,14 @@ data() {
       if (controladorEliminarIntegrante) {
         controladorEliminarIntegrante.abort();
         controladorEliminarIntegrante = null;
+      }
+      this.modalDarseDeBajaVisible = false;
+      this.dandoDeBaja = false;
+      this.errorDarseDeBaja = "";
+      this.errorMotivoDarseDeBaja = "";
+      if (controladorDarseDeBaja) {
+        controladorDarseDeBaja.abort();
+        controladorDarseDeBaja = null;
       }
       this.modalEliminarActividadVisible = false;
       this.actividadEliminar = {};
@@ -1045,8 +1101,18 @@ data() {
         );
         this.modalPublicarVisible = false;
         // Reemplaza los datos locales con la respuesta (§4.2): estado → Publicado
-        // y el botón Publicar desaparece.
-        this.proyecto = response?.data || this.proyecto;
+        // y el botón Publicar desaparece. Se conserva `puedeDarseDeBaja` por si
+        // el DTO del POST no lo incluye.
+        const publicado = response?.data || null;
+        this.proyecto = publicado
+          ? {
+              ...publicado,
+              puedeDarseDeBaja:
+                publicado.puedeDarseDeBaja ??
+                this.proyecto?.puedeDarseDeBaja ??
+                false,
+            }
+          : this.proyecto;
         this.toast.init({
           title: "Proyecto publicado",
           message: "El proyecto ya está visible según su privacidad.",
@@ -1418,6 +1484,172 @@ data() {
       // 5xx o error no clasificado: el modal queda abierto para reintentar.
       this.errorEliminarIntegrante = mensaje;
     },
+    /** UC-40: abre la confirmación de baja voluntaria del perfil activo. */
+    abrirDarseDeBaja() {
+      if (!this.puedeDarseDeBaja || this.dandoDeBaja) return;
+      this.errorDarseDeBaja = "";
+      this.errorMotivoDarseDeBaja = "";
+      this.modalDarseDeBajaVisible = true;
+    },
+    onCambioVisibilidadDarseDeBaja(valor) {
+      if (this.dandoDeBaja && !valor) return;
+      if (valor) {
+        this.modalDarseDeBajaVisible = true;
+        return;
+      }
+      this.cerrarModalDarseDeBaja();
+    },
+    cerrarModalDarseDeBaja(forzar = false) {
+      if (this.dandoDeBaja && !forzar) return;
+      this.modalDarseDeBajaVisible = false;
+      this.errorDarseDeBaja = "";
+      this.errorMotivoDarseDeBaja = "";
+      if (controladorDarseDeBaja) {
+        controladorDarseDeBaja.abort();
+        controladorDarseDeBaja = null;
+      }
+    },
+    /** UC-40: ejecuta la baja y redirige fuera del detalle. */
+    async confirmarDarseDeBaja(motivo) {
+      if (this.dandoDeBaja) return;
+
+      const texto = String(motivo ?? "").trim();
+      if (!texto) {
+        this.errorMotivoDarseDeBaja = "El motivo de la baja es obligatorio.";
+        return;
+      }
+      if (texto.length > LIMITE_MOTIVO_BAJA) {
+        this.errorMotivoDarseDeBaja =
+          "El motivo de la baja no puede superar los 100 caracteres.";
+        return;
+      }
+
+      this.dandoDeBaja = true;
+      this.errorDarseDeBaja = "";
+      this.errorMotivoDarseDeBaja = "";
+      if (controladorDarseDeBaja) controladorDarseDeBaja.abort();
+      controladorDarseDeBaja = new AbortController();
+
+      try {
+        await proyectoService.darseDeBajaProyecto(
+          this.idProyecto,
+          texto,
+          controladorDarseDeBaja.signal
+        );
+
+        this.modalDarseDeBajaVisible = false;
+        this.errorDarseDeBaja = "";
+        this.errorMotivoDarseDeBaja = "";
+
+        this.toast.init({
+          title: "Te diste de baja",
+          message: "Ya no formás parte del proyecto.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        // Destino fresco: ProyectosInicioView ejecuta GET /proyectos/propios
+        // al montar, así que no hace falta invalidar una caché inexistente.
+        await this.$router.push({ name: "proyectos-inicio" });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorDarseDeBaja(error);
+      } finally {
+        this.dandoDeBaja = false;
+      }
+    },
+    async manejarErrorDarseDeBaja(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorDarseDeBaja(error);
+      const { tipo, mensaje } = clasificacion;
+
+      const mostrarToast = (title) => {
+        this.toast.init({
+          title,
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+      };
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.SESION) {
+        // El interceptor global ya limpió la sesión y redirigió a login.
+        this.cerrarModalDarseDeBaja(true);
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.CUENTA) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("Cuenta no habilitada");
+        return;
+      }
+
+      // Error corregible: el modal sigue abierto y conserva el motivo.
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.MOTIVO) {
+        this.errorMotivoDarseDeBaja = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.PERFIL_ACTIVO) {
+        this.cerrarModalDarseDeBaja(true);
+        this.mensajeError = mensaje;
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.PROYECTO_NO_ENCONTRADO) {
+        this.cerrarModalDarseDeBaja(true);
+        this.proyecto = null;
+        this.estadoNoEncontrado = true;
+        this.mensajeError = mensaje;
+        this.mostrarVolver = true;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.PERMISO) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("No se pudo dar de baja");
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.ULTIMO_DIRECTOR) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("Último director");
+        return;
+      }
+
+      if (
+        [
+          TIPOS_ERROR_DARSE_DE_BAJA.ESTADO_PROYECTO,
+          TIPOS_ERROR_DARSE_DE_BAJA.MEMBRESIA_INACTIVA,
+        ].includes(tipo)
+      ) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("No se pudo dar de baja");
+        return;
+      }
+
+      // La ficha §8.3 manda cerrar ante 403/404/409 aunque el mensaje no
+      // coincida con ningún patrón conocido: el backend sigue siendo la
+      // fuente de verdad y el proyecto se recarga.
+      if ([403, 404, 409].includes(status)) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("No se pudo dar de baja");
+        return;
+      }
+
+      // 5xx o error no clasificado: el modal queda abierto para reintentar.
+      this.errorDarseDeBaja = mensaje;
+    },
     /** UC-60 §5.1: abre el diálogo y consulta el preview (solo lectura). */
     abrirConfirmacion() {
       if (!this.puedeConfirmarProyecto || this.confirmandoProyecto) return;
@@ -1576,6 +1808,10 @@ data() {
             permisos: Array.isArray(data.proyecto.permisos)
               ? data.proyecto.permisos
               : this.proyecto?.permisos || [],
+            puedeDarseDeBaja:
+              data.proyecto.puedeDarseDeBaja ??
+              this.proyecto?.puedeDarseDeBaja ??
+              false,
           };
         } else {
           await this.cargar();
