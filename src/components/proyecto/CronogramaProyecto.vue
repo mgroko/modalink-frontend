@@ -132,8 +132,9 @@
           <div>
             <h3 class="cronograma-proyecto__titulo">Gantt</h3>
             <p class="cronograma-proyecto__subtitulo">
-              Barra sólida: ejecución proyectada. Barra clara: holgura hasta el
-              makespan.
+              Barra sólida: fechas persistidas del proyecto confirmado. Barra
+              clara: holgura hasta el makespan. Si no hay fechas persistidas, se
+              muestra la proyección CPM.
             </p>
           </div>
         </header>
@@ -246,8 +247,9 @@
           <div>
             <h3 class="cronograma-proyecto__titulo">Tabla CPM</h3>
             <p class="cronograma-proyecto__subtitulo">
-              Holgura calculada por el sistema respecto del makespan. La columna
-              Crítica usa la ruta crítica del cronograma.
+              Fechas proyectadas por CPM. La tabla es de cálculo; el Gantt
+              prioriza las fechas persistidas. La columna Crítica usa la ruta
+              crítica del cronograma.
             </p>
           </div>
         </header>
@@ -353,8 +355,11 @@ import {
   ESTADOS_CRONOGRAMA,
   coloresEstadoCronograma,
   esErrorSinFechaEntrega,
+  esProyectadaCronograma,
+  esTentativa,
   etiquetaEstadoCronograma,
   fechaFinInclusiva,
+  fechasVisiblesCronograma,
   formatearHolgura,
   formatearRangoCpm,
 } from "../../utils/cpmConstants.js";
@@ -550,10 +555,24 @@ export default {
       const actividad = this.actividadSeleccionada;
       if (!actividad) return [];
 
-      // El DTO del cronograma no expone fechas persistidas: se muestran sólo
-      // los flags que sí trae, para no rotular todo como "Proyectada".
       const chips = [];
-      if (actividad.tentativo === true || actividad.tentative === "true") {
+      if (esProyectadaCronograma(actividad)) {
+        chips.push({
+          tipo: "proyectada",
+          etiqueta: "Proyectada",
+          detalle:
+            esTentativa(actividad)
+              ? "Proyección provisional hasta confirmar el proyecto."
+              : "Fecha proyectada por CPM; no está persistida.",
+        });
+      } else if (actividad.inicioPersistido) {
+        chips.push({
+          tipo: "persistida",
+          etiqueta: "Fechas guardadas",
+          detalle: "Fechas reales persistidas en la actividad.",
+        });
+      }
+      if (esTentativa(actividad)) {
         chips.push({
           tipo: "estimada",
           etiqueta: "Estimada",
@@ -586,10 +605,8 @@ export default {
       return chips;
     },
     rangoSeleccionada() {
-      return formatearRangoCpm(
-        this.actividadSeleccionada?.inicioProyectado,
-        this.actividadSeleccionada?.finProyectado
-      );
+      const visibles = fechasVisiblesCronograma(this.actividadSeleccionada);
+      return formatearRangoCpm(visibles.inicio, visibles.fin);
     },
     holguraSeleccionada() {
       return formatearHolgura(this.actividadSeleccionada?.holguraMakespan) || "—";
@@ -1090,6 +1107,12 @@ export default {
   border-color: var(--color-info-border);
   background: var(--color-info-soft);
   color: var(--color-info-text);
+}
+
+.cronograma-proyecto__chip--persistida {
+  border-color: var(--color-success-border);
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
 }
 
 .cronograma-proyecto__chip--estimada {

@@ -308,6 +308,39 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} ActividadReprogramadaResponse
+ *   UC-61: actividad movida por una reprogramación automática o manual.
+ * @property {number} idActividad
+ * @property {string} nombre
+ * @property {string} estado
+ * @property {string|null} inicioAnterior
+ * @property {string|null} inicioNuevo
+ */
+
+/**
+ * @typedef {Object} BloqueoReprogramacionResponse
+ *   Mismo contrato que los bloqueos de confirmación, con alias `entidad` /
+ *   `idEntidad` en las respuestas de reprogramación.
+ * @property {string} codigo
+ * @property {string} mensaje
+ * @property {string|null} entidad
+ * @property {number|null} idEntidad
+ */
+
+/**
+ * @typedef {Object} ProyectoReprogramadoResponse
+ *   UC-61 POST /proyectos/{idProyecto}/reprogramar.
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {string} motivo ej. "REINTENTO"
+ * @property {string|null} fechaEntrega
+ * @property {ActividadReprogramadaResponse[]} actividades
+ * @property {BloqueoReprogramacionResponse[]} conflictosFijos actividades
+ *           EN_CURSO/FINALIZADA que quedaron fuera de la disponibilidad y no
+ *           se movieron
+ */
+
+/**
  * @typedef {Object} ActividadProximaProyecto
  * @property {number} idActividad
  * @property {string} nombre
@@ -750,6 +783,26 @@ const proyectoService = {
    */
   confirmar(idProyecto, signal) {
     return http.post(`/proyectos/${idProyecto}/confirmar`, null, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/reprogramar — UC-61.
+   * Reintenta la reprogramación de un proyecto confirmado que falló al
+   * cambiar la jornada. Solo puede ejecutarlo un director activo del proyecto.
+   * Recalcula y persiste el plan; no mueve actividades EN_CURSO ni FINALIZADA.
+   *
+   * Errores:
+   * - 401 sesión ausente/vencida
+   * - 403 sin perfil activo, sin membresía o sin rol Director
+   * - 404 proyecto inexistente
+   * - 409 ProyectoNoConfirmableException → `{ message, codigo, bloqueos }`;
+   *   no se modifica el cronograma
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ProyectoReprogramadoResponse}>} 200 OK
+   */
+  reprogramar(idProyecto, signal) {
+    return http.post(`/proyectos/${idProyecto}/reprogramar`, null, { signal });
   },
 
   /**

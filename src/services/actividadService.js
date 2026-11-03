@@ -224,9 +224,12 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} estado
  * @property {number} duracionMinutos
  * @property {{idActividad:number,nombre:string}[]} predecesoras
- * @property {string|null} inicioProyectado
- * @property {string|null} finProyectado fin exclusivo
- * @property {string|null} finConHolgura fin de la barra clara del Gantt
+ * @property {string|null} inicioProyectado proyección CPM; no es una reserva
+ * @property {string|null} finProyectado fin exclusivo de la proyección CPM
+ * @property {string|null} finConHolgura fin de la barra clara del Gantt;
+ *           sigue siendo CPM, no reemplazarlo por fechas persistidas
+ * @property {string|null} inicioPersistido fecha real guardada en la actividad
+ * @property {string|null} finPersistido fecha real guardada en la actividad
  * @property {boolean|null} critica holgura cero
  * @property {boolean|null} enRutaCritica cadena que define el makespan
  * @property {number|null} holguraMakespan

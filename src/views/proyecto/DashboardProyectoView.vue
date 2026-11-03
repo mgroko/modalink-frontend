@@ -1036,6 +1036,7 @@ data() {
       const query = { ...this.$route.query };
       if (tab === "informacion") delete query.tab;
       else query.tab = tab;
+      if (tab !== "planificacion") delete query.vista;
       this.reemplazarQuery(query);
     },
     limpiarActividadResaltada() {

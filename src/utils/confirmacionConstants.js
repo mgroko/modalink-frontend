@@ -109,8 +109,8 @@ export function normalizarBloqueos(lista) {
     .map((bloqueo) => ({
       codigo: bloqueo.codigo ? String(bloqueo.codigo) : "",
       mensaje: bloqueo.mensaje || bloqueo.message || "",
-      entidadTipo: bloqueo.entidadTipo ?? null,
-      entidadId: bloqueo.entidadId ?? null,
+      entidadTipo: bloqueo.entidadTipo ?? bloqueo.entidad ?? null,
+      entidadId: bloqueo.entidadId ?? bloqueo.idEntidad ?? null,
     }))
     .filter((bloqueo) => bloqueo.mensaje || bloqueo.codigo);
 }

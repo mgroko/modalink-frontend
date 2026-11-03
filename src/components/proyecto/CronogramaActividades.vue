@@ -90,6 +90,8 @@
 <script>
 import { parseFechaLocal } from "../../utils/actividadConstants.js";
 import {
+  esProyectadaCronograma,
+  fechasVisiblesCronograma,
   formatearHolgura,
   formatearRangoCpm,
   textoProyeccion,
@@ -118,8 +120,9 @@ export default {
     items() {
       return (this.actividades || [])
         .map((actividad) => {
-          const inicio = parseFechaLocal(actividad?.inicioProyectado);
-          const fin = parseFechaLocal(actividad?.finProyectado);
+          const visibles = fechasVisiblesCronograma(actividad);
+          const inicio = parseFechaLocal(visibles.inicio);
+          const fin = parseFechaLocal(visibles.fin);
           if (!inicio || !fin) return null;
 
           const inicioMs = inicio.getTime();
@@ -131,8 +134,7 @@ export default {
               : finMs;
 
           const tieneHolgura = holguraMs > finMs;
-          const proyectada =
-            !actividad?.fechaHoraInicio && !!actividad?.inicioProyectado;
+          const proyectada = esProyectadaCronograma(actividad);
           const tentativa =
             actividad?.tentativo === true || actividad?.tentative === "true";
 
@@ -146,7 +148,9 @@ export default {
             holguraAncho: holguraMs - finMs,
             tieneHolgura,
             proyectada,
+            persistida: visibles.persistida,
             tentativa,
+            tentativo: tentativa,
             critica: actividad?.enRutaCritica === true,
             conflicto: actividad?.conflicto === true,
             fijo: actividad?.fijo === true,
@@ -216,6 +220,7 @@ export default {
       ];
 
       if (item.proyectada) partes.push(textoProyeccion(item));
+      if (item.persistida) partes.push("Fechas guardadas en el proyecto.");
       if (item.tentativa && !item.proyectada) {
         partes.push("Proyección provisional hasta confirmar el proyecto.");
       }

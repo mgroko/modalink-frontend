@@ -90,6 +90,33 @@ export function esProyectada(actividad) {
 }
 
 /**
+ * Regla UC-61 para `ActividadCronogramaResponse`: la actividad es proyectada
+ * cuando no tiene fecha persistida y sí tiene proyección CPM.
+ * @param {object|null|undefined} actividad
+ * @returns {boolean}
+ */
+export function esProyectadaCronograma(actividad) {
+  return !actividad?.inicioPersistido && !!actividad?.inicioProyectado;
+}
+
+/**
+ * Fechas visibles del Gantt: persistidas si existen, proyectadas como fallback.
+ * No modifica `finConHolgura`, que sigue siendo CPM.
+ * @param {object|null|undefined} actividad
+ * @returns {{inicio: string|null, fin: string|null, persistida: boolean}}
+ */
+export function fechasVisiblesCronograma(actividad) {
+  const inicio =
+    actividad?.inicioPersistido || actividad?.inicioProyectado || null;
+  const fin = actividad?.finPersistido || actividad?.finProyectado || null;
+  return {
+    inicio,
+    fin,
+    persistida: !!actividad?.inicioPersistido,
+  };
+}
+
+/**
  * `tentativo` manda. `tentative` sólo se acepta como compatibilidad histórica.
  * @param {object|null|undefined} actividad
  * @returns {boolean}

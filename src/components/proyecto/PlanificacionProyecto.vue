@@ -346,9 +346,13 @@ export default {
         this.cargarTodo();
       }
     },
+    "$route.query.vista"() {
+      this.sincronizarPestanaConQuery();
+    },
   },
   created() {
     this.controladorBusqueda = null;
+    this.sincronizarPestanaConQuery();
   },
   mounted() {
     this.cargarTodo();
@@ -359,9 +363,27 @@ export default {
     if (this.controladorBusqueda) this.controladorBusqueda.abort();
   },
   methods: {
+    sincronizarPestanaConQuery() {
+      this.pestanaActiva =
+        this.$route?.query?.vista === "cronograma"
+          ? "cronograma"
+          : "planificacion";
+    },
     cambiarPestana(pestana) {
       if (pestana === this.pestanaActiva) return;
       this.pestanaActiva = pestana;
+
+      const query = { ...this.$route.query };
+      if (pestana === "cronograma") query.vista = "cronograma";
+      else delete query.vista;
+
+      this.$router
+        .replace({
+          name: this.$route.name,
+          params: { ...this.$route.params },
+          query,
+        })
+        .catch(() => {});
     },
     async cargarTodo() {
       const corrida = ++this.idCarga;

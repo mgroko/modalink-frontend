@@ -17,9 +17,9 @@
         <VaInput
           v-model="margen"
           :rules="[reglas.requerido, reglas.margenMinimo]"
-          label="Margen de actividad (minutos)"
+          label="Margen total entre actividades (min)"
           type="number"
-          hint="Buffer aplicado antes y después de cada actividad de proyecto."
+          hint="Separación total entre el fin de una actividad y el inicio de la siguiente."
         />
       </div>
 
@@ -115,7 +115,9 @@
     <template #footer>
       <div class="configurar-jornada__modal-footer">
         <VaButton preset="secondary" @click="$emit('update:modelValue', false)">Cancelar</VaButton>
-        <VaButton color="primary" :loading="guardando" @click="guardar">Guardar jornada</VaButton>
+        <VaButton color="primary" :loading="guardando" @click="guardar">
+          {{ guardando ? "Guardando y reprogramando…" : "Guardar jornada" }}
+        </VaButton>
       </div>
     </template>
   </VaModal>
@@ -263,11 +265,12 @@ export default {
       this.guardando = true;
       this.mensajeError = "";
       try {
-        await calendarioService.configurarJornada({
+        const response = await calendarioService.configurarJornada({
           margenActividadMinutos: parseInt(this.margen, 10),
           dias,
         });
-        this.$emit("guardada");
+        // El padre muestra el resumen de `reprogramacion` y recarga las vistas.
+        this.$emit("guardada", response?.data || null);
       } catch (error) {
         this.mensajeError = mensajeErrorApi(error, "No se pudo guardar la jornada.");
       } finally {
