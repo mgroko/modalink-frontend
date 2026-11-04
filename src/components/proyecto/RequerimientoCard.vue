@@ -23,6 +23,13 @@
     <div class="req-card__cabecera">
       <span class="req-card__cantidad">{{ requerimiento.cantidad }}</span>
       <span class="req-card__profesion">{{ requerimiento.nombreProfesion }}</span>
+      <span
+        v-if="protegido"
+        class="req-card__badge req-card__badge--protegido"
+        :title="textoProteccion"
+      >
+        Protegido
+      </span>
       <span v-if="cupoCompleto" class="req-card__badge">
         {{ textos.CUPO_COMPLETO }}
       </span>
@@ -101,6 +108,10 @@ import {
   textoCupoCubiertos,
 } from "../../utils/postulacionConstants.js";
 import ChipOrigenInicio from "./ChipOrigenInicio.vue";
+import {
+  esRequerimientoProtegido,
+  mensajeProteccionRequerimiento,
+} from "../../utils/requerimientoProyectoConstants.js";
 
 /*
  * Requerimiento en modo lectura (general o de actividad). Reemplaza a
@@ -166,6 +177,12 @@ export default {
     return { textos: TEXTOS_POSTULACIONES };
   },
   computed: {
+    protegido() {
+      return esRequerimientoProtegido(this.requerimiento);
+    },
+    textoProteccion() {
+      return mensajeProteccionRequerimiento(this.requerimiento);
+    },
     cupoCompleto() {
       return this.sinCupo || this.requerimiento?.satisfecho === true;
     },
@@ -350,6 +367,17 @@ export default {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.req-card__badge--protegido {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  border-color: var(--color-warning-border);
+}
+
+.req-card__badge--protegido + .req-card__badge,
+.req-card__badge--protegido + .req-card__cupo {
+  margin-left: 0.35rem;
 }
 
 .req-card__barra {

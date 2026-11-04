@@ -64,7 +64,12 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} RequerimientoGralModificarRequest
  *   Igual que RequerimientoGralRequest más el id de un requerimiento existente.
- *   Si se envía, debe pertenecer al proyecto y NO estar satisfecho.
+ *   Los requerimientos protegidos (`protegido === true` en el GET) deben
+ *   omitirse del payload: el backend los conserva. Un requerimiento no
+ *   protegido que se omite sí se elimina, por eso hay que enviar completos
+ *   todos los no protegidos que deban conservarse. Un requerimiento existente
+ *   enviado sin cambios no se valida ni se reescribe; si cambia, se actualiza
+ *   en el lugar conservando su id.
  * @property {number} [idRequerimientoGral] sólo en requerimientos existentes
  *           editables (omitir en los nuevos)
  * @property {number} cantidad > 0
@@ -81,7 +86,8 @@ import { serializarParams } from "../utils/queryParams.js";
  *   omitirla en Borrador borra la ubicación (por eso el front la reenvía
  *   siempre salvo que el usuario la quite explícitamente). `[]` en
  *   `objetivos` elimina todos; en `requerimientosGral` elimina los no
- *   satisfechos (los satisfechos se conservan solos).
+ *   protegidos y conserva los protegidos. Ausente/null en
+ *   `requerimientosGral` no toca ningún requerimiento.
  * @property {string} descripcion máx. 200; no blanco
  * @property {"PUBLICO"|"PRIVADO"} privacidad
  * @property {boolean|null} [aceptaPostulacionGral] null/omitido = no cambia
@@ -92,7 +98,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {ObjetivoProyectoRequest[]|null} [objetivos] si se envía
  *           reemplaza todos; [] elimina todos
  * @property {RequerimientoGralModificarRequest[]|null} [requerimientosGral]
- *           lista completa deseada (no delta); excluir los satisfechos
+ *           lista completa deseada (no delta); incluir todos los no
+ *           protegidos que deban conservarse y omitir los protegidos
  * @property {MoodboardRequest|null} [moodboard] si se envía actualiza/crea;
  *           descripcion null borra la descripción
  */
@@ -145,8 +152,16 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {number} faltantes max(0, cantidad - cubiertos)
  * @property {boolean} satisfecho cupo completo (`cubiertos >= cantidad`), no
  *           "al menos una postulación ACEPTADA" (ficha UC-26 §11). Con cupo
- *           completo no se puede editar/eliminar desde UC-36 y se excluye del
- *           payload de modificación (ficha UC-36 §7)
+ *           completo el requerimiento queda protegido y no se puede
+ *           editar/eliminar desde UC-36; se excluye del payload de
+ *           modificación.
+ * @property {boolean} protegido fuente de verdad para bloquear edición y
+ *           eliminación (ficha modificar-proyecto-confirmado §5). true si el
+ *           cupo está completo, tiene miembros vinculados (activos o
+ *           históricos), postulaciones/invitaciones ACEPTADAS o, en
+ *           CONFIRMADO, PENDIENTES. Omitir los protegidos del payload del PUT:
+ *           el backend los conserva. En requerimientos recién creados puede
+ *           venir false hasta refrescar el proyecto.
  * @property {boolean} puedePostularse fuente de verdad por requerimiento:
  *           true sólo si el perfil activo puede postularse a ESTE
  *           requerimiento (estado del proyecto, membresía, profesión y cupo).
@@ -832,6 +847,12 @@ const proyectoService = {
    * borra). La respuesta 200 tiene el mismo contrato que GET
    * /proyectos/{idProyecto}: el frontend reemplaza el estado local con ella.
    *
+   * `requerimientosGral`: los protegidos (`protegido === true`) deben
+   * omitirse y el backend los conserva; los no protegidos que se omiten se
+   * eliminan, así que hay que enviar completos los que deban conservarse. Un
+   * existente enviado con cambios se actualiza conservando su id (ya no se
+   * recrea).
+   *
    * Errores:
    * - 400 MethodArgumentNotValidException → body { errores: { campo: msg } }
    * - 400 UbicacionObligatoriaException (Publicado/Confirmado sin ubicación)
@@ -840,8 +861,9 @@ const proyectoService = {
    * - 403 AccesoDenegadoProyectoException (sin MODIFICAR_PROYECTO o no miembro)
    * - 404 PerfilActivoNoSeleccionadoException / PerfilNoEncontradoException /
    *   ProyectoNoEncontradoException / HabilidadNoEncontradaException
-   * - 409 estado Finalizado/Cancelado, requerimiento satisfecho enviado,
-   *   PerfilEnBajaException
+   * - 409 estado Finalizado/Cancelado, requerimiento protegido enviado con
+   *   cambios (`{ codigo: "REQUERIMIENTO_CON_VINCULOS",
+   *   idRequerimientoGral }`), PerfilEnBajaException
    * @param {number} idProyecto
    * @param {ModificarProyectoRequest} request
    * @param {AbortSignal} [signal] cancela la request en vuelo

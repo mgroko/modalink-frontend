@@ -158,8 +158,9 @@
         <section v-else-if="paso === 3" class="modificar-proyecto__seccion">
           <h2 class="modificar-proyecto__seccion-titulo">Requerimiento de personal</h2>
           <p class="modificar-proyecto__seccion-ayuda">
-            Los requerimientos con cupo completo se muestran bloqueados: no se
-            pueden editar ni eliminar.
+            Podés agregar, editar y quitar los requerimientos que no estén
+            protegidos. Los protegidos se muestran bloqueados porque tienen cupo
+            cubierto, personal vinculado o postulaciones/invitaciones activas.
           </p>
 
           <VaButton
@@ -179,6 +180,7 @@
 
           <RequerimientoForm
             v-for="(requerimiento, i) in form.requerimientosGral"
+            :id="`requerimiento-${requerimiento.idRequerimientoGral ?? requerimiento.uid}`"
             :key="requerimiento.uid"
             v-model="form.requerimientosGral[i]"
             :indice="i"
@@ -186,9 +188,15 @@
             :habilidades="habilidades"
             :cargando-habilidades="cargandoHabilidades"
             :errores="erroresDeRequerimiento(i)"
-            :eliminar-permitido="!requerimiento.satisfecho"
-            :solo-lectura="requerimiento.satisfecho"
+            :eliminar-permitido="!esProtegido(requerimiento)"
+            :solo-lectura="esProtegido(requerimiento)"
+            :etiqueta-bloqueo="etiquetaBloqueo(requerimiento)"
+            :motivo-bloqueo="motivoBloqueo(requerimiento)"
+            :resaltado="esRequerimientoConVinculos(requerimiento)"
+            :mensaje-conflicto="textoConflictoRequerimiento"
             @eliminar="quitarRequerimiento(i)"
+            @descartar-cambios="descartarCambiosRequerimiento(requerimiento)"
+            @gestionar-postulaciones="irAGestionarPostulaciones"
             @catalogo-cargado="guardarCatalogo"
           />
 
@@ -333,6 +341,14 @@ import {
   raizConocida,
 } from "../../utils/validacionesProyecto.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
+import {
+  esRequerimientoProtegido,
+  etiquetaProteccionRequerimiento,
+  mensajeProteccionRequerimiento,
+  esErrorRequerimientoVinculos,
+  idRequerimientoGralConflicto,
+  mensajeErrorRequerimientoVinculos,
+} from "../../utils/requerimientoProyectoConstants.js";
 import { mensajeErrorApi } from "../../utils/apiError.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 
@@ -376,6 +392,8 @@ export default {
       actividades: [],
       mensajeErrorActividades: "",
       proyectoOriginal: null,
+      requerimientosOriginales: [],
+      idRequerimientoConVinculos: null,
       estado: ESTADOS_PROYECTO.BORRADOR,
       precargado: false,
       hoy: hoyISO(),
@@ -434,6 +452,9 @@ export default {
       const fechaOriginal = this.proyectoOriginal?.fechaEntregaEstipulada || "";
       if (this.form.fechaEntregaEstipulada === fechaOriginal) return [];
       return [reglasProyecto.fechaEntregaNoPasada(this.hoy)];
+    },
+    textoConflictoRequerimiento() {
+      return mensajeErrorRequerimientoVinculos(this.idRequerimientoConVinculos);
     },
   },
   watch: {
@@ -538,6 +559,11 @@ export default {
         moodboard: proyecto.moodboard?.descripcion || "",
       };
 
+      this.requerimientosOriginales = JSON.parse(
+        JSON.stringify(this.form.requerimientosGral)
+      );
+      this.idRequerimientoConVinculos = null;
+
       this.imagenesMoodboard = (proyecto.moodboard?.imagenes || []).map(
         (imagen, indice) => ({
           id: imagen.idImagen,
@@ -565,6 +591,20 @@ export default {
         uid: this.siguienteUid,
         idRequerimientoGral: requerimiento.idRequerimientoGral,
         satisfecho: !!requerimiento.satisfecho,
+        protegido:
+          typeof requerimiento.protegido === "boolean"
+            ? requerimiento.protegido
+            : null,
+        cubiertos: Number(requerimiento.cubiertos) || 0,
+        faltantes:
+          requerimiento.faltantes != null
+            ? Number(requerimiento.faltantes)
+            : null,
+        puedePostularse:
+          typeof requerimiento.puedePostularse === "boolean"
+            ? requerimiento.puedePostularse
+            : null,
+        nombreProfesion: requerimiento.nombreProfesion || "",
         cantidad: requerimiento.cantidad,
         idProfesion: requerimiento.idProfesion,
         descripcion: requerimiento.descripcion || "",
@@ -641,6 +681,11 @@ export default {
         uid: this.siguienteUid,
         idRequerimientoGral: null,
         satisfecho: false,
+        protegido: false,
+        cubiertos: 0,
+        faltantes: null,
+        puedePostularse: null,
+        nombreProfesion: "",
         cantidad: "",
         idProfesion: null,
         descripcion: "",
@@ -655,8 +700,76 @@ export default {
 
     quitarRequerimiento(indice) {
       const requerimiento = this.form.requerimientosGral[indice];
-      if (requerimiento?.satisfecho) return;
+      if (this.esProtegido(requerimiento)) return;
       this.form.requerimientosGral.splice(indice, 1);
+      this.limpiarErroresRequerimiento(indice);
+    },
+
+    esProtegido(requerimiento) {
+      return esRequerimientoProtegido(requerimiento);
+    },
+
+    etiquetaBloqueo(requerimiento) {
+      return etiquetaProteccionRequerimiento(requerimiento);
+    },
+
+    motivoBloqueo(requerimiento) {
+      return mensajeProteccionRequerimiento(requerimiento);
+    },
+
+    esRequerimientoConVinculos(requerimiento) {
+      return (
+        this.idRequerimientoConVinculos != null &&
+        String(requerimiento?.idRequerimientoGral) ===
+          String(this.idRequerimientoConVinculos)
+      );
+    },
+
+    limpiarErroresRequerimiento(indice) {
+      const prefijo = `requerimientosGral.${indice}.`;
+      const errores = {};
+      for (const [clave, mensaje] of Object.entries(this.erroresBackend)) {
+        if (!clave.startsWith(prefijo)) errores[clave] = mensaje;
+      }
+      this.erroresBackend = errores;
+      if (this.seccionErrores.requerimientosGral) {
+        const secciones = { ...this.seccionErrores };
+        delete secciones.requerimientosGral;
+        this.seccionErrores = secciones;
+      }
+    },
+
+    descartarCambiosRequerimiento(requerimiento) {
+      const id = requerimiento?.idRequerimientoGral;
+      if (id == null) return;
+
+      const original = this.requerimientosOriginales.find(
+        (item) => String(item.idRequerimientoGral) === String(id)
+      );
+      if (!original) return;
+
+      const indice = this.form.requerimientosGral.findIndex(
+        (item) => String(item.idRequerimientoGral) === String(id)
+      );
+      if (indice < 0) return;
+
+      this.form.requerimientosGral.splice(
+        indice,
+        1,
+        JSON.parse(JSON.stringify(original))
+      );
+      this.limpiarErroresRequerimiento(indice);
+      this.idRequerimientoConVinculos = null;
+      this.mensajeError = "";
+    },
+
+    irAGestionarPostulaciones() {
+      if (this.guardando) return;
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: this.idProyecto },
+        query: { tab: "postulaciones" },
+      });
     },
 
     agregarObjetivo() {
@@ -770,7 +883,7 @@ export default {
 
       const mensajesRequerimiento = [];
       this.form.requerimientosGral.forEach((requerimiento, indice) => {
-        if (requerimiento.satisfecho) return;
+        if (this.esProtegido(requerimiento)) return;
 
         const catalogo = this.catalogosPorProfesion[requerimiento.idProfesion];
         const validable = Array.isArray(catalogo)
@@ -945,6 +1058,7 @@ export default {
       this.guardando = true;
       this.mensajeError = "";
       this.mensajeExito = "";
+      this.idRequerimientoConVinculos = null;
 
       if (controladorGuardado) controladorGuardado.abort();
       controladorGuardado = new AbortController();
@@ -1009,13 +1123,12 @@ export default {
       }
 
       if (this.dirty.personal) {
-        // UC-36 pendiente: si un requerimiento tiene `cubiertos > 0`
-        // pero `faltantes > 0`, este payload lo reenvía y el sistema lo
-        // elimina/recrea, lo que puede chocar con la FK de miembros. Hoy sólo
-        // se excluyen los de cupo completo; no omitir los parciales porque
-        // omitirlos también implica borrarlos. Ver nota en la ficha UC-26 §11.
+        // Ficha modificar-proyecto-confirmado §6: los protegidos se omiten
+        // (el backend los conserva) y todos los no protegidos que queden en el
+        // formulario se envían completos, porque omitir uno no protegido lo
+        // elimina. Los existentes conservan su id: ya no se recrean.
         request.requerimientosGral = this.form.requerimientosGral
-          .filter((requerimiento) => !requerimiento.satisfecho)
+          .filter((requerimiento) => !this.esProtegido(requerimiento))
           .map((requerimiento) => {
             const item = {
               cantidad: Number(requerimiento.cantidad),
@@ -1095,6 +1208,14 @@ export default {
       const clasificacion = clasificarErrorProyecto(error);
       const fallback = "No se pudo modificar el proyecto. Intentá nuevamente.";
 
+      if (esErrorRequerimientoVinculos(error)) {
+        this.manejarConflictoRequerimiento(
+          idRequerimientoGralConflicto(error),
+          mensaje
+        );
+        return;
+      }
+
       if (!clasificacion) {
         this.mensajeError =
           status === 403 && mensaje && !error?._esSesionExpirada
@@ -1147,6 +1268,14 @@ export default {
           this.modalConfirmar = false;
           this.mensajeError = clasificacion.mensaje;
           this.irAPaso(1);
+          break;
+        }
+
+        case "requerimiento-vinculos": {
+          this.manejarConflictoRequerimiento(
+            clasificacion.idRequerimientoGral,
+            clasificacion.mensaje
+          );
           break;
         }
 
@@ -1217,10 +1346,48 @@ export default {
       }
     },
 
+    manejarConflictoRequerimiento(idRequerimiento, mensaje) {
+      this.modalConfirmar = false;
+      this.idRequerimientoConVinculos = idRequerimiento;
+      this.mensajeError =
+        mensaje || mensajeErrorRequerimientoVinculos(idRequerimiento);
+
+      if (idRequerimiento == null) {
+        this.irAPaso(3);
+        return;
+      }
+
+      // El backend acaba de confirmar que el requerimiento está protegido:
+      // lo marcamos localmente para no volver a enviarlo ni habilitar su
+      // edición. También en el snapshot para que "Descartar cambios" no
+      // pierda esa información.
+      for (const lista of [
+        this.form.requerimientosGral,
+        this.requerimientosOriginales,
+      ]) {
+        const item = (lista || []).find(
+          (requerimiento) =>
+            String(requerimiento?.idRequerimientoGral) ===
+            String(idRequerimiento)
+        );
+        if (item) item.protegido = true;
+      }
+
+      this.irAPaso(3);
+      this.$nextTick(() => {
+        const elemento = document.getElementById(
+          `requerimiento-${idRequerimiento}`
+        );
+        if (elemento) {
+          elemento.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+    },
+
     asignarErrorRequerimiento(campo, mensaje) {
       const indice = this.form.requerimientosGral.findIndex(
         (requerimiento) =>
-          !requerimiento.satisfecho &&
+          !this.esProtegido(requerimiento) &&
           (campo === "habilidades"
             ? (requerimiento.habilidades || []).length > 0
             : !!requerimiento.idProfesion)
