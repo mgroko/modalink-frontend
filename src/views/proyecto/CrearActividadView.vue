@@ -394,8 +394,9 @@
         v-model="requerimientoDraft"
         :indice="form.requerimientos.length"
         :profesiones="profesiones"
+        :habilidades="habilidades"
+        :cargando-habilidades="cargandoHabilidades"
         :errores="erroresDraft"
-        :mostrar-habilidades="false"
         :mostrar-eliminar="false"
         @catalogo-cargado="guardarCatalogo"
       />
@@ -424,6 +425,7 @@
 import proyectoService from "../../services/proyectoService";
 import perfilService from "../../services/perfilService.js";
 import actividadService from "../../services/actividadService.js";
+import habilidadService from "../../services/habilidadService.js";
 import { refrescarSesion, idPerfilActivo } from "../../services/authState";
 import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
@@ -493,6 +495,8 @@ export default {
       actividades: [],
       cargandoActividades: false,
       advertenciaActividades: "",
+      habilidades: [],
+      cargandoHabilidades: false,
       catalogosPorProfesion: {},
       form: {
         nombre: "",
@@ -706,6 +710,7 @@ export default {
         await Promise.all([
           this.cargarProfesiones(),
           this.cargarActividades(),
+          this.cargarHabilidades(),
         ]);
       } catch (error) {
         if (
@@ -744,6 +749,18 @@ export default {
           "No se pudieron cargar las actividades existentes. Podés continuar, pero no vas a poder elegir predecesoras.";
       } finally {
         this.cargandoActividades = false;
+      }
+    },
+    async cargarHabilidades() {
+      this.cargandoHabilidades = true;
+      try {
+        const response = await habilidadService.listar();
+        const datos = response?.data;
+        this.habilidades = Array.isArray(datos) ? datos : [];
+      } catch {
+        this.habilidades = [];
+      } finally {
+        this.cargandoHabilidades = false;
       }
     },
     async manejarErrorCarga(error) {

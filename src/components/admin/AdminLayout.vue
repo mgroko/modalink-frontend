@@ -43,6 +43,10 @@
           <span class="material-symbols-outlined">tune</span>
           <span>Características técnicas</span>
         </RouterLink>
+        <RouterLink to="/admin/habilidades" class="admin-layout__link">
+          <span class="material-symbols-outlined">auto_awesome</span>
+          <span>Habilidades</span>
+        </RouterLink>
         <RouterLink to="/admin/unidades-medida" class="admin-layout__link">
           <span class="material-symbols-outlined">straighten</span>
           <span>Unidad de medidas</span>

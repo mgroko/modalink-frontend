@@ -130,6 +130,51 @@ const perfilService = {
     return http.delete(`/perfiles/${idPerfil}/foto`);
   },
 
+  /**
+   * GET /perfiles/{idPerfil}/habilidades — UC-47.
+   * Solo el dueño del perfil puede consultar y gestionar sus habilidades.
+   * @param {number|string} idPerfil
+   * @returns {Promise<{data: import("./habilidadService.js").HabilidadResponse[]}>}
+   *          200 OK
+   */
+  listarHabilidades(idPerfil) {
+    return http.get(`/perfiles/${idPerfil}/habilidades`);
+  },
+
+  /**
+   * POST /perfiles/{idPerfil}/habilidades — UC-47.
+   * Asocia una habilidad existente al perfil. No se envían nombres.
+   *
+   * Errores:
+   * - 400 idHabilidad ausente o inválido
+   * - 403 el perfil no pertenece al usuario
+   * - 404 perfil o habilidad inexistente
+   * - 409 habilidad ya asociada o perfil en estado Baja
+   * @param {number|string} idPerfil
+   * @param {number|string} idHabilidad
+   * @returns {Promise<{data: import("./habilidadService.js").HabilidadResponse}>}
+   *          201 Created
+   */
+  agregarHabilidad(idPerfil, idHabilidad) {
+    return http.post(`/perfiles/${idPerfil}/habilidades`, { idHabilidad });
+  },
+
+  /**
+   * DELETE /perfiles/{idPerfil}/habilidades/{idHabilidad} — UC-47.
+   * Quita una habilidad del perfil. No emite notificaciones.
+   *
+   * Errores:
+   * - 403 el perfil no pertenece al usuario
+   * - 404 perfil o habilidad inexistente
+   * - 409 la habilidad no está asociada al perfil o el perfil está en Baja
+   * @param {number|string} idPerfil
+   * @param {number|string} idHabilidad
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  quitarHabilidad(idPerfil, idHabilidad) {
+    return http.delete(`/perfiles/${idPerfil}/habilidades/${idHabilidad}`);
+  },
+
   listarProfesiones({ forzarRecarga = false } = {}) {
     if (cacheProfesiones && !forzarRecarga) {
       return Promise.resolve(cacheProfesiones);

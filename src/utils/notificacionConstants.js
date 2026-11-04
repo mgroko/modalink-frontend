@@ -24,6 +24,8 @@ export const TIPOS_NOTIFICACION = {
   PERFIL_REPORTADO: "PERFIL_REPORTADO",
   INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
   INTEGRANTE_BAJA_VOLUNTARIA: "INTEGRANTE_BAJA_VOLUNTARIA",
+  HABILIDAD_MODIFICADA: "HABILIDAD_MODIFICADA",
+  HABILIDAD_ELIMINADA: "HABILIDAD_ELIMINADA",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -50,6 +52,8 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "Baja voluntaria de integrante",
+  [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "Habilidad modificada",
+  [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "Habilidad eliminada",
 };
 
 const ICONOS_TIPO = {
@@ -69,6 +73,8 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "person_remove",
+  [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "edit",
+  [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "delete",
 };
 
 /**
@@ -110,7 +116,8 @@ function idValido(valor) {
 /**
  * Tipos que nunca deben ofrecer navegación, incluso si el backend envía
  * `destino` (ficha UC-38 §5: el perfil eliminado puede recibir 403; ficha
- * UC-40 §11: la baja voluntaria no debe navegar a un proyecto privado).
+ * UC-40 §11: la baja voluntaria no debe navegar a un proyecto privado;
+ * UC-56: no hay detalle de habilidad para el perfil afectado).
  * @param {string|null|undefined} tipo
  * @returns {boolean}
  */
@@ -118,6 +125,8 @@ export function esNotificacionSinNavegacion(tipo) {
   return [
     TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO,
     TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA,
+    TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA,
+    TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA,
   ].includes(tipo);
 }
 
@@ -134,6 +143,8 @@ export function esNotificacionSinNavegacion(tipo) {
  * - `HITO_CUMPLIDO` → proyecto (no hay pantalla de hitos).
  * - `INTEGRANTE_ELIMINADO` e `INTEGRANTE_BAJA_VOLUNTARIA` → sin link (el
  *   perfil puede no tener acceso o el proyecto puede ser privado).
+ * - `HABILIDAD_MODIFICADA` y `HABILIDAD_ELIMINADA` → sin link (no hay una
+ *   pantalla de detalle de habilidad para el perfil afectado).
  * - Sin `idPerfilContexto` no se muestra link (ficha §4), salvo reportes
  *   administrativos, que no dependen de un perfil activo.
  * @param {object|null|undefined} notificacion NotificacionResponse

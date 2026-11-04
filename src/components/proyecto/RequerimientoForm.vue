@@ -209,7 +209,7 @@ export default {
       type: Boolean,
       default: false,
     },
-    /** UC-49: el catálogo de habilidades aún no está expuesto (UC-48). */
+    /** Permite ocultar el selector de habilidades en contextos especiales. */
     mostrarHabilidades: {
       type: Boolean,
       default: true,

@@ -29,6 +29,7 @@ import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
+import GestionHabilidadesView from "../views/admin/GestionHabilidadesView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
@@ -309,6 +310,17 @@ const routes = [
     name: "gestionar-caracteristicas",
     component: GestionarCaracteristicasView,
     meta: { layout: AdminLayout, requiereAdmin: true }
+  },
+  {
+    path: "/admin/habilidades",
+    name: "gestion-habilidades",
+    component: GestionHabilidadesView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "VER_HABILIDADES",
+      titulo: "Habilidades",
+    }
   },
   {
     path: "/admin/unidades-medida",

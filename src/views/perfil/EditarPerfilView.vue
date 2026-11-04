@@ -255,6 +255,88 @@ Editarperfilview · VUE
             />
           </div>
 
+          <section class="editar-perfil__habilidades">
+            <header class="editar-perfil__habilidades-cabecera">
+              <h2 class="editar-perfil__habilidades-titulo">Habilidades</h2>
+              <p class="editar-perfil__habilidades-ayuda">
+                Las habilidades son globales y se guardan al instante.
+              </p>
+            </header>
+
+            <BaseAlert v-if="errorHabilidades" :message="errorHabilidades" type="error" />
+            <BaseAlert v-if="exitoHabilidades" :message="exitoHabilidades" type="success" />
+
+            <div v-if="cargandoHabilidades" class="editar-perfil__estado">
+              <span class="material-symbols-outlined editar-perfil__estado-icono">hourglass_empty</span>
+              Cargando habilidades...
+            </div>
+
+            <template v-else>
+              <div
+                v-if="habilidadesActuales.length"
+                class="editar-perfil__habilidades-chips"
+              >
+                <span
+                  v-for="habilidad in habilidadesActuales"
+                  :key="habilidad.idHabilidad"
+                  class="editar-perfil__habilidad-chip"
+                >
+                  {{ habilidad.nombre }}
+                  <button
+                    type="button"
+                    class="editar-perfil__habilidad-quitar"
+                    :disabled="guardandoHabilidad"
+                    :aria-label="`Quitar ${habilidad.nombre}`"
+                    title="Quitar habilidad"
+                    @click="quitarHabilidad(habilidad)"
+                  >
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </span>
+              </div>
+
+              <p v-else class="editar-perfil__habilidades-vacio">
+                Todavía no cargaste habilidades en tu perfil.
+              </p>
+
+              <div
+                class="editar-perfil__habilidad-agregar"
+                @keydown.enter.prevent
+              >
+                <VaSelect
+                  v-model="habilidadSeleccionada"
+                  :options="habilidadesDisponibles"
+                  value-by="idHabilidad"
+                  text-by="nombre"
+                  placeholder="Seleccionar habilidad"
+                  allow-search
+                  clearable
+                  :disabled="guardandoHabilidad || habilidadesDisponibles.length === 0"
+                />
+                <VaButton
+                  type="button"
+                  preset="primary"
+                  :loading="guardandoHabilidad"
+                  :disabled="
+                    guardandoHabilidad ||
+                    habilidadSeleccionada == null ||
+                    habilidadesDisponibles.length === 0
+                  "
+                  @click="agregarHabilidad"
+                >
+                  Agregar
+                </VaButton>
+              </div>
+
+              <p
+                v-if="habilidadesCatalogo.length === 0"
+                class="editar-perfil__habilidades-vacio"
+              >
+                No hay habilidades disponibles en el catálogo.
+              </p>
+            </template>
+          </section>
+
           <div
             class="editar-perfil__alertas-wrapper"
             :class="{ 'editar-perfil__alertas-wrapper--visible': mensajeExito || mensajeError }"
@@ -297,6 +379,7 @@ Editarperfilview · VUE
  
 <script>
 import perfilService from "../../services/perfilService.js";
+import habilidadService from "../../services/habilidadService.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import {
   ETIQUETAS_CARACTERISTICAS,
@@ -351,6 +434,14 @@ export default {
       const resto = this.caracteristicas.filter((c) => !excluidos.has(c.idCaracteristica));
       return resto.sort((a, b) => (ORDEN_PRIORIDAD[normCodigo(a.codigo)] || 99) - (ORDEN_PRIORIDAD[normCodigo(b.codigo)] || 99));
     },
+    habilidadesDisponibles() {
+      const actuales = new Set(
+        this.habilidadesActuales.map((habilidad) => String(habilidad.idHabilidad))
+      );
+      return this.habilidadesCatalogo.filter(
+        (habilidad) => !actuales.has(String(habilidad.idHabilidad))
+      );
+    },
   },
   data() {
     return {
@@ -374,6 +465,13 @@ export default {
       fotoPreview: null,
       modalEliminarFoto: false,
       eliminandoFoto: false,
+      habilidadesCatalogo: [],
+      habilidadesActuales: [],
+      habilidadSeleccionada: null,
+      cargandoHabilidades: false,
+      guardandoHabilidad: false,
+      errorHabilidades: "",
+      exitoHabilidades: "",
       reglas: reglasPerfil,
     };
   },
@@ -397,7 +495,17 @@ export default {
         }
         this.form.nombreArtistico = this.perfil.nombreArtistico || "";
         this.form.biografia = this.perfil.biografia || "";
- 
+
+        this.cargandoHabilidades = true;
+        try {
+          await Promise.all([
+            this.cargarHabilidadesCatalogo(),
+            this.cargarHabilidadesPerfil(),
+          ]);
+        } finally {
+          this.cargandoHabilidades = false;
+        }
+
         const profesiones = await this.cargarProfesiones();
         this.form.idProfesion = this.resolverIdProfesion(this.perfil.profesion, profesiones);
         if (this.form.idProfesion != null) {
@@ -428,6 +536,133 @@ export default {
         this.profesiones = [];
       }
       return this.profesiones;
+    },
+    async cargarHabilidadesCatalogo() {
+      try {
+        const response = await habilidadService.listar();
+        const datos = response?.data;
+        this.habilidadesCatalogo = Array.isArray(datos) ? datos : [];
+      } catch {
+        this.habilidadesCatalogo = [];
+        this.errorHabilidades =
+          "No se pudo cargar el catálogo de habilidades.";
+      }
+    },
+    async cargarHabilidadesPerfil() {
+      try {
+        const response = await perfilService.listarHabilidades(this.idPerfil);
+        const datos = response?.data;
+        this.habilidadesActuales = Array.isArray(datos) ? datos : [];
+        this.sincronizarNombresHabilidades();
+      } catch (error) {
+        this.habilidadesActuales = [];
+        this.errorHabilidades =
+          error?.response?.data?.message ||
+          "No se pudieron cargar tus habilidades.";
+      }
+    },
+    sincronizarNombresHabilidades() {
+      if (!this.perfil) return;
+      this.perfil.habilidades = this.habilidadesActuales
+        .map((habilidad) => habilidad?.nombre)
+        .filter(Boolean);
+    },
+    async agregarHabilidad() {
+      if (this.guardandoHabilidad || this.habilidadSeleccionada == null) return;
+
+      const idHabilidad = this.habilidadSeleccionada;
+      this.guardandoHabilidad = true;
+      this.errorHabilidades = "";
+      this.exitoHabilidades = "";
+
+      try {
+        const response = await perfilService.agregarHabilidad(
+          this.idPerfil,
+          idHabilidad
+        );
+        const habilidad = response?.data;
+        if (
+          habilidad?.idHabilidad != null &&
+          !this.habilidadesActuales.some(
+            (item) => String(item.idHabilidad) === String(habilidad.idHabilidad)
+          )
+        ) {
+          this.habilidadesActuales = [...this.habilidadesActuales, habilidad];
+        }
+        this.sincronizarNombresHabilidades();
+        this.habilidadSeleccionada = null;
+        this.exitoHabilidades = "Habilidad agregada correctamente.";
+      } catch (error) {
+        const status = error?.response?.status;
+        const mensaje = error?.response?.data?.message || "";
+
+        if (status === 409) {
+          this.errorHabilidades =
+            mensaje || "La habilidad ya está asociada a este perfil.";
+          this.habilidadSeleccionada = null;
+          await this.cargarHabilidadesPerfil();
+        } else if (status === 404) {
+          this.errorHabilidades =
+            mensaje || "La habilidad ya no está disponible.";
+          this.habilidadSeleccionada = null;
+          await Promise.all([
+            this.cargarHabilidadesCatalogo(),
+            this.cargarHabilidadesPerfil(),
+          ]);
+        } else if (status === 403) {
+          this.errorHabilidades =
+            mensaje || "No tenés permiso para modificar este perfil.";
+        } else {
+          this.errorHabilidades =
+            mensaje || "No se pudo agregar la habilidad. Intentá nuevamente.";
+        }
+      } finally {
+        this.guardandoHabilidad = false;
+      }
+    },
+    async quitarHabilidad(habilidad) {
+      if (this.guardandoHabilidad || habilidad?.idHabilidad == null) return;
+
+      this.guardandoHabilidad = true;
+      this.errorHabilidades = "";
+      this.exitoHabilidades = "";
+
+      try {
+        await perfilService.quitarHabilidad(
+          this.idPerfil,
+          habilidad.idHabilidad
+        );
+        this.habilidadesActuales = this.habilidadesActuales.filter(
+          (item) =>
+            String(item.idHabilidad) !== String(habilidad.idHabilidad)
+        );
+        this.sincronizarNombresHabilidades();
+        this.exitoHabilidades = "Habilidad quitada correctamente.";
+      } catch (error) {
+        const status = error?.response?.status;
+        const mensaje = error?.response?.data?.message || "";
+
+        if (status === 409) {
+          this.errorHabilidades =
+            mensaje || "La habilidad ya no está asociada a este perfil.";
+          await this.cargarHabilidadesPerfil();
+        } else if (status === 404) {
+          this.errorHabilidades =
+            mensaje || "La habilidad o el perfil ya no existen.";
+          await Promise.all([
+            this.cargarHabilidadesCatalogo(),
+            this.cargarHabilidadesPerfil(),
+          ]);
+        } else if (status === 403) {
+          this.errorHabilidades =
+            mensaje || "No tenés permiso para modificar este perfil.";
+        } else {
+          this.errorHabilidades =
+            mensaje || "No se pudo quitar la habilidad. Intentá nuevamente.";
+        }
+      } finally {
+        this.guardandoHabilidad = false;
+      }
     },
     async cargarCaracteristicas(idProfesion) {
       this.cargandoCaracteristicas = true;
@@ -778,6 +1013,95 @@ export default {
   gap: 0.75rem;
   justify-content: flex-end;
   padding-top: 0.5rem;
+}
+
+.editar-perfil__habilidades {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.editar-perfil__habilidades-cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.editar-perfil__habilidades-titulo {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.editar-perfil__habilidades-ayuda {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.editar-perfil__habilidades-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.editar-perfil__habilidad-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.35rem 0.2rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: 0.78rem;
+}
+
+.editar-perfil__habilidad-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.05rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.editar-perfil__habilidad-quitar:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.editar-perfil__habilidad-quitar:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.editar-perfil__habilidad-quitar .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+.editar-perfil__habilidad-agregar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.editar-perfil__habilidad-agregar > :first-child {
+  flex: 1 1 240px;
+}
+
+.editar-perfil__habilidades-vacio {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .editar-perfil__alertas-wrapper {
