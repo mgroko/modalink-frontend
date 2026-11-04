@@ -13,6 +13,7 @@ import {
   RESULTADOS_PREFERENCIA,
   formatearDesvioMinutos,
 } from "./disponibilidadConstants.js";
+import { normalizarBloqueos } from "./confirmacionConstants.js";
 
 /*
  * Reglas y textos de UC-70 (ficha técnica `ficha-tecnica-asignar-actividad.md`).
@@ -503,6 +504,7 @@ export function clasificarErrorAsignacion(error) {
     miembrosBloqueantes: Array.isArray(payload.miembrosBloqueantes)
       ? payload.miembrosBloqueantes
       : [],
+    bloqueos: normalizarBloqueos(payload.bloqueos),
     erroresCampo,
   };
 

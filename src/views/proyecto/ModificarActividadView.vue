@@ -43,12 +43,34 @@
                 cronograma del proyecto.
               </p>
             </div>
-            <span
-              class="modificar-actividad__estado-actual"
-              :style="estiloEstado(form.estado)"
-            >
-              {{ etiquetaEstadoActividad(form.estado) }}
-            </span>
+            <div class="modificar-actividad__estado-panel">
+              <span
+                class="modificar-actividad__estado-actual"
+                :style="estiloEstado(estadoOriginal)"
+              >
+                {{ etiquetaEstadoActividad(estadoOriginal) }}
+              </span>
+
+              <div
+                v-if="accionesEstado.length"
+                class="modificar-actividad__estado-acciones"
+              >
+                <VaButton
+                  v-for="accion in accionesEstado"
+                  :key="accion"
+                  preset="secondary"
+                  size="small"
+                  :color="
+                    accion === ACCIONES_ESTADO.CANCELAR ? 'danger' : 'primary'
+                  "
+                  :disabled="guardando || cambiandoEstado || !puedeEjecutarAccion(accion)"
+                  :title="motivoAccion(accion)"
+                  @click="solicitarCambioEstado(accion)"
+                >
+                  {{ ETIQUETAS_ACCION_ESTADO[accion] }}
+                </VaButton>
+              </div>
+            </div>
           </header>
 
           <div class="modificar-actividad__layout">
@@ -58,6 +80,15 @@
               @submit.prevent="guardar"
             >
               <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
+
+              <ul
+                v-if="bloqueosEstado.length"
+                class="modificar-actividad__lista-errores"
+              >
+                <li v-for="(bloqueo, i) in bloqueosEstado" :key="i">
+                  {{ bloqueo.mensaje || bloqueo.codigo }}
+                </li>
+              </ul>
 
               <div v-if="!tieneFechaEntrega" class="modificar-actividad__aviso">
                 <p class="modificar-actividad__aviso-titulo">
@@ -79,6 +110,11 @@
               <section class="modificar-actividad__panel">
                 <h2 class="modificar-actividad__seccion-titulo">Datos de la actividad</h2>
 
+                <p v-if="proyectoConfirmado" class="modificar-actividad__hint">
+                  En un proyecto confirmado no se pueden cambiar el nombre, la
+                  duración ni las predecesoras.
+                </p>
+
                 <VaInput
                   ref="nombreInput"
                   v-model="form.nombre"
@@ -86,6 +122,7 @@
                   placeholder="Ej: Sesión de fotos"
                   :max-length="LIMITES_ACTIVIDAD.NOMBRE"
                   counter
+                  :disabled="proyectoConfirmado"
                   :error="!!errores.nombre"
                   :error-messages="errores.nombre || undefined"
                 />
@@ -99,6 +136,7 @@
                     placeholder="Ej: 2"
                     min="1"
                     step="1"
+                    :disabled="proyectoConfirmado"
                     :error="!!errores.duracion"
                     :error-messages="errores.duracion || undefined"
                   />
@@ -119,6 +157,7 @@
                           'modificar-actividad__unidad-boton--activa':
                             form.unidadDuracion === unidad,
                         }"
+                        :disabled="proyectoConfirmado"
                         @click="cambiarUnidadDuracion(unidad)"
                       >
                         {{ ETIQUETAS_UNIDAD_DURACION[unidad] }}
@@ -138,17 +177,6 @@
                   hint="Opcional. No es el horario definitivo de la actividad."
                   :error="!!errores.horarioPreferenciaInicio"
                   :error-messages="errores.horarioPreferenciaInicio || undefined"
-                />
-
-                <VaSelect
-                  ref="estadoSelect"
-                  v-model="form.estado"
-                  :options="opcionesEstado"
-                  value-by="value"
-                  text-by="text"
-                  label="Estado*"
-                  :error="!!errores.estado"
-                  :error-messages="errores.estado || undefined"
                 />
 
                 <VaTextarea
@@ -208,6 +236,7 @@
                   multiple
                   clearable
                   :loading="cargandoActividades"
+                  :disabled="proyectoConfirmado"
                   :error="!!errores.predecesoras"
                   :error-messages="errores.predecesoras || undefined"
                   no-options-text="No hay actividades disponibles"
@@ -247,7 +276,14 @@
                   <article
                     v-for="(requerimiento, indice) in form.requerimientos"
                     :key="requerimiento.uid"
+                    :id="`requerimiento-${requerimiento.idRequerimiento ?? requerimiento.uid}`"
                     class="modificar-actividad__requerimiento"
+                    :class="{
+                      'modificar-actividad__requerimiento--protegido':
+                        esProtegido(requerimiento),
+                      'modificar-actividad__requerimiento--resaltado':
+                        esRequerimientoConVinculos(requerimiento),
+                    }"
                   >
                     <div class="modificar-actividad__requerimiento-cabecera">
                       <div>
@@ -258,6 +294,13 @@
                           {{ requerimiento.cantidad }}
                           {{ Number(requerimiento.cantidad) === 1 ? "persona" : "personas" }}
                         </span>
+                        <span
+                          v-if="esProtegido(requerimiento)"
+                          class="modificar-actividad__badge-protegido"
+                          :title="textoProteccionRequerimiento"
+                        >
+                          Protegido
+                        </span>
                       </div>
 
                       <div class="modificar-actividad__requerimiento-acciones">
@@ -265,6 +308,12 @@
                           preset="secondary"
                           size="small"
                           icon="mso-edit"
+                          :disabled="guardando || esProtegido(requerimiento)"
+                          :title="
+                            esProtegido(requerimiento)
+                              ? textoProteccionRequerimiento
+                              : 'Editar requerimiento'
+                          "
                           @click="abrirEditarRequerimiento(indice)"
                         >
                           Editar
@@ -274,12 +323,32 @@
                           size="small"
                           color="danger"
                           icon="mso-delete"
-                          title="Quitar requerimiento"
+                          :disabled="guardando || esProtegido(requerimiento)"
+                          :title="
+                            esProtegido(requerimiento)
+                              ? textoProteccionRequerimiento
+                              : 'Quitar requerimiento'
+                          "
                           @click="quitarRequerimiento(indice)"
                         >
                           Quitar
                         </VaButton>
                       </div>
+                    </div>
+
+                    <div
+                      v-if="esRequerimientoConVinculos(requerimiento)"
+                      class="modificar-actividad__requerimiento-error"
+                    >
+                      <p>{{ textoErrorVinculos }}</p>
+                      <VaButton
+                        preset="secondary"
+                        size="small"
+                        :disabled="guardando"
+                        @click="descartarCambiosRequerimiento(requerimiento)"
+                      >
+                        Descartar cambios
+                      </VaButton>
                     </div>
 
                     <p
@@ -332,7 +401,7 @@
               <div class="modificar-actividad__acciones">
                 <VaButton
                   preset="secondary"
-                  :disabled="guardando"
+                  :disabled="guardando || cambiandoEstado"
                   @click="cancelar"
                 >
                   Cancelar
@@ -341,7 +410,7 @@
                   type="submit"
                   preset="primary"
                   :loading="guardando"
-                  :disabled="guardando"
+                  :disabled="guardando || cambiandoEstado"
                 >
                   Guardar cambios
                 </VaButton>
@@ -522,7 +591,7 @@
       v-model="modalEstadoVisible"
       hide-default-actions
       size="small"
-      :no-dismiss="guardando"
+      :no-dismiss="cambiandoEstado"
       blur
       class="modificar-actividad-modal"
     >
@@ -536,18 +605,24 @@
 
       <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
 
+      <ul v-if="bloqueosEstado.length" class="modificar-actividad__lista-errores">
+        <li v-for="(bloqueo, i) in bloqueosEstado" :key="i">
+          {{ bloqueo.mensaje || bloqueo.codigo }}
+        </li>
+      </ul>
+
       <template #footer>
         <div class="modificar-actividad-modal__acciones">
           <VaButton
             preset="secondary"
-            :disabled="guardando"
+            :disabled="cambiandoEstado"
             @click="cancelarConfirmacionEstado"
           >
             Cancelar
           </VaButton>
           <VaButton
             preset="primary"
-            :loading="guardando"
+            :loading="cambiandoEstado"
             @click="confirmarCambioEstado"
           >
             Continuar
@@ -563,7 +638,8 @@ import proyectoService from "../../services/proyectoService";
 import perfilService from "../../services/perfilService.js";
 import actividadService from "../../services/actividadService.js";
 import habilidadService from "../../services/habilidadService.js";
-import { refrescarSesion } from "../../services/authState";
+import { refrescarSesion, idPerfilActivo } from "../../services/authState";
+import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
@@ -572,7 +648,6 @@ import RequerimientoForm from "../../components/proyecto/RequerimientoForm.vue";
 import {
   ESTADOS_ACTIVIDAD,
   ESTADOS_CRONOGRAMA,
-  ETIQUETAS_ESTADO_ACTIVIDAD,
   ETIQUETAS_UNIDAD_DURACION,
   LIMITES_ACTIVIDAD,
   MINUTOS_POR_UNIDAD,
@@ -580,7 +655,6 @@ import {
   coloresEstadoActividad,
   convertirDuracion,
   descomponerDuracionMinutos,
-  estadosPermitidosActividad,
   etiquetaEstadoActividad,
   formatearDuracionMinutos,
   normalizarEstadoActividad,
@@ -599,6 +673,24 @@ import {
   mapearErroresActividad,
   validarActividadEdicion,
 } from "../../utils/validacionesActividad.js";
+import {
+  ACCIONES_ESTADO,
+  ETIQUETAS_ACCION_ESTADO,
+  TIPOS_ERROR_CAMBIO_ESTADO,
+  accionesEstadoPermitidas,
+  clasificarErrorCambioEstado,
+  estadoDestinoDeAccion,
+  mensajeExitoCambioEstado,
+  motivoAccionNoDisponible,
+  puedeEjecutarAccionEstado,
+} from "../../utils/cambioEstadoActividadConstants.js";
+import {
+  esErrorRequerimientoConVinculos,
+  esRequerimientoProtegido,
+  idRequerimientoConVinculos,
+  mensajeErrorRequerimientoConVinculos,
+  mensajeProteccionRequerimiento,
+} from "../../utils/requerimientoActividadConstants.js";
 import { validarRequerimiento } from "../../utils/validacionesProyecto.js";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -616,6 +708,7 @@ const ESTADOS_CON_ACTIVIDADES = [
 
 let controladorCarga = null;
 let controladorGuardado = null;
+let controladorEstado = null;
 
 export default {
   name: "ModificarActividadView",
@@ -669,6 +762,14 @@ export default {
       guardandoRequerimiento: false,
       modalRequerimientoKey: 0,
       modalEstadoVisible: false,
+      accionEstado: null,
+      estadoDestino: null,
+      cambiandoEstado: false,
+      bloqueosEstado: [],
+      ACCIONES_ESTADO,
+      ETIQUETAS_ACCION_ESTADO,
+      requerimientosOriginales: [],
+      idRequerimientoConVinculos: null,
       siguienteUid: 0,
       idCarga: 0,
     };
@@ -695,6 +796,23 @@ export default {
     estadoPermiteActividades() {
       return ESTADOS_CON_ACTIVIDADES.includes(this.estadoNormalizado);
     },
+    proyectoConfirmado() {
+      return this.estadoNormalizado === ESTADOS_PROYECTO.CONFIRMADO;
+    },
+    accionesEstado() {
+      if (!this.puedeModificarActividad || !this.estadoPermiteActividades) {
+        return [];
+      }
+      return accionesEstadoPermitidas(this.estadoOriginal);
+    },
+    textoProteccionRequerimiento() {
+      return mensajeProteccionRequerimiento();
+    },
+    textoErrorVinculos() {
+      return mensajeErrorRequerimientoConVinculos(
+        this.idRequerimientoConVinculos
+      );
+    },
     puedeModificarActividad() {
       return this.permisos.includes("MODIFICAR_ACTIVIDAD");
     },
@@ -708,12 +826,6 @@ export default {
       return this.actividad
         ? normalizarEstadoActividad(this.actividad.estado)
         : ESTADOS_ACTIVIDAD.PENDIENTE;
-    },
-    opcionesEstado() {
-      return estadosPermitidosActividad(this.estadoOriginal).map((value) => ({
-        value,
-        text: ETIQUETAS_ESTADO_ACTIVIDAD[value],
-      }));
     },
     estadoCronogramaTexto() {
       return etiquetaEstadoCronograma(this.actividad?.estadoCronograma);
@@ -774,11 +886,14 @@ export default {
         : "Editar requerimiento";
     },
     mensajeConfirmacionEstado() {
-      if (this.form.estado === ESTADOS_ACTIVIDAD.CANCELADA) {
+      if (this.accionEstado === ACCIONES_ESTADO.CANCELAR) {
         return "La actividad quedará CANCELADA. Esta acción es irreversible: no se podrá modificar ni reactivar. ¿Querés continuar?";
       }
-      if (this.form.estado === ESTADOS_ACTIVIDAD.FINALIZADA) {
+      if (this.accionEstado === ACCIONES_ESTADO.FINALIZAR) {
         return "La actividad quedará FINALIZADA. Esta acción es irreversible: no se podrá modificar ni reactivar. ¿Querés continuar?";
+      }
+      if (this.accionEstado === ACCIONES_ESTADO.INICIAR) {
+        return "La actividad pasará a EN CURSO. ¿Querés continuar?";
       }
       return "Se actualizará el estado de la actividad. ¿Querés continuar?";
     },
@@ -792,6 +907,12 @@ export default {
       if (nuevo === anterior) return;
       this.cargar();
     },
+    modalEstadoVisible(valor) {
+      if (valor || this.cambiandoEstado) return;
+      this.accionEstado = null;
+      this.estadoDestino = null;
+      this.bloqueosEstado = [];
+    },
   },
   mounted() {
     this.cargar();
@@ -799,9 +920,11 @@ export default {
   beforeUnmount() {
     if (controladorCarga) controladorCarga.abort();
     if (controladorGuardado) controladorGuardado.abort();
+    if (controladorEstado) controladorEstado.abort();
   },
   methods: {
     cambiarUnidadDuracion(unidad) {
+      if (this.proyectoConfirmado) return;
       if (unidad === this.form.unidadDuracion) return;
 
       const actual = Number(this.form.duracion);
@@ -965,6 +1088,11 @@ export default {
 
       this.errores = {};
       this.seccionErrores = {};
+      this.idRequerimientoConVinculos = null;
+      this.bloqueosEstado = [];
+      this.requerimientosOriginales = this.form.requerimientos.map((item) =>
+        JSON.parse(JSON.stringify(item))
+      );
     },
     mapearRequerimiento(requerimiento) {
       this.siguienteUid += 1;
@@ -974,6 +1102,7 @@ export default {
         cantidad: requerimiento.cantidad,
         idProfesion: requerimiento.idProfesion,
         descripcion: requerimiento.descripcion || "",
+        protegido: requerimiento.protegido === true,
         caracteristicas: (requerimiento.caracteristicas || []).map((carac) => ({
           idCaracteristica: carac.idCaracteristica,
           valorMin: carac.valorMin ?? null,
@@ -1126,7 +1255,7 @@ export default {
     },
     abrirEditarRequerimiento(indice) {
       const requerimiento = this.form.requerimientos[indice];
-      if (!requerimiento) return;
+      if (!requerimiento || requerimiento.protegido === true) return;
 
       this.indiceRequerimientoEnEdicion = indice;
       this.indiceDraft = indice;
@@ -1183,6 +1312,8 @@ export default {
       }
     },
     quitarRequerimiento(indice) {
+      const requerimiento = this.form.requerimientos[indice];
+      if (!requerimiento || requerimiento.protegido === true) return;
       this.form.requerimientos.splice(indice, 1);
 
       const errores = {};
@@ -1252,7 +1383,13 @@ export default {
       return formatearDuracionMinutos(minutos);
     },
     guardar() {
-      if (this.guardando || this.errorBloqueante) return;
+      if (this.guardando || this.cambiandoEstado || this.errorBloqueante) return;
+
+      // El estado se cambia sólo por PATCH. El PUT siempre envía el estado
+      // actual sin modificarlo.
+      if (this.actividad) {
+        this.form.estado = normalizarEstadoActividad(this.actividad.estado);
+      }
 
       this.mensajeError = "";
       this.errores = {};
@@ -1280,31 +1417,200 @@ export default {
         return;
       }
 
-      if (
-        [ESTADOS_ACTIVIDAD.FINALIZADA, ESTADOS_ACTIVIDAD.CANCELADA].includes(
-          this.form.estado
-        )
-      ) {
-        this.modalEstadoVisible = true;
+      this.ejecutarGuardado();
+    },
+    puedeEjecutarAccion(accion) {
+      return puedeEjecutarAccionEstado(accion, this.actividad, {
+        puedeModificar: this.puedeModificarActividad,
+      });
+    },
+    motivoAccion(accion) {
+      return motivoAccionNoDisponible(accion, this.actividad, {
+        puedeModificar: this.puedeModificarActividad,
+      });
+    },
+    solicitarCambioEstado(accion) {
+      if (this.guardando || this.cambiandoEstado) return;
+      if (!this.puedeEjecutarAccion(accion)) return;
+
+      const estadoDestino = estadoDestinoDeAccion(accion);
+      if (!estadoDestino) return;
+
+      this.accionEstado = accion;
+      this.estadoDestino = estadoDestino;
+      this.mensajeError = "";
+      this.bloqueosEstado = [];
+
+      // Iniciar se ejecuta directo; Finalizar y Cancelar conservan la
+      // confirmación explícita de la UX actual.
+      if (accion === ACCIONES_ESTADO.INICIAR) {
+        this.ejecutarCambioEstado();
         return;
       }
 
-      this.ejecutarGuardado();
+      this.modalEstadoVisible = true;
     },
     cancelarConfirmacionEstado() {
-      if (this.guardando) return;
+      if (this.cambiandoEstado) return;
       this.modalEstadoVisible = false;
+      this.accionEstado = null;
+      this.estadoDestino = null;
+      this.bloqueosEstado = [];
       this.mensajeError = "";
     },
     confirmarCambioEstado() {
-      if (this.guardando) return;
-      this.ejecutarGuardado();
+      if (this.cambiandoEstado) return;
+      this.ejecutarCambioEstado();
+    },
+    async ejecutarCambioEstado() {
+      if (this.cambiandoEstado || !this.estadoDestino) return;
+
+      this.cambiandoEstado = true;
+      this.mensajeError = "";
+      this.bloqueosEstado = [];
+      if (controladorEstado) controladorEstado.abort();
+      controladorEstado = new AbortController();
+
+      try {
+        const response = await actividadService.cambiarEstado(
+          this.idProyecto,
+          this.idActividad,
+          this.estadoDestino,
+          controladorEstado.signal
+        );
+
+        const actividad = response?.data || null;
+        if (actividad) {
+          this.actividad = actividad;
+          this.form.estado = normalizarEstadoActividad(actividad.estado);
+        }
+
+        this.modalEstadoVisible = false;
+        this.toast.init({
+          title: "Estado actualizado",
+          message: mensajeExitoCambioEstado(this.accionEstado, actividad),
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        await this.refrescarNotificaciones();
+        this.$router.push({
+          name: "dashboard-proyecto",
+          params: { id: this.idProyecto },
+          query: {
+            tab: "planificacion",
+            editada: actividad?.idActividad ?? this.idActividad,
+          },
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorCambioEstado(error);
+      } finally {
+        this.cambiandoEstado = false;
+      }
+    },
+    async manejarErrorCambioEstado(error) {
+      const clasificacion = clasificarErrorCambioEstado(error);
+      const { tipo, mensaje, bloqueos } = clasificacion;
+
+      this.bloqueosEstado = Array.isArray(bloqueos) ? bloqueos : [];
+
+      if (
+        tipo === TIPOS_ERROR_CAMBIO_ESTADO.SESION ||
+        tipo === TIPOS_ERROR_CAMBIO_ESTADO.CUENTA
+      ) {
+        this.mensajeError = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_CAMBIO_ESTADO.PERMISO) {
+        this.errorBloqueante = mensaje;
+        this.modalEstadoVisible = false;
+        this.accionEstado = null;
+        this.estadoDestino = null;
+        this.bloqueosEstado = [];
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_CAMBIO_ESTADO.NO_ENCONTRADO) {
+        this.modalEstadoVisible = false;
+        this.accionEstado = null;
+        this.estadoDestino = null;
+        this.bloqueosEstado = [];
+        await this.cargar();
+        if (!this.errorCarga) this.mensajeError = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_CAMBIO_ESTADO.BLOQUEO) {
+        this.mensajeError = mensaje;
+        return;
+      }
+
+      if (
+        [
+          TIPOS_ERROR_CAMBIO_ESTADO.TRANSICION,
+          TIPOS_ERROR_CAMBIO_ESTADO.SIN_AGENDA,
+          TIPOS_ERROR_CAMBIO_ESTADO.ESTADO_INMUTABLE,
+          TIPOS_ERROR_CAMBIO_ESTADO.PROYECTO_ESTADO,
+        ].includes(tipo)
+      ) {
+        this.modalEstadoVisible = false;
+        this.accionEstado = null;
+        this.estadoDestino = null;
+        await this.cargar();
+        if (!this.errorBloqueante) this.mensajeError = mensaje;
+        return;
+      }
+
+      this.mensajeError = mensaje;
+    },
+    esProtegido(requerimiento) {
+      return esRequerimientoProtegido(requerimiento);
+    },
+    esRequerimientoConVinculos(requerimiento) {
+      return (
+        this.idRequerimientoConVinculos != null &&
+        String(requerimiento?.idRequerimiento) ===
+          String(this.idRequerimientoConVinculos)
+      );
+    },
+    descartarCambiosRequerimiento(requerimiento) {
+      const id = requerimiento?.idRequerimiento;
+      if (id == null) return;
+
+      const original = this.requerimientosOriginales.find(
+        (item) => String(item.idRequerimiento) === String(id)
+      );
+      if (!original) return;
+
+      const indice = this.form.requerimientos.findIndex(
+        (item) => String(item.idRequerimiento) === String(id)
+      );
+      if (indice < 0) return;
+
+      this.form.requerimientos.splice(
+        indice,
+        1,
+        JSON.parse(JSON.stringify(original))
+      );
+      this.idRequerimientoConVinculos = null;
+      this.mensajeError = "";
+    },
+    async refrescarNotificaciones() {
+      const idPerfil = idPerfilActivo();
+      if (idPerfil != null) await cargarResumenPerfil(idPerfil);
     },
     async ejecutarGuardado() {
-      if (this.guardando) return;
+      if (this.guardando || this.cambiandoEstado) return;
 
       this.guardando = true;
       this.mensajeError = "";
+      this.bloqueosEstado = [];
+      this.idRequerimientoConVinculos = null;
 
       if (controladorGuardado) controladorGuardado.abort();
       controladorGuardado = new AbortController();
@@ -1321,7 +1627,7 @@ export default {
         const alerta =
           actividad?.estadoCronograma === ESTADOS_CRONOGRAMA.ALERTA_DESBORDE;
 
-        this.modalEstadoVisible = false;
+        this.idRequerimientoConVinculos = null;
 
         this.toast.init({
           title: alerta ? "Actividad modificada con alerta" : "Actividad modificada",
@@ -1333,6 +1639,7 @@ export default {
           duration: alerta ? 8000 : 5000,
         });
 
+        await this.refrescarNotificaciones();
         this.$router.push({
           name: "dashboard-proyecto",
           params: { id: this.idProyecto },
@@ -1418,7 +1725,10 @@ export default {
 
       if (status === 400) {
         if (data.errores && typeof data.errores === "object") {
-          this.errores = mapearErroresActividad(data.errores);
+          this.errores = mapearErroresActividad(
+            data.errores,
+            this.form.requerimientos
+          );
           const tieneRequerimientos = Object.keys(this.errores).some((clave) =>
             clave.startsWith("requerimientos.")
           );
@@ -1520,6 +1830,25 @@ export default {
       }
 
       if (status === 409) {
+        if (esErrorRequerimientoConVinculos(error)) {
+          const idRequerimiento = idRequerimientoConVinculos(error);
+          this.idRequerimientoConVinculos = idRequerimiento;
+          this.bloqueosEstado = [];
+          this.mensajeError = mensajeErrorRequerimientoConVinculos(
+            idRequerimiento
+          );
+          this.modalEstadoVisible = false;
+          this.$nextTick(() => {
+            const elemento = document.getElementById(
+              `requerimiento-${idRequerimiento ?? ""}`
+            );
+            if (elemento) {
+              elemento.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          });
+          return;
+        }
+
         if (
           clasificacion?.tipo === "perfil-baja" ||
           /perfil.*(baja|inactiv|no se encuentra activo)/i.test(mensaje)
@@ -1540,14 +1869,6 @@ export default {
           return;
         }
 
-        if (/v[ií]nculo|postulaci|invitaci/i.test(mensaje)) {
-          this.errorBloqueante =
-            mensaje ||
-            "No se puede guardar la actividad porque uno de sus requerimientos tiene postulaciones o invitaciones asociadas. Resolvé esos vínculos antes de editar la actividad.";
-          this.modalEstadoVisible = false;
-          return;
-        }
-
         if (/ciclo/i.test(mensaje)) {
           this.mensajeError = `${mensaje} Revisá las predecesoras seleccionadas.`;
           this.modalEstadoVisible = false;
@@ -1556,10 +1877,9 @@ export default {
         }
 
         if (/transici|estado destino|no puede pasar/i.test(mensaje)) {
-          this.errores = { ...this.errores, estado: mensaje };
-          this.mensajeError = "Revisá el estado seleccionado.";
+          this.mensajeError =
+            mensaje || "El estado actual de la actividad no permite guardar.";
           this.modalEstadoVisible = false;
-          this.enfocarPrimerError();
           return;
         }
 
@@ -1608,10 +1928,6 @@ export default {
         }
         if (claves.includes("duracion")) {
           this.$refs.duracionInput?.focus?.();
-          return;
-        }
-        if (claves.includes("estado")) {
-          this.$refs.estadoSelect?.focus?.();
           return;
         }
         if (claves.some((clave) => clave.startsWith("requerimientos."))) {
@@ -1706,6 +2022,20 @@ export default {
   font-size: 0.74rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.modificar-actividad__estado-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.modificar-actividad__estado-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
 }
 
 .modificar-actividad__layout {
@@ -1806,6 +2136,11 @@ export default {
   box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
 }
 
+.modificar-actividad__unidad-boton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .modificar-actividad__error {
   margin: -0.35rem 0 0;
   color: var(--color-danger-text);
@@ -1829,6 +2164,44 @@ export default {
   border: 1px solid var(--color-border-soft);
   border-radius: 8px;
   background: var(--color-surface-muted);
+}
+
+.modificar-actividad__requerimiento--protegido {
+  border-color: var(--color-warning-border);
+}
+
+.modificar-actividad__requerimiento--resaltado {
+  border-color: var(--color-danger-border);
+  box-shadow: 0 0 0 2px var(--color-danger-soft);
+}
+
+.modificar-actividad__badge-protegido {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.modificar-actividad__requerimiento-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 7px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+  font-size: 0.78rem;
+}
+
+.modificar-actividad__requerimiento-error p {
+  margin: 0;
 }
 
 .modificar-actividad__requerimiento-cabecera {

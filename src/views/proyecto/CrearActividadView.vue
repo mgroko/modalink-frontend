@@ -43,6 +43,17 @@
             </p>
           </header>
 
+          <div v-if="proyectoConfirmado" class="crear-actividad__aviso">
+            <p class="crear-actividad__aviso-titulo">
+              El proyecto está confirmado
+            </p>
+            <p class="crear-actividad__aviso-texto">
+              La actividad se creará en estado PENDIENTE y se agendará
+              automáticamente. Otras actividades PENDIENTES del proyecto pueden
+              reprogramarse.
+            </p>
+          </div>
+
           <div class="crear-actividad__layout">
             <VaForm
               ref="formRef"
@@ -50,6 +61,15 @@
               @submit.prevent="crearActividad"
             >
               <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
+
+              <ul
+                v-if="bloqueosError.length"
+                class="crear-actividad__lista-errores"
+              >
+                <li v-for="(bloqueo, i) in bloqueosError" :key="i">
+                  {{ bloqueo.mensaje || bloqueo.codigo }}
+                </li>
+              </ul>
 
               <div v-if="!tieneFechaEntrega" class="crear-actividad__aviso">
                 <p class="crear-actividad__aviso-titulo">
@@ -404,7 +424,8 @@
 import proyectoService from "../../services/proyectoService";
 import perfilService from "../../services/perfilService.js";
 import actividadService from "../../services/actividadService.js";
-import { refrescarSesion } from "../../services/authState";
+import { refrescarSesion, idPerfilActivo } from "../../services/authState";
+import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
@@ -430,6 +451,7 @@ import {
 import { validarRequerimiento } from "../../utils/validacionesProyecto.js";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { normalizarBloqueos } from "../../utils/confirmacionConstants.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
   ESTADOS_PROYECTO,
@@ -465,6 +487,7 @@ export default {
       puedeReintentar: false,
       errorBloqueante: "",
       mensajeError: "",
+      bloqueosError: [],
       guardando: false,
       profesiones: [],
       actividades: [],
@@ -507,6 +530,9 @@ export default {
     },
     estadoNormalizado() {
       return normalizarEstadoProyecto(this.proyecto?.estado);
+    },
+    proyectoConfirmado() {
+      return this.estadoNormalizado === ESTADOS_PROYECTO.CONFIRMADO;
     },
     estadoPermiteActividades() {
       return ESTADOS_CON_ACTIVIDADES.includes(this.estadoNormalizado);
@@ -850,12 +876,17 @@ export default {
       }
       return relativos;
     },
+    async refrescarNotificaciones() {
+      const idPerfil = idPerfilActivo();
+      if (idPerfil != null) await cargarResumenPerfil(idPerfil);
+    },
     async crearActividad() {
       if (this.guardando || this.errorBloqueante) return;
 
       this.mensajeError = "";
       this.errores = {};
       this.seccionErrores = {};
+      this.bloqueosError = [];
 
       const { campos, secciones } = validarActividad(
         this.form,
@@ -879,15 +910,21 @@ export default {
           buildActividadRequest(this.form)
         );
         const actividad = response?.data;
+        const fechaAsignada = actividad?.fechaHoraInicio
+          ? formatearFecha(actividad.fechaHoraInicio)
+          : "";
 
         this.toast.init({
           title: "Actividad creada",
-          message: "La actividad se agregó a la planificación del proyecto.",
+          message: fechaAsignada
+            ? `La actividad se creó y se agendó para ${fechaAsignada}.`
+            : "La actividad se agregó a la planificación del proyecto.",
           color: "success",
           position: "top-right",
-          duration: 5000,
+          duration: 6000,
         });
 
+        await this.refrescarNotificaciones();
         this.$router.push({
           name: "dashboard-proyecto",
           params: { id: this.idProyecto },
@@ -909,6 +946,7 @@ export default {
       const status = error?.response?.status;
       const data = error?.response?.data || {};
       const mensaje = data.message || data.mensaje || "";
+      this.bloqueosError = normalizarBloqueos(data.bloqueos);
 
       if (status === 400) {
         if (data.errores && typeof data.errores === "object") {
@@ -958,6 +996,13 @@ export default {
       }
 
       if (status === 409) {
+        if (this.bloqueosError.length) {
+          this.mensajeError =
+            mensaje ||
+            "El cronograma no tiene un plan viable con la disponibilidad actual.";
+          return;
+        }
+
         if (/nombre|existe|duplicad/i.test(mensaje)) {
           this.errores = {
             ...this.errores,

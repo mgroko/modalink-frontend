@@ -252,7 +252,8 @@ import proyectoService from "../../services/proyectoService.js";
 import actividadService from "../../services/actividadService.js";
 import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
-import { refrescarSesion } from "../../services/authState";
+import { refrescarSesion, idPerfilActivo } from "../../services/authState";
+import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
 import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
@@ -841,6 +842,10 @@ export default {
           position: "top-right",
           duration: 6000,
         });
+
+        const idPerfil = idPerfilActivo();
+        if (idPerfil != null) await cargarResumenPerfil(idPerfil);
+
         this.$router.push({
           name: "dashboard-proyecto",
           params: { id: this.idProyecto },

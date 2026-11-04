@@ -73,6 +73,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {RequerimientoActividadModificarRequest[]} requerimientos obligatorio;
  *           [] elimina los no protegidos
  * @property {"PENDIENTE"|"EN_CURSO"|"FINALIZADA"|"CANCELADA"} estado
+ *           se envía sin cambios; los cambios de estado usan PATCH /estado
  */
 
 /**
@@ -101,6 +102,9 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {boolean} [puedePostularse] fuente de verdad por requerimiento;
  *           incluye estado del proyecto/actividad, rol, profesión y cupo.
  *           Usarlo para habilitar la acción; no recalcular en el front.
+ * @property {boolean|null} [protegido] true = no se puede modificar ni
+ *           eliminar en el estado actual del proyecto. Puede ser null en
+ *           respuestas de búsqueda; en el detalle siempre se calcula.
  */
 
 /**
@@ -137,6 +141,8 @@ import { serializarParams } from "../utils/queryParams.js";
  *           causa; en v2 sin fecha de entrega viene null y no se calcula CPM
  * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+ * @property {string|null} [origenInicio] ej. "CONFIRMADA" cuando la actividad
+ *           se agendó automáticamente al crearse en un proyecto confirmado
  * @property {"NORMAL"|"ALERTA_DESBORDE"|"SIN_FECHA_ENTREGA"} [estadoCronograma]
  * @property {boolean|null} [critica] holgura de makespan igual a cero
  * @property {number|null} [holguraMakespan] minutos de holgura respecto del makespan
@@ -431,6 +437,36 @@ const actividadService = {
     return http.put(
       `/proyectos/${idProyecto}/actividades/${idActividad}`,
       request,
+      { signal }
+    );
+  },
+
+  /**
+   * PATCH /proyectos/{idProyecto}/actividades/{idActividad}/estado — UC-50.
+   * Cambia únicamente el estado de la actividad. No se debe usar para editar
+   * nombre, descripción, duración, predecesoras ni requerimientos.
+   *
+   * Matriz:
+   * - PENDIENTE → PENDIENTE | EN_CURSO | CANCELADA
+   * - EN_CURSO → EN_CURSO | FINALIZADA | CANCELADA
+   * - FINALIZADA / CANCELADA → sin transiciones
+   *
+   * Errores:
+   * - 400 estado ausente o inválido
+   * - 403 sin MODIFICAR_ACTIVIDAD o sin membresía activa
+   * - 404 proyecto o actividad inexistente
+   * - 409 transición inválida, actividad finalizada/cancelada, actividad sin
+   *   fechaHoraInicio para EN_CURSO/FINALIZADA o proyecto finalizado/cancelado
+   * @param {number|string} idProyecto
+   * @param {number|string} idActividad
+   * @param {"PENDIENTE"|"EN_CURSO"|"FINALIZADA"|"CANCELADA"} estado
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ActividadResponse}>} 200 OK
+   */
+  cambiarEstado(idProyecto, idActividad, estado, signal) {
+    return http.patch(
+      `/proyectos/${idProyecto}/actividades/${idActividad}/estado`,
+      { estado },
       { signal }
     );
   },

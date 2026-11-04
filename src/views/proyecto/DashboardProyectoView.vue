@@ -368,6 +368,7 @@
           :tiene-fecha-entrega="tieneFechaEntrega"
           :asignando="asignando"
           :error="errorAsignar"
+          :bloqueos="bloqueosAsignar"
           :token-refresco-miembros="tokenRefrescoMiembros"
           :token-refresco-disponibilidad="tokenRefrescoDisponibilidad"
           @update:model-value="onCambioVisibilidadAsignar"
@@ -593,6 +594,7 @@ data() {
       perfilesAsignadosActividad: [],
       asignando: false,
       errorAsignar: "",
+      bloqueosAsignar: [],
       tokenRefrescoMiembros: 0,
       modalDesasignarVisible: false,
       actividadDesasignar: null,
@@ -741,6 +743,7 @@ data() {
       this.perfilesAsignadosActividad = [];
       this.asignando = false;
       this.errorAsignar = "";
+      this.bloqueosAsignar = [];
       this.modalDesasignarVisible = false;
       this.actividadDesasignar = null;
       this.responsableDesasignar = null;
@@ -2261,6 +2264,7 @@ data() {
       this.actividadAsignar = { ...actividad };
       this.perfilesAsignadosActividad = perfilesAsignadosDe(actividad);
       this.errorAsignar = "";
+      this.bloqueosAsignar = [];
       this.modalAsignarVisible = true;
     },
     onCambioVisibilidadAsignar(valor) {
@@ -2277,6 +2281,7 @@ data() {
       this.actividadAsignar = null;
       this.perfilesAsignadosActividad = [];
       this.errorAsignar = "";
+      this.bloqueosAsignar = [];
       if (controladorAsignacion) {
         controladorAsignacion.abort();
         controladorAsignacion = null;
@@ -2291,6 +2296,7 @@ data() {
 
       this.asignando = true;
       this.errorAsignar = "";
+      this.bloqueosAsignar = [];
       if (controladorAsignacion) controladorAsignacion.abort();
       controladorAsignacion = new AbortController();
 
@@ -2306,6 +2312,7 @@ data() {
         this.modalAsignarVisible = false;
         this.actividadAsignar = null;
         this.perfilesAsignadosActividad = [];
+        this.bloqueosAsignar = [];
 
         this.toast.init({
           title: "Actividad asignada",
@@ -2315,13 +2322,11 @@ data() {
           duration: 7000,
         });
 
+        await this.cargar();
         await this.$nextTick(() => {
           this.tokenRefrescoPlanificacion += 1;
         });
-
-        if (String(idPerfil) === String(idPerfilActivo())) {
-          this.refrescarNotificacionesPerfil();
-        }
+        this.refrescarNotificacionesPerfil();
       } catch (error) {
         if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
           return;
@@ -2403,10 +2408,12 @@ data() {
           duration: 7000,
         });
 
+        await this.cargar();
         await this.$nextTick(() => {
           this.tokenRefrescoPlanificacion += 1;
           this.tokenRefrescoDisponibilidad += 1;
         });
+        this.refrescarNotificacionesPerfil();
       } catch (error) {
         if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
           return;
@@ -2472,7 +2479,8 @@ data() {
     },
     async manejarErrorAsignacion(error) {
       const clasificacion = clasificarErrorAsignacion(error);
-      const { tipo, mensaje } = clasificacion;
+      const { tipo, mensaje, bloqueos = [] } = clasificacion;
+      this.bloqueosAsignar = Array.isArray(bloqueos) ? bloqueos : [];
 
       const cerrar = () => {
         this.modalAsignarVisible = false;
@@ -2674,6 +2682,7 @@ data() {
       this.$nextTick(() => {
         this.tokenRefrescoPlanificacion += 1;
       });
+      this.refrescarNotificacionesPerfil();
     },
     irActividadDesdeEliminacion() {
       const idActividad = this.actividadEliminar?.idActividad;
@@ -2736,6 +2745,7 @@ data() {
         if (eliminados > 0) {
           this.tokenRefrescoIntegrantes += 1;
         }
+        this.refrescarNotificacionesPerfil();
 
         this.cerrarModalEliminarActividad();
         this.toast.init({

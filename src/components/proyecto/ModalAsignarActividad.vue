@@ -97,6 +97,12 @@
       class="asignar-actividad-modal__alerta"
     />
 
+    <ul v-if="bloqueos.length" class="asignar-actividad-modal__bloqueos">
+      <li v-for="(bloqueo, indice) in bloqueos" :key="indice">
+        {{ bloqueo.mensaje || bloqueo.codigo }}
+      </li>
+    </ul>
+
     <template #footer>
       <div class="asignar-actividad-modal__acciones">
         <VaButton preset="secondary" :disabled="asignando" @click="cerrar">
@@ -170,6 +176,10 @@ export default {
     error: {
       type: String,
       default: "",
+    },
+    bloqueos: {
+      type: Array,
+      default: () => [],
     },
     /** Se incrementa desde el padre para recargar el selector tras un 409. */
     tokenRefrescoMiembros: {
@@ -398,6 +408,17 @@ export default {
 
 .asignar-actividad-modal__alerta {
   margin-top: 0.85rem !important;
+}
+
+.asignar-actividad-modal__bloqueos {
+  margin: 0.5rem 0 0;
+  padding: 0.55rem 0.65rem 0.55rem 1.6rem;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 7px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .asignar-actividad-modal__acciones {
