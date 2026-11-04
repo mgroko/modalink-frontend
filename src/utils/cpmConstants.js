@@ -13,8 +13,31 @@ import { formatearFechaCorta } from "./fechas.js";
 export const ESTADOS_CRONOGRAMA = {
   NORMAL: "NORMAL",
   ALERTA_DESBORDE: "ALERTA_DESBORDE",
+  CONFLICTO: "CONFLICTO",
   SIN_FECHA_ENTREGA: "SIN_FECHA_ENTREGA",
 };
+
+/**
+ * Tipos de `CronogramaResponse.conflictos` (ficha §9.3).
+ */
+export const ETIQUETAS_TIPO_CONFLICTO = {
+  FUERA_DE_PROYECTO: "Fuera del proyecto",
+  CONFLICTO_FIJO: "Conflicto con actividad fija",
+  DATO_INCONSISTENTE: "Dato inconsistente",
+};
+
+/**
+ * @param {string|null|undefined} tipo
+ * @returns {string} etiqueta legible; un valor desconocido se muestra crudo
+ */
+export function etiquetaTipoConflicto(tipo) {
+  const clave = String(tipo || "").trim();
+  if (!clave) return "";
+  return (
+    ETIQUETAS_TIPO_CONFLICTO[clave.toUpperCase()] ||
+    clave.replace(/_/g, " ").toLowerCase()
+  );
+}
 
 /** Código del 400 cuando el proyecto no tiene fecha de entrega (ficha v2 §2). */
 export const CODIGO_SIN_FECHA_ENTREGA = "SIN_FECHA_ENTREGA";
@@ -38,6 +61,7 @@ export function esErrorSinFechaEntrega(error) {
 export const ETIQUETAS_ESTADO_CRONOGRAMA = {
   [ESTADOS_CRONOGRAMA.NORMAL]: "Normal",
   [ESTADOS_CRONOGRAMA.ALERTA_DESBORDE]: "Alerta por desborde",
+  [ESTADOS_CRONOGRAMA.CONFLICTO]: "Conflicto estructural",
   [ESTADOS_CRONOGRAMA.SIN_FECHA_ENTREGA]: "Sin fecha de entrega",
 };
 
@@ -48,6 +72,11 @@ export const COLORES_ESTADO_CRONOGRAMA = {
     borde: "var(--color-success-border)",
   },
   [ESTADOS_CRONOGRAMA.ALERTA_DESBORDE]: {
+    fondo: "var(--color-danger-soft)",
+    texto: "var(--color-danger-text)",
+    borde: "var(--color-danger-border)",
+  },
+  [ESTADOS_CRONOGRAMA.CONFLICTO]: {
     fondo: "var(--color-danger-soft)",
     texto: "var(--color-danger-text)",
     borde: "var(--color-danger-border)",
@@ -100,19 +129,28 @@ export function esProyectadaCronograma(actividad) {
 }
 
 /**
- * Fechas visibles del Gantt: persistidas si existen, proyectadas como fallback.
- * No modifica `finConHolgura`, que sigue siendo CPM.
+ * Fechas visibles del Gantt. En un proyecto confirmado manda la fecha
+ * persistida; en el resto, la proyección CPM (ficha §9.2). No modifica
+ * `finConHolgura`, que sigue siendo CPM.
  * @param {object|null|undefined} actividad
+ * @param {{confirmado?: boolean}} [opciones]
  * @returns {{inicio: string|null, fin: string|null, persistida: boolean}}
  */
-export function fechasVisiblesCronograma(actividad) {
-  const inicio =
-    actividad?.inicioPersistido || actividad?.inicioProyectado || null;
-  const fin = actividad?.finPersistido || actividad?.finProyectado || null;
+export function fechasVisiblesCronograma(actividad, { confirmado = false } = {}) {
+  const persistido = actividad?.inicioPersistido || null;
+  const proyectado = actividad?.inicioProyectado || null;
+  const inicio = confirmado ? persistido || proyectado : proyectado || persistido;
+
+  const finPersistido = actividad?.finPersistido || null;
+  const finProyectado = actividad?.finProyectado || null;
+  const fin = confirmado
+    ? finPersistido || finProyectado
+    : finProyectado || finPersistido;
+
   return {
     inicio,
     fin,
-    persistida: !!actividad?.inicioPersistido,
+    persistida: !!persistido,
   };
 }
 

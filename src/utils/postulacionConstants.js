@@ -271,17 +271,20 @@ export function esErrorCupoCompleto(error) {
 }
 
 /**
- * Detecta el 409 de disponibilidad insuficiente. Ese error mantiene el modal
- * abierto para que el usuario pueda leerlo y revisar su calendario.
+ * Detecta el 409 de disponibilidad insuficiente. El `codigoMotivo` es la
+ * fuente de verdad (ficha §5.2); el mensaje queda como respaldo.
  * @param {object} error error Axios
  * @returns {boolean}
  */
 export function esErrorDisponibilidad(error) {
-  const mensaje = error?.response?.data?.message || "";
-  return (
-    error?.response?.status === 409 &&
-    /disponibilidad/i.test(mensaje)
-  );
+  const data = error?.response?.data || {};
+  if (error?.response?.status !== 409) return false;
+
+  const codigo = String(data.codigoMotivo || "").trim();
+  if (codigo) return true;
+
+  const mensaje = data.message || "";
+  return /disponibilidad/i.test(mensaje);
 }
 
 /**

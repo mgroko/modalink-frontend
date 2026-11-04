@@ -81,13 +81,20 @@
       :id-perfiles="idsDisponibilidad"
       :titulo="tituloDisponibilidad"
       :token-refresco="tokenRefrescoDisponibilidad"
+      mostrar-reprogramacion
+      mostrar-acciones
       @actualizado="onDisponibilidad"
     />
 
-    <p class="asignar-actividad-modal__nota">
-      La asignación no agenda ni reserva un horario. El hueco usado para validar
-      la disponibilidad no se guarda en la actividad; el cronograma sigue
-      siendo responsabilidad del CPM.
+    <p class="asignar-actividad-modal__nota" v-if="esBorrador">
+      Este proyecto está en borrador: la asignación se guarda, pero no se
+      reprograma el cronograma. Las fechas se calcularán al publicar o confirmar
+      el proyecto.
+    </p>
+    <p class="asignar-actividad-modal__nota" v-else>
+      La actividad se moverá a la primera ventana común disponible de los
+      miembros. Si no hay ninguna ventana válida, la asignación se rechaza y la
+      actividad conserva su horario actual.
     </p>
 
     <BaseAlert
@@ -102,6 +109,17 @@
         {{ bloqueo.mensaje || bloqueo.codigo }}
       </li>
     </ul>
+
+    <p
+      v-if="nombresBloqueantes.length"
+      class="asignar-actividad-modal__bloqueantes"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+      <span>
+        <strong>Miembros que impiden el hueco común:</strong>
+        {{ nombresBloqueantes.join(", ") }}.
+      </span>
+    </p>
 
     <template #footer>
       <div class="asignar-actividad-modal__acciones">
@@ -169,6 +187,16 @@ export default {
       type: Boolean,
       default: true,
     },
+    /** El proyecto está en borrador: no se reprograma el cronograma. */
+    esBorrador: {
+      type: Boolean,
+      default: false,
+    },
+    /** Ids de usuario devueltos por el 409 de disponibilidad. */
+    miembrosBloqueantes: {
+      type: Array,
+      default: () => [],
+    },
     asignando: {
       type: Boolean,
       default: false,
@@ -222,21 +250,15 @@ export default {
         : `${total} miembros ya asignados`;
     },
     idsDisponibilidad() {
-      const ids = [];
-      const agregar = (idPerfil) => {
-        if (idPerfil == null || idPerfil === "") return;
-        if (ids.some((id) => String(id) === String(idPerfil))) return;
-        ids.push(idPerfil);
-      };
-
-      agregar(this.idPerfilSeleccionado);
-      this.perfilesAsignados.forEach(agregar);
-      return ids;
+      // El backend agrega los miembros ya persistidos en la actividad: sólo se
+      // envía el nuevo candidato (ficha de disponibilidad primero).
+      if (this.idPerfilSeleccionado == null || this.idPerfilSeleccionado === "") {
+        return [];
+      }
+      return [this.idPerfilSeleccionado];
     },
     tituloDisponibilidad() {
-      return this.perfilesAsignados.length
-        ? "Disponibilidad del miembro y asignados"
-        : "Disponibilidad del miembro";
+      return "Disponibilidad del miembro";
     },
     esDirectorSeleccionado() {
       return (
@@ -250,6 +272,31 @@ export default {
         this.idPerfilSeleccionado != null &&
         this.disponibilidad?.disponible !== false
       );
+    },
+    nombresBloqueantes() {
+      const ids = Array.isArray(this.miembrosBloqueantes)
+        ? this.miembrosBloqueantes
+        : [];
+      if (!ids.length) return [];
+
+      const porUsuario = new Map();
+      (this.disponibilidad?.miembros || []).forEach((miembro) => {
+        if (miembro?.idUsuario == null) return;
+        porUsuario.set(String(miembro.idUsuario), miembro.nombreArtistico);
+      });
+      if (this.miembroSeleccionado?.idUsuario != null) {
+        porUsuario.set(
+          String(this.miembroSeleccionado.idUsuario),
+          this.miembroSeleccionado.nombreArtistico
+        );
+      }
+
+      return ids
+        .map(
+          (idUsuario) =>
+            porUsuario.get(String(idUsuario)) || `Usuario ${idUsuario}`
+        )
+        .filter(Boolean);
     },
     textoConfirmar() {
       if (this.asignando) return "Asignando…";
@@ -419,6 +466,24 @@ export default {
   color: var(--color-danger-text);
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.asignar-actividad-modal__bloqueantes {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 7px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.asignar-actividad-modal__bloqueantes .material-symbols-outlined {
+  font-size: 1rem;
 }
 
 .asignar-actividad-modal__acciones {

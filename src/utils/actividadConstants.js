@@ -52,16 +52,6 @@ export const TRANSICIONES_ESTADO_ACTIVIDAD = {
   [ESTADOS_ACTIVIDAD.CANCELADA]: [],
 };
 
-export const ESTADOS_CRONOGRAMA = {
-  NORMAL: "NORMAL",
-  ALERTA_DESBORDE: "ALERTA_DESBORDE",
-};
-
-export const ETIQUETAS_ESTADO_CRONOGRAMA = {
-  [ESTADOS_CRONOGRAMA.NORMAL]: "Normal",
-  [ESTADOS_CRONOGRAMA.ALERTA_DESBORDE]: "Alerta por desborde",
-};
-
 export const COLORES_ESTADO_ACTIVIDAD = {
   [ESTADOS_ACTIVIDAD.PENDIENTE]: {
     fondo: "var(--color-warning-soft)",

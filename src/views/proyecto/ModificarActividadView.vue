@@ -22,6 +22,7 @@
           :proyecto="proyecto"
           tab-activa="planificacion"
           :mostrar-planificacion="true"
+          :mostrar-integrantes="esMiembro"
           @cambiar-tab="cambiarTabEncabezado"
         />
 
@@ -72,6 +73,18 @@
               </div>
             </div>
           </header>
+
+          <p
+            v-if="predecesorasBloqueantes.length"
+            class="modificar-actividad__aviso-predecesoras"
+            role="status"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">info</span>
+            <span>
+              <strong>Iniciar y finalizar bloqueados.</strong>
+              {{ textoPredecesoras }}
+            </span>
+          </p>
 
           <div class="modificar-actividad__layout">
             <VaForm
@@ -429,6 +442,12 @@
                   <dt>Estado del cronograma</dt>
                   <dd>{{ estadoCronogramaTexto }}</dd>
                 </div>
+                <div v-if="actividad?.origenInicio">
+                  <dt>Origen del inicio</dt>
+                  <dd>
+                    <ChipOrigenInicio :origen="actividad.origenInicio" />
+                  </dd>
+                </div>
                 <div v-if="holguraMakespanTexto">
                   <dt>Holgura makespan</dt>
                   <dd>{{ holguraMakespanTexto }}</dd>
@@ -643,11 +662,11 @@ import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
+import ChipOrigenInicio from "../../components/proyecto/ChipOrigenInicio.vue";
 import SelectorUbicacion from "../../components/proyecto/SelectorUbicacion.vue";
 import RequerimientoForm from "../../components/proyecto/RequerimientoForm.vue";
 import {
   ESTADOS_ACTIVIDAD,
-  ESTADOS_CRONOGRAMA,
   ETIQUETAS_UNIDAD_DURACION,
   LIMITES_ACTIVIDAD,
   MINUTOS_POR_UNIDAD,
@@ -661,6 +680,7 @@ import {
   puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
 import {
+  ESTADOS_CRONOGRAMA,
   describirCpm,
   esProyectada,
   etiquetaEstadoCronograma,
@@ -683,6 +703,8 @@ import {
   mensajeExitoCambioEstado,
   motivoAccionNoDisponible,
   puedeEjecutarAccionEstado,
+  predecesorasPendientes,
+  textoPredecesorasPendientes,
 } from "../../utils/cambioEstadoActividadConstants.js";
 import {
   esErrorRequerimientoConVinculos,
@@ -715,6 +737,7 @@ export default {
   components: {
     BaseAlert,
     ProyectoEncabezado,
+    ChipOrigenInicio,
     SelectorUbicacion,
     RequerimientoForm,
   },
@@ -804,6 +827,13 @@ export default {
         return [];
       }
       return accionesEstadoPermitidas(this.estadoOriginal);
+    },
+    /** Predecesoras que todavía no finalizaron (ficha §6). */
+    predecesorasBloqueantes() {
+      return predecesorasPendientes(this.actividad, this.actividades);
+    },
+    textoPredecesoras() {
+      return textoPredecesorasPendientes(this.predecesorasBloqueantes);
     },
     textoProteccionRequerimiento() {
       return mensajeProteccionRequerimiento();
@@ -1422,11 +1452,13 @@ export default {
     puedeEjecutarAccion(accion) {
       return puedeEjecutarAccionEstado(accion, this.actividad, {
         puedeModificar: this.puedeModificarActividad,
+        predecesorasBloqueantes: this.predecesorasBloqueantes,
       });
     },
     motivoAccion(accion) {
       return motivoAccionNoDisponible(accion, this.actividad, {
         puedeModificar: this.puedeModificarActividad,
+        predecesorasBloqueantes: this.predecesorasBloqueantes,
       });
     },
     solicitarCambioEstado(accion) {
@@ -1550,6 +1582,15 @@ export default {
         return;
       }
 
+      if (tipo === TIPOS_ERROR_CAMBIO_ESTADO.PREDECESORAS) {
+        this.modalEstadoVisible = false;
+        this.accionEstado = null;
+        this.estadoDestino = null;
+        this.mensajeError = mensaje;
+        await this.cargarActividades();
+        return;
+      }
+
       if (
         [
           TIPOS_ERROR_CAMBIO_ESTADO.TRANSICION,
@@ -1624,19 +1665,29 @@ export default {
         );
 
         const actividad = response?.data;
+        const estadoCronograma = actividad?.estadoCronograma;
+        const conflicto =
+          estadoCronograma === ESTADOS_CRONOGRAMA.CONFLICTO;
         const alerta =
-          actividad?.estadoCronograma === ESTADOS_CRONOGRAMA.ALERTA_DESBORDE;
+          !conflicto &&
+          estadoCronograma === ESTADOS_CRONOGRAMA.ALERTA_DESBORDE;
 
         this.idRequerimientoConVinculos = null;
 
         this.toast.init({
-          title: alerta ? "Actividad modificada con alerta" : "Actividad modificada",
-          message: alerta
-            ? "Los cambios se guardaron, pero el cronograma supera la fecha de entrega del proyecto."
-            : "La actividad se actualizó y el cronograma fue recalculado.",
-          color: alerta ? "warning" : "success",
+          title: conflicto
+            ? "Actividad modificada con conflicto"
+            : alerta
+              ? "Actividad modificada con alerta"
+              : "Actividad modificada",
+          message: conflicto
+            ? "Los cambios se guardaron, pero el cronograma tiene conflictos estructurales. Revisá la planificación."
+            : alerta
+              ? "Los cambios se guardaron, pero el cronograma supera la fecha de entrega del proyecto."
+              : "La actividad se actualizó y el cronograma fue recalculado.",
+          color: conflicto ? "danger" : alerta ? "warning" : "success",
           position: "top-right",
-          duration: alerta ? 8000 : 5000,
+          duration: conflicto || alerta ? 8000 : 5000,
         });
 
         await this.refrescarNotificaciones();
@@ -1876,6 +1927,16 @@ export default {
           return;
         }
 
+        if (/predecesor/i.test(mensaje)) {
+          this.mensajeError =
+            mensaje ||
+            "Primero deben finalizar las predecesoras de la actividad.";
+          this.bloqueosEstado = [];
+          this.modalEstadoVisible = false;
+          await this.cargarActividades();
+          return;
+        }
+
         if (/transici|estado destino|no puede pasar/i.test(mensaje)) {
           this.mensajeError =
             mensaje || "El estado actual de la actividad no permite guardar.";
@@ -1948,9 +2009,7 @@ export default {
       this.$router.push({
         name: "dashboard-proyecto",
         params: { id: this.idProyecto },
-        query: {
-          tab: tab === "planificacion" ? "planificacion" : "informacion",
-        },
+        query: tab === "informacion" ? {} : { tab },
       });
     },
     irAModificarProyecto() {
@@ -2036,6 +2095,24 @@ export default {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.4rem;
+}
+
+.modificar-actividad__aviso-predecesoras {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 8px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.modificar-actividad__aviso-predecesoras .material-symbols-outlined {
+  font-size: 1rem;
 }
 
 .modificar-actividad__layout {

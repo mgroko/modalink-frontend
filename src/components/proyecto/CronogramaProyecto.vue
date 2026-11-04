@@ -55,6 +55,17 @@
         </div>
       </div>
 
+      <div v-else-if="esConflicto" class="cronograma-proyecto__aviso cronograma-proyecto__aviso--peligro" role="alert">
+        <span class="material-symbols-outlined" aria-hidden="true">error</span>
+        <div>
+          <p class="cronograma-proyecto__aviso-titulo">Conflictos en el cronograma</p>
+          <p class="cronograma-proyecto__aviso-texto">
+            El plan tiene conflictos estructurales y no es viable. Revisá el
+            detalle de conflictos antes de continuar.
+          </p>
+        </div>
+      </div>
+
       <div v-else-if="!viable" class="cronograma-proyecto__aviso cronograma-proyecto__aviso--peligro" role="alert">
         <span class="material-symbols-outlined" aria-hidden="true">error</span>
         <div>
@@ -142,6 +153,7 @@
         <CronogramaActividades
           :actividades="actividades"
           :seleccionada="seleccionadaId"
+          :confirmado="proyectoConfirmado"
           @seleccionar="seleccionar"
         />
       </section>
@@ -172,7 +184,10 @@
           </button>
         </header>
 
-        <div v-if="chipsSeleccionada.length" class="cronograma-proyecto__chips">
+        <div
+          v-if="chipsSeleccionada.length || actividadSeleccionada.origenInicio"
+          class="cronograma-proyecto__chips"
+        >
           <span
             v-for="chip in chipsSeleccionada"
             :key="chip.tipo"
@@ -182,6 +197,7 @@
           >
             {{ chip.etiqueta }}
           </span>
+          <ChipOrigenInicio :origen="actividadSeleccionada.origenInicio" />
         </div>
 
         <dl class="cronograma-proyecto__detalle-lista">
@@ -320,14 +336,18 @@
         v-if="conflictosNormalizados.length"
         class="cronograma-proyecto__panel"
       >
-        <h3 class="cronograma-proyecto__titulo">Conflictos</h3>
+        <h3 class="cronograma-proyecto__titulo">{{ tituloConflictos }}</h3>
         <ul class="cronograma-proyecto__conflictos">
           <li
-            v-for="(conflicto, indice) in conflictosNormalizados"
-            :key="indice"
+            v-for="conflicto in conflictosNormalizados"
+            :key="conflicto.clave"
           >
             <span class="material-symbols-outlined" aria-hidden="true">warning</span>
-            {{ conflicto }}
+            <span class="cronograma-proyecto__conflicto-detalle">
+              <strong v-if="conflicto.nombre">{{ conflicto.nombre }}</strong>
+              <span>{{ conflicto.detalle }}</span>
+              <small v-if="conflicto.tipo">{{ conflicto.tipo }}</small>
+            </span>
           </li>
         </ul>
       </section>
@@ -345,6 +365,7 @@
 <script>
 import BaseAlert from "../AlertaBase.vue";
 import CronogramaActividades from "./CronogramaActividades.vue";
+import ChipOrigenInicio from "./ChipOrigenInicio.vue";
 import actividadService from "../../services/actividadService.js";
 import { refrescarSesion } from "../../services/authState";
 import {
@@ -358,6 +379,7 @@ import {
   esProyectadaCronograma,
   esTentativa,
   etiquetaEstadoCronograma,
+  etiquetaTipoConflicto,
   fechaFinInclusiva,
   fechasVisiblesCronograma,
   formatearHolgura,
@@ -373,11 +395,16 @@ import { mensajeErrorApi } from "../../utils/apiError";
  */
 export default {
   name: "CronogramaProyecto",
-  components: { BaseAlert, CronogramaActividades },
+  components: { BaseAlert, CronogramaActividades, ChipOrigenInicio },
   props: {
     idProyecto: {
       type: [Number, String],
       required: true,
+    },
+    /** Estado legible del proyecto: define la prioridad de fechas del Gantt. */
+    estadoProyecto: {
+      type: String,
+      default: "",
     },
     tokenRefresco: {
       type: Number,
@@ -434,6 +461,15 @@ export default {
     },
     estadoCronograma() {
       return this.resumen?.estadoCronograma || null;
+    },
+    esConflicto() {
+      return this.estadoCronograma === ESTADOS_CRONOGRAMA.CONFLICTO;
+    },
+    proyectoConfirmado() {
+      return String(this.estadoProyecto || "").toUpperCase() === "CONFIRMADO";
+    },
+    tituloConflictos() {
+      return this.esConflicto ? "Conflictos estructurales" : "Conflictos";
     },
     sinFechaEntregaTotal() {
       return (
@@ -507,10 +543,12 @@ export default {
       return `${nombres.join(" → ")}${sufijo}`;
     },
     margenVencido() {
+      if (this.esConflicto) return false;
       const margen = Number(this.resumen?.margenMinutos);
       return Number.isFinite(margen) && margen < 0;
     },
     margenTexto() {
+      if (this.esConflicto) return "—";
       if (this.parcial || this.estadoCronograma === ESTADOS_CRONOGRAMA.SIN_FECHA_ENTREGA) {
         return "Sin fecha de entrega";
       }
@@ -569,7 +607,8 @@ export default {
         chips.push({
           tipo: "persistida",
           etiqueta: "Fechas guardadas",
-          detalle: "Fechas reales persistidas en la actividad.",
+          detalle:
+            "Inicio persistido por el plan. Sigue siendo reprogramable mientras la actividad esté pendiente.",
         });
       }
       if (esTentativa(actividad)) {
@@ -605,7 +644,9 @@ export default {
       return chips;
     },
     rangoSeleccionada() {
-      const visibles = fechasVisiblesCronograma(this.actividadSeleccionada);
+      const visibles = fechasVisiblesCronograma(this.actividadSeleccionada, {
+        confirmado: this.proyectoConfirmado,
+      });
       return formatearRangoCpm(visibles.inicio, visibles.fin);
     },
     holguraSeleccionada() {
@@ -644,8 +685,10 @@ export default {
     },
     conflictosNormalizados() {
       return this.conflictos
-        .map((conflicto) => this.textoConflicto(conflicto))
-        .filter(Boolean);
+        .map((conflicto, indice) => this.normalizarConflicto(conflicto, indice))
+        .filter(
+          (conflicto) => conflicto.detalle || conflicto.nombre || conflicto.tipo
+        );
     },
   },
   watch: {
@@ -842,16 +885,33 @@ export default {
       );
       return actividad?.nombre || "";
     },
-    textoConflicto(conflicto) {
-      if (!conflicto) return "";
-      if (typeof conflicto === "string") return conflicto;
-      return (
-        conflicto.motivoConflicto ||
-        conflicto.motivo ||
-        conflicto.mensaje ||
-        conflicto.nombre ||
-        "Conflicto CPM detectado."
-      );
+    normalizarConflicto(conflicto, indice) {
+      if (typeof conflicto === "string") {
+        return {
+          clave: `conflicto-${indice}`,
+          nombre: "",
+          detalle: conflicto,
+          tipo: "",
+        };
+      }
+
+      const dato = conflicto && typeof conflicto === "object" ? conflicto : {};
+      const idActividad = dato.idActividad ?? null;
+      const nombre =
+        idActividad != null
+          ? this.nombrePorId(idActividad) || `Actividad #${idActividad}`
+          : "";
+      return {
+        clave: `conflicto-${idActividad ?? indice}-${indice}`,
+        nombre,
+        detalle:
+          dato.detalle ||
+          dato.motivoConflicto ||
+          dato.motivo ||
+          dato.mensaje ||
+          "Conflicto CPM detectado.",
+        tipo: etiquetaTipoConflicto(dato.tipo),
+      };
     },
     resetear() {
       this.abortar();
@@ -1265,6 +1325,21 @@ export default {
   color: var(--color-danger-text);
   font-size: 0.82rem;
   line-height: 1.45;
+}
+
+.cronograma-proyecto__conflicto-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.cronograma-proyecto__conflicto-detalle strong {
+  font-weight: 700;
+}
+
+.cronograma-proyecto__conflicto-detalle small {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
 }
 
 .cronograma-proyecto__vacio {

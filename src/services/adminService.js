@@ -69,6 +69,28 @@ const adminService = {
       { signal }
     );
   },
+
+  /**
+   * GET /admin/cronograma/inconsistencias — ficha §7.1.
+   * `limite` limita la cantidad de proyectos procesados. Sin paginación.
+   * @param {{idProyecto?: number, idActividad?: number, limite?: number}} [params]
+   * @returns {Promise<{data: object[]}>} lista de inconsistencias
+   */
+  listarInconsistenciasCronograma(params = {}, signal) {
+    return http.get("/admin/cronograma/inconsistencias", { params, signal });
+  },
+
+  /**
+   * POST /admin/cronograma/reparar — ficha §7.2.
+   * `dryRun` viene en `true` por defecto. Responde 200 incluso con fallos
+   * parciales: los fallos van en `errores`.
+   * @param {{dryRun?: boolean, idProyecto?: number|null,
+   *          idActividad?: number|null, limite?: number}} [payload]
+   * @returns {Promise<{data: object}>} totales, inconsistencias y errores
+   */
+  repararCronograma(payload = {}, signal) {
+    return http.post("/admin/cronograma/reparar", payload, { signal });
+  },
 };
 
 export default adminService;

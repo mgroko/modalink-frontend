@@ -1,8 +1,11 @@
 <template>
   <article class="req-card">
     <div v-if="contextoActividad" class="req-card__contexto">
-      <span class="req-card__actividad">
-        Actividad · {{ contextoActividad }}
+      <span class="req-card__actividad-grupo">
+        <span class="req-card__actividad">
+          Actividad · {{ contextoActividad }}
+        </span>
+        <ChipOrigenInicio :origen="origenActividad" />
       </span>
       <button
         v-if="mostrarVerActividad"
@@ -97,6 +100,7 @@ import {
   porcentajeCupo,
   textoCupoCubiertos,
 } from "../../utils/postulacionConstants.js";
+import ChipOrigenInicio from "./ChipOrigenInicio.vue";
 
 /*
  * Requerimiento en modo lectura (general o de actividad). Reemplaza a
@@ -106,6 +110,7 @@ import {
  */
 export default {
   name: "RequerimientoCard",
+  components: { ChipOrigenInicio },
   props: {
     requerimiento: {
       type: Object,
@@ -129,6 +134,11 @@ export default {
     contextoActividad: {
       type: String,
       default: "",
+    },
+    /** `origenInicio` de la actividad, para el chip de solo lectura. */
+    origenActividad: {
+      type: String,
+      default: null,
     },
     /** Muestra el link "Ver actividad". */
     mostrarVerActividad: {
@@ -262,6 +272,13 @@ export default {
   flex-wrap: wrap;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--color-border-soft);
+}
+
+.req-card__actividad-grupo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .req-card__actividad {

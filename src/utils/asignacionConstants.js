@@ -12,6 +12,7 @@ import {
 import {
   RESULTADOS_PREFERENCIA,
   formatearDesvioMinutos,
+  mensajeMotivo,
 } from "./disponibilidadConstants.js";
 import { normalizarBloqueos } from "./confirmacionConstants.js";
 
@@ -471,10 +472,11 @@ export function normalizarAsignacion(data) {
  *   mensaje: string,
  *   mensajeCampo: string,
  *   motivo: string|null,
+ *   codigoMotivo: string|null,
  *   provisional: boolean,
  *   inicioEvaluado: string|null,
  *   finEvaluado: string|null,
- *   miembrosBloqueantes: Array<number|string>,
+ *   miembrosBloqueantes: Array<number>,
  *   erroresCampo: Record<string, string>
  * }}
  */
@@ -498,11 +500,14 @@ export function clasificarErrorAsignacion(error) {
     mensaje: mensajeBackend,
     mensajeCampo,
     motivo: payload.motivo ?? null,
+    codigoMotivo: payload.codigoMotivo ?? null,
     provisional: payload.provisional === true,
     inicioEvaluado: payload.inicioEvaluado ?? null,
     finEvaluado: payload.finEvaluado ?? null,
     miembrosBloqueantes: Array.isArray(payload.miembrosBloqueantes)
       ? payload.miembrosBloqueantes
+          .map((idUsuario) => Number(idUsuario))
+          .filter((idUsuario) => Number.isFinite(idUsuario))
       : [],
     bloqueos: normalizarBloqueos(payload.bloqueos),
     erroresCampo,
@@ -590,6 +595,26 @@ export function clasificarErrorAsignacion(error) {
   }
 
   if (status === 409) {
+    const codigoMotivo = String(payload.codigoMotivo || "").toUpperCase();
+    if (codigoMotivo) {
+      const esCalendario = [
+        "SIN_MIEMBROS",
+        "SIN_JORNADA",
+        "DURACION_EXCEDE_VENTANA",
+        "SIN_HUECO",
+        "SIN_HUECO_COMUN",
+        "FUERA_TOLERANCIA_PREFERENCIA",
+        "SIN_DISPONIBILIDAD",
+      ].includes(codigoMotivo);
+
+      return crear(
+        esCalendario
+          ? TIPOS_ERROR_ASIGNACION.SIN_DISPONIBILIDAD
+          : TIPOS_ERROR_ASIGNACION.CONFLICTO,
+        mensajeMotivo(codigoMotivo, mensajeBackend)
+      );
+    }
+
     if (/agenda/i.test(mensajeBackend)) {
       return crear(
         TIPOS_ERROR_ASIGNACION.SIN_AGENDA,

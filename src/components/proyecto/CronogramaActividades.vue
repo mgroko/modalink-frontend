@@ -114,13 +114,20 @@ export default {
       type: [Number, String],
       default: null,
     },
+    /** Proyecto confirmado: priorizar fechas persistidas (ficha §9.2). */
+    confirmado: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ["seleccionar"],
   computed: {
     items() {
       return (this.actividades || [])
         .map((actividad) => {
-          const visibles = fechasVisiblesCronograma(actividad);
+          const visibles = fechasVisiblesCronograma(actividad, {
+            confirmado: this.confirmado,
+          });
           const inicio = parseFechaLocal(visibles.inicio);
           const fin = parseFechaLocal(visibles.fin);
           if (!inicio || !fin) return null;

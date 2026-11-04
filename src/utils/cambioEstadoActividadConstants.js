@@ -42,6 +42,7 @@ export const TIPOS_ERROR_CAMBIO_ESTADO = {
   PERMISO: "PERMISO",
   NO_ENCONTRADO: "NO_ENCONTRADO",
   TRANSICION: "TRANSICION",
+  PREDECESORAS: "PREDECESORAS",
   SIN_AGENDA: "SIN_AGENDA",
   ESTADO_INMUTABLE: "ESTADO_INMUTABLE",
   PROYECTO_ESTADO: "PROYECTO_ESTADO",
@@ -77,16 +78,83 @@ export function estadoDestinoDeAccion(accion) {
 }
 
 /**
+ * Predecesoras que impiden iniciar o finalizar la actividad (ficha §6):
+ * sólo bloquean las que no están `FINALIZADA`; las `CANCELADA` se excluyen.
+ * Si la lista de actividades no trae el estado, la predecesora no se considera
+ * bloqueante y el backend sigue siendo la fuente de verdad.
+ * @param {object|null|undefined} actividad
+ * @param {Array<object>} [actividades] planificación con `idActividad` y `estado`
+ * @returns {Array<{idActividad:number|null, nombre:string, estado:string}>}
+ */
+export function predecesorasPendientes(actividad, actividades = []) {
+  const predecesoras = Array.isArray(actividad?.predecesoras)
+    ? actividad.predecesoras
+    : [];
+  if (!predecesoras.length) return [];
+
+  const porId = new Map();
+  (Array.isArray(actividades) ? actividades : []).forEach((item) => {
+    if (item?.idActividad == null) return;
+    porId.set(String(item.idActividad), item);
+  });
+
+  return predecesoras
+    .map((predecesora) => {
+      const idActividad = predecesora?.idActividad ?? null;
+      const encontrada = idActividad != null ? porId.get(String(idActividad)) : null;
+      const estado = encontrada?.estado
+        ? normalizarEstadoActividad(encontrada.estado)
+        : null;
+      return {
+        idActividad,
+        nombre: String(
+          predecesora?.nombre || encontrada?.nombre || ""
+        ).trim(),
+        estado,
+      };
+    })
+    .filter(
+      (predecesora) =>
+        predecesora.estado &&
+        predecesora.estado !== ESTADOS_ACTIVIDAD.FINALIZADA &&
+        predecesora.estado !== ESTADOS_ACTIVIDAD.CANCELADA
+    );
+}
+
+/**
+ * @param {Array<{idActividad?:number|null, nombre?:string}>} lista
+ * @returns {string} vacío si no hay bloqueantes
+ */
+export function textoPredecesorasPendientes(lista) {
+  const nombres = (Array.isArray(lista) ? lista : [])
+    .map(
+      (predecesora) =>
+        predecesora?.nombre ||
+        (predecesora?.idActividad != null
+          ? `Actividad #${predecesora.idActividad}`
+          : "")
+    )
+    .filter(Boolean);
+
+  if (!nombres.length) return "";
+  if (nombres.length === 1) {
+    return `Primero debe finalizar "${nombres[0]}".`;
+  }
+  return `Primero deben finalizar: ${nombres.join(", ")}.`;
+}
+
+/**
  * Motivo por el que una acción no se puede ejecutar. Vacío si está habilitada.
  * @param {string} accion
  * @param {object|null|undefined} actividad
- * @param {{puedeModificar?: boolean}} [opciones]
+ * @param {{puedeModificar?: boolean,
+ *          predecesorasBloqueantes?: Array<object>}} [opciones]
  * @returns {string}
  */
 export function motivoAccionNoDisponible(
   accion,
   actividad,
-  { puedeModificar = true } = {}
+  { puedeModificar = true, predecesorasBloqueantes = [] } = {}
 ) {
   if (!puedeModificar) {
     return "No tenés permiso para modificar actividades en este proyecto.";
@@ -100,10 +168,14 @@ export function motivoAccionNoDisponible(
   }
 
   if (
-    [ACCIONES_ESTADO.INICIAR, ACCIONES_ESTADO.FINALIZAR].includes(accion) &&
-    !actividad.fechaHoraInicio
+    [ACCIONES_ESTADO.INICIAR, ACCIONES_ESTADO.FINALIZAR].includes(accion)
   ) {
-    return "Primero debe agendarse la actividad.";
+    if (!actividad.fechaHoraInicio) {
+      return "Primero debe agendarse la actividad.";
+    }
+
+    const bloqueo = textoPredecesorasPendientes(predecesorasBloqueantes);
+    if (bloqueo) return bloqueo;
   }
 
   return "";
@@ -224,6 +296,16 @@ export function clasificarErrorCambioEstado(error) {
         tipo: TIPOS_ERROR_CAMBIO_ESTADO.SIN_AGENDA,
         mensaje:
           mensaje || "La actividad debe tener una fecha de inicio asignada.",
+      };
+    }
+
+    if (/predecesor/i.test(mensaje)) {
+      return {
+        ...base,
+        tipo: TIPOS_ERROR_CAMBIO_ESTADO.PREDECESORAS,
+        mensaje:
+          mensaje ||
+          "Primero deben finalizar las predecesoras de la actividad.",
       };
     }
 

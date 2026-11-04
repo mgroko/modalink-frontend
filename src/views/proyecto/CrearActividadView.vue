@@ -22,6 +22,7 @@
           :proyecto="proyecto"
           tab-activa="planificacion"
           :mostrar-planificacion="true"
+          :mostrar-integrantes="esMiembro"
           @cambiar-tab="cambiarTabEncabezado"
         />
 
@@ -930,12 +931,21 @@ export default {
         const fechaAsignada = actividad?.fechaHoraInicio
           ? formatearFecha(actividad.fechaHoraInicio)
           : "";
+        const inicioProvisional =
+          String(actividad?.origenInicio || "").toUpperCase() === "PROYECTADA";
+
+        let mensajeCreacion = fechaAsignada
+          ? `La actividad se creó y se agendó para ${fechaAsignada}.`
+          : "La actividad se agregó a la planificación del proyecto.";
+        if (inicioProvisional) {
+          mensajeCreacion = fechaAsignada
+            ? `La actividad se creó con inicio provisional para ${fechaAsignada}; puede cambiar al asignar miembros.`
+            : "La actividad se creó con inicio provisional; puede cambiar al asignar miembros.";
+        }
 
         this.toast.init({
           title: "Actividad creada",
-          message: fechaAsignada
-            ? `La actividad se creó y se agendó para ${fechaAsignada}.`
-            : "La actividad se agregó a la planificación del proyecto.",
+          message: mensajeCreacion,
           color: "success",
           position: "top-right",
           duration: 6000,
@@ -1079,7 +1089,7 @@ export default {
       this.$router.push({
         name: "dashboard-proyecto",
         params: { id: this.idProyecto },
-        query: { tab: tab === "planificacion" ? "planificacion" : "informacion" },
+        query: tab === "informacion" ? {} : { tab },
       });
     },
     cancelar() {

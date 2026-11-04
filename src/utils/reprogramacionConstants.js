@@ -23,6 +23,36 @@ export const TIPOS_ERROR_REPROGRAMACION = {
 };
 
 /**
+ * Etiquetas de los fallos automáticos de reprogramación (ficha §10).
+ * Nunca mostrar el código crudo.
+ */
+export const ETIQUETAS_FALLO_REPROGRAMACION = {
+  ERROR_REPROGRAMACION: "No se pudo reprogramar automáticamente",
+  SIN_DISPONIBILIDAD: "Sin disponibilidad suficiente",
+  DATOS_INCONSISTENTES: "Datos inconsistentes en el cronograma",
+  CRONOGRAMA_NO_VIABLE: "El cronograma no tiene un plan viable",
+  FECHA_ENTREGA_INVALIDA: "La fecha de entrega no permite planificar",
+  ACTIVIDAD_NO_REPROGRAMABLE: "Actividad no reprogramable",
+};
+
+/**
+ * @param {string|null|undefined} codigo
+ * @returns {string}
+ */
+export function etiquetaFalloReprogramacion(codigo) {
+  const clave = String(codigo || "").trim().toUpperCase();
+  return ETIQUETAS_FALLO_REPROGRAMACION[clave] || "No se pudo reprogramar";
+}
+
+/**
+ * @param {string|null|undefined} codigo
+ * @returns {boolean}
+ */
+export function esFalloGenericoReprogramacion(codigo) {
+  return String(codigo || "").trim().toUpperCase() === "ERROR_REPROGRAMACION";
+}
+
+/**
  * Normaliza un bloqueo de reprogramación. Acepta `entidad`/`idEntidad` y los
  * alias `entidadTipo`/`entidadId` que devuelve el flujo de confirmación.
  * @param {object|null|undefined} bloqueo

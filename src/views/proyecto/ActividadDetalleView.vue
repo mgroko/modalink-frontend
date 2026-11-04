@@ -53,6 +53,7 @@
               <span class="actividad-detalle__estado" :style="estiloEstado">
                 {{ etiquetaEstadoActividad(actividad.estado) }}
               </span>
+              <ChipOrigenInicio :origen="actividad.origenInicio" />
             </div>
 
             <p v-if="actividad.descripcion" class="actividad-detalle__descripcion">
@@ -257,6 +258,7 @@ import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
 import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
+import ChipOrigenInicio from "../../components/proyecto/ChipOrigenInicio.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -301,7 +303,13 @@ import {
  */
 export default {
   name: "ActividadDetalleView",
-  components: { BaseAlert, RequerimientoCard, ModalPostulacion, ModalEliminarActividad },
+  components: {
+    BaseAlert,
+    RequerimientoCard,
+    ModalPostulacion,
+    ModalEliminarActividad,
+    ChipOrigenInicio,
+  },
   setup() {
     return { toast: useToast() };
   },

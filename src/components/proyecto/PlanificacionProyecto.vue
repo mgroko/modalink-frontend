@@ -145,6 +145,7 @@
         :activo="pestanaActiva === 'cronograma'"
         :sin-fecha-entrega="!tieneFechaEntrega"
         :puede-modificar="puedeModificar"
+        :estado-proyecto="estadoNormalizado"
         @ir-modificar-proyecto="$emit('ir-modificar-proyecto')"
       />
     </div>

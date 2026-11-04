@@ -66,7 +66,7 @@
           v-if="resultado.provisional"
           class="disponibilidad-actividad__badge disponibilidad-actividad__badge--provisional"
         >
-          Provisional
+          Evaluación provisional
         </span>
       </div>
 
@@ -89,13 +89,51 @@
         </div>
       </dl>
 
-      <p
+      <div
+        v-if="mostrarReprogramacion && reprogramacion.length"
+        class="disponibilidad-actividad__reprogramacion"
+      >
+        <p class="disponibilidad-actividad__reprogramacion-titulo">
+          Actividades que se moverán
+        </p>
+        <ul class="disponibilidad-actividad__reprogramacion-lista">
+          <li
+            v-for="movimiento in reprogramacion"
+            :key="movimiento.clave"
+          >
+            <strong>{{ movimiento.nombre }}</strong>
+            <span v-if="movimiento.movimiento" class="disponibilidad-actividad__movimiento">
+              {{ movimiento.movimiento }}
+            </span>
+          </li>
+        </ul>
+        <p class="disponibilidad-actividad__reprogramacion-texto">
+          Al confirmar la asignación, estas actividades se reprograman y el
+          cronograma se recalcula.
+        </p>
+      </div>
+
+      <div
         v-if="!resultado.disponible"
         class="disponibilidad-actividad__motivo"
+        :class="`disponibilidad-actividad__motivo--${metaResultado.tono}`"
       >
-        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-        {{ mensaje }}
-      </p>
+        <span class="material-symbols-outlined" aria-hidden="true">
+          {{ metaResultado.icono }}
+        </span>
+        <div class="disponibilidad-actividad__motivo-cuerpo">
+          <p class="disponibilidad-actividad__motivo-texto">{{ mensaje }}</p>
+          <VaButton
+            v-if="mostrarAcciones && metaResultado.accion"
+            preset="secondary"
+            size="small"
+            class="disponibilidad-actividad__motivo-accion"
+            @click="ejecutarAccionMotivo"
+          >
+            {{ textoAccionMotivo }}
+          </VaButton>
+        </div>
+      </div>
 
       <p
         v-if="resultado.provisional"
@@ -113,7 +151,7 @@
 
         <article
           v-for="(miembro, indice) in miembros"
-          :key="`${miembro.idUsuario ?? 'miembro'}-${indice}`"
+          :key="`${miembro.idPerfil ?? miembro.idUsuario ?? 'miembro'}-${indice}`"
           class="disponibilidad-actividad__miembro"
         >
           <header class="disponibilidad-actividad__miembro-cabecera">
@@ -177,11 +215,14 @@ import BaseAlert from "../AlertaBase.vue";
 import actividadService from "../../services/actividadService.js";
 import { esErrorSinFechaEntrega } from "../../utils/cpmConstants.js";
 import {
+  ACCIONES_MOTIVO_DISPONIBILIDAD,
   etiquetaResultadoPreferencia,
   formatearDesvioMinutos,
   formatearHuecos,
+  formatearReprogramacion,
   formatearVentana,
   mensajeMotivo,
+  metaMotivo,
   normalizarResultado,
 } from "../../utils/disponibilidadConstants.js";
 import { formatearHora } from "../../utils/fechas.js";
@@ -218,6 +259,16 @@ export default {
     },
     /** El proyecto no tiene fecha de entrega: no se consulta ni se evalúa. */
     sinFechaEntrega: {
+      type: Boolean,
+      default: false,
+    },
+    /** Sólo el preview de asignación muestra las actividades a mover. */
+    mostrarReprogramacion: {
+      type: Boolean,
+      default: false,
+    },
+    /** Habilita las acciones sugeridas por `codigoMotivo`. */
+    mostrarAcciones: {
       type: Boolean,
       default: false,
     },
@@ -262,7 +313,32 @@ export default {
       );
     },
     mensaje() {
-      return mensajeMotivo(this.resultado?.motivo);
+      return mensajeMotivo(
+        this.resultado?.codigoMotivo,
+        this.resultado?.motivo
+      );
+    },
+    metaResultado() {
+      return metaMotivo(this.resultado?.codigoMotivo);
+    },
+    textoAccionMotivo() {
+      if (this.metaResultado.accion === ACCIONES_MOTIVO_DISPONIBILIDAD.CALENDARIO) {
+        return "Revisar calendario";
+      }
+      if (this.metaResultado.accion === ACCIONES_MOTIVO_DISPONIBILIDAD.CRONOGRAMA) {
+        return "Ver cronograma";
+      }
+      return "";
+    },
+    reprogramacion() {
+      if (!this.mostrarReprogramacion) return [];
+      const lista = Array.isArray(this.resultado?.reprogramacionPropuesta)
+        ? this.resultado.reprogramacionPropuesta
+        : [];
+      return lista.map((actividad, indice) => ({
+        clave: `${actividad?.idActividad ?? "actividad"}-${indice}`,
+        ...formatearReprogramacion(actividad),
+      }));
     },
     etiquetaPreferencia() {
       return etiquetaResultadoPreferencia(
@@ -327,6 +403,20 @@ export default {
     mensajeMotivo,
     reconsultarSiCorresponde() {
       if (this.autoCargar) this.cargar();
+    },
+    ejecutarAccionMotivo() {
+      const accion = this.metaResultado.accion;
+      if (accion === ACCIONES_MOTIVO_DISPONIBILIDAD.CALENDARIO) {
+        this.$router.push({ name: "calendario" });
+        return;
+      }
+      if (accion === ACCIONES_MOTIVO_DISPONIBILIDAD.CRONOGRAMA) {
+        this.$router.push({
+          name: "dashboard-proyecto",
+          params: { id: this.idProyecto },
+          query: { tab: "planificacion", vista: "cronograma" },
+        });
+      }
     },
     async cargar() {
       if (this.idProyecto == null || this.idActividad == null) return;
@@ -555,6 +645,42 @@ export default {
   color: var(--color-warning-text);
 }
 
+.disponibilidad-actividad__reprogramacion {
+  margin-top: 0.25rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: 8px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.disponibilidad-actividad__reprogramacion-titulo {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.disponibilidad-actividad__reprogramacion-lista {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.disponibilidad-actividad__movimiento {
+  margin-left: 0.35rem;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.disponibilidad-actividad__reprogramacion-texto {
+  margin: 0.4rem 0 0;
+  opacity: 0.9;
+}
+
 .disponibilidad-actividad__motivo {
   display: flex;
   align-items: flex-start;
@@ -567,6 +693,28 @@ export default {
   color: var(--color-danger-text);
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.disponibilidad-actividad__motivo--warning {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.disponibilidad-actividad__motivo-cuerpo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.disponibilidad-actividad__motivo-texto {
+  margin: 0;
+}
+
+.disponibilidad-actividad__motivo-accion {
+  margin-top: 0.1rem;
 }
 
 .disponibilidad-actividad__motivo .material-symbols-outlined {

@@ -25,6 +25,7 @@
           catalogos[item.requerimiento.idProfesion] || null
         "
         :contexto-actividad="item.actividad?.nombre || ''"
+        :origen-actividad="item.actividad?.origenInicio || null"
         :mostrar-ver-actividad="puedeVerActividad(item)"
         :mostrar-accion="puedePostularItem(item)"
         :sin-cupo="estaSinCupo(item)"

@@ -107,9 +107,12 @@
           </td>
 
           <td>
-            <span class="tabla-actividades__estado" :style="estiloEstado(actividad.estado)">
-              {{ etiquetaEstadoActividad(actividad.estado) }}
-            </span>
+            <div class="tabla-actividades__estado-celda">
+              <span class="tabla-actividades__estado" :style="estiloEstado(actividad.estado)">
+                {{ etiquetaEstadoActividad(actividad.estado) }}
+              </span>
+              <ChipOrigenInicio :origen="actividad.origenInicio" />
+            </div>
           </td>
 
           <td>
@@ -168,6 +171,7 @@ import {
 } from "../../utils/actividadConstants.js";
 import { idPerfilActivo } from "../../services/authState";
 import { formatearFechaCorta } from "../../utils/fechas.js";
+import ChipOrigenInicio from "./ChipOrigenInicio.vue";
 import {
   motivoNoEliminableActividad,
   puedeEliminarActividad,
@@ -175,6 +179,7 @@ import {
 
 export default {
   name: "TablaActividades",
+  components: { ChipOrigenInicio },
   props: {
     actividades: {
       type: Array,
@@ -456,6 +461,13 @@ export default {
 .tabla-actividades__duracion,
 .tabla-actividades__fechas {
   white-space: nowrap;
+}
+
+.tabla-actividades__estado-celda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .tabla-actividades__estado {

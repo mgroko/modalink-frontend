@@ -264,7 +264,10 @@ export default {
       return describirCpm(this.actividad);
     },
     motivoNoDisponible() {
-      return mensajeMotivo(this.disponibilidad?.motivo);
+      return mensajeMotivo(
+        this.disponibilidad?.codigoMotivo,
+        this.disponibilidad?.motivo
+      );
     },
     mostrarCalendario() {
       return (

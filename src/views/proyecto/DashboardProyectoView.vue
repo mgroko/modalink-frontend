@@ -369,6 +369,8 @@
           :asignando="asignando"
           :error="errorAsignar"
           :bloqueos="bloqueosAsignar"
+          :miembros-bloqueantes="miembrosBloqueantesAsignar"
+          :es-borrador="esBorrador"
           :token-refresco-miembros="tokenRefrescoMiembros"
           :token-refresco-disponibilidad="tokenRefrescoDisponibilidad"
           @update:model-value="onCambioVisibilidadAsignar"
@@ -595,6 +597,7 @@ data() {
       asignando: false,
       errorAsignar: "",
       bloqueosAsignar: [],
+      miembrosBloqueantesAsignar: [],
       tokenRefrescoMiembros: 0,
       modalDesasignarVisible: false,
       actividadDesasignar: null,
@@ -658,6 +661,9 @@ data() {
     },
     esCancelado() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.CANCELADO;
+    },
+    esConfirmado() {
+      return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.CONFIRMADO;
     },
     proyectoConfirmado() {
       return (
@@ -744,6 +750,7 @@ data() {
       this.asignando = false;
       this.errorAsignar = "";
       this.bloqueosAsignar = [];
+      this.miembrosBloqueantesAsignar = [];
       this.modalDesasignarVisible = false;
       this.actividadDesasignar = null;
       this.responsableDesasignar = null;
@@ -2265,6 +2272,7 @@ data() {
       this.perfilesAsignadosActividad = perfilesAsignadosDe(actividad);
       this.errorAsignar = "";
       this.bloqueosAsignar = [];
+      this.miembrosBloqueantesAsignar = [];
       this.modalAsignarVisible = true;
     },
     onCambioVisibilidadAsignar(valor) {
@@ -2282,6 +2290,7 @@ data() {
       this.perfilesAsignadosActividad = [];
       this.errorAsignar = "";
       this.bloqueosAsignar = [];
+      this.miembrosBloqueantesAsignar = [];
       if (controladorAsignacion) {
         controladorAsignacion.abort();
         controladorAsignacion = null;
@@ -2313,10 +2322,15 @@ data() {
         this.actividadAsignar = null;
         this.perfilesAsignadosActividad = [];
         this.bloqueosAsignar = [];
+        this.miembrosBloqueantesAsignar = [];
 
         this.toast.init({
           title: "Actividad asignada",
-          message: mensajeExitoAsignacion(data, miembro, actividad),
+          message: `${mensajeExitoAsignacion(data, miembro, actividad)}${
+            this.esConfirmado
+              ? " El cronograma se recalculó; revisá la planificación."
+              : ""
+          }`,
           color: "success",
           position: "top-right",
           duration: 7000,
@@ -2481,6 +2495,9 @@ data() {
       const clasificacion = clasificarErrorAsignacion(error);
       const { tipo, mensaje, bloqueos = [] } = clasificacion;
       this.bloqueosAsignar = Array.isArray(bloqueos) ? bloqueos : [];
+      this.miembrosBloqueantesAsignar = Array.isArray(clasificacion.miembrosBloqueantes)
+        ? clasificacion.miembrosBloqueantes
+        : [];
 
       const cerrar = () => {
         this.modalAsignarVisible = false;

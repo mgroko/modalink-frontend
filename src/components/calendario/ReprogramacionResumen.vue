@@ -99,7 +99,7 @@
                 {{ proyecto.nombreProyecto || `Proyecto #${proyecto.idProyecto}` }}
               </p>
               <p v-if="proyecto.codigo" class="reprogramacion-resumen__codigo">
-                {{ proyecto.codigo }}
+                {{ etiquetaFalloReprogramacion(proyecto.codigo) }}
               </p>
             </div>
           </div>
@@ -155,7 +155,7 @@
 </template>
 
 <script>
-import { cantidadActividadesMovidas } from "../../utils/reprogramacionConstants.js";
+import { cantidadActividadesMovidas, etiquetaFalloReprogramacion } from "../../utils/reprogramacionConstants.js";
 
 export default {
   name: "ReprogramacionResumen",
@@ -201,6 +201,7 @@ export default {
     },
   },
   methods: {
+    etiquetaFalloReprogramacion,
     cantidadMovidas(proyecto) {
       return cantidadActividadesMovidas(proyecto);
     },

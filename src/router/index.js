@@ -34,6 +34,7 @@ import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerVie
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
 import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
+import ReparacionCronogramaView from "../views/admin/ReparacionCronogramaView.vue";
 import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
@@ -359,6 +360,17 @@ const routes = [
       requiereAdmin: true,
       requierePermiso: "ADMINISTRAR_CONFIGURACION",
       titulo: "Scheduler de bajas",
+    }
+  },
+  {
+    path: "/admin/configuracion/cronograma",
+    name: "admin-cronograma",
+    component: ReparacionCronogramaView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Reparación de cronogramas",
     }
   }
 ];

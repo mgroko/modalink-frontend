@@ -141,9 +141,11 @@ import { serializarParams } from "../utils/queryParams.js";
  *           causa; en v2 sin fecha de entrega viene null y no se calcula CPM
  * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
- * @property {string|null} [origenInicio] ej. "CONFIRMADA" cuando la actividad
- *           se agendó automáticamente al crearse en un proyecto confirmado
- * @property {"NORMAL"|"ALERTA_DESBORDE"|"SIN_FECHA_ENTREGA"} [estadoCronograma]
+ * @property {string|null} [origenInicio] "PROYECTADA" (inicio provisional),
+ *           "CONFIRMADA" (inicio persistido por el plan) o "REAL" (en curso o
+ *           finalizada). Sólo existe hoy en la entidad; los DTOs de lectura no
+ *           lo exponen todavía.
+ * @property {"NORMAL"|"ALERTA_DESBORDE"|"CONFLICTO"|"SIN_FECHA_ENTREGA"} [estadoCronograma]
  * @property {boolean|null} [critica] holgura de makespan igual a cero
  * @property {number|null} [holguraMakespan] minutos de holgura respecto del makespan
  * @property {number|null} [holguraEntrega] minutos de holgura respecto de la entrega;
@@ -191,6 +193,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
  * @property {string|null} fechaHoraInicio ISO local persistido
  * @property {string|null} fechaHoraFin ISO local persistido
+ * @property {"PROYECTADA"|"CONFIRMADA"|"REAL"|null} [origenInicio]
  * @property {{idActividad:number,nombre:string}[]} predecesoras
  * @property {ResponsableActividad[]} responsables
  */
@@ -215,7 +218,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {number|null} margenMinutos fuente del margen; no recalcular
  * @property {boolean} tentativo
  * @property {boolean} parcial
- * @property {"NORMAL"|"ALERTA_DESBORDE"|"SIN_FECHA_ENTREGA"} estadoCronograma
+ * @property {"NORMAL"|"ALERTA_DESBORDE"|"CONFLICTO"|"SIN_FECHA_ENTREGA"} estadoCronograma
  * @property {boolean|null} viable
  * @property {number} totalActividades
  * @property {number} actividadesCriticas
@@ -246,6 +249,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} motivoConflicto
  * @property {boolean|null} fijo
  * @property {boolean|null} tentativo
+ * @property {"PROYECTADA"|"CONFIRMADA"|"REAL"|null} [origenInicio]
  */
 
 /**
@@ -264,6 +268,10 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} DetalleMiembroDisponibilidad
  * @property {number|null} idUsuario
+ * @property {number|null} [idPerfil] perfil evaluado; puede ser null si el
+ *           llamador no lo conoce
+ * @property {string|null} [nombreArtistico] nombre del perfil evaluado; puede
+ *           ser null si el llamador no lo conoce
  * @property {string|null} inicioEvaluado
  * @property {string|null} finEvaluado
  * @property {IntervaloDisponibilidad[]} huecos
@@ -279,7 +287,15 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} finEvaluado
  * @property {string|null} inicioSeleccionado
  * @property {string|null} finSeleccionado
- * @property {string|null} motivo
+ * @property {string|null} motivo texto libre; usar `codigoMotivo` primero
+ * @property {"SIN_MIEMBROS"|"SIN_JORNADA"|"DURACION_EXCEDE_VENTANA"|
+ *           "SIN_HUECO"|"SIN_HUECO_COMUN"|"FUERA_TOLERANCIA_PREFERENCIA"|
+ *           "CONFLICTO_FIJO"|"DATOS_INCONSISTENTES"|
+ *           "CRONOGRAMA_NO_VIABLE"|null} codigoMotivo
+ * @property {Array<{idActividad:number, nombre:string, estado:string,
+ *           inicioAnterior:string|null, inicioNuevo:string|null}>}
+ *           reprogramacionPropuesta actividades que se moverían al confirmar
+ *           la asignación; vacío fuera del preview de asignación
  * @property {"SIN_PREFERENCIA"|"EXACTO"|"DESVIO"|"SIN_LUGAR"|null} resultadoPreferencia
  * @property {number|null} desvioMinutos negativo = antes del preferido;
  *           positivo = después; null sin preferencia o SIN_LUGAR
@@ -346,6 +362,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} fechaHoraFin ISO local derivado
  * @property {string|null} horarioPreferenciaInicio hora HH:mm, sin fecha
  * @property {string} estado PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+ * @property {"PROYECTADA"|"CONFIRMADA"|"REAL"|null} [origenInicio]
  * @property {{idRequerimiento:number,cantidad:number,descripcion:string|null,idProfesion:number,nombreProfesion:string,cubiertos?:number,faltantes?:number,satisfecho?:boolean,puedePostularse?:boolean}[]} requerimientos
  * @property {{idActividad:number,nombre:string}[]} predecesoras
  */
