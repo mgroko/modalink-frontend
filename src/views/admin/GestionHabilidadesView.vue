@@ -3,7 +3,8 @@
     <section class="gestion-habilidades__encabezado">
       <h1>Habilidades</h1>
       <p class="gestion-habilidades__subtitulo">
-        Administrá el catálogo global de habilidades profesionales.
+        Administrá el catálogo global de habilidades profesionales. Hacé clic en
+        los encabezados para ordenar A-Z / Z-A.
       </p>
     </section>
 
@@ -229,11 +230,56 @@ import habilidadService from "../../services/habilidadService";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 
+const normalizarTextoOrden = (valor) =>
+  String(valor || "")
+    .trim()
+    .toLocaleLowerCase("es");
+
+const compararTexto = (a, b) => {
+  const textoA = normalizarTextoOrden(a);
+  const textoB = normalizarTextoOrden(b);
+
+  if (!textoA && !textoB) return 0;
+  if (!textoA) return 1;
+  if (!textoB) return -1;
+
+  return textoA.localeCompare(textoB, "es", {
+    sensitivity: "base",
+    numeric: true,
+  });
+};
+
+const OPCIONES_ORDEN = ["asc", "desc", null];
+
 const COLUMNAS = [
-  { key: "nombre", label: "Nombre", sortable: true },
-  { key: "descripcion", label: "Descripción" },
-  { key: "codigo", label: "Código", sortable: true },
-  { key: "acciones", label: "Acciones", sortable: false },
+  {
+    key: "nombre",
+    label: "Nombre",
+    sortable: true,
+    width: "22%",
+    sortingFn: compararTexto,
+    sortingOptions: OPCIONES_ORDEN,
+    thTitle: "Ordenar por nombre (A-Z / Z-A)",
+  },
+  {
+    key: "descripcion",
+    label: "Descripción",
+    sortable: true,
+    width: "40%",
+    sortingFn: compararTexto,
+    sortingOptions: OPCIONES_ORDEN,
+    thTitle: "Ordenar por descripción (A-Z / Z-A)",
+  },
+  {
+    key: "codigo",
+    label: "Código",
+    sortable: true,
+    width: "20%",
+    sortingFn: compararTexto,
+    sortingOptions: OPCIONES_ORDEN,
+    thTitle: "Ordenar por código (A-Z / Z-A)",
+  },
+  { key: "acciones", label: "Acciones", sortable: false, width: "18%" },
 ];
 
 export default {
@@ -576,9 +622,25 @@ export default {
 }
 
 .gestion-habilidades__tabla {
+  width: 100%;
+  max-width: 1120px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 10px;
+  --va-data-table-cell-padding: 0.65rem 0.8rem;
+}
+
+.gestion-habilidades__tabla :deep(.va-data-table__table) {
+  table-layout: fixed;
+  white-space: normal;
+}
+
+.gestion-habilidades__tabla :deep(.va-data-table__table-th) {
+  white-space: normal;
+}
+
+.gestion-habilidades__tabla :deep(.va-data-table__table td) {
+  overflow-wrap: anywhere;
 }
 
 .gestion-habilidades__codigo {

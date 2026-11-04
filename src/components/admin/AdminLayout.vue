@@ -44,7 +44,7 @@
           <span>Características técnicas</span>
         </RouterLink>
         <RouterLink to="/admin/habilidades" class="admin-layout__link">
-          <span class="material-symbols-outlined">auto_awesome</span>
+          <span class="material-symbols-outlined">psychology</span>
           <span>Habilidades</span>
         </RouterLink>
         <RouterLink to="/admin/unidades-medida" class="admin-layout__link">

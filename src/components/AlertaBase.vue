@@ -2,7 +2,11 @@
   <VaAlert
     v-if="message"
     class="mt-4"
-    :style="{ backgroundColor: config.bgColor, color: config.textColor }"
+    :style="{
+      backgroundColor: config.bgColor,
+      '--va-alert-color': config.textColor,
+      color: config.textColor,
+    }"
     :icon="config.icon"
   >
     <span class="font-semibold">{{ message }}</span>
