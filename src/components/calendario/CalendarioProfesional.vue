@@ -118,7 +118,6 @@
                   :class="`calendario__evento-${parte.clase}`"
                 >{{ parte.texto }}</span>
               </span>
-              <span v-if="item.proyecto" class="calendario__evento-badge">{{ item.proyecto }}</span>
               <button
                 v-if="item.tipo === 'bloqueo' && !soloLectura"
                 class="calendario__evento-eliminar"
@@ -129,6 +128,21 @@
               </button>
             </div>
             <span class="calendario__evento-desc">{{ item.descripcion }}</span>
+            <div
+              v-if="item.proyecto || item.perfiles.length"
+              class="calendario__evento-etiquetas"
+            >
+              <span v-if="item.proyecto" class="calendario__evento-badge">
+                Proyecto: {{ item.proyecto }}
+              </span>
+              <span
+                v-for="perfil in item.perfiles"
+                :key="perfil.idPerfil"
+                class="calendario__evento-badge calendario__evento-badge--perfil"
+              >
+                Perfil: {{ perfil.nombreArtistico }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -345,6 +359,7 @@ export default {
           rango: rangoFechaHora(b.fechaHoraInicio, b.fechaHoraFin),
           descripcion: `Bloqueo manual: ${b.motivo || "Sin motivo"}`,
           proyecto: null,
+          perfiles: [],
           orden: aDate(b.fechaHoraInicio).getTime(),
           original: b,
         });
@@ -357,7 +372,8 @@ export default {
           tipo: "actividad",
           rango: rangoFechaHora(a.fechaHoraInicio, a.fechaHoraFin),
           descripcion: a.nombre || "Actividad de proyecto",
-          proyecto: a.proyectoNombre || (a.idProyecto ? `Proyecto #${a.idProyecto}` : null),
+          proyecto: a.nombreProyecto || a.proyectoNombre || (a.idProyecto ? `Proyecto #${a.idProyecto}` : null),
+          perfiles: (a.perfiles || []).filter((perfil) => perfil?.nombreArtistico),
           orden: aDate(a.fechaHoraInicio).getTime(),
           original: a,
         });
@@ -960,14 +976,26 @@ export default {
   color: var(--color-text-muted);
 }
 
+.calendario__evento-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
+}
+
 .calendario__evento-badge {
-  margin-left: auto;
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--color-success-text);
   background: var(--color-success-soft);
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
+}
+
+.calendario__evento-badge--perfil {
+  color: var(--color-info-text);
+  background: var(--color-info-soft);
+  border: 1px solid var(--color-info-border);
 }
 
 .calendario__evento-eliminar {

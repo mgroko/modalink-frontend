@@ -119,9 +119,10 @@
           <header class="disponibilidad-actividad__miembro-cabecera">
             <strong>
               {{
-                miembro.idUsuario != null
+                miembro.nombreArtistico ||
+                (miembro.idUsuario != null
                   ? `Usuario #${miembro.idUsuario}`
-                  : "Miembro"
+                  : "Miembro")
               }}
             </strong>
             <span
