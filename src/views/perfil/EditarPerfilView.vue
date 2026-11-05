@@ -16,6 +16,12 @@ Editarperfilview · VUE
       <VaButton preset="secondary" @click="volver">{{ desdeInicio ? 'Volver a mi perfil' : 'Volver al dashboard' }}</VaButton>
     </div>
  
+    <div v-else-if="sinPermiso" class="editar-perfil__estado">
+      <span class="material-symbols-outlined editar-perfil__estado-icono">lock</span>
+      No tenés permiso para editar este perfil.
+      <VaButton preset="secondary" @click="volver">{{ desdeInicio ? 'Volver a mi perfil' : 'Volver al dashboard' }}</VaButton>
+    </div>
+ 
     <template v-else>
       <div class="editar-perfil__panel">
         <div class="editar-perfil__foto">
@@ -452,6 +458,7 @@ export default {
       cargandoInicial: true,
       cargandoCaracteristicas: false,
       noEncontrado: false,
+      sinPermiso: false,
       form: {
         nombreArtistico: "",
         idProfesion: null,
@@ -486,11 +493,20 @@ export default {
     async cargarPerfil() {
       this.cargandoInicial = true;
       this.noEncontrado = false;
+      this.sinPermiso = false;
       try {
         const response = await perfilService.obtener(this.idPerfil);
         this.perfil = response?.data;
         if (!this.perfil) {
           this.noEncontrado = true;
+          return;
+        }
+        // El endpoint de detalle es público para perfiles activos de terceros:
+        // solo el dueño puede editar. Se corta antes de cargar habilidades o
+        // características para no mostrar ni precargar datos ajenos.
+        if (this.perfil.esPropietario !== true) {
+          this.perfil = null;
+          this.sinPermiso = true;
           return;
         }
         this.form.nombreArtistico = this.perfil.nombreArtistico || "";

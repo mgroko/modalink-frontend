@@ -36,15 +36,23 @@
           </VaButton>
           <div class="dashboard-usuario__view-toggle">
             <button
+              type="button"
               class="dashboard-usuario__view-btn"
               :class="{ 'dashboard-usuario__view-btn--active': vista === 'lista' }"
+              title="Ver en filas"
+              aria-label="Ver perfiles en filas"
+              :aria-pressed="vista === 'lista'"
               @click="vista = 'lista'"
             >
               <span class="material-symbols-outlined">view_list</span>
             </button>
             <button
+              type="button"
               class="dashboard-usuario__view-btn"
               :class="{ 'dashboard-usuario__view-btn--active': vista === 'cuadricula' }"
+              title="Ver en cuadrícula"
+              aria-label="Ver perfiles en cuadrícula"
+              :aria-pressed="vista === 'cuadricula'"
               @click="vista = 'cuadricula'"
             >
               <span class="material-symbols-outlined">grid_view</span>
@@ -66,7 +74,11 @@
         No se encontraron perfiles.
       </div>
 
-      <div v-else class="dashboard-usuario__grid">
+      <div
+        v-else
+        class="dashboard-usuario__grid"
+        :class="{ 'dashboard-usuario__grid--lista': vista === 'lista' }"
+      >
         <div
           v-for="perfil in perfilesFiltrados"
           :key="perfil.idPerfil"
@@ -806,6 +818,89 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.25rem;
+}
+
+/* Vista en filas ("renglón") */
+.dashboard-usuario__grid--lista {
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.dashboard-usuario__grid--lista .perfil-card {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, 200px)
+    minmax(220px, 1.1fr)
+    minmax(120px, 0.7fr)
+    minmax(220px, 2fr)
+    auto;
+  grid-template-areas: "header body meta bio footer";
+  align-items: stretch;
+}
+
+.dashboard-usuario__grid--lista .perfil-card__header {
+  grid-area: header;
+  padding: 0.75rem 1rem;
+}
+
+.dashboard-usuario__grid--lista .perfil-card__body {
+  grid-area: body;
+  padding: 0.65rem 1rem;
+}
+
+.dashboard-usuario__grid--lista .perfil-card__meta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 1px solid var(--color-border-soft);
+  border-right: 1px solid var(--color-border-soft);
+}
+
+.dashboard-usuario__grid--lista .perfil-card__biografia {
+  grid-area: bio;
+  align-self: center;
+  padding: 0.65rem 1rem;
+  border-bottom: 0;
+}
+
+.dashboard-usuario__grid--lista .perfil-card__footer {
+  grid-area: footer;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-top: 0;
+}
+
+@media (max-width: 960px) {
+  .dashboard-usuario__grid--lista .perfil-card {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "body"
+      "meta"
+      "bio"
+      "footer";
+  }
+
+  .dashboard-usuario__grid--lista .perfil-card__meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-left: 0;
+    border-right: 0;
+    border-top: 1px solid var(--color-border-soft);
+    border-bottom: 1px solid var(--color-border-soft);
+  }
+
+  .dashboard-usuario__grid--lista .perfil-card__biografia {
+    border-bottom: 1px solid var(--color-border-soft);
+  }
+
+  .dashboard-usuario__grid--lista .perfil-card__footer {
+    border-top: 1px solid var(--color-border-soft);
+  }
 }
 
 /* ── Tarjeta de perfil ── */
