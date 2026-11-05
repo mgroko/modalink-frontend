@@ -488,6 +488,53 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {boolean} [todos] true devuelve todo sin paginar
  */
 
+/**
+ * @typedef {Object} EventoHistorialProyectoResponse
+ *   Evento de membresía del proyecto. Contrato propuesto: el endpoint todavía
+ *   no existe en backend. La UI tolera campos ausentes y tipos desconocidos.
+ * @property {number} idEvento
+ * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"|
+ *           "MIEMBRO_AGREGADO"|"ROL_CAMBIADO"|string} tipo
+ * @property {string} fecha ISO-8601 local
+ * @property {number|null} idPerfilAfectado
+ * @property {string|null} nombreArtisticoAfectado
+ * @property {string|null} nombreUsuarioAfectado
+ * @property {string|null} apellidoUsuarioAfectado
+ * @property {string|null} nombreProfesionAfectado
+ * @property {"DIRECTOR"|"MIEMBRO"|string|null} rolAfectado
+ * @property {number|null} idUsuarioAfectado
+ * @property {number|null} idPerfilActor perfil que ejecutó la acción
+ * @property {string|null} nombreArtisticoActor
+ * @property {string|null} nombreUsuarioActor
+ * @property {string|null} apellidoUsuarioActor
+ * @property {number|null} idUsuarioActor
+ * @property {string|null} motivo
+ * @property {"ACTIVO"|"ELIMINADO"|"BAJA_VOLUNTARIA"|string|null}
+ *           estadoParticipacion
+ * @property {number|null} idActividad actividad asociada, si aplica
+ * @property {string|null} nombreActividad
+ */
+
+/**
+ * @typedef {Object} PaginaHistorialProyectoResponse
+ * @property {EventoHistorialProyectoResponse[]} contenido
+ * @property {number} paginaActual base 0
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} BuscarHistorialProyectoParams
+ * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"|
+ *           "MIEMBRO_AGREGADO"|"ROL_CAMBIADO"} [tipo]
+ * @property {string} [nombre] coincidencia sobre el perfil afectado
+ * @property {number} [page] base 0, default 0
+ * @property {number} [size] default 20
+ */
+
 const proyectoService = {
   /**
    * GET /proyectos/{idProyecto}/miembros — UC-70.
@@ -515,6 +562,40 @@ const proyectoService = {
     });
     return http.get(
       `/proyectos/${idProyecto}/miembros${query ? `?${query}` : ""}`,
+      { signal }
+    );
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/historial — historial de membresías.
+   *
+   * **Pendiente backend:** este endpoint todavía no existe. El frontend ya
+   * consume el contrato propuesto para que, cuando backend lo implemente, la
+   * pestaña funcione sin cambios de UI. Mientras tanto, un 404 se muestra como
+   * "historial no disponible".
+   *
+   * Solo lo puede consultar un director activo del proyecto. Devuelve los
+   * movimientos de miembros (eliminaciones, bajas voluntarias, ingresos y
+   * cambios de rol) con el perfil afectado y el actor que ejecutó la acción.
+   *
+   * Errores:
+   * - 401 sesión ausente/vencida
+   * - 403 sin membresía activa o sin rol Director
+   * - 404 endpoint todavía no implementado o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {BuscarHistorialProyectoParams} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PaginaHistorialProyectoResponse}>} 200 OK
+   */
+  listarHistorial(idProyecto, params = {}, signal) {
+    const query = serializarParams({
+      tipo: params.tipo || "",
+      nombre: String(params.nombre || "").trim(),
+      page: params.page ?? 0,
+      size: params.size ?? 20,
+    });
+    return http.get(
+      `/proyectos/${idProyecto}/historial${query ? `?${query}` : ""}`,
       { signal }
     );
   },

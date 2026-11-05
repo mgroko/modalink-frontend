@@ -80,6 +80,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Pestaña Historial. Sólo para directores del proyecto. */
+    mostrarHistorial: {
+      type: Boolean,
+      default: false,
+    },
     /** Texto opcional; si no llega, se compone con rol, privacidad, ubicación y entrega. */
     subtitulo: {
       type: String,
@@ -95,6 +100,9 @@ export default {
       }
       if (this.mostrarIntegrantes) {
         tabs.push({ id: "integrantes", label: "Miembros" });
+      }
+      if (this.mostrarHistorial) {
+        tabs.push({ id: "historial", label: "Historial" });
       }
       if (this.mostrarPostulaciones) {
         tabs.push({

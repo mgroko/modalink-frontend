@@ -35,6 +35,7 @@
           :tab-activa="tabActiva"
           :mostrar-planificacion="esMiembro"
           :mostrar-integrantes="esMiembro"
+          :mostrar-historial="esDirector"
           @cambiar-tab="cambiarTab"
         >
           <template #acciones>
@@ -252,6 +253,11 @@
           @eliminar="abrirEliminarIntegrante"
         />
 
+        <HistorialProyecto
+          v-else-if="tabActiva === 'historial' && esDirector"
+          :id-proyecto="idProyecto"
+        />
+
         <template v-else-if="tabActiva === 'postulaciones'">
           <template v-if="puedeGestionarPostulaciones">
             <h2 class="dashboard-proyecto__titulo">Postulaciones del proyecto</h2>
@@ -419,6 +425,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
 import IntegrantesProyecto from "../../components/proyecto/IntegrantesProyecto.vue";
+import HistorialProyecto from "../../components/proyecto/HistorialProyecto.vue";
 import PersonalRequerido from "../../components/proyecto/PersonalRequerido.vue";
 import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
 import GestionPostulaciones from "../../components/proyecto/GestionPostulaciones.vue";
@@ -509,6 +516,7 @@ export default {
     ProyectoEncabezado,
     PlanificacionProyecto,
     IntegrantesProyecto,
+    HistorialProyecto,
     PersonalRequerido,
     RequerimientoCard,
     GestionPostulaciones,
@@ -617,6 +625,14 @@ data() {
     },
     esMiembro() {
       return !!this.proyecto?.esMiembro;
+    },
+    /** La pestaña Historial es exclusiva del Director activo del proyecto. */
+    esDirector() {
+      return (
+        this.esMiembro &&
+        String(this.proyecto?.rolUsuario || "").toUpperCase() ===
+          ROLES_PROYECTO.DIRECTOR
+      );
     },
     esBorrador() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.BORRADOR;
@@ -825,13 +841,19 @@ data() {
     },
     esMiembro(valor) {
       if (!valor) {
-        if (["planificacion", "integrantes"].includes(this.tabActiva)) {
+        if (["planificacion", "integrantes", "historial"].includes(this.tabActiva)) {
           this.tabActiva = "informacion";
         }
         this.aplicarTabDesdeQuery();
         return;
       }
       this.aplicarTabDesdeQuery();
+    },
+    esDirector(valor) {
+      if (!valor && this.tabActiva === "historial") {
+        this.tabActiva = "informacion";
+        this.aplicarTabDesdeQuery();
+      }
     },
   },
   created() {
@@ -874,6 +896,9 @@ data() {
           this.mostrarVolver = true;
           return;
         }
+        // Reaplicar la tab de la URL una vez conocido el rol del proyecto:
+        // `?tab=historial` solo es válida para directores.
+        this.aplicarTabDesdeQuery();
         await this.cargarCatalogos(this.proyecto, corrida);
       } catch (error) {
         if (
@@ -1010,11 +1035,16 @@ data() {
         "informacion",
         "planificacion",
         "integrantes",
+        "historial",
         "postulaciones",
       ];
       const tab = permitidas.includes(solicitada) ? solicitada : "informacion";
 
       if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) {
+        this.tabActiva = "informacion";
+        return;
+      }
+      if (tab === "historial" && !this.esDirector) {
         this.tabActiva = "informacion";
         return;
       }
@@ -1040,6 +1070,7 @@ data() {
     },
     cambiarTab(tab) {
       if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) return;
+      if (tab === "historial" && !this.esDirector) return;
       if (this.tabActiva === tab) return;
 
       this.tabActiva = tab;
