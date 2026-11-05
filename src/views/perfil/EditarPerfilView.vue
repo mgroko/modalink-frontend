@@ -957,8 +957,8 @@ export default {
 }
 
 .editar-perfil__foto-img {
-  width: 76px;
-  height: 76px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -973,7 +973,7 @@ export default {
 }
 
 .editar-perfil__foto-img--placeholder .material-symbols-outlined {
-  font-size: 2.2rem;
+  font-size: 1.7rem;
 }
 
 .editar-perfil__foto-info {
@@ -1198,7 +1198,7 @@ export default {
   padding: 0.2rem 0.35rem 0.2rem 0.65rem;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-surface-muted);
+  background: var(--color-surface);
   color: var(--color-text);
   font-size: 0.78rem;
 }

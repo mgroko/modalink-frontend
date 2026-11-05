@@ -95,7 +95,6 @@ const routes = [
       layout: HomeLayout,
       titulo: "Editar perfil",
       requiresActiveProfile: true,
-      sinSidebarPerfil: true,
       sinFondoBlanco: true,
       navActiva: "ajustes",
     },

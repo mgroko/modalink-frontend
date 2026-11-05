@@ -30,8 +30,12 @@
         </div>
 
         <div class="dashboard-usuario__toolbar-right">
-          <VaButton color="primary" size="small" @click="$router.push({ name: 'crear-perfil' })">
-            <span class="material-symbols-outlined" style="font-size: 1rem; margin-right: 0.25rem;">add</span>
+          <VaButton
+            class="dashboard-usuario__crear"
+            color="primary"
+            @click="$router.push({ name: 'crear-perfil' })"
+          >
+            <span class="material-symbols-outlined" style="font-size: 1.15rem; margin-right: 0.35rem;">add</span>
             Crear perfil
           </VaButton>
           <div class="dashboard-usuario__view-toggle">
@@ -74,104 +78,185 @@
         No se encontraron perfiles.
       </div>
 
-      <div
-        v-else
-        class="dashboard-usuario__grid"
-        :class="{ 'dashboard-usuario__grid--lista': vista === 'lista' }"
-      >
-        <div
-          v-for="perfil in perfilesFiltrados"
-          :key="perfil.idPerfil"
-          class="perfil-card"
-          :style="{ '--perfil-color': colorPorProfesion(perfil) }"
-          role="button"
-          tabindex="0"
-          @click="verDetalle(perfil)"
-          @keydown.enter="verDetalle(perfil)"
-          @keydown.space.prevent="verDetalle(perfil)"
-        >
-          <div class="perfil-card__header">
-            <span class="perfil-card__header-name">{{ perfil.nombreArtistico }}</span>
-            <div class="perfil-card__header-right">
+      <template v-else>
+        <div v-if="vista === 'lista'" class="dashboard-usuario__lista">
+          <div
+            v-for="perfil in perfilesFiltrados"
+            :key="perfil.idPerfil"
+            class="perfil-fila"
+            :class="{ 'perfil-fila--activo': perfil.idPerfil === idPerfilActivo }"
+            role="button"
+            tabindex="0"
+            @click="verDetalle(perfil)"
+            @keydown.enter="verDetalle(perfil)"
+            @keydown.space.prevent="verDetalle(perfil)"
+          >
+            <div class="perfil-fila__identidad">
+              <div class="perfil-fila__avatar">
+                <img
+                  v-if="perfil.fotoUrl"
+                  :src="resolverFoto(perfil.fotoUrl)"
+                  :alt="perfil.nombreArtistico"
+                  class="perfil-fila__foto"
+                />
+                <span v-else class="perfil-fila__iniciales">{{ inicialesPerfil(perfil) }}</span>
+                <span
+                  class="perfil-fila__indicador"
+                  :class="`perfil-fila__indicador--${claseEstado(perfil.estado)}`"
+                  :title="perfil.estado || '—'"
+                ></span>
+              </div>
+              <div class="perfil-fila__datos">
+                <span class="perfil-fila__nombre">{{ perfil.nombreArtistico }}</span>
+                <span class="perfil-fila__meta">
+                  {{ perfil.profesion || "Profesión" }} · #{{ perfil.idPerfil }}
+                </span>
+              </div>
+            </div>
+
+            <p class="perfil-fila__biografia">{{ perfil.biografia || "" }}</p>
+
+            <div class="perfil-fila__acciones">
               <span
                 v-if="perfil.idPerfil === idPerfilActivo"
-                class="perfil-card__header-activo"
-                title="Perfil en sesión"
+                class="perfil-fila__sesion"
               >
-                <span class="material-symbols-outlined">check_circle</span>
                 En sesión
               </span>
-            </div>
-          </div>
-
-          <div class="perfil-card__body">
-            <div class="perfil-card__avatar">
-              <img
-                v-if="perfil.fotoUrl"
-                :src="resolverFoto(perfil.fotoUrl)"
-                :alt="perfil.nombreArtistico"
-                class="perfil-card__foto"
-              />
-              <span v-else class="material-symbols-outlined perfil-card__foto-placeholder">person</span>
-            </div>
-            <div class="perfil-card__info">
-              <span class="perfil-card__profesion">{{ perfil.profesion || 'Profesión' }}</span>
-              <span class="perfil-card__nombre">{{ perfil.nombreArtistico }}</span>
-            </div>
-          </div>
-
-          <div class="perfil-card__meta">
-            <div class="perfil-card__meta-item">
-              <span class="perfil-card__meta-label">ID</span>
-              <span class="perfil-card__meta-value">{{ perfil.idPerfil }}</span>
-            </div>
-            <div class="perfil-card__meta-item">
-              <span class="perfil-card__meta-label">Estado</span>
-              <VaBadge :text="perfil.estado || '—'" :color="colorEstado(perfil.estado)" outline />
-            </div>
-          </div>
-
-          <p v-if="perfil.biografia" class="perfil-card__biografia">{{ perfil.biografia }}</p>
-
-          <div class="perfil-card__footer">
-            <div class="perfil-card__footer-icons">
-              <button class="perfil-card__icon-btn" title="Ver detalle" @click.stop="verDetalle(perfil)">
+              <button
+                type="button"
+                class="perfil-fila__icono"
+                title="Ver detalle"
+                @click.stop="verDetalle(perfil)"
+              >
                 <span class="material-symbols-outlined">person</span>
               </button>
               <button
                 v-if="perfil.estado === 'Activo'"
-                class="perfil-card__icon-btn"
+                type="button"
+                class="perfil-fila__icono"
                 title="Editar perfil"
                 @click.stop="irAEditar(perfil)"
               >
                 <span class="material-symbols-outlined">edit</span>
               </button>
-            </div>
-            <div class="perfil-card__footer-actions">
-              <VaButton
+              <button
                 v-if="puedeIngresar(perfil)"
-                class="perfil-card__iniciar"
-                color="success"
-                size="small"
-                :loading="activandoId === perfil.idPerfil"
+                type="button"
+                class="perfil-fila__accion"
+                :disabled="activandoId === perfil.idPerfil"
                 @click.stop="activarPerfil(perfil)"
               >
-                Ingresar
-              </VaButton>
-              <VaButton
+                {{ activandoId === perfil.idPerfil ? "Ingresando..." : "Ingresar" }}
+              </button>
+              <button
                 v-else-if="perfil.idPerfil === idPerfilActivo"
-                class="perfil-card__continuar"
-                color="#C96554"
-                size="small"
+                type="button"
+                class="perfil-fila__accion"
                 @click.stop="irAHome"
               >
                 Ir al inicio
-                <span class="material-symbols-outlined perfil-card__continuar-icon">chevron_right</span>
-              </VaButton>
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
             </div>
           </div>
         </div>
-      </div>
+
+        <div v-else class="dashboard-usuario__grid">
+          <div
+            v-for="perfil in perfilesFiltrados"
+            :key="perfil.idPerfil"
+            class="perfil-card"
+            :style="{ '--perfil-color': colorPorProfesion(perfil) }"
+            role="button"
+            tabindex="0"
+            @click="verDetalle(perfil)"
+            @keydown.enter="verDetalle(perfil)"
+            @keydown.space.prevent="verDetalle(perfil)"
+          >
+            <div class="perfil-card__header">
+              <span class="perfil-card__header-name">{{ perfil.nombreArtistico }}</span>
+              <div class="perfil-card__header-right">
+                <span
+                  v-if="perfil.idPerfil === idPerfilActivo"
+                  class="perfil-card__header-activo"
+                  title="Perfil en sesión"
+                >
+                  <span class="material-symbols-outlined">check_circle</span>
+                  En sesión
+                </span>
+              </div>
+            </div>
+
+            <div class="perfil-card__body">
+              <div class="perfil-card__avatar">
+                <img
+                  v-if="perfil.fotoUrl"
+                  :src="resolverFoto(perfil.fotoUrl)"
+                  :alt="perfil.nombreArtistico"
+                  class="perfil-card__foto"
+                />
+                <span v-else class="material-symbols-outlined perfil-card__foto-placeholder">person</span>
+              </div>
+              <div class="perfil-card__info">
+                <span class="perfil-card__profesion">{{ perfil.profesion || 'Profesión' }}</span>
+                <span class="perfil-card__nombre">{{ perfil.nombreArtistico }}</span>
+              </div>
+            </div>
+
+            <div class="perfil-card__meta">
+              <div class="perfil-card__meta-item">
+                <span class="perfil-card__meta-label">ID</span>
+                <span class="perfil-card__meta-value">{{ perfil.idPerfil }}</span>
+              </div>
+              <div class="perfil-card__meta-item">
+                <span class="perfil-card__meta-label">Estado</span>
+                <VaBadge :text="perfil.estado || '—'" :color="colorEstado(perfil.estado)" outline />
+              </div>
+            </div>
+
+            <p v-if="perfil.biografia" class="perfil-card__biografia">{{ perfil.biografia }}</p>
+
+            <div class="perfil-card__footer">
+              <div class="perfil-card__footer-icons">
+                <button class="perfil-card__icon-btn" title="Ver detalle" @click.stop="verDetalle(perfil)">
+                  <span class="material-symbols-outlined">person</span>
+                </button>
+                <button
+                  v-if="perfil.estado === 'Activo'"
+                  class="perfil-card__icon-btn"
+                  title="Editar perfil"
+                  @click.stop="irAEditar(perfil)"
+                >
+                  <span class="material-symbols-outlined">edit</span>
+                </button>
+              </div>
+              <div class="perfil-card__footer-actions">
+                <VaButton
+                  v-if="puedeIngresar(perfil)"
+                  class="perfil-card__iniciar"
+                  color="success"
+                  size="small"
+                  :loading="activandoId === perfil.idPerfil"
+                  @click.stop="activarPerfil(perfil)"
+                >
+                  Ingresar
+                </VaButton>
+                <VaButton
+                  v-else-if="perfil.idPerfil === idPerfilActivo"
+                  class="perfil-card__continuar"
+                  color="#C96554"
+                  size="small"
+                  @click.stop="irAHome"
+                >
+                  Ir al inicio
+                  <span class="material-symbols-outlined perfil-card__continuar-icon">chevron_right</span>
+                </VaButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
 
     <div v-else class="dashboard-usuario__estado">
@@ -250,7 +335,7 @@
           </section>
 
           <section v-if="caracteristicasApariencia.length" class="detalle-perfil__seccion">
-            <h5 class="detalle-perfil__seccion-titulo">Aparición</h5>
+            <h5 class="detalle-perfil__seccion-titulo">Apariencia</h5>
             <div class="detalle-perfil__datos detalle-perfil__datos--apariencia">
               <div
                 v-for="carac in caracteristicasApariencia"
@@ -300,8 +385,7 @@
               <VaButton preset="secondary" @click="modalPerfilVisible = false">Cancelar</VaButton>
               <VaButton
                 v-if="puedeEditar"
-                outline
-                color="primary"
+                preset="secondary"
                 @click="irAEditar(perfilSeleccionado)"
               >
                 <span class="material-symbols-outlined detalle-perfil__footer-icono">edit</span>
@@ -677,21 +761,23 @@ export default {
 /* Toolbar */
 .dashboard-usuario__toolbar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   margin-bottom: 1.25rem;
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
 .dashboard-usuario__search {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 2.50rem;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  padding: 0 0.9rem;
   background: var(--color-surface);
-  min-width: 220px;
 }
 
 .dashboard-usuario__search .material-symbols-outlined {
@@ -714,25 +800,36 @@ export default {
 
 .dashboard-usuario__toolbar-right {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+
+.dashboard-usuario__crear {
+  height: 2.50rem;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 /* View toggle */
 .dashboard-usuario__view-toggle {
   display: flex;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .dashboard-usuario__view-btn {
   background: var(--color-surface);
   border: none;
-  padding: 0.35rem 0.5rem;
+  width: 3.1rem;
+  min-height: 2.50rem;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   color: var(--color-text-muted);
   transition: background 0.15s, color 0.15s;
 }
@@ -796,85 +893,277 @@ export default {
 }
 
 /* Vista en filas ("renglón") */
-.dashboard-usuario__grid--lista {
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
+.dashboard-usuario__lista {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-surface);
 }
 
-.dashboard-usuario__grid--lista .perfil-card {
+.perfil-fila {
   display: grid;
-  grid-template-columns:
-    minmax(170px, 200px)
-    minmax(220px, 1.1fr)
-    minmax(120px, 0.7fr)
-    minmax(220px, 2fr)
-    auto;
-  grid-template-areas: "header body meta bio footer";
-  align-items: stretch;
-}
-
-.dashboard-usuario__grid--lista .perfil-card__header {
-  grid-area: header;
-  padding: 0.75rem 1rem;
-}
-
-.dashboard-usuario__grid--lista .perfil-card__body {
-  grid-area: body;
-  padding: 0.65rem 1rem;
-}
-
-.dashboard-usuario__grid--lista .perfil-card__meta {
-  grid-area: meta;
-  display: flex;
+  grid-template-columns: minmax(200px, 0.9fr) minmax(180px, 1.6fr) auto;
   align-items: center;
   gap: 1rem;
-  padding: 0.65rem 1rem;
-  border-top: 0;
-  border-bottom: 0;
-  border-left: 1px solid var(--color-border-soft);
-  border-right: 1px solid var(--color-border-soft);
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.dashboard-usuario__grid--lista .perfil-card__biografia {
-  grid-area: bio;
-  align-self: center;
-  padding: 0.65rem 1rem;
-  border-bottom: 0;
+.perfil-fila:first-child {
+  border-top: none;
 }
 
-.dashboard-usuario__grid--lista .perfil-card__footer {
-  grid-area: footer;
-  gap: 0.75rem;
-  padding: 0.65rem 1rem;
-  border-top: 0;
+.perfil-fila:hover {
+  background: var(--color-hover);
 }
 
-@media (max-width: 960px) {
-  .dashboard-usuario__grid--lista .perfil-card {
+.perfil-fila--activo,
+.perfil-fila--activo:hover {
+  background: var(--color-chip);
+}
+
+.perfil-fila:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.perfil-fila__identidad {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.perfil-fila__avatar {
+  position: relative;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.perfil-fila__foto {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.perfil-fila__iniciales {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.perfil-fila__indicador {
+  position: absolute;
+  right: -0.05rem;
+  bottom: -0.05rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-surface);
+  background: var(--color-text-subtle);
+}
+
+.perfil-fila--activo .perfil-fila__indicador {
+  border-color: var(--color-chip);
+}
+
+.perfil-fila__indicador--activo {
+  background: var(--color-success);
+}
+
+.perfil-fila__indicador--pendiente {
+  background: var(--color-warning);
+}
+
+.perfil-fila__indicador--deshabilitado {
+  background: var(--color-danger);
+}
+
+.perfil-fila__indicador--baja {
+  background: var(--color-text-subtle);
+}
+
+.perfil-fila__datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.perfil-fila__nombre {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.perfil-fila__meta {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.perfil-fila__biografia {
+  margin: 0;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.perfil-fila__acciones {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.perfil-fila__sesion {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.perfil-fila__icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.4rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.perfil-fila__icono:hover {
+  background: var(--color-hover);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.perfil-fila__icono .material-symbols-outlined {
+  font-size: 1.05rem;
+}
+
+.perfil-fila__accion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 6.5rem;
+  height: 2.4rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.perfil-fila__accion:hover:not(:disabled) {
+  background: var(--color-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.perfil-fila__accion:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.perfil-fila__accion .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 1200px) {
+  .perfil-fila {
+    grid-template-columns: minmax(210px, 1fr) minmax(0, 1.2fr) auto;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .perfil-fila {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "identidad acciones"
+      "bio bio";
+    row-gap: 0.75rem;
+  }
+
+  .perfil-fila__identidad {
+    grid-area: identidad;
+  }
+
+  .perfil-fila__biografia {
+    grid-area: bio;
+  }
+
+  .perfil-fila__acciones {
+    grid-area: acciones;
+  }
+}
+
+@media (max-width: 680px) {
+  .dashboard-usuario__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-usuario__search {
+    flex: 1 1 100%;
+  }
+
+  .dashboard-usuario__toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .perfil-fila {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "header"
-      "body"
-      "meta"
+      "identidad"
       "bio"
-      "footer";
+      "acciones";
   }
 
-  .dashboard-usuario__grid--lista .perfil-card__meta {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    border-left: 0;
-    border-right: 0;
-    border-top: 1px solid var(--color-border-soft);
-    border-bottom: 1px solid var(--color-border-soft);
+  .perfil-fila__acciones {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
-  .dashboard-usuario__grid--lista .perfil-card__biografia {
-    border-bottom: 1px solid var(--color-border-soft);
-  }
-
-  .dashboard-usuario__grid--lista .perfil-card__footer {
-    border-top: 1px solid var(--color-border-soft);
+  .perfil-fila__accion {
+    flex: 1 1 100%;
   }
 }
 
@@ -1323,8 +1612,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: 0.75rem;
+  width: 100%;
+}
+
+.detalle-perfil > .detalle-perfil__footer {
+  flex-wrap: wrap;
   margin-top: 1.5rem;
   padding: 1rem 1.75rem;
   border-top: 1px solid var(--color-border);
@@ -1332,6 +1625,10 @@ export default {
   position: sticky;
   bottom: 0;
   z-index: 2;
+}
+
+.detalle-perfil__footer--der {
+  justify-content: flex-end;
 }
 
 .detalle-perfil__footer-izq,
@@ -1401,6 +1698,10 @@ export default {
     font-size: 0.92rem;
   }
 
+  .detalle-perfil__aviso {
+    margin: 1rem 1.25rem 0;
+  }
+
   .detalle-perfil__seccion {
     padding: 1.25rem 1.25rem 0;
   }
@@ -1413,7 +1714,7 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .detalle-perfil__footer {
+  .detalle-perfil > .detalle-perfil__footer {
     padding: 0.85rem 1.25rem;
   }
 
