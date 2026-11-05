@@ -49,6 +49,12 @@
           Actividad: {{ invitacion.nombreActividad }}
         </span>
 
+        <span
+          v-if="esActividad && invitacion.idRequerimientoActividad != null"
+        >
+          Requerimiento #{{ invitacion.idRequerimientoActividad }}
+        </span>
+
         <span class="invitacion-card__fecha">
           Enviada el {{ fechaEnvio }}
         </span>

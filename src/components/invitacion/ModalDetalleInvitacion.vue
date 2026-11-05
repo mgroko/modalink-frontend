@@ -47,6 +47,16 @@
         </p>
       </section>
 
+      <section
+        v-if="esActividad && invitacion.idRequerimientoActividad != null"
+        class="detalle-invitacion__bloque"
+      >
+        <span class="detalle-invitacion__label">Requerimiento</span>
+        <p class="detalle-invitacion__texto">
+          #{{ invitacion.idRequerimientoActividad }}
+        </p>
+      </section>
+
       <section class="detalle-invitacion__bloque">
         <span class="detalle-invitacion__label">Mensaje</span>
         <p
