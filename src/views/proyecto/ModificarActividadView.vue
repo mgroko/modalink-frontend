@@ -44,47 +44,161 @@
                 cronograma del proyecto.
               </p>
             </div>
-            <div class="modificar-actividad__estado-panel">
-              <span
-                class="modificar-actividad__estado-actual"
-                :style="estiloEstado(estadoOriginal)"
-              >
-                {{ etiquetaEstadoActividad(estadoOriginal) }}
-              </span>
+          </header>
+
+          <section
+            class="modificar-actividad__estado-card"
+            aria-labelledby="estado-actividad-label"
+          >
+            <div class="modificar-actividad__estado-card-cabecera">
+              <div class="modificar-actividad__estado-card-info">
+                <span
+                  id="estado-actividad-label"
+                  class="modificar-actividad__estado-label"
+                >
+                  Estado de la actividad
+                </span>
+                <strong class="modificar-actividad__estado-valor">
+                  {{ etiquetaEstadoActividad(estadoOriginal) }}
+                </strong>
+              </div>
 
               <div
                 v-if="accionesEstado.length"
-                class="modificar-actividad__estado-acciones"
+                class="modificar-actividad__estado-card-acciones"
               >
                 <VaButton
-                  v-for="accion in accionesEstado"
-                  :key="accion"
-                  preset="secondary"
-                  size="small"
-                  :color="
-                    accion === ACCIONES_ESTADO.CANCELAR ? 'danger' : 'primary'
+                  v-if="accionPrincipal"
+                  class="modificar-actividad__estado-btn-principal"
+                  preset="primary"
+                  :disabled="
+                    guardando ||
+                    cambiandoEstado ||
+                    !puedeEjecutarAccion(accionPrincipal)
                   "
-                  :disabled="guardando || cambiandoEstado || !puedeEjecutarAccion(accion)"
-                  :title="motivoAccion(accion)"
-                  @click="solicitarCambioEstado(accion)"
+                  :title="motivoAccion(accionPrincipal)"
+                  @click="solicitarCambioEstado(accionPrincipal)"
                 >
-                  {{ ETIQUETAS_ACCION_ESTADO[accion] }}
+                  {{ ETIQUETAS_ACCION_ESTADO[accionPrincipal] }}
                 </VaButton>
+
+                <VaDropdown
+                  v-if="accionesSecundarias.length"
+                  placement="bottom-end"
+                  :disabled="guardando || cambiandoEstado"
+                >
+                  <template #anchor>
+                    <button
+                      type="button"
+                      class="modificar-actividad__estado-mas"
+                      aria-label="Más acciones"
+                      :disabled="guardando || cambiandoEstado"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">
+                        more_horiz
+                      </span>
+                    </button>
+                  </template>
+
+                  <VaDropdownContent>
+                    <VaMenuItem
+                      v-for="accion in accionesSecundarias"
+                      :key="accion"
+                      class="modificar-actividad__estado-menu-item--peligro"
+                      :disabled="
+                        guardando ||
+                        cambiandoEstado ||
+                        !puedeEjecutarAccion(accion)
+                      "
+                      @click="solicitarCambioEstado(accion)"
+                    >
+                      {{ ETIQUETAS_ACCION_ESTADO[accion] }}
+                    </VaMenuItem>
+                  </VaDropdownContent>
+                </VaDropdown>
               </div>
             </div>
-          </header>
 
-          <p
-            v-if="predecesorasBloqueantes.length"
-            class="modificar-actividad__aviso-predecesoras"
-            role="status"
-          >
-            <span class="material-symbols-outlined" aria-hidden="true">info</span>
-            <span>
-              <strong>Iniciar y finalizar bloqueados.</strong>
-              {{ textoPredecesoras }}
-            </span>
-          </p>
+            <div
+              v-if="mostrarStepper"
+              class="modificar-actividad__stepper"
+              role="list"
+              aria-label="Progreso del estado de la actividad"
+            >
+              <template
+                v-for="(paso, indice) in pasosEstado"
+                :key="paso.estado"
+              >
+                <span
+                  class="modificar-actividad__stepper-paso"
+                  :class="{
+                    'modificar-actividad__stepper-paso--completado':
+                      paso.completado,
+                    'modificar-actividad__stepper-paso--actual': paso.actual,
+                    'modificar-actividad__stepper-paso--futuro': paso.futuro,
+                  }"
+                  role="listitem"
+                >
+                  <span class="modificar-actividad__stepper-circulo">
+                    <span
+                      v-if="paso.completado"
+                      class="material-symbols-outlined"
+                      aria-hidden="true"
+                    >
+                      check
+                    </span>
+                    <span
+                      v-else-if="paso.actual"
+                      class="modificar-actividad__stepper-punto"
+                      aria-hidden="true"
+                    ></span>
+                  </span>
+                  <span class="modificar-actividad__stepper-etiqueta">
+                    {{ paso.etiqueta }}
+                  </span>
+                </span>
+
+                <span
+                  v-if="indice < pasosEstado.length - 1"
+                  class="modificar-actividad__stepper-linea"
+                  :class="{
+                    'modificar-actividad__stepper-linea--completada':
+                      indice < indiceEstadoActividad,
+                  }"
+                  aria-hidden="true"
+                ></span>
+              </template>
+            </div>
+
+            <div
+              v-if="avisoEstado"
+              class="modificar-actividad__aviso-estado"
+              role="status"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">
+                error
+              </span>
+              <p class="modificar-actividad__aviso-estado-texto">
+                <strong>{{ avisoEstado.titulo }}</strong>
+                {{ avisoEstado.motivo }}
+              </p>
+              <button
+                v-if="avisoEstado.predecesora"
+                type="button"
+                class="modificar-actividad__aviso-estado-link"
+                @click="verPredecesora(avisoEstado.predecesora)"
+              >
+                Ver «{{
+                  avisoEstado.predecesora.nombre ||
+                  `Actividad #${avisoEstado.predecesora.idActividad}`
+                }}»
+              </button>
+            </div>
+
+            <p class="modificar-actividad__estado-ayuda">
+              {{ textoAyudaEstado }}
+            </p>
+          </section>
 
           <div class="modificar-actividad__layout">
             <VaForm
@@ -609,17 +723,20 @@
     <VaModal
       v-model="modalEstadoVisible"
       hide-default-actions
-      size="small"
+      size="medium"
       :no-dismiss="cambiandoEstado"
       blur
       class="modificar-actividad-modal"
     >
       <template #header>
-        <h3 class="va-h5 modificar-actividad-modal__titulo">Cambiar estado</h3>
+        <h3 class="va-h5 modificar-actividad-modal__titulo">
+          {{ tituloConfirmacionEstado }}
+        </h3>
       </template>
 
       <p class="modificar-actividad-modal__mensaje">
-        {{ mensajeConfirmacionEstado }}
+        La actividad pasará a estado <strong>Cancelada</strong> y el cronograma
+        del proyecto se va a recalcular. Esta acción no se puede deshacer.
       </p>
 
       <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
@@ -637,14 +754,15 @@
             :disabled="cambiandoEstado"
             @click="cancelarConfirmacionEstado"
           >
-            Cancelar
+            Volver
           </VaButton>
           <VaButton
             preset="primary"
+            color="danger"
             :loading="cambiandoEstado"
             @click="confirmarCambioEstado"
           >
-            Continuar
+            Sí, cancelar actividad
           </VaButton>
         </div>
       </template>
@@ -671,7 +789,6 @@ import {
   LIMITES_ACTIVIDAD,
   MINUTOS_POR_UNIDAD,
   UNIDADES_DURACION,
-  coloresEstadoActividad,
   convertirDuracion,
   descomponerDuracionMinutos,
   etiquetaEstadoActividad,
@@ -704,7 +821,6 @@ import {
   motivoAccionNoDisponible,
   puedeEjecutarAccionEstado,
   predecesorasPendientes,
-  textoPredecesorasPendientes,
 } from "../../utils/cambioEstadoActividadConstants.js";
 import {
   esErrorRequerimientoConVinculos,
@@ -832,9 +948,6 @@ export default {
     predecesorasBloqueantes() {
       return predecesorasPendientes(this.actividad, this.actividades);
     },
-    textoPredecesoras() {
-      return textoPredecesorasPendientes(this.predecesorasBloqueantes);
-    },
     textoProteccionRequerimiento() {
       return mensajeProteccionRequerimiento();
     },
@@ -915,17 +1028,83 @@ export default {
         ? "Nuevo requerimiento"
         : "Editar requerimiento";
     },
-    mensajeConfirmacionEstado() {
-      if (this.accionEstado === ACCIONES_ESTADO.CANCELAR) {
-        return "La actividad quedará CANCELADA. Esta acción es irreversible: no se podrá modificar ni reactivar. ¿Querés continuar?";
+    accionPrincipal() {
+      return (
+        this.accionesEstado.find(
+          (accion) => accion !== ACCIONES_ESTADO.CANCELAR
+        ) || null
+      );
+    },
+    accionesSecundarias() {
+      return this.accionesEstado.filter(
+        (accion) => accion !== this.accionPrincipal
+      );
+    },
+    indiceEstadoActividad() {
+      return [
+        ESTADOS_ACTIVIDAD.PENDIENTE,
+        ESTADOS_ACTIVIDAD.EN_CURSO,
+        ESTADOS_ACTIVIDAD.FINALIZADA,
+      ].indexOf(this.estadoOriginal);
+    },
+    mostrarStepper() {
+      return this.indiceEstadoActividad >= 0;
+    },
+    pasosEstado() {
+      const actual = this.indiceEstadoActividad;
+      return [
+        {
+          estado: ESTADOS_ACTIVIDAD.PENDIENTE,
+          etiqueta: "Pendiente",
+        },
+        {
+          estado: ESTADOS_ACTIVIDAD.EN_CURSO,
+          etiqueta: "En curso",
+        },
+        {
+          estado: ESTADOS_ACTIVIDAD.FINALIZADA,
+          etiqueta: "Finalizada",
+        },
+      ].map((paso, indice) => ({
+        ...paso,
+        completado: actual >= 0 && indice < actual,
+        actual: indice === actual,
+        futuro: actual >= 0 && indice > actual,
+      }));
+    },
+    avisoEstado() {
+      const accion = this.accionPrincipal;
+      if (!accion) return null;
+
+      const motivo = this.motivoAccion(accion);
+      if (!motivo) return null;
+
+      return {
+        titulo:
+          accion === ACCIONES_ESTADO.INICIAR
+            ? "Todavía no se puede iniciar."
+            : "Todavía no se puede finalizar.",
+        motivo,
+        predecesora:
+          this.predecesorasBloqueantes.length > 0
+            ? this.predecesorasBloqueantes[0]
+            : null,
+      };
+    },
+    textoAyudaEstado() {
+      if (!this.accionesEstado.length) {
+        return "El estado de la actividad ya no admite cambios.";
       }
-      if (this.accionEstado === ACCIONES_ESTADO.FINALIZAR) {
-        return "La actividad quedará FINALIZADA. Esta acción es irreversible: no se podrá modificar ni reactivar. ¿Querés continuar?";
+      if (this.accionesEstado.includes(ACCIONES_ESTADO.CANCELAR)) {
+        return "Cambiar el estado se aplica de inmediato y recalcula el cronograma. «Cancelar actividad» está en Más acciones.";
       }
-      if (this.accionEstado === ACCIONES_ESTADO.INICIAR) {
-        return "La actividad pasará a EN CURSO. ¿Querés continuar?";
-      }
-      return "Se actualizará el estado de la actividad. ¿Querés continuar?";
+      return "Cambiar el estado se aplica de inmediato y recalcula el cronograma.";
+    },
+    tituloConfirmacionEstado() {
+      const nombre = String(this.actividad?.nombre || "").trim();
+      return nombre
+        ? `¿Cancelar «${nombre}»?`
+        : "¿Cancelar la actividad?";
     },
   },
   watch: {
@@ -1398,14 +1577,6 @@ export default {
       }
       return relativos;
     },
-    estiloEstado(estado) {
-      const colores = coloresEstadoActividad(estado);
-      return {
-        backgroundColor: colores.fondo,
-        color: colores.texto,
-        borderColor: colores.borde,
-      };
-    },
     etiquetaEstadoActividad(estado) {
       return etiquetaEstadoActividad(estado);
     },
@@ -1473,14 +1644,22 @@ export default {
       this.mensajeError = "";
       this.bloqueosEstado = [];
 
-      // Iniciar se ejecuta directo; Finalizar y Cancelar conservan la
-      // confirmación explícita de la UX actual.
-      if (accion === ACCIONES_ESTADO.INICIAR) {
-        this.ejecutarCambioEstado();
+      // Iniciar y finalizar se aplican directo desde la tarjeta de estado.
+      // Cancelar es irreversible y conserva la confirmación explícita.
+      if (accion === ACCIONES_ESTADO.CANCELAR) {
+        this.modalEstadoVisible = true;
         return;
       }
 
-      this.modalEstadoVisible = true;
+      this.ejecutarCambioEstado();
+    },
+    verPredecesora(predecesora) {
+      const idActividad = predecesora?.idActividad;
+      if (idActividad == null) return;
+      this.$router.push({
+        name: "modificar-actividad",
+        params: { id: this.idProyecto, idActividad },
+      });
     },
     cancelarConfirmacionEstado() {
       if (this.cambiandoEstado) return;
@@ -2073,46 +2252,196 @@ export default {
   font-size: 0.86rem;
 }
 
-.modificar-actividad__estado-actual {
-  display: inline-block;
-  padding: 0.2rem 0.65rem;
-  border: 1px solid;
-  border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.modificar-actividad__estado-panel {
+.modificar-actividad__estado-card {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
 }
 
-.modificar-actividad__estado-acciones {
+.modificar-actividad__estado-card-cabecera {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.modificar-actividad__aviso-predecesoras {
+.modificar-actividad__estado-card-info {
   display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-  margin: 0 0 0.75rem;
-  padding: 0.6rem 0.75rem;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modificar-actividad__estado-label {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.modificar-actividad__estado-valor {
+  color: var(--color-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.modificar-actividad__estado-card-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.modificar-actividad__estado-btn-principal {
+  border-radius: 999px;
+  padding-inline: 1.3rem;
+}
+
+.modificar-actividad__estado-mas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.modificar-actividad__estado-mas:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.modificar-actividad__estado-mas:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.modificar-actividad__estado-menu-item--peligro {
+  color: var(--va-danger);
+}
+
+.modificar-actividad__stepper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.modificar-actividad__stepper-paso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.modificar-actividad__stepper-circulo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.modificar-actividad__stepper-paso--completado .modificar-actividad__stepper-circulo {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.modificar-actividad__stepper-paso--completado .modificar-actividad__stepper-circulo .material-symbols-outlined {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.modificar-actividad__stepper-paso--completado .modificar-actividad__stepper-etiqueta {
+  color: var(--color-text);
+}
+
+.modificar-actividad__stepper-paso--actual .modificar-actividad__stepper-circulo {
+  border-color: var(--color-primary);
+}
+
+.modificar-actividad__stepper-paso--actual .modificar-actividad__stepper-etiqueta {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.modificar-actividad__stepper-punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+.modificar-actividad__stepper-linea {
+  flex: 1 1 60px;
+  height: 2px;
+  min-width: 24px;
+  margin: 0 0.65rem;
+  background: var(--color-border-strong);
+}
+
+.modificar-actividad__stepper-linea--completada {
+  background: var(--color-primary);
+}
+
+.modificar-actividad__aviso-estado {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
   border: 1px solid var(--color-warning-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--color-warning-soft);
   color: var(--color-warning-text);
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   line-height: 1.45;
 }
 
-.modificar-actividad__aviso-predecesoras .material-symbols-outlined {
-  font-size: 1rem;
+.modificar-actividad__aviso-estado .material-symbols-outlined {
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+}
+
+.modificar-actividad__aviso-estado-texto {
+  flex: 1;
+  margin: 0;
+}
+
+.modificar-actividad__aviso-estado-link {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modificar-actividad__aviso-estado-link:hover {
+  text-decoration: underline;
+}
+
+.modificar-actividad__estado-ayuda {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .modificar-actividad__layout {
@@ -2527,6 +2856,39 @@ export default {
 
   .modificar-actividad__resumen {
     position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .modificar-actividad__estado-card-cabecera {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modificar-actividad__estado-card-acciones {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .modificar-actividad__stepper {
+    flex-wrap: wrap;
+    row-gap: 0.6rem;
+  }
+
+  .modificar-actividad__stepper-linea {
+    flex-basis: 30px;
+  }
+
+  .modificar-actividad__aviso-estado {
+    flex-wrap: wrap;
+  }
+
+  .modificar-actividad__aviso-estado-texto {
+    flex-basis: calc(100% - 2rem);
+  }
+
+  .modificar-actividad__aviso-estado-link {
+    margin-left: 1.7rem;
   }
 }
 

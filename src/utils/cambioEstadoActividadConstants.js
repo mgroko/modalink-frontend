@@ -24,9 +24,9 @@ export const ACCIONES_ESTADO = {
 };
 
 export const ETIQUETAS_ACCION_ESTADO = {
-  [ACCIONES_ESTADO.INICIAR]: "Iniciar",
-  [ACCIONES_ESTADO.FINALIZAR]: "Finalizar",
-  [ACCIONES_ESTADO.CANCELAR]: "Cancelar",
+  [ACCIONES_ESTADO.INICIAR]: "Iniciar actividad",
+  [ACCIONES_ESTADO.FINALIZAR]: "Finalizar actividad",
+  [ACCIONES_ESTADO.CANCELAR]: "Cancelar actividad",
 };
 
 export const ESTADOS_DESTINO_ACCION = {
