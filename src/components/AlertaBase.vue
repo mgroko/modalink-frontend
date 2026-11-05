@@ -1,16 +1,15 @@
 <template>
-  <VaAlert
+  <div
     v-if="message"
-    class="mt-4"
-    :style="{
-      backgroundColor: config.bgColor,
-      '--va-alert-color': config.textColor,
-      color: config.textColor,
-    }"
-    :icon="config.icon"
+    class="alerta-base mt-4"
+    :class="`alerta-base--${type}`"
+    role="alert"
   >
-    <span class="font-semibold">{{ message }}</span>
-  </VaAlert>
+    <span class="material-symbols-outlined alerta-base__icono" aria-hidden="true">
+      {{ config.icon }}
+    </span>
+    <span class="alerta-base__texto">{{ message }}</span>
+  </div>
 </template>
 
 <script>
@@ -29,21 +28,43 @@ export default {
   },
   computed: {
     config() {
-      // exito
       if (this.type === "success") {
-        return {
-          bgColor: "var(--color-success-soft)",
-          textColor: "var(--color-success-text)",
-          icon: "mso-check_circle",
-        };
+        return { icon: "check_circle" };
       }
-      // error
-      return {
-        bgColor: "var(--color-danger-soft)",
-        textColor: "var(--color-danger-text)",
-        icon: "mso-error",
-      };
+      return { icon: "error" };
     },
   },
 };
 </script>
+
+<style scoped>
+.alerta-base {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.alerta-base--success {
+  color: var(--color-success-text);
+  background: var(--color-success-soft);
+}
+
+.alerta-base--error {
+  color: var(--color-danger-text);
+  background: var(--color-danger-soft);
+}
+
+.alerta-base__icono {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+}
+
+.alerta-base__texto {
+  min-width: 0;
+}
+</style>
