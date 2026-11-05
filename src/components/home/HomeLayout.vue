@@ -452,10 +452,7 @@ export default {
     },
     irAAjustes() {
       if (this.idActivo == null) return;
-      this.$router.push({
-        name: "editar-perfil-inicio",
-        params: { id: this.idActivo },
-      });
+      this.$router.push({ name: "ajustes-perfil-inicio" });
     },
     esQuickActivo(clave) {
       const ruta = this.$route;
@@ -480,7 +477,7 @@ export default {
         return ruta.name === "invitaciones";
       }
       if (clave === "ajustes") {
-        return ruta.name === "editar-perfil-inicio";
+        return ["ajustes-perfil-inicio", "editar-perfil-ajustes"].includes(ruta.name);
       }
       if (clave === "panel") {
         return ruta.name === "dashboard-usuario";

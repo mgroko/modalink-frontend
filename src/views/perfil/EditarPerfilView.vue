@@ -13,13 +13,13 @@ Editarperfilview · VUE
     <div v-else-if="noEncontrado" class="editar-perfil__estado">
       <span class="material-symbols-outlined editar-perfil__estado-icono">error</span>
       No se encontró el perfil solicitado.
-      <VaButton preset="secondary" @click="volver">{{ desdeInicio ? 'Volver a mi perfil' : 'Volver al dashboard' }}</VaButton>
+      <VaButton preset="secondary" @click="volver">{{ textoVolver }}</VaButton>
     </div>
  
     <div v-else-if="sinPermiso" class="editar-perfil__estado">
       <span class="material-symbols-outlined editar-perfil__estado-icono">lock</span>
       No tenés permiso para editar este perfil.
-      <VaButton preset="secondary" @click="volver">{{ desdeInicio ? 'Volver a mi perfil' : 'Volver al dashboard' }}</VaButton>
+      <VaButton preset="secondary" @click="volver">{{ textoVolver }}</VaButton>
     </div>
  
     <template v-else>
@@ -410,8 +410,22 @@ export default {
       type: Boolean,
       default: false,
     },
+    desdeAjustes: {
+      type: Boolean,
+      default: false,
+    },
   },
   computed: {
+    rutaVolver() {
+      if (this.desdeAjustes) return "ajustes-perfil-inicio";
+      if (this.desdeInicio) return "inicioperfil";
+      return "dashboard-usuario";
+    },
+    textoVolver() {
+      if (this.desdeAjustes) return "Volver a ajustes";
+      if (this.desdeInicio) return "Volver a mi perfil";
+      return "Volver al dashboard";
+    },
     fotoVisible() {
       return this.fotoPreview || resolverFotoUrl(this.perfil?.fotoUrl);
     },
@@ -854,7 +868,7 @@ export default {
         }
 
         setTimeout(() => {
-          this.$router.push({ name: this.desdeInicio ? "inicioperfil" : "dashboard-usuario" });
+          this.$router.push({ name: this.rutaVolver });
         }, 1200);
       } catch (error) {
         const errores = error?.response?.data?.errores;
@@ -868,7 +882,7 @@ export default {
       }
     },
     volver() {
-      this.$router.push({ name: this.desdeInicio ? "inicioperfil" : "dashboard-usuario" });
+      this.$router.push({ name: this.rutaVolver });
     },
   },
 };

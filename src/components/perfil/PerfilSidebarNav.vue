@@ -110,7 +110,7 @@ export default {
         },
         { key: "resenas", label: "Reseñas", icono: "star", tipo: "seccion" },
         { key: "mi-red", label: "Mi red", icono: "group", tipo: "no-disponible" },
-        { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "editar-perfil-inicio" },
+        { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "ajustes-perfil-inicio" },
         { key: "panel", label: "Panel de usuario", icono: "space_dashboard", tipo: "ruta", ruta: "dashboard-usuario" },
       ];
 

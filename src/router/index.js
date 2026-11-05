@@ -11,6 +11,7 @@ import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
 import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
 import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
+import AjustesPerfilView from "../views/perfil/AjustesPerfilView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
@@ -72,6 +73,32 @@ const routes = [
     name: "inicioperfil",
     component: InicioPerfilView,
     meta: { layout: HomeLayout, titulo: "Mi perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/inicio-perfil/ajustes",
+    name: "ajustes-perfil-inicio",
+    component: AjustesPerfilView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Ajustes de perfil",
+      requiresActiveProfile: true,
+      sinFondoBlanco: true,
+      navActiva: "ajustes",
+    },
+  },
+  {
+    path: "/inicio-perfil/ajustes/editar/:id",
+    name: "editar-perfil-ajustes",
+    component: EditarPerfilView,
+    props: { desdeAjustes: true },
+    meta: {
+      layout: HomeLayout,
+      titulo: "Editar perfil",
+      requiresActiveProfile: true,
+      sinSidebarPerfil: true,
+      sinFondoBlanco: true,
+      navActiva: "ajustes",
+    },
   },
   {
     path: "/inicio-perfil/:seccion",
