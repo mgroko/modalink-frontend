@@ -26,6 +26,7 @@ export const TIPOS_NOTIFICACION = {
   INTEGRANTE_BAJA_VOLUNTARIA: "INTEGRANTE_BAJA_VOLUNTARIA",
   HABILIDAD_MODIFICADA: "HABILIDAD_MODIFICADA",
   HABILIDAD_ELIMINADA: "HABILIDAD_ELIMINADA",
+  CALIFICACION_SOLICITADA: "CALIFICACION_SOLICITADA",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -33,6 +34,7 @@ export const RUTAS_NOTIFICACION = {
   PROYECTO: "dashboard-proyecto",
   ACTIVIDAD: "actividad-proyecto",
   ADMIN_REPORTE_PERFIL: "admin-reporte-perfil",
+  CALIFICACIONES: "calificaciones-proyecto",
 };
 
 const ETIQUETAS_TIPO = {
@@ -54,6 +56,7 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "Baja voluntaria de integrante",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "Habilidad modificada",
   [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "Habilidad eliminada",
+  [TIPOS_NOTIFICACION.CALIFICACION_SOLICITADA]: "Calificación solicitada",
 };
 
 const ICONOS_TIPO = {
@@ -75,6 +78,7 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "person_remove",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "edit",
   [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "delete",
+  [TIPOS_NOTIFICACION.CALIFICACION_SOLICITADA]: "reviews",
 };
 
 /**
@@ -192,6 +196,19 @@ export function destinoNotificacion(notificacion) {
         : {
             etiqueta: "Ver proyecto",
             ruta: { name: RUTAS_NOTIFICACION.PROYECTO, params: { id } },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.CALIFICACION_SOLICITADA: {
+      // La ficha envía `link: "/proyectos/{id}/calificaciones"`, pero la
+      // navegación se resuelve por tipo para mantener una única fuente de
+      // rutas y evitar navegar a URLs arbitrarias del backend.
+      const id = idValido(notificacion.idProyecto);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Calificar equipo",
+            ruta: { name: RUTAS_NOTIFICACION.CALIFICACIONES, params: { id } },
           };
     }
 

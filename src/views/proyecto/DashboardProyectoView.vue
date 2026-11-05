@@ -72,6 +72,15 @@
             >
               Confirmar proyecto
             </VaButton>
+            <VaButton
+              v-if="puedeFinalizarProyecto"
+              preset="primary"
+              :disabled="cargandoPreviewFinalizacion || finalizandoProyecto"
+              :loading="cargandoPreviewFinalizacion || finalizandoProyecto"
+              @click="abrirFinalizacion"
+            >
+              Finalizar proyecto
+            </VaButton>
           </template>
         </ProyectoEncabezado>
 
@@ -114,6 +123,16 @@
                 <span class="dashboard-proyecto__dato-label">Fecha de inicio</span>
                 <span class="dashboard-proyecto__dato-valor">
                   {{ formatearFechaCorta(proyecto.fechaInicio) }}
+                </span>
+              </div>
+
+              <div
+                v-if="proyecto.fechaFinalizacion"
+                class="dashboard-proyecto__dato"
+              >
+                <span class="dashboard-proyecto__dato-label">Finalizado el</span>
+                <span class="dashboard-proyecto__dato-valor">
+                  {{ formatearFecha(proyecto.fechaFinalizacion) }}
                 </span>
               </div>
 
@@ -227,6 +246,20 @@
               </VaButton>
             </template>
           </section>
+
+          <section
+            v-if="esFinalizado && esMiembro"
+            class="dashboard-proyecto__panel"
+          >
+            <h2 class="dashboard-proyecto__titulo">Calificaciones del equipo</h2>
+            <p class="dashboard-proyecto__parrafo">
+              El proyecto finalizó. Si todavía te falta calificar a algún
+              integrante, podés hacerlo desde acá.
+            </p>
+            <VaButton preset="primary" @click="irACalificaciones">
+              Calificar equipo
+            </VaButton>
+          </section>
         </template>
 
         <PlanificacionProyecto
@@ -336,6 +369,22 @@
           @reintentar="reintentarPreviewConfirmacion"
         />
 
+        <ModalFinalizarProyecto
+          :model-value="modalFinalizacionVisible"
+          :nombre-proyecto="proyecto.nombre"
+          :preview="previewFinalizacion"
+          :profesiones="profesionesFinalizacion"
+          :cargando-preview="cargandoPreviewFinalizacion"
+          :error-preview="errorPreviewFinalizacion"
+          :puede-reintentar-preview="puedeReintentarPreviewFinalizacion"
+          :finalizando="finalizandoProyecto"
+          :error-finalizacion="errorFinalizacion"
+          :faltantes="faltantesFinalizacion"
+          @update:modelValue="onCambioVisibilidadFinalizacion"
+          @confirmar="confirmarFinalizacion"
+          @reintentar="reintentarPreviewFinalizacion"
+        />
+
         <ModalCancelarProyecto
           :model-value="modalCancelarVisible"
           :nombre-proyecto="proyecto.nombre"
@@ -435,6 +484,7 @@ import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
 import ModalConfirmarProyecto from "../../components/proyecto/ModalConfirmarProyecto.vue";
+import ModalFinalizarProyecto from "../../components/proyecto/ModalFinalizarProyecto.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
 import ModalEliminarIntegrante from "../../components/proyecto/ModalEliminarIntegrante.vue";
 import ModalDarseDeBajaProyecto from "../../components/proyecto/ModalDarseDeBajaProyecto.vue";
@@ -485,6 +535,11 @@ import {
   normalizarPreview,
 } from "../../utils/confirmacionConstants.js";
 import {
+  clasificarErrorFinalizacion,
+  indexarProfesionesPorPerfil,
+  normalizarPreviewFinalizacion,
+} from "../../utils/finalizacionConstants.js";
+import {
   AVISO_DISPONIBILIDAD_PROVISORIA,
   TIPOS_POSTULACION,
   clavePostulacion,
@@ -516,6 +571,7 @@ let controladorAsignacion = null;
 let controladorDesasignacion = null;
 let controladorPostulacion = null;
 let controladorConfirmacion = null;
+let controladorFinalizacion = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -532,6 +588,7 @@ export default {
     ModalGaleriaMoodboard,
     ModalPublicarProyecto,
     ModalConfirmarProyecto,
+    ModalFinalizarProyecto,
     ModalCancelarProyecto,
     ModalEliminarIntegrante,
     ModalDarseDeBajaProyecto,
@@ -583,6 +640,16 @@ data() {
       errorConfirmacion: "",
       fechaInicioConfirmacion: null,
       idCargaPreviewConfirmacion: 0,
+      modalFinalizacionVisible: false,
+      previewFinalizacion: null,
+      profesionesFinalizacion: {},
+      cargandoPreviewFinalizacion: false,
+      errorPreviewFinalizacion: "",
+      puedeReintentarPreviewFinalizacion: false,
+      finalizandoProyecto: false,
+      errorFinalizacion: "",
+      faltantesFinalizacion: [],
+      idCargaPreviewFinalizacion: 0,
       modalPostulacion: {
         visible: false,
         tipo: TIPOS_POSTULACION.GENERAL,
@@ -682,6 +749,20 @@ data() {
         this.permisos.includes("CONFIRMAR_PROYECTO") &&
         normalizarEstadoProyecto(this.proyecto?.estado) ===
           ESTADOS_PROYECTO.PUBLICADO
+      );
+    },
+    /** UC-37: el preview de finalización decide los bloqueos reales. */
+    puedeFinalizarProyecto() {
+      return (
+        this.esMiembro &&
+        this.permisos.includes("FINALIZAR_PROYECTO") &&
+        this.esConfirmado
+      );
+    },
+    esFinalizado() {
+      return (
+        normalizarEstadoProyecto(this.proyecto?.estado) ===
+        ESTADOS_PROYECTO.FINALIZADO
       );
     },
     esCancelado() {
@@ -834,6 +915,20 @@ data() {
       if (controladorConfirmacion) {
         controladorConfirmacion.abort();
         controladorConfirmacion = null;
+      }
+      this.modalFinalizacionVisible = false;
+      this.previewFinalizacion = null;
+      this.profesionesFinalizacion = {};
+      this.cargandoPreviewFinalizacion = false;
+      this.errorPreviewFinalizacion = "";
+      this.puedeReintentarPreviewFinalizacion = false;
+      this.finalizandoProyecto = false;
+      this.errorFinalizacion = "";
+      this.faltantesFinalizacion = [];
+      this.idCargaPreviewFinalizacion++;
+      if (controladorFinalizacion) {
+        controladorFinalizacion.abort();
+        controladorFinalizacion = null;
       }
       this.cargar();
     },
@@ -2001,6 +2096,341 @@ data() {
         error,
         "No se pudo confirmar el proyecto."
       );
+    },
+    /** UC-37: abre el diálogo y consulta el preview de finalización. */
+    abrirFinalizacion() {
+      if (!this.puedeFinalizarProyecto || this.finalizandoProyecto) return;
+      this.errorFinalizacion = "";
+      this.faltantesFinalizacion = [];
+      this.modalFinalizacionVisible = true;
+      this.cargarPreviewFinalizacion();
+    },
+    onCambioVisibilidadFinalizacion(valor) {
+      if (valor) {
+        this.modalFinalizacionVisible = true;
+        return;
+      }
+      if (this.finalizandoProyecto) return;
+
+      this.modalFinalizacionVisible = false;
+      this.idCargaPreviewFinalizacion++;
+      if (controladorFinalizacion) {
+        controladorFinalizacion.abort();
+        controladorFinalizacion = null;
+      }
+      this.previewFinalizacion = null;
+      this.profesionesFinalizacion = {};
+      this.cargandoPreviewFinalizacion = false;
+      this.errorPreviewFinalizacion = "";
+      this.puedeReintentarPreviewFinalizacion = false;
+      this.errorFinalizacion = "";
+      this.faltantesFinalizacion = [];
+    },
+    reintentarPreviewFinalizacion() {
+      this.cargarPreviewFinalizacion();
+    },
+    /**
+     * GET /proyectos/{id}/finalizacion + GET /proyectos/{id}/miembros.
+     * El listado de miembros solo enriquece la profesión; si falla, el modal
+     * sigue funcionando con nombre y rol.
+     */
+    async cargarPreviewFinalizacion() {
+      if (this.finalizandoProyecto) return;
+      const corrida = ++this.idCargaPreviewFinalizacion;
+
+      if (controladorFinalizacion) controladorFinalizacion.abort();
+      controladorFinalizacion = new AbortController();
+
+      this.previewFinalizacion = null;
+      this.profesionesFinalizacion = {};
+      this.cargandoPreviewFinalizacion = true;
+      this.errorPreviewFinalizacion = "";
+      this.puedeReintentarPreviewFinalizacion = false;
+
+      try {
+        const resultados = await Promise.allSettled([
+          proyectoService.previsualizarFinalizacion(
+            this.idProyecto,
+            controladorFinalizacion.signal
+          ),
+          proyectoService.listarMiembros(
+            this.idProyecto,
+            { todos: true },
+            controladorFinalizacion.signal
+          ),
+        ]);
+        if (corrida !== this.idCargaPreviewFinalizacion) return;
+
+        const [previewRes, miembrosRes] = resultados;
+        if (previewRes.status !== "fulfilled") {
+          await this.manejarErrorPreviewFinalizacion(previewRes.reason);
+          return;
+        }
+
+        this.previewFinalizacion = normalizarPreviewFinalizacion(
+          previewRes.value?.data
+        );
+        this.profesionesFinalizacion =
+          miembrosRes.status === "fulfilled"
+            ? indexarProfesionesPorPerfil(miembrosRes.value?.data)
+            : {};
+        this.errorFinalizacion = "";
+      } catch (error) {
+        if (
+          corrida === this.idCargaPreviewFinalizacion &&
+          error?.code !== "ERR_CANCELED" &&
+          error?.name !== "CanceledError"
+        ) {
+          await this.manejarErrorPreviewFinalizacion(error);
+        }
+      } finally {
+        if (corrida === this.idCargaPreviewFinalizacion) {
+          this.cargandoPreviewFinalizacion = false;
+        }
+      }
+    },
+    async manejarErrorPreviewFinalizacion(error) {
+      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+        return;
+      }
+
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorFinalizacion(error);
+      const clasificacionProyecto = clasificarErrorProyecto(error);
+      const mensaje = clasificacion.mensaje;
+
+      if (status === 403) {
+        this.modalFinalizacionVisible = false;
+        this.toast.init({
+          title: "No se pudo verificar",
+          message:
+            mensaje ||
+            "No tenés permiso para finalizar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalFinalizacionVisible = false;
+
+        if (
+          clasificacionProyecto?.tipo === "perfil-activo" ||
+          /perfil\s*activo/i.test(mensaje)
+        ) {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (
+          clasificacionProyecto?.tipo === "perfil-no-encontrado" ||
+          /perfil/i.test(mensaje)
+        ) {
+          await refrescarSesion();
+          this.mensajeError =
+            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        this.proyecto = null;
+        this.estadoNoEncontrado = true;
+        this.mensajeError = mensaje || "El proyecto no existe.";
+        this.mostrarVolver = true;
+        return;
+      }
+
+      this.errorPreviewFinalizacion = mensajeErrorApi(
+        error,
+        "No se pudo verificar el proyecto. Inténtalo nuevamente."
+      );
+      this.puedeReintentarPreviewFinalizacion = true;
+    },
+    /** UC-37: envía todas las calificaciones del director en un solo POST. */
+    async confirmarFinalizacion(calificaciones) {
+      if (this.finalizandoProyecto) return;
+      if (!Array.isArray(calificaciones)) return;
+
+      this.finalizandoProyecto = true;
+      this.errorFinalizacion = "";
+      this.faltantesFinalizacion = [];
+      if (controladorFinalizacion) controladorFinalizacion.abort();
+      controladorFinalizacion = new AbortController();
+
+      try {
+        const response = await proyectoService.finalizar(
+          this.idProyecto,
+          calificaciones,
+          controladorFinalizacion.signal
+        );
+        const data = response?.data || {};
+
+        if (data.proyecto) {
+          this.proyecto = {
+            ...data.proyecto,
+            esMiembro:
+              data.proyecto.esMiembro ?? this.proyecto?.esMiembro ?? false,
+            rolUsuario:
+              data.proyecto.rolUsuario ?? this.proyecto?.rolUsuario ?? null,
+            permisos: Array.isArray(data.proyecto.permisos)
+              ? data.proyecto.permisos
+              : this.proyecto?.permisos || [],
+            puedeDarseDeBaja:
+              data.proyecto.puedeDarseDeBaja ??
+              this.proyecto?.puedeDarseDeBaja ??
+              false,
+            fechaFinalizacion:
+              data.proyecto.fechaFinalizacion ??
+              data.fechaFinalizacion ??
+              this.proyecto?.fechaFinalizacion ??
+              null,
+          };
+        } else {
+          await this.cargar();
+          if (data.fechaFinalizacion && this.proyecto) {
+            this.proyecto = {
+              ...this.proyecto,
+              fechaFinalizacion: data.fechaFinalizacion,
+            };
+          }
+        }
+
+        this.modalFinalizacionVisible = false;
+        this.previewFinalizacion = null;
+        this.profesionesFinalizacion = {};
+        this.errorFinalizacion = "";
+        this.faltantesFinalizacion = [];
+        this.refrescarNotificacionesPerfil();
+        this.refrescarPersonalRequerido();
+
+        const cantidad = Number(data.calificacionesRegistradas) || 0;
+        this.toast.init({
+          title: "Proyecto finalizado",
+          message: cantidad
+            ? `El proyecto quedó finalizado y se registraron ${cantidad} calificaciones.`
+            : "El proyecto quedó finalizado y se notificó a los integrantes.",
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorFinalizacion(error);
+      } finally {
+        this.finalizandoProyecto = false;
+      }
+    },
+    async manejarErrorFinalizacion(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorFinalizacion(error);
+      const clasificacionProyecto = clasificarErrorProyecto(error);
+      const mensaje = clasificacion.mensaje;
+
+      if (status === 403) {
+        this.modalFinalizacionVisible = false;
+        this.toast.init({
+          title: "No se pudo finalizar",
+          message:
+            mensaje ||
+            "No tenés permiso para finalizar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalFinalizacionVisible = false;
+
+        if (
+          clasificacionProyecto?.tipo === "perfil-activo" ||
+          /perfil\s*activo/i.test(mensaje)
+        ) {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (
+          clasificacionProyecto?.tipo === "perfil-no-encontrado" ||
+          /perfil/i.test(mensaje)
+        ) {
+          await refrescarSesion();
+          this.mensajeError =
+            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        this.proyecto = null;
+        this.estadoNoEncontrado = true;
+        this.mensajeError = mensaje || "El proyecto no existe.";
+        this.mostrarVolver = true;
+        return;
+      }
+
+      if (status === 409) {
+        if (clasificacion.esCalificacionesIncompletas) {
+          this.faltantesFinalizacion = clasificacion.faltantes;
+          this.errorFinalizacion =
+            mensaje || "Faltan calificaciones obligatorias para finalizar.";
+          return;
+        }
+
+        if (clasificacion.esCalificacionInvalida) {
+          this.errorFinalizacion =
+            mensaje ||
+            "Revisá la valoración y la reseña de las calificaciones.";
+          return;
+        }
+
+        this.modalFinalizacionVisible = false;
+        this.toast.init({
+          title: "No se pudo finalizar",
+          message:
+            mensaje ||
+            "El proyecto ya no se encuentra en un estado finalizable.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (status === 400) {
+        this.errorFinalizacion =
+          mensaje ||
+          "Revisá la valoración y la reseña de las calificaciones.";
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorFinalizacion =
+          "Ocurrió un error al finalizar el proyecto. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorFinalizacion = mensajeErrorApi(
+        error,
+        "No se pudo finalizar el proyecto."
+      );
+    },
+    irACalificaciones() {
+      this.$router.push({
+        name: "calificaciones-proyecto",
+        params: { id: this.idProyecto },
+      });
     },
     refrescarNotificacionesPerfil() {
       const idPerfil = idPerfilActivo();

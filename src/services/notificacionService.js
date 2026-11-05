@@ -25,6 +25,11 @@ import http from "./http";
  * @property {number|null} idActividad actividad asociada, si corresponde
  * @property {number|null} idHito hito asociado, si corresponde
  * @property {number|null} idInvitacion invitación asociada, si corresponde
+ * @property {string|null} [link] UC-37: ruta relativa enviada por el backend
+ *           para notificaciones como `CALIFICACION_SOLICITADA`
+ *           (ej. "/proyectos/100/calificaciones"). El frontend resuelve el
+ *           destino por tipo en `notificacionConstants.js`; se documenta el
+ *           campo para no perderlo si se usa en el futuro.
  */
 
 /**

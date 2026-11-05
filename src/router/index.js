@@ -24,6 +24,7 @@ import ActividadDetalleView from "../views/proyecto/ActividadDetalleView.vue";
 import InvitarProyectoView from "../views/proyecto/InvitarProyectoView.vue";
 import InvitacionesView from "../views/proyecto/InvitacionesView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
+import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
 import NotificacionesView from "../views/usuario/NotificacionesView.vue";
@@ -214,6 +215,17 @@ const routes = [
       params: { id: to.params.id },
       query: { tab: "postulaciones" },
     }),
+  },
+  {
+    path: "/proyectos/:id/calificaciones",
+    name: "calificaciones-proyecto",
+    component: CalificacionesProyectoView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Calificaciones del equipo",
+      requiresActiveProfile: true,
+      navActiva: "proyectos",
+    },
   },
   {
     path: "/proyectos/:id",
