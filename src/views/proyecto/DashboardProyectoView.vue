@@ -1761,7 +1761,10 @@ data() {
         );
         if (corrida !== this.idCargaPreviewConfirmacion) return;
         this.previewConfirmacion = normalizarPreview(response?.data);
-        this.errorConfirmacion = "";
+        // Tras un 409 de confirmación el refresco no debe borrar el mensaje:
+        // el preview puede volver a decir "puedeConfirmar" y hacer desaparecer
+        // el error real que devolvió el POST.
+        if (inicial) this.errorConfirmacion = "";
       } catch (error) {
         if (
           corrida !== this.idCargaPreviewConfirmacion ||

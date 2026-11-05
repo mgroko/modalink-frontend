@@ -83,7 +83,7 @@
           </ul>
 
           <p
-            v-if="!bloqueos.length && preview.puedeConfirmar"
+            v-if="!bloqueos.length && preview.puedeConfirmar && !errorConfirmacion"
             class="confirmar-proyecto-modal__listo"
           >
             <span class="material-symbols-outlined" aria-hidden="true">
