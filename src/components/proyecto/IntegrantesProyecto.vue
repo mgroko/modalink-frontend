@@ -8,15 +8,14 @@
         </span>
       </h2>
 
-      <span
+      <VaButton
         v-if="puedeInvitar"
-        class="miembros-proyecto__tooltip"
-        title="Próximamente: la invitación de miembros estará disponible en una próxima versión."
+        preset="primary"
+        size="small"
+        @click="$emit('invitar')"
       >
-        <VaButton preset="primary" size="small" disabled>
-          Invitar miembro
-        </VaButton>
-      </span>
+        Invitar a proyecto
+      </VaButton>
     </header>
 
     <BaseAlert v-if="error" :message="error" type="error" />
@@ -143,7 +142,7 @@ import {
  * Listado de miembros activos del proyecto (UC-38).
  * La acción de eliminar se decide exclusivamente con `eliminable` y
  * `motivoNoEliminable`; acá no se recalculan permisos ni reglas de negocio.
- * "Invitar miembro" queda deshabilitado hasta que exista UC-31.
+ * "Invitar a proyecto" delega la navegación y las validaciones en el contenedor.
  */
 export default {
   name: "IntegrantesProyecto",
@@ -169,7 +168,7 @@ export default {
       default: null,
     },
   },
-  emits: ["eliminar"],
+  emits: ["eliminar", "invitar"],
   data() {
     return {
       miembros: [],

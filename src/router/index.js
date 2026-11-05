@@ -20,6 +20,7 @@ import CrearActividadView from "../views/proyecto/CrearActividadView.vue";
 import ModificarActividadView from "../views/proyecto/ModificarActividadView.vue";
 import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
 import ActividadDetalleView from "../views/proyecto/ActividadDetalleView.vue";
+import InvitarProyectoView from "../views/proyecto/InvitarProyectoView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
@@ -116,6 +117,12 @@ const routes = [
     name: "modificar-proyecto",
     component: ModificarProyectoView,
     meta: { layout: HomeLayout, titulo: "Modificar proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id/invitar",
+    name: "invitar-proyecto",
+    component: InvitarProyectoView,
+    meta: { layout: HomeLayout, titulo: "Invitar a proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
     path: "/proyectos/:id/actividades/crear",

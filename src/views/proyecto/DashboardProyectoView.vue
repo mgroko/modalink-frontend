@@ -251,6 +251,7 @@
           :puede-invitar="puedeInvitarIntegrante"
           :id-perfil-activo="idPerfilActivoSesion"
           @eliminar="abrirEliminarIntegrante"
+          @invitar="irAInvitarProyecto"
         />
 
         <HistorialProyecto
@@ -459,6 +460,7 @@ import {
   MENSAJE_USUARIO_YA_ASIGNADO_POSTULACION,
   esConflictoAsignacionUnica,
 } from "../../utils/asignacionUnicaConstants.js";
+import { puedeInvitarProyecto } from "../../utils/invitacionConstants.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
   LIMITE_MOTIVO_BAJA,
@@ -723,9 +725,9 @@ data() {
         this.permisos.includes("GESTIONAR_POSTULACIONES")
       );
     },
-    /** UC-31 pendiente: el botón "Invitar miembro" se muestra deshabilitado. */
+    /** UC-31: Director con `INVITAR_MIEMBRO` en proyecto Publicado/Confirmado. */
     puedeInvitarIntegrante() {
-      return this.permisos.includes("INVITAR_MIEMBRO");
+      return puedeInvitarProyecto(this.proyecto);
     },
     /** Perfil activo de la sesión: habilita el chip "Vos" en el listado. */
     idPerfilActivoSesion() {
@@ -2310,6 +2312,13 @@ data() {
     },
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
+    },
+    irAInvitarProyecto() {
+      if (!this.puedeInvitarIntegrante) return;
+      this.$router.push({
+        name: "invitar-proyecto",
+        params: { id: this.idProyecto },
+      });
     },
     async abrirModalAsignar(actividad) {
       if (!actividad?.idActividad || this.asignando) return;

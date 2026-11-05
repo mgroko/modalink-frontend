@@ -26,6 +26,10 @@ function idPerfilActivo() {
   return state.usuario?.idPerfilActivo ?? null;
 }
 
+function idUsuarioActivo() {
+  return state.usuario?.idUsuario ?? null;
+}
+
 function esAdmin() {
   return state.usuario?.rolGlobal === "Administrador";
 }
@@ -149,4 +153,4 @@ function limpiarBajaCuenta() {
   }
 }
 
-export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion, finalizarSesion, guardarBajaCuenta, consumirAvisoBajaCuenta, limpiarBajaCuenta };
+export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, idUsuarioActivo, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion, finalizarSesion, guardarBajaCuenta, consumirAvisoBajaCuenta, limpiarBajaCuenta };

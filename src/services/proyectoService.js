@@ -566,6 +566,75 @@ const proyectoService = {
   },
 
   /**
+   * GET /proyectos/{idProyecto}/requerimientos-actividad/buscar — UC-31.
+   *
+   * Devuelve los requerimientos de actividad del proyecto con su actividad y
+   * profesión. El endpoint no busca por texto libre: los filtros son por ids.
+   * Para el buscador de invitaciones se recomienda `todos: true` y filtrar en
+   * el frontend por nombre de actividad/profesión.
+   *
+   * Errores:
+   * - 401/403 sesión, perfil activo o visibilidad del proyecto
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {{
+   *   idActividad?: number|string,
+   *   idProfesion?: number|string,
+   *   idCaracteristica?: number|string,
+   *   idValorCaracteristica?: number|string,
+   *   idsHabilidades?: Array<number|string>,
+   *   page?: number,
+   *   size?: number,
+   *   todos?: boolean
+   * }} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: {
+   *   contenido: Array<{
+   *     idRequerimiento: number,
+   *     cantidad: number,
+   *     descripcion: string|null,
+   *     idProfesion: number,
+   *     nombreProfesion: string,
+   *     idActividad: number,
+   *     nombreActividad: string,
+   *     estadoActividad: string,
+   *     idProyecto: number,
+   *     nombreProyecto: string,
+   *     caracteristicas: Array<object>,
+   *     habilidades: Array<number|object|string>
+   *   }>,
+   *   paginaActual: number,
+   *   tamanoPagina: number,
+   *   totalElementos: number,
+   *   totalPaginas: number,
+   *   primera: boolean,
+   *   ultima: boolean
+   * }>}>} 200 OK
+   */
+  buscarRequerimientosActividad(idProyecto, params = {}, signal) {
+    const todos = params.todos === true;
+    const query = serializarParams({
+      idActividad: params.idActividad ?? "",
+      idProfesion: params.idProfesion ?? "",
+      idCaracteristica: params.idCaracteristica ?? "",
+      idValorCaracteristica: params.idValorCaracteristica ?? "",
+      idsHabilidades: Array.isArray(params.idsHabilidades)
+        ? params.idsHabilidades
+        : [],
+      page: todos ? undefined : params.page ?? 0,
+      size: todos ? undefined : params.size ?? 20,
+      todos: todos ? true : undefined,
+    });
+
+    return http.get(
+      `/proyectos/${idProyecto}/requerimientos-actividad/buscar${
+        query ? `?${query}` : ""
+      }`,
+      { signal }
+    );
+  },
+
+  /**
    * GET /proyectos/{idProyecto}/historial — historial de membresías.
    *
    * Solo lo puede consultar un Director activo del proyecto. Devuelve los
