@@ -109,14 +109,25 @@
 
     <template #footer>
       <div class="detalle-invitacion__acciones">
-        <VaButton preset="secondary" @click="cerrar">Cerrar</VaButton>
         <VaButton
-          v-if="puedeVerProyecto"
-          preset="primary"
-          @click="$emit('ver-proyecto', invitacion)"
+          v-if="puedeEliminarInvitacion"
+          preset="secondary"
+          color="danger"
+          @click="$emit('eliminar', invitacion)"
         >
-          Ver proyecto
+          Eliminar invitación
         </VaButton>
+
+        <div class="detalle-invitacion__acciones-principales">
+          <VaButton preset="secondary" @click="cerrar">Cerrar</VaButton>
+          <VaButton
+            v-if="puedeVerProyecto"
+            preset="primary"
+            @click="$emit('ver-proyecto', invitacion)"
+          >
+            Ver proyecto
+          </VaButton>
+        </div>
       </div>
     </template>
   </VaModal>
@@ -148,8 +159,12 @@ export default {
       type: Object,
       default: null,
     },
+    eliminacionBloqueada: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ["update:modelValue", "ver-proyecto"],
+  emits: ["update:modelValue", "ver-proyecto", "eliminar"],
   data() {
     return {
       fotoUrl: null,
@@ -163,6 +178,14 @@ export default {
     },
     puedeVerProyecto() {
       return this.invitacion?.estado === ESTADOS_INVITACION.ACEPTADA;
+    },
+    puedeEliminarInvitacion() {
+      return (
+        !this.eliminacionBloqueada &&
+        this.invitacion?.direccion === DIRECCIONES_INVITACION.ENVIADA &&
+        this.invitacion?.estado === ESTADOS_INVITACION.PENDIENTE &&
+        this.invitacion?.puedeEliminar === true
+      );
     },
     etiquetaDireccion() {
       return ETIQUETAS_DIRECCION[this.invitacion?.direccion] || "";
@@ -420,9 +443,16 @@ export default {
 .detalle-invitacion__acciones {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 1rem;
   width: 100%;
+}
+
+.detalle-invitacion__acciones-principales {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
 }
 
 @media (max-width: 560px) {

@@ -81,8 +81,10 @@
           :invitacion="invitacion"
           :mostrar-direccion="tabActual === DIRECCIONES_INVITACION.TODAS"
           :id-perfil-activo="idPerfilActivo"
+          :eliminacion-bloqueada="estaEliminacionBloqueada(invitacion)"
           @abrir="abrirDetalle"
           @ver-proyecto="verProyecto"
+          @eliminar="abrirModalEliminar"
         />
       </div>
 
@@ -123,8 +125,21 @@
     <ModalDetalleInvitacion
       :model-value="modalDetalle.visible"
       :invitacion="modalDetalle.invitacion"
+      :eliminacion-bloqueada="
+        estaEliminacionBloqueada(modalDetalle.invitacion)
+      "
       @update:model-value="onCambioVisibilidadDetalle"
       @ver-proyecto="verProyecto"
+      @eliminar="onEliminarDesdeDetalle"
+    />
+
+    <ModalEliminarInvitacion
+      :model-value="modalEliminar.visible"
+      :invitacion="modalEliminar.invitacion"
+      :eliminando="eliminando"
+      :error="errorEliminar"
+      @update:model-value="onCambioVisibilidadEliminar"
+      @confirmar="confirmarEliminarInvitacion"
     />
   </div>
 </template>
@@ -135,6 +150,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import FiltrosInvitaciones from "../../components/invitacion/FiltrosInvitaciones.vue";
 import InvitacionCard from "../../components/invitacion/InvitacionCard.vue";
 import ModalDetalleInvitacion from "../../components/invitacion/ModalDetalleInvitacion.vue";
+import ModalEliminarInvitacion from "../../components/invitacion/ModalEliminarInvitacion.vue";
 import invitacionService from "../../services/invitacionService.js";
 import { cargarResumenInvitaciones } from "../../services/invitacionState.js";
 import { idPerfilActivo, refrescarSesion } from "../../services/authState";
@@ -143,13 +159,16 @@ import {
   DIRECCIONES_INVITACION,
   ORDEN_FECHA_INVITACION,
   TAMANO_PAGINA_INVITACIONES,
+  TIPOS_ERROR_ELIMINAR_INVITACION,
   TIPOS_ERROR_INVITACIONES,
+  clasificarErrorEliminarInvitacion,
   clasificarErrorInvitaciones,
   construirParamsInvitaciones,
   normalizarInvitacionBusqueda,
   ordenarInvitacionesPorFecha,
   validarRangoFechasInvitaciones,
 } from "../../utils/invitacionBusquedaConstants.js";
+import { TIPOS_INVITACION } from "../../utils/invitacionConstants.js";
 
 const FILTROS_INICIALES = {
   nombreProyecto: "",
@@ -161,6 +180,7 @@ const FILTROS_INICIALES = {
 };
 
 let controlador = null;
+let controladorEliminar = null;
 
 /*
  * UC-30: invitaciones recibidas o enviadas por el perfil activo.
@@ -175,6 +195,7 @@ export default {
     FiltrosInvitaciones,
     InvitacionCard,
     ModalDetalleInvitacion,
+    ModalEliminarInvitacion,
   },
   setup() {
     return { toast: useToast() };
@@ -207,6 +228,13 @@ export default {
         visible: false,
         invitacion: null,
       },
+      modalEliminar: {
+        visible: false,
+        invitacion: null,
+      },
+      eliminando: false,
+      errorEliminar: "",
+      idsNoEliminables: [],
       idCarga: 0,
     };
   },
@@ -291,6 +319,7 @@ export default {
   },
   beforeUnmount() {
     this.abortar();
+    if (controladorEliminar) controladorEliminar.abort();
   },
   methods: {
     cambiarTab(direccion) {
@@ -519,6 +548,162 @@ export default {
         name: "dashboard-proyecto",
         params: { id: idProyecto },
       });
+    },
+    estaEliminacionBloqueada(invitacion) {
+      const id = invitacion?.idInvitacion;
+      if (id == null) return false;
+      return this.idsNoEliminables.some(
+        (existente) => String(existente) === String(id)
+      );
+    },
+    puedeEliminarInvitacion(invitacion) {
+      return (
+        !!invitacion &&
+        invitacion.direccion === DIRECCIONES_INVITACION.ENVIADA &&
+        invitacion.estado === "PENDIENTE" &&
+        invitacion.puedeEliminar === true &&
+        !this.estaEliminacionBloqueada(invitacion)
+      );
+    },
+    abrirModalEliminar(invitacion) {
+      if (this.eliminando || !this.puedeEliminarInvitacion(invitacion)) {
+        return;
+      }
+      this.modalEliminar = { visible: true, invitacion };
+      this.errorEliminar = "";
+    },
+    onEliminarDesdeDetalle(invitacion) {
+      this.modalDetalle = { visible: false, invitacion: null };
+      this.$nextTick(() => this.abrirModalEliminar(invitacion));
+    },
+    onCambioVisibilidadEliminar(valor) {
+      if (!valor) {
+        this.cerrarModalEliminar();
+        return;
+      }
+      this.modalEliminar.visible = true;
+    },
+    cerrarModalEliminar() {
+      if (this.eliminando) return;
+      this.modalEliminar = { visible: false, invitacion: null };
+      this.errorEliminar = "";
+    },
+    async confirmarEliminarInvitacion() {
+      if (this.eliminando) return;
+
+      const invitacion = this.modalEliminar.invitacion;
+      if (!invitacion || !this.puedeEliminarInvitacion(invitacion)) return;
+
+      this.eliminando = true;
+      this.errorEliminar = "";
+      if (controladorEliminar) controladorEliminar.abort();
+      controladorEliminar = new AbortController();
+
+      try {
+        if (invitacion.tipo === TIPOS_INVITACION.ACTIVIDAD) {
+          await invitacionService.eliminarActividad(
+            invitacion.idProyecto,
+            invitacion.idInvitacion,
+            controladorEliminar.signal
+          );
+        } else {
+          await invitacionService.eliminarGeneral(
+            invitacion.idProyecto,
+            invitacion.idInvitacion,
+            controladorEliminar.signal
+          );
+        }
+
+        this.eliminando = false;
+        this.modalEliminar = { visible: false, invitacion: null };
+        this.toast.init({
+          title: "Invitación eliminada",
+          message: "La invitación se eliminó correctamente.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+        await this.buscar(this.paginacion.paginaActual);
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        await this.manejarErrorEliminar(error);
+      } finally {
+        this.eliminando = false;
+      }
+    },
+    async manejarErrorEliminar(error) {
+      const { tipo, mensaje } = clasificarErrorEliminarInvitacion(error);
+      const invitacion = this.modalEliminar.invitacion;
+
+      const cerrar = () => {
+        this.modalEliminar = { visible: false, invitacion: null };
+        this.errorEliminar = "";
+      };
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INVITACION.SESION) {
+        cerrar();
+        await refrescarSesion();
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INVITACION.PERFIL_ACTIVO) {
+        cerrar();
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INVITACION.NO_ENCONTRADA) {
+        cerrar();
+        this.toast.init({
+          title: "Invitación no disponible",
+          message: mensaje || "La invitación ya no existe.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.buscar(this.paginacion.paginaActual);
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INVITACION.SIN_PERMISO) {
+        cerrar();
+        if (invitacion?.idInvitacion != null) {
+          this.idsNoEliminables = [
+            ...this.idsNoEliminables,
+            invitacion.idInvitacion,
+          ];
+        }
+        this.toast.init({
+          title: "Sin permiso",
+          message:
+            mensaje || "No tenés permiso para eliminar esta invitación.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.buscar(this.paginacion.paginaActual);
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INVITACION.NO_PENDIENTE) {
+        cerrar();
+        this.toast.init({
+          title: "La invitación ya no está pendiente",
+          message:
+            mensaje ||
+            "La invitación cambió de estado. Actualizamos el listado.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.buscar(this.paginacion.paginaActual);
+        return;
+      }
+
+      // CUENTA, CONFLICTO y DESCONOCIDO: mantener el modal para reintentar.
+      this.errorEliminar = mensaje;
     },
     abortar() {
       if (controlador) {

@@ -88,6 +88,21 @@
       </div>
 
       <div
+        v-else-if="puedeEliminarInvitacion"
+        class="invitacion-card__acciones"
+        @click.stop
+      >
+        <VaButton
+          preset="secondary"
+          color="danger"
+          size="small"
+          @click.stop="$emit('eliminar', invitacion)"
+        >
+          Eliminar
+        </VaButton>
+      </div>
+
+      <div
         v-else-if="puedeVerProyecto"
         class="invitacion-card__acciones"
         @click.stop
@@ -134,8 +149,13 @@ export default {
       type: [Number, String],
       default: null,
     },
+    /** Se activa si un 403 ya ocultó la acción para este ítem. */
+    eliminacionBloqueada: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ["abrir", "ver-proyecto"],
+  emits: ["abrir", "ver-proyecto", "eliminar"],
   data() {
     return {
       fotoRota: false,
@@ -156,6 +176,14 @@ export default {
     },
     puedeVerProyecto() {
       return this.invitacion.estado === ESTADOS_INVITACION.ACEPTADA;
+    },
+    puedeEliminarInvitacion() {
+      return (
+        !this.eliminacionBloqueada &&
+        this.invitacion.direccion === DIRECCIONES_INVITACION.ENVIADA &&
+        this.invitacion.estado === ESTADOS_INVITACION.PENDIENTE &&
+        this.invitacion.puedeEliminar === true
+      );
     },
     nombreRemitente() {
       return (

@@ -207,6 +207,43 @@ const invitacionService = {
   },
 
   /**
+   * DELETE /proyectos/{idProyecto}/invitaciones/general/{idInvitacion} — UC-32.
+   *
+   * Borra físicamente una invitación general pendiente enviada por el perfil
+   * activo. No genera notificación al destinatario.
+   *
+   * Errores:
+   * - 403 sin `ELIMINAR_INVITACION`, no Director o no remitente
+   * - 404 perfil activo, invitación inexistente o de otro proyecto
+   * - 409 `INVITACION_NO_PENDIENTE`
+   * @param {number|string} idProyecto
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  eliminarGeneral(idProyecto, idInvitacion, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/invitaciones/general/${idInvitacion}`,
+      { signal }
+    );
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/invitaciones/actividad/{idInvitacion} — UC-32.
+   * Mismas reglas que la eliminación general.
+   * @param {number|string} idProyecto
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  eliminarActividad(idProyecto, idInvitacion, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/invitaciones/actividad/${idInvitacion}`,
+      { signal }
+    );
+  },
+
+  /**
    * POST /proyectos/{idProyecto}/invitaciones/general/batch — UC-31.
    *
    * Crea una invitación independiente por cada perfil. Responde 200 con

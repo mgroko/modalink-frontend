@@ -2,7 +2,11 @@ import {
   ETIQUETAS_TIPO_INVITACION,
   TIPOS_INVITACION,
 } from "./invitacionConstants.js";
-import { mensajeErrorApi } from "./apiError.js";
+import {
+  esCuentaNoActiva,
+  esSesionExpirada,
+  mensajeErrorApi,
+} from "./apiError.js";
 
 /*
  * Reglas y textos de UC-30 (buscar invitaciones).
@@ -258,10 +262,106 @@ export const TIPOS_ERROR_INVITACIONES = {
   DESCONOCIDO: "DESCONOCIDO",
 };
 
+export const CODIGO_INVITACION_NO_PENDIENTE = "INVITACION_NO_PENDIENTE";
+
+export const TIPOS_ERROR_ELIMINAR_INVITACION = {
+  SESION: "SESION",
+  CUENTA: "CUENTA",
+  PERFIL_ACTIVO: "PERFIL_ACTIVO",
+  NO_ENCONTRADA: "NO_ENCONTRADA",
+  SIN_PERMISO: "SIN_PERMISO",
+  NO_PENDIENTE: "NO_PENDIENTE",
+  CONFLICTO: "CONFLICTO",
+  DESCONOCIDO: "DESCONOCIDO",
+};
+
 /**
  * @param {object} error error Axios
  * @returns {{tipo:string,status:number|null,mensaje:string}}
  */
+/**
+ * Clasifica el error del DELETE de UC-32.
+ * @param {object} error error Axios
+ * @returns {{tipo:string,status:number|null,codigo:string,mensaje:string}}
+ */
+export function clasificarErrorEliminarInvitacion(error) {
+  const status = error?.response?.status ?? null;
+  const data = error?.response?.data;
+  const payload = data && typeof data === "object" ? data : {};
+  const mensaje =
+    typeof payload.message === "string" ? payload.message.trim() : "";
+  const codigo = String(payload.codigo || "").toUpperCase();
+
+  const crear = (tipo, texto) => ({
+    tipo,
+    status,
+    codigo,
+    mensaje: texto || "No se pudo eliminar la invitación.",
+  });
+
+  if (esSesionExpirada(error)) {
+    return crear(
+      TIPOS_ERROR_ELIMINAR_INVITACION.SESION,
+      "Tu sesión expiró. Volvé a iniciar sesión."
+    );
+  }
+
+  if (esCuentaNoActiva(error)) {
+    return crear(
+      TIPOS_ERROR_ELIMINAR_INVITACION.CUENTA,
+      mensaje || "Tu cuenta no se encuentra activa."
+    );
+  }
+
+  if (status === 403) {
+    return crear(
+      TIPOS_ERROR_ELIMINAR_INVITACION.SIN_PERMISO,
+      mensaje || "No tenés permiso para eliminar esta invitación."
+    );
+  }
+
+  if (status === 404) {
+    if (/perfil\s*activo|no hay un perfil activo/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_ELIMINAR_INVITACION.PERFIL_ACTIVO,
+        mensaje || "No hay un perfil activo seleccionado."
+      );
+    }
+    return crear(
+      TIPOS_ERROR_ELIMINAR_INVITACION.NO_ENCONTRADA,
+      mensaje || "La invitación ya no existe."
+    );
+  }
+
+  if (status === 409) {
+    if (
+      codigo === CODIGO_INVITACION_NO_PENDIENTE ||
+      /pendiente/i.test(mensaje)
+    ) {
+      return crear(
+        TIPOS_ERROR_ELIMINAR_INVITACION.NO_PENDIENTE,
+        mensaje || "La invitación ya no está pendiente."
+      );
+    }
+    return crear(
+      TIPOS_ERROR_ELIMINAR_INVITACION.CONFLICTO,
+      mensaje || "No se pudo eliminar la invitación."
+    );
+  }
+
+  if (!status || status >= 500) {
+    return crear(
+      TIPOS_ERROR_ELIMINAR_INVITACION.DESCONOCIDO,
+      "Ocurrió un error al eliminar la invitación. Inténtalo nuevamente."
+    );
+  }
+
+  return crear(
+    TIPOS_ERROR_ELIMINAR_INVITACION.DESCONOCIDO,
+    mensajeErrorApi(error, "No se pudo eliminar la invitación.")
+  );
+}
+
 export function clasificarErrorInvitaciones(error) {
   const status = error?.response?.status ?? null;
   const mensaje = error?.response?.data?.message || "";
