@@ -82,9 +82,12 @@
           :mostrar-direccion="tabActual === DIRECCIONES_INVITACION.TODAS"
           :id-perfil-activo="idPerfilActivo"
           :eliminacion-bloqueada="estaEliminacionBloqueada(invitacion)"
+          :gestion-bloqueada="estaGestionBloqueada(invitacion)"
           @abrir="abrirDetalle"
           @ver-proyecto="verProyecto"
           @eliminar="abrirModalEliminar"
+          @aceptar="abrirGestionInvitacion($event, ACCIONES_GESTION_INVITACION.ACEPTAR)"
+          @rechazar="abrirGestionInvitacion($event, ACCIONES_GESTION_INVITACION.RECHAZAR)"
         />
       </div>
 
@@ -128,9 +131,12 @@
       :eliminacion-bloqueada="
         estaEliminacionBloqueada(modalDetalle.invitacion)
       "
+      :gestion-bloqueada="estaGestionBloqueada(modalDetalle.invitacion)"
       @update:model-value="onCambioVisibilidadDetalle"
       @ver-proyecto="verProyecto"
       @eliminar="onEliminarDesdeDetalle"
+      @aceptar="onGestionDesdeDetalle($event, ACCIONES_GESTION_INVITACION.ACEPTAR)"
+      @rechazar="onGestionDesdeDetalle($event, ACCIONES_GESTION_INVITACION.RECHAZAR)"
     />
 
     <ModalEliminarInvitacion
@@ -140,6 +146,18 @@
       :error="errorEliminar"
       @update:model-value="onCambioVisibilidadEliminar"
       @confirmar="confirmarEliminarInvitacion"
+    />
+
+    <ModalGestionInvitacion
+      :model-value="modalGestion.visible"
+      :invitacion="modalGestion.invitacion"
+      :accion="modalGestion.accion"
+      :gestionando="gestionando"
+      :error="errorGestion"
+      :mostrar-rechazo="mostrarRechazoTrasError"
+      @update:model-value="onCambioVisibilidadGestion"
+      @confirmar="confirmarGestionInvitacion"
+      @rechazar="rechazarDesdeErrorGestion"
     />
   </div>
 </template>
@@ -151,17 +169,21 @@ import FiltrosInvitaciones from "../../components/invitacion/FiltrosInvitaciones
 import InvitacionCard from "../../components/invitacion/InvitacionCard.vue";
 import ModalDetalleInvitacion from "../../components/invitacion/ModalDetalleInvitacion.vue";
 import ModalEliminarInvitacion from "../../components/invitacion/ModalEliminarInvitacion.vue";
+import ModalGestionInvitacion from "../../components/invitacion/ModalGestionInvitacion.vue";
 import invitacionService from "../../services/invitacionService.js";
 import { cargarResumenInvitaciones } from "../../services/invitacionState.js";
 import { idPerfilActivo, refrescarSesion } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
+  ACCIONES_GESTION_INVITACION,
   DIRECCIONES_INVITACION,
   ORDEN_FECHA_INVITACION,
   TAMANO_PAGINA_INVITACIONES,
   TIPOS_ERROR_ELIMINAR_INVITACION,
+  TIPOS_ERROR_GESTION_INVITACION,
   TIPOS_ERROR_INVITACIONES,
   clasificarErrorEliminarInvitacion,
+  clasificarErrorGestionInvitacion,
   clasificarErrorInvitaciones,
   construirParamsInvitaciones,
   normalizarInvitacionBusqueda,
@@ -169,6 +191,7 @@ import {
   validarRangoFechasInvitaciones,
 } from "../../utils/invitacionBusquedaConstants.js";
 import { TIPOS_INVITACION } from "../../utils/invitacionConstants.js";
+import { mensajeMotivo } from "../../utils/disponibilidadConstants.js";
 
 const FILTROS_INICIALES = {
   nombreProyecto: "",
@@ -181,6 +204,7 @@ const FILTROS_INICIALES = {
 
 let controlador = null;
 let controladorEliminar = null;
+let controladorGestion = null;
 
 /*
  * UC-30: invitaciones recibidas o enviadas por el perfil activo.
@@ -196,6 +220,7 @@ export default {
     InvitacionCard,
     ModalDetalleInvitacion,
     ModalEliminarInvitacion,
+    ModalGestionInvitacion,
   },
   setup() {
     return { toast: useToast() };
@@ -203,6 +228,7 @@ export default {
   data() {
     return {
       DIRECCIONES_INVITACION,
+      ACCIONES_GESTION_INVITACION,
       tabActual: DIRECCIONES_INVITACION.RECIBIDA,
       ordenFecha: ORDEN_FECHA_INVITACION.DESC,
       filtros: { ...FILTROS_INICIALES },
@@ -235,6 +261,15 @@ export default {
       eliminando: false,
       errorEliminar: "",
       idsNoEliminables: [],
+      modalGestion: {
+        visible: false,
+        accion: ACCIONES_GESTION_INVITACION.ACEPTAR,
+        invitacion: null,
+      },
+      gestionando: false,
+      errorGestion: "",
+      mostrarRechazoTrasError: false,
+      idsNoGestionables: [],
       idCarga: 0,
     };
   },
@@ -320,6 +355,7 @@ export default {
   beforeUnmount() {
     this.abortar();
     if (controladorEliminar) controladorEliminar.abort();
+    if (controladorGestion) controladorGestion.abort();
   },
   methods: {
     cambiarTab(direccion) {
@@ -548,6 +584,275 @@ export default {
         name: "dashboard-proyecto",
         params: { id: idProyecto },
       });
+    },
+    estaGestionBloqueada(invitacion) {
+      const id = invitacion?.idInvitacion;
+      if (id == null) return false;
+      return this.idsNoGestionables.some(
+        (existente) => String(existente) === String(id)
+      );
+    },
+    puedeGestionarInvitacion(invitacion) {
+      return (
+        !!invitacion &&
+        invitacion.direccion === DIRECCIONES_INVITACION.RECIBIDA &&
+        invitacion.estado === "PENDIENTE" &&
+        !this.estaGestionBloqueada(invitacion)
+      );
+    },
+    abrirGestionInvitacion(invitacion, accion) {
+      if (this.gestionando || !this.puedeGestionarInvitacion(invitacion)) {
+        return;
+      }
+      this.modalGestion = {
+        visible: true,
+        accion,
+        invitacion,
+      };
+      this.errorGestion = "";
+      this.mostrarRechazoTrasError = false;
+    },
+    onGestionDesdeDetalle(invitacion, accion) {
+      this.modalDetalle = { visible: false, invitacion: null };
+      this.$nextTick(() => this.abrirGestionInvitacion(invitacion, accion));
+    },
+    onCambioVisibilidadGestion(valor) {
+      if (!valor) {
+        this.cerrarModalGestion();
+        return;
+      }
+      this.modalGestion.visible = true;
+    },
+    cerrarModalGestion() {
+      if (this.gestionando) return;
+      this.modalGestion = {
+        visible: false,
+        accion: ACCIONES_GESTION_INVITACION.ACEPTAR,
+        invitacion: null,
+      };
+      this.errorGestion = "";
+      this.mostrarRechazoTrasError = false;
+    },
+    async confirmarGestionInvitacion() {
+      if (this.gestionando) return;
+
+      const { accion, invitacion } = this.modalGestion;
+      if (!invitacion || !this.puedeGestionarInvitacion(invitacion)) return;
+
+      const esAceptar = accion === ACCIONES_GESTION_INVITACION.ACEPTAR;
+      const esActividad = invitacion.tipo === TIPOS_INVITACION.ACTIVIDAD;
+
+      this.gestionando = true;
+      this.errorGestion = "";
+      this.mostrarRechazoTrasError = false;
+      if (controladorGestion) controladorGestion.abort();
+      controladorGestion = new AbortController();
+
+      try {
+        const response = esAceptar
+          ? esActividad
+            ? await invitacionService.aceptarActividad(
+                invitacion.idInvitacion,
+                controladorGestion.signal
+              )
+            : await invitacionService.aceptarGeneral(
+                invitacion.idInvitacion,
+                controladorGestion.signal
+              )
+          : esActividad
+            ? await invitacionService.rechazarActividad(
+                invitacion.idInvitacion,
+                controladorGestion.signal
+              )
+            : await invitacionService.rechazarGeneral(
+                invitacion.idInvitacion,
+                controladorGestion.signal
+              );
+
+        const data = response?.data || {};
+        this.gestionando = false;
+        this.modalGestion = {
+          visible: false,
+          accion: ACCIONES_GESTION_INVITACION.ACEPTAR,
+          invitacion: null,
+        };
+        this.modalDetalle = { visible: false, invitacion: null };
+        this.errorGestion = "";
+        this.mostrarRechazoTrasError = false;
+
+        await cargarResumenInvitaciones(idPerfilActivo());
+
+        if (esAceptar) {
+          this.toast.init({
+            title: "Invitación aceptada",
+            message: esActividad
+              ? "La invitación fue aceptada y quedaste asignado a la actividad."
+              : "La invitación fue aceptada. Ya sos miembro del proyecto.",
+            color: "success",
+            position: "top-right",
+            duration: 6000,
+          });
+          this.mostrarAdvertenciasAceptacion(data.advertencias);
+          if (invitacion.idProyecto != null) {
+            this.$router.push({
+              name: "dashboard-proyecto",
+              params: { id: invitacion.idProyecto },
+            });
+          }
+          return;
+        }
+
+        this.toast.init({
+          title: "Invitación rechazada",
+          message: "La invitación quedó en estado RECHAZADA.",
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.tabActual = DIRECCIONES_INVITACION.RECIBIDA;
+        await this.buscar(0);
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        await this.manejarErrorGestion(error);
+      } finally {
+        this.gestionando = false;
+      }
+    },
+    async rechazarDesdeErrorGestion() {
+      if (this.gestionando) return;
+      const invitacion = this.modalGestion.invitacion;
+      if (!invitacion) return;
+
+      this.modalGestion = {
+        ...this.modalGestion,
+        accion: ACCIONES_GESTION_INVITACION.RECHAZAR,
+      };
+      this.errorGestion = "";
+      this.mostrarRechazoTrasError = false;
+      await this.confirmarGestionInvitacion();
+    },
+    mostrarAdvertenciasAceptacion(advertencias) {
+      const lista = Array.isArray(advertencias) ? advertencias : [];
+      if (!lista.length) return;
+
+      const nombres = lista.slice(0, 3).map((advertencia) => {
+        const actividad = advertencia?.nombreActividad || "una actividad";
+        return advertencia?.nombreProyecto
+          ? `${actividad} (${advertencia.nombreProyecto})`
+          : actividad;
+      });
+      const restantes = lista.length - nombres.length;
+      const detalle = `${nombres.join(", ")}${
+        restantes > 0 ? ` y ${restantes} más` : ""
+      }`;
+
+      this.toast.init({
+        title: "Posible superposición de agenda",
+        message: `El perfil tiene actividades que podrían superponerse: ${detalle}.`,
+        color: "warning",
+        position: "top-right",
+        duration: 9000,
+      });
+    },
+    async manejarErrorGestion(error) {
+      const clasificacion = clasificarErrorGestionInvitacion(error);
+      const { tipo, mensaje, codigoMotivo } = clasificacion;
+      const invitacion = this.modalGestion.invitacion;
+
+      const cerrar = () => {
+        this.modalGestion = {
+          visible: false,
+          accion: ACCIONES_GESTION_INVITACION.ACEPTAR,
+          invitacion: null,
+        };
+        this.errorGestion = "";
+        this.mostrarRechazoTrasError = false;
+      };
+
+      if (tipo === TIPOS_ERROR_GESTION_INVITACION.SESION) {
+        cerrar();
+        await refrescarSesion();
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_GESTION_INVITACION.PERFIL_ACTIVO) {
+        cerrar();
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_GESTION_INVITACION.NO_ENCONTRADA) {
+        cerrar();
+        this.toast.init({
+          title: "Invitación no disponible",
+          message: mensaje || "La invitación ya no existe.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.buscar(this.paginacion.paginaActual);
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_GESTION_INVITACION.SIN_PERMISO) {
+        cerrar();
+        if (invitacion?.idInvitacion != null) {
+          this.idsNoGestionables = [
+            ...this.idsNoGestionables,
+            invitacion.idInvitacion,
+          ];
+        }
+        this.toast.init({
+          title: "Sin permiso",
+          message:
+            mensaje || "La invitación no pertenece al perfil activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.buscar(this.paginacion.paginaActual);
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_GESTION_INVITACION.NO_PENDIENTE) {
+        cerrar();
+        this.toast.init({
+          title: "La invitación ya no está pendiente",
+          message:
+            mensaje ||
+            "La invitación cambió de estado. Actualizamos el listado.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.buscar(this.paginacion.paginaActual);
+        return;
+      }
+
+      const motivo =
+        tipo === TIPOS_ERROR_GESTION_INVITACION.SIN_DISPONIBILIDAD &&
+        codigoMotivo
+          ? mensajeMotivo(codigoMotivo, mensaje)
+          : mensaje;
+
+      const tiposConRechazo = [
+        TIPOS_ERROR_GESTION_INVITACION.SIN_DISPONIBILIDAD,
+        TIPOS_ERROR_GESTION_INVITACION.CUPO,
+        TIPOS_ERROR_GESTION_INVITACION.PROFESION,
+        TIPOS_ERROR_GESTION_INVITACION.PROYECTO_ESTADO,
+        TIPOS_ERROR_GESTION_INVITACION.ACTIVIDAD_INVALIDA,
+        TIPOS_ERROR_GESTION_INVITACION.YA_MIEMBRO,
+        TIPOS_ERROR_GESTION_INVITACION.YA_ASIGNADO,
+        TIPOS_ERROR_GESTION_INVITACION.DIRECTOR,
+        TIPOS_ERROR_GESTION_INVITACION.CONFLICTO,
+      ];
+
+      this.errorGestion = motivo;
+      this.mostrarRechazoTrasError =
+        tiposConRechazo.includes(tipo) &&
+        this.modalGestion.accion === ACCIONES_GESTION_INVITACION.ACEPTAR;
     },
     estaEliminacionBloqueada(invitacion) {
       const id = invitacion?.idInvitacion;

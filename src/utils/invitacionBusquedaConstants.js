@@ -262,7 +262,46 @@ export const TIPOS_ERROR_INVITACIONES = {
   DESCONOCIDO: "DESCONOCIDO",
 };
 
+export const ACCIONES_GESTION_INVITACION = {
+  ACEPTAR: "ACEPTAR",
+  RECHAZAR: "RECHAZAR",
+};
+
 export const CODIGO_INVITACION_NO_PENDIENTE = "INVITACION_NO_PENDIENTE";
+
+export const TIPOS_ERROR_GESTION_INVITACION = {
+  SESION: "SESION",
+  CUENTA: "CUENTA",
+  PERFIL_ACTIVO: "PERFIL_ACTIVO",
+  NO_ENCONTRADA: "NO_ENCONTRADA",
+  SIN_PERMISO: "SIN_PERMISO",
+  NO_PENDIENTE: "NO_PENDIENTE",
+  SIN_DISPONIBILIDAD: "SIN_DISPONIBILIDAD",
+  CUPO: "CUPO",
+  PROFESION: "PROFESION",
+  PROYECTO_ESTADO: "PROYECTO_ESTADO",
+  ACTIVIDAD_INVALIDA: "ACTIVIDAD_INVALIDA",
+  YA_MIEMBRO: "YA_MIEMBRO",
+  YA_ASIGNADO: "YA_ASIGNADO",
+  DIRECTOR: "DIRECTOR",
+  CONFLICTO: "CONFLICTO",
+  DESCONOCIDO: "DESCONOCIDO",
+};
+
+const CODIGOS_DISPONIBILIDAD_INVITACION = [
+  "SIN_MIEMBROS",
+  "SIN_JORNADA",
+  "DURACION_EXCEDE_VENTANA",
+  "SIN_HUECO",
+  "SIN_HUECO_COMUN",
+  "FUERA_TOLERANCIA_PREFERENCIA",
+  "SIN_DISPONIBILIDAD",
+  "CONFLICTO_FIJO",
+  "DATOS_INCONSISTENTES",
+  "CRONOGRAMA_NO_VIABLE",
+  "FECHA_ENTREGA_INVALIDA",
+  "ACTIVIDAD_NO_REPROGRAMABLE",
+];
 
 export const TIPOS_ERROR_ELIMINAR_INVITACION = {
   SESION: "SESION",
@@ -279,6 +318,164 @@ export const TIPOS_ERROR_ELIMINAR_INVITACION = {
  * @param {object} error error Axios
  * @returns {{tipo:string,status:number|null,mensaje:string}}
  */
+/**
+ * Clasifica el error de aceptar/rechazar una invitación (UC-28).
+ * El backend puede devolver la causa de disponibilidad en `codigo` o
+ * `codigoMotivo`, según el handler que origine el 409.
+ * @param {object} error error Axios
+ * @returns {{tipo:string,status:number|null,codigo:string,
+ *   codigoMotivo:string|null,mensaje:string}}
+ */
+export function clasificarErrorGestionInvitacion(error) {
+  const status = error?.response?.status ?? null;
+  const data = error?.response?.data;
+  const payload = data && typeof data === "object" ? data : {};
+  const mensaje =
+    typeof payload.message === "string" ? payload.message.trim() : "";
+  const codigo = String(payload.codigo || "").toUpperCase();
+  const codigoMotivo = payload.codigoMotivo
+    ? String(payload.codigoMotivo).toUpperCase()
+    : CODIGOS_DISPONIBILIDAD_INVITACION.includes(codigo)
+      ? codigo
+      : null;
+
+  const crear = (tipo, texto) => ({
+    tipo,
+    status,
+    codigo,
+    codigoMotivo,
+    mensaje: texto || "No se pudo gestionar la invitación.",
+  });
+
+  if (esSesionExpirada(error)) {
+    return crear(
+      TIPOS_ERROR_GESTION_INVITACION.SESION,
+      "Tu sesión expiró. Volvé a iniciar sesión."
+    );
+  }
+
+  if (esCuentaNoActiva(error)) {
+    return crear(
+      TIPOS_ERROR_GESTION_INVITACION.CUENTA,
+      mensaje || "Tu cuenta no se encuentra activa."
+    );
+  }
+
+  if (status === 403) {
+    return crear(
+      TIPOS_ERROR_GESTION_INVITACION.SIN_PERMISO,
+      mensaje || "La invitación no pertenece al perfil activo."
+    );
+  }
+
+  if (status === 404) {
+    if (/perfil\s*activo|no hay un perfil activo/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.PERFIL_ACTIVO,
+        mensaje || "No hay un perfil activo seleccionado."
+      );
+    }
+    return crear(
+      TIPOS_ERROR_GESTION_INVITACION.NO_ENCONTRADA,
+      mensaje || "La invitación ya no existe."
+    );
+  }
+
+  if (status === 409) {
+    if (
+      codigo === CODIGO_INVITACION_NO_PENDIENTE ||
+      /s[oó]lo se pueden (?:aceptar|rechazar) invitaciones pendientes|ya (?:fue|est[aá]) (?:aceptada|rechazada|gestionada)/i.test(
+        mensaje
+      )
+    ) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.NO_PENDIENTE,
+        mensaje || "La invitación ya no está pendiente."
+      );
+    }
+
+    if (
+      (codigo && CODIGOS_DISPONIBILIDAD_INVITACION.includes(codigo)) ||
+      (codigoMotivo &&
+        CODIGOS_DISPONIBILIDAD_INVITACION.includes(codigoMotivo)) ||
+      /disponibilidad suficiente|sin disponibilidad|sin hueco|hueco com[uú]n|tolerancia|reprogramar/i.test(
+        mensaje
+      )
+    ) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.SIN_DISPONIBILIDAD,
+        mensaje || "No hay disponibilidad suficiente para la actividad."
+      );
+    }
+
+    if (/satisfecho|cupo/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.CUPO,
+        mensaje || "El cupo del requerimiento ya fue cubierto."
+      );
+    }
+
+    if (/profesi[oó]n/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.PROFESION,
+        mensaje || "La profesión del perfil no coincide con la requerida."
+      );
+    }
+
+    if (/ya es miembro|miembro activo/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.YA_MIEMBRO,
+        mensaje || "El perfil ya es miembro activo del proyecto."
+      );
+    }
+
+    if (/ya está asignado|ya existe una asignación|duplicad/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.YA_ASIGNADO,
+        mensaje || "El perfil ya está asignado a esta actividad."
+      );
+    }
+
+    if (/director no puede/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.DIRECTOR,
+        mensaje || "Un director no puede aceptar esta invitación."
+      );
+    }
+
+    if (/proyecto.*(estado|cancel|finaliz|no permite)/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.PROYECTO_ESTADO,
+        mensaje || "El proyecto ya no admite esta invitación."
+      );
+    }
+
+    if (/actividad.*(pendiente|en curso|estado|inv[aá]lid)/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_GESTION_INVITACION.ACTIVIDAD_INVALIDA,
+        mensaje || "La actividad ya no admite esta invitación."
+      );
+    }
+
+    return crear(
+      TIPOS_ERROR_GESTION_INVITACION.CONFLICTO,
+      mensaje || "No se pudo gestionar la invitación."
+    );
+  }
+
+  if (!status || status >= 500) {
+    return crear(
+      TIPOS_ERROR_GESTION_INVITACION.DESCONOCIDO,
+      "Ocurrió un error al gestionar la invitación. Inténtalo nuevamente."
+    );
+  }
+
+  return crear(
+    TIPOS_ERROR_GESTION_INVITACION.DESCONOCIDO,
+    mensajeErrorApi(error, "No se pudo gestionar la invitación.")
+  );
+}
+
 /**
  * Clasifica el error del DELETE de UC-32.
  * @param {object} error error Axios

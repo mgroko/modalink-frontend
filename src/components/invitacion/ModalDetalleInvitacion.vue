@@ -109,19 +109,36 @@
 
     <template #footer>
       <div class="detalle-invitacion__acciones">
-        <VaButton
-          v-if="puedeEliminarInvitacion"
-          preset="secondary"
-          color="danger"
-          @click="$emit('eliminar', invitacion)"
-        >
-          Eliminar invitación
-        </VaButton>
+        <div class="detalle-invitacion__acciones-izquierda">
+          <VaButton
+            v-if="puedeGestionarInvitacion"
+            preset="secondary"
+            color="danger"
+            @click="$emit('rechazar', invitacion)"
+          >
+            Rechazar invitación
+          </VaButton>
+          <VaButton
+            v-else-if="puedeEliminarInvitacion"
+            preset="secondary"
+            color="danger"
+            @click="$emit('eliminar', invitacion)"
+          >
+            Eliminar invitación
+          </VaButton>
+        </div>
 
         <div class="detalle-invitacion__acciones-principales">
           <VaButton preset="secondary" @click="cerrar">Cerrar</VaButton>
           <VaButton
-            v-if="puedeVerProyecto"
+            v-if="puedeGestionarInvitacion"
+            preset="primary"
+            @click="$emit('aceptar', invitacion)"
+          >
+            Aceptar invitación
+          </VaButton>
+          <VaButton
+            v-else-if="puedeVerProyecto"
             preset="primary"
             @click="$emit('ver-proyecto', invitacion)"
           >
@@ -163,8 +180,18 @@ export default {
       type: Boolean,
       default: false,
     },
+    gestionBloqueada: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ["update:modelValue", "ver-proyecto", "eliminar"],
+  emits: [
+    "update:modelValue",
+    "ver-proyecto",
+    "eliminar",
+    "aceptar",
+    "rechazar",
+  ],
   data() {
     return {
       fotoUrl: null,
@@ -178,6 +205,13 @@ export default {
     },
     puedeVerProyecto() {
       return this.invitacion?.estado === ESTADOS_INVITACION.ACEPTADA;
+    },
+    puedeGestionarInvitacion() {
+      return (
+        !this.gestionBloqueada &&
+        this.invitacion?.direccion === DIRECCIONES_INVITACION.RECIBIDA &&
+        this.invitacion?.estado === ESTADOS_INVITACION.PENDIENTE
+      );
     },
     puedeEliminarInvitacion() {
       return (
@@ -448,6 +482,12 @@ export default {
   width: 100%;
 }
 
+.detalle-invitacion__acciones-izquierda {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .detalle-invitacion__acciones-principales {
   display: flex;
   align-items: center;
@@ -463,6 +503,17 @@ export default {
   .detalle-invitacion__proyecto-linea {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .detalle-invitacion__acciones {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .detalle-invitacion__acciones-izquierda,
+  .detalle-invitacion__acciones-principales {
+    flex-direction: column-reverse;
+    margin-left: 0;
   }
 }
 </style>

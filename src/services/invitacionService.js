@@ -105,6 +105,39 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {InvitacionBatchError[]} errores
  */
 
+/**
+ * @typedef {Object} DisponibilidadInvitacion
+ * @property {boolean} disponible
+ * @property {boolean} provisional
+ * @property {string|null} inicioEvaluado
+ * @property {string|null} finEvaluado
+ * @property {string|null} [codigoMotivo]
+ * @property {string|null} [motivo]
+ */
+
+/**
+ * @typedef {Object} AdvertenciaInvitacion
+ * @property {number|null} idActividad
+ * @property {string|null} nombreActividad
+ * @property {number|null} idProyecto
+ * @property {string|null} nombreProyecto
+ * @property {string|null} inicioPotencial
+ * @property {string|null} finPotencial
+ */
+
+/**
+ * @typedef {Object} InvitacionGestionadaResponse
+ * @property {number} idInvitacion
+ * @property {"GENERAL"|"ACTIVIDAD"} tipo
+ * @property {"ACEPTADA"|"RECHAZADA"} estado
+ * @property {number} idProyecto
+ * @property {number} idPerfil
+ * @property {number|null} idMiembro
+ * @property {number|null} idAsignacionActividad
+ * @property {DisponibilidadInvitacion|null} disponibilidad
+ * @property {AdvertenciaInvitacion[]} advertencias
+ */
+
 function normalizarMensaje(mensaje) {
   const texto = String(mensaje ?? "").trim();
   return texto || null;
@@ -202,6 +235,77 @@ const invitacionService = {
         idPerfilDestinatario,
         mensaje: normalizarMensaje(mensaje),
       },
+      { signal }
+    );
+  },
+
+  /**
+   * POST /invitaciones/general/{idInvitacion}/aceptar — UC-28.
+   *
+   * Sin body. El perfil activo debe ser el destinatario.
+   * Errores:
+   * - 403 la invitación no pertenece al perfil activo
+   * - 404 invitación/perfil activo inexistente
+   * - 409 ya gestionada, proyecto no habilitado, requerimiento satisfecho,
+   *   profesión incompatible o perfil ya miembro
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
+   */
+  aceptarGeneral(idInvitacion, signal) {
+    return http.post(
+      `/invitaciones/general/${idInvitacion}/aceptar`,
+      null,
+      { signal }
+    );
+  },
+
+  /**
+   * POST /invitaciones/actividad/{idInvitacion}/aceptar — UC-28.
+   *
+   * Sin body. Además de la membresía, crea la asignación a la actividad y
+   * revalida la disponibilidad. Los 409 pueden traer `codigo`/`codigoMotivo`
+   * de disponibilidad.
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
+   */
+  aceptarActividad(idInvitacion, signal) {
+    return http.post(
+      `/invitaciones/actividad/${idInvitacion}/aceptar`,
+      null,
+      { signal }
+    );
+  },
+
+  /**
+   * POST /invitaciones/general/{idInvitacion}/rechazar — UC-28.
+   *
+   * Sin body. La invitación queda RECHAZADA; no se elimina.
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
+   */
+  rechazarGeneral(idInvitacion, signal) {
+    return http.post(
+      `/invitaciones/general/${idInvitacion}/rechazar`,
+      null,
+      { signal }
+    );
+  },
+
+  /**
+   * POST /invitaciones/actividad/{idInvitacion}/rechazar — UC-28.
+   *
+   * Sin body. La invitación queda RECHAZADA; no se elimina.
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
+   */
+  rechazarActividad(idInvitacion, signal) {
+    return http.post(
+      `/invitaciones/actividad/${idInvitacion}/rechazar`,
+      null,
       { signal }
     );
   },

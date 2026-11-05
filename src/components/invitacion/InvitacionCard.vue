@@ -69,19 +69,16 @@
       >
         <VaButton
           preset="secondary"
+          color="danger"
           size="small"
-          disabled
-          :title="textoAccionDeshabilitada"
-          @click.stop
+          @click.stop="$emit('rechazar', invitacion)"
         >
           Rechazar
         </VaButton>
         <VaButton
           preset="primary"
           size="small"
-          disabled
-          :title="textoAccionDeshabilitada"
-          @click.stop
+          @click.stop="$emit('aceptar', invitacion)"
         >
           Aceptar
         </VaButton>
@@ -154,8 +151,13 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Se activa si un 403 ya bloqueó aceptar/rechazar para este ítem. */
+    gestionBloqueada: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ["abrir", "ver-proyecto", "eliminar"],
+  emits: ["abrir", "ver-proyecto", "eliminar", "aceptar", "rechazar"],
   data() {
     return {
       fotoRota: false,
@@ -170,6 +172,7 @@ export default {
     },
     esPendienteRecibida() {
       return (
+        !this.gestionBloqueada &&
         this.esRecibida &&
         this.invitacion.estado === ESTADOS_INVITACION.PENDIENTE
       );
@@ -217,9 +220,6 @@ export default {
     },
     tipoClase() {
       return this.esActividad ? "actividad" : "general";
-    },
-    textoAccionDeshabilitada() {
-      return "La gestión de invitaciones estará disponible próximamente (UC-28).";
     },
   },
   watch: {
