@@ -120,6 +120,17 @@ export function nombreActorHistorial(evento) {
 export function normalizarEventoHistorial(evento, indice = 0) {
   const dato = evento && typeof evento === "object" ? evento : {};
   const id = Number(dato.idEvento);
+  const actividades = Array.isArray(dato.actividades)
+    ? dato.actividades
+        .filter((actividad) => actividad && typeof actividad === "object")
+        .map((actividad) => ({
+          idActividad: actividad.idActividad ?? null,
+          nombreActividad: actividad.nombreActividad ?? null,
+          estadoActividad: actividad.estadoActividad ?? null,
+          idRequerimiento: actividad.idRequerimiento ?? null,
+          nombreProfesion: actividad.nombreProfesion ?? null,
+        }))
+    : [];
   return {
     clave:
       (Number.isFinite(id) && id > 0 ? `evento-${id}` : `evento-${indice}`) +
@@ -143,6 +154,7 @@ export function normalizarEventoHistorial(evento, indice = 0) {
     estadoParticipacion: dato.estadoParticipacion ?? null,
     idActividad: dato.idActividad ?? null,
     nombreActividad: dato.nombreActividad ?? null,
+    actividades,
   };
 }
 

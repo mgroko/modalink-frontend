@@ -106,8 +106,8 @@
               <th>Estado</th>
               <th>Motivo</th>
               <th>Responsable</th>
-              <th title="Primera actividad registrada para el integrante al momento de la consulta">
-                Actividad registrada
+              <th title="Actividades asignadas al integrante al momento de la consulta">
+                Actividades registradas
               </th>
             </tr>
           </thead>
@@ -160,9 +160,25 @@
               </td>
 
               <td class="historial-proyecto__actividad">
-                <template v-if="evento.nombreActividad">
-                  {{ evento.nombreActividad }}
-                </template>
+                <ul
+                  v-if="actividadesEvento(evento).length"
+                  class="historial-proyecto__actividades"
+                >
+                  <li
+                    v-for="(actividad, indice) in actividadesEvento(evento)"
+                    :key="`${evento.clave}-${indice}`"
+                  >
+                    <span class="historial-proyecto__actividad-nombre">
+                      {{ actividad.nombreActividad }}
+                    </span>
+                    <span
+                      v-if="actividad.nombreProfesion"
+                      class="historial-proyecto__actividad-detalle"
+                    >
+                      {{ actividad.nombreProfesion }}
+                    </span>
+                  </li>
+                </ul>
                 <template v-else-if="evento.idActividad != null">
                   Actividad #{{ evento.idActividad }}
                 </template>
@@ -309,6 +325,23 @@ export default {
       if (clave === "DIRECTOR") return "Director";
       if (clave === "MIEMBRO") return "Miembro";
       return clave || "—";
+    },
+    actividadesEvento(evento) {
+      const actividades = Array.isArray(evento?.actividades)
+        ? evento.actividades.filter((actividad) => actividad?.nombreActividad)
+        : [];
+      if (actividades.length) return actividades;
+
+      // Compatibilidad con respuestas previas que solo traían una actividad.
+      if (evento?.nombreActividad) {
+        return [
+          {
+            nombreActividad: evento.nombreActividad,
+            nombreProfesion: null,
+          },
+        ];
+      }
+      return [];
     },
     resetear() {
       this.eventos = [];
@@ -535,6 +568,28 @@ export default {
 .historial-proyecto__actividad {
   color: var(--color-text-muted);
   max-width: 220px;
+}
+
+.historial-proyecto__actividades {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.historial-proyecto__actividades li {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.historial-proyecto__actividad-nombre {
+  color: var(--color-text);
+}
+
+.historial-proyecto__actividad-detalle {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
 }
 
 .historial-proyecto__chip {

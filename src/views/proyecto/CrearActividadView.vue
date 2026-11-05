@@ -144,13 +144,12 @@
                   {{ errores.unidadDuracion }}
                 </p>
 
-                <VaInput
+                <CampoHora
                   v-model="form.horarioPreferenciaInicio"
-                  type="time"
                   label="Horario preferido de inicio"
                   hint="Opcional. No es el horario definitivo de la actividad."
                   :error="!!errores.horarioPreferenciaInicio"
-                  :error-messages="errores.horarioPreferenciaInicio || undefined"
+                  :error-message="errores.horarioPreferenciaInicio || ''"
                 />
 
                 <VaTextarea
@@ -431,6 +430,7 @@ import { refrescarSesion, idPerfilActivo } from "../../services/authState";
 import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
+import CampoHora from "../../components/CampoHora.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import SelectorUbicacion from "../../components/proyecto/SelectorUbicacion.vue";
 import RequerimientoForm from "../../components/proyecto/RequerimientoForm.vue";
@@ -473,6 +473,7 @@ export default {
   name: "CrearActividadView",
   components: {
     BaseAlert,
+    CampoHora,
     ProyectoEncabezado,
     SelectorUbicacion,
     RequerimientoForm,

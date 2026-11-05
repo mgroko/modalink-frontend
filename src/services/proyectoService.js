@@ -224,6 +224,9 @@ import { serializarParams } from "../utils/queryParams.js";
  *           planificación del proyecto defina las actividades
  * @property {string|null} fechaEntregaEstipulada "YYYY-MM-DD"
  * @property {string} estado estado inicial tras la creación: "Borrador"
+ * @property {string|null} [fechaFinalizacion] UC-37: fecha y hora en que se
+ *           finalizó el proyecto (ISO local, ej. "2026-11-05T15:30:00");
+ *           null si el proyecto no está finalizado.
  * @property {"PUBLICO"|"PRIVADO"} privacidad
  * @property {boolean} aceptaPostulacionGral
  * @property {UbicacionProyectoResponse|null} ubicacion
@@ -320,6 +323,93 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {{resumen: object, actividades: object[], conflictos: object[]}} cronograma
  *           Se ignora para render: el front reconsulta
  *           GET /proyectos/{id}/cronograma para no duplicar la fuente de verdad
+ */
+
+/**
+ * @typedef {Object} MiembroACalificarResponse
+ *   UC-37. Integrante activo habilitado para recibir una calificación.
+ *   El backend ya lo devuelve ordenado por nombreArtistico y luego por
+ *   idMiembro; el front no lo reordena.
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string} nombreUsuario
+ * @property {string} apellidoUsuario
+ * @property {"DIRECTOR"|"MIEMBRO"|string} rol
+ * @property {boolean} yaCalificado true si el perfil activo ya lo calificó.
+ *           No incluye valoración ni reseña: esos datos se buscan en
+ *           `calificacionesEmitidas` por `idPerfilReceptor`.
+ */
+
+/**
+ * @typedef {Object} BloqueoFinalizacionResponse
+ *   UC-37. Motivo por el que el proyecto todavía no puede finalizarse.
+ * @property {string} codigo
+ * @property {string} mensaje
+ * @property {string|null} entidadTipo
+ * @property {number|null} entidadId
+ */
+
+/**
+ * @typedef {Object} FinalizacionPreviewResponse
+ *   UC-37 GET /proyectos/{id}/finalizacion. Siempre responde 200: los
+ *   problemas de negocio vienen en `bloqueos` con `puedeFinalizar: false`.
+ * @property {boolean} puedeFinalizar
+ * @property {string} estado
+ * @property {string|null} fechaEntrega "YYYY-MM-DD"
+ * @property {string|null} fechaActual "YYYY-MM-DD"
+ * @property {BloqueoFinalizacionResponse[]} bloqueos
+ * @property {MiembroACalificarResponse[]} miembrosACalificar
+ * @property {number} calificacionesRequeridas miembros activos excluyendo
+ *           al perfil activo
+ * @property {number} calificacionesRealizadas
+ * @property {number} calificacionesPendientes
+ */
+
+/**
+ * @typedef {Object} CalificacionRequest
+ *   UC-37. Mismo shape para finalizar y para calificar entre participantes.
+ * @property {number} idPerfil perfil receptor
+ * @property {number} valoracion entero de 1 a 5
+ * @property {string} resenia obligatoria, no vacía, máximo 200 caracteres
+ */
+
+/**
+ * @typedef {Object} FinalizarProyectoRequest
+ * @property {CalificacionRequest[]} calificaciones
+ */
+
+/**
+ * @typedef {Object} FinalizarProyectoResponse
+ *   UC-37 POST /proyectos/{id}/finalizar.
+ * @property {ProyectoResponse} proyecto proyecto completo ya finalizado
+ * @property {string} fechaFinalizacion ISO local date-time
+ * @property {number} calificacionesRegistradas
+ */
+
+/**
+ * @typedef {Object} CalificacionEmitidaResponse
+ *   UC-37. Calificación ya emitida por el perfil activo en el proyecto.
+ *   No incluye idProyecto, nombre ni rol del receptor, datos anidados del
+ *   perfil ni promedio.
+ * @property {number} idCalificacion
+ * @property {number} idPerfilEmisor
+ * @property {number} idPerfilReceptor
+ * @property {number} valoracion entero de 1 a 5
+ * @property {string} resenia máximo 200 caracteres
+ * @property {string} fechaRegistro ISO local date-time
+ */
+
+/**
+ * @typedef {Object} CalificacionesProyectoResponse
+ *   UC-37 GET/POST /proyectos/{id}/calificaciones. El POST devuelve el estado
+ *   actualizado: las calificaciones previas más las recién creadas.
+ *   `calificacionesEmitidas` no tiene orden garantizado.
+ * @property {boolean} calificacionesCompletas `calificacionesPendientes === 0`
+ * @property {number} calificacionesRequeridas
+ * @property {number} calificacionesRealizadas
+ * @property {number} calificacionesPendientes
+ * @property {MiembroACalificarResponse[]} miembrosACalificar
+ * @property {CalificacionEmitidaResponse[]} calificacionesEmitidas
  */
 
 /**
@@ -489,10 +579,20 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} ActividadHistorialResponse
+ *   Actividad asignada a un miembro histórico.
+ * @property {number} idActividad
+ * @property {string} nombreActividad
+ * @property {string|null} estadoActividad
+ * @property {number|null} idRequerimiento
+ * @property {string|null} nombreProfesion
+ */
+
+/**
  * @typedef {Object} EventoHistorialProyectoResponse
- *   Evento de membresía del proyecto. `idActividad`/`nombreActividad` son la
- *   primera actividad registrada para el integrante al momento de la consulta,
- *   no la actividad causal de la baja.
+ *   Evento de membresía del proyecto. `idActividad`/`nombreActividad` se
+ *   mantienen por compatibilidad y reflejan la primera actividad registrada;
+ *   `actividades` trae la lista completa.
  * @property {number} idEvento
  * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"|string} tipo
  * @property {string} fecha ISO-8601 local, formato yyyy-MM-dd'T'HH:mm:ss
@@ -513,6 +613,8 @@ import { serializarParams } from "../utils/queryParams.js";
  *           estadoParticipacion
  * @property {number|null} idActividad primera actividad registrada, si existe
  * @property {string|null} nombreActividad
+ * @property {ActividadHistorialResponse[]} actividades lista completa;
+ *           puede ser []
  */
 
 /**
@@ -948,6 +1050,113 @@ const proyectoService = {
    */
   confirmar(idProyecto, signal) {
     return http.post(`/proyectos/${idProyecto}/confirmar`, null, { signal });
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/finalizacion — UC-37, previsualización.
+   * Requiere sesión, perfil activo, membresía activa, rol Director y permiso
+   * `FINALIZAR_PROYECTO`. Es de solo lectura: no persiste calificaciones ni
+   * cambia el estado.
+   *
+   * Siempre responde 200. Los problemas de negocio vienen en `bloqueos` con
+   * `puedeFinalizar: false`. No se deben recalcular en el frontend: mostrar
+   * `puedeFinalizar`, `bloqueos`, `miembrosACalificar` y los contadores tal
+   * como llegan.
+   *
+   * Errores:
+   * - 403 sin perfil activo, sin membresía activa o sin `FINALIZAR_PROYECTO`
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: FinalizacionPreviewResponse}>} 200 OK
+   */
+  previsualizarFinalizacion(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/finalizacion`, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/finalizar — UC-37.
+   * Finaliza un proyecto `Confirmado` y registra las calificaciones del
+   * director en una sola operación atómica. El body debe tener exactamente
+   * `{ calificaciones }`; el perfil activo lo resuelve la sesión.
+   *
+   * Se deben enviar todas las calificaciones pendientes del director. Cada
+   * elemento es `{ idPerfil, valoracion, resenia }`; `resenia` es obligatoria
+   * y máximo 200 caracteres.
+   *
+   * Errores (ficha §6). Los errores de finalización conservan
+   * `{ message, httpStatus, timestamp }` y agregan `codigo` y `bloqueos`:
+   * - 400 CALIFICACION_INVALIDA
+   * - 403 sin perfil activo, membresía o `FINALIZAR_PROYECTO`
+   * - 404 perfil activo, perfil o proyecto inexistente
+   * - 409 PROYECTO_YA_FINALIZADO / ESTADO_PROYECTO_INVALIDO
+   * - 409 PLANIFICACION_NO_ENCONTRADA / FECHA_ENTREGA_NO_DEFINIDA /
+   *   FECHA_ENTREGA_FUTURA / SIN_ACTIVIDADES / ACTIVIDAD_NO_FINALIZADA
+   * - 409 CALIFICACIONES_INCOMPLETAS con `faltantes[]` de idPerfil
+   * @param {number|string} idProyecto
+   * @param {CalificacionRequest[]} calificaciones
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: FinalizarProyectoResponse}>} 200 OK
+   */
+  finalizar(idProyecto, calificaciones, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/finalizar`,
+      { calificaciones: Array.isArray(calificaciones) ? calificaciones : [] },
+      { signal }
+    );
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/calificaciones — UC-37.
+   * Requiere proyecto `Finalizado` y membresía activa. Devuelve el estado de
+   * calificación del perfil activo y las calificaciones que ya emitió.
+   *
+   * `calificacionesEmitidas` no tiene orden garantizado: el front decide si
+   * necesita ordenarlo (por `fechaRegistro` o `idCalificacion`). Para mostrar
+   * el nombre del receptor, cruzar `idPerfilReceptor` con
+   * `miembrosACalificar[]` por `idPerfil`.
+   *
+   * Errores:
+   * - 403 sin perfil activo, sin membresía activa o sin acceso
+   * - 404 perfil activo o proyecto inexistente
+   * - 409 PROYECTO_NO_CALIFICABLE si el proyecto no está Finalizado
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: CalificacionesProyectoResponse}>} 200 OK
+   */
+  obtenerCalificaciones(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/calificaciones`, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/calificaciones — UC-37.
+   * Permite que un participante califique a los demás integrantes activos una
+   * vez finalizado el proyecto. Se deben enviar todas las calificaciones
+   * pendientes en una sola solicitud; no se puede calificar dos veces al mismo
+   * compañero. El body debe tener exactamente `{ calificaciones }`.
+   *
+   * La respuesta 200 devuelve el estado actualizado con las calificaciones
+   * previas más las recién creadas; reemplaza el estado local sin hacer otro
+   * GET.
+   *
+   * Errores:
+   * - 400 CALIFICACION_INVALIDA (valoración 1-5, reseña vacía/larga,
+   *   auto-calificación, perfil ajeno o duplicado)
+   * - 403 sin perfil activo, sin membresía activa o sin acceso
+   * - 404 perfil activo, perfil o proyecto inexistente
+   * - 409 PROYECTO_NO_CALIFICABLE si el proyecto no está Finalizado
+   * - 409 CALIFICACIONES_INCOMPLETAS con `faltantes[]` de idPerfil
+   * @param {number|string} idProyecto
+   * @param {CalificacionRequest[]} calificaciones
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: CalificacionesProyectoResponse}>} 200 OK
+   */
+  calificarEquipo(idProyecto, calificaciones, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/calificaciones`,
+      { calificaciones: Array.isArray(calificaciones) ? calificaciones : [] },
+      { signal }
+    );
   },
 
   /**

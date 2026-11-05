@@ -101,19 +101,21 @@
                   </template>
 
                   <VaDropdownContent>
-                    <VaMenuItem
-                      v-for="accion in accionesSecundarias"
-                      :key="accion"
-                      class="modificar-actividad__estado-menu-item--peligro"
-                      :disabled="
-                        guardando ||
-                        cambiandoEstado ||
-                        !puedeEjecutarAccion(accion)
-                      "
-                      @click="solicitarCambioEstado(accion)"
-                    >
-                      {{ ETIQUETAS_ACCION_ESTADO[accion] }}
-                    </VaMenuItem>
+                    <VaMenuList>
+                      <VaMenuItem
+                        v-for="accion in accionesSecundarias"
+                        :key="accion"
+                        class="modificar-actividad__estado-menu-item--peligro"
+                        :disabled="
+                          guardando ||
+                          cambiandoEstado ||
+                          !puedeEjecutarAccion(accion)
+                        "
+                        @click="solicitarCambioEstado(accion)"
+                      >
+                        {{ ETIQUETAS_ACCION_ESTADO[accion] }}
+                      </VaMenuItem>
+                    </VaMenuList>
                   </VaDropdownContent>
                 </VaDropdown>
               </div>
@@ -297,13 +299,12 @@
                   {{ errores.unidadDuracion }}
                 </p>
 
-                <VaInput
+                <CampoHora
                   v-model="form.horarioPreferenciaInicio"
-                  type="time"
                   label="Horario preferido de inicio"
                   hint="Opcional. No es el horario definitivo de la actividad."
                   :error="!!errores.horarioPreferenciaInicio"
-                  :error-messages="errores.horarioPreferenciaInicio || undefined"
+                  :error-message="errores.horarioPreferenciaInicio || ''"
                 />
 
                 <VaTextarea
@@ -779,6 +780,7 @@ import { refrescarSesion, idPerfilActivo } from "../../services/authState";
 import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
+import CampoHora from "../../components/CampoHora.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import ChipOrigenInicio from "../../components/proyecto/ChipOrigenInicio.vue";
 import SelectorUbicacion from "../../components/proyecto/SelectorUbicacion.vue";
@@ -852,6 +854,7 @@ export default {
   name: "ModificarActividadView",
   components: {
     BaseAlert,
+    CampoHora,
     ProyectoEncabezado,
     ChipOrigenInicio,
     SelectorUbicacion,
