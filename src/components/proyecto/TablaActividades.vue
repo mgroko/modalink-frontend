@@ -93,7 +93,18 @@
           </td>
 
           <td class="tabla-actividades__fechas">
-            <span>{{ rangoFechas(actividad) }}</span>
+            <span class="tabla-actividades__fecha-rango">
+              {{ rangoFechas(actividad) }}
+            </span>
+            <span
+              v-if="rangoHorario(actividad)"
+              class="tabla-actividades__horario"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">
+                schedule
+              </span>
+              {{ rangoHorario(actividad) }}
+            </span>
           </td>
 
           <td>
@@ -157,7 +168,7 @@ import {
   puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
 import { idPerfilActivo } from "../../services/authState";
-import { formatearFechaCorta } from "../../utils/fechas.js";
+import { formatearFechaCorta, formatearRangoHoras } from "../../utils/fechas.js";
 import ChipOrigenInicio from "./ChipOrigenInicio.vue";
 import {
   motivoNoEliminableActividad,
@@ -301,6 +312,13 @@ export default {
       if (inicio === "—" && fin === "—") return "—";
       return `${inicio} – ${fin}`;
     },
+    rangoHorario(actividad) {
+      if (!actividad?.fechaHoraInicio) return "";
+      return formatearRangoHoras(
+        actividad.fechaHoraInicio,
+        actividad.fechaHoraFin
+      );
+    },
     estiloEstado(estado) {
       const colores = coloresEstadoActividad(estado);
       return {
@@ -425,6 +443,23 @@ export default {
 .tabla-actividades__duracion,
 .tabla-actividades__fechas {
   white-space: nowrap;
+}
+
+.tabla-actividades__fecha-rango {
+  display: block;
+}
+
+.tabla-actividades__horario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
+.tabla-actividades__horario .material-symbols-outlined {
+  font-size: 0.9rem;
 }
 
 .tabla-actividades__estado-celda {

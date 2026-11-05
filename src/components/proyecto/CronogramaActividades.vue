@@ -275,23 +275,6 @@ export default {
   margin-bottom: 1rem;
 }
 
-.cronograma-actividades__barra--proyectada {
-  opacity: 0.55;
-  background: var(--color-primary-light, var(--color-primary));
-}
-
-.cronograma-actividades__barra--tentativa {
-  border: 1px dashed var(--color-warning-text);
-}
-
-.cronograma-actividades__barra--critica {
-  box-shadow: inset 0 -3px 0 var(--color-danger-text);
-}
-
-.cronograma-actividades__barra--fija {
-  border-right: 3px solid var(--color-text-muted);
-}
-
 .cronograma-actividades__barra--seleccionada,
 .cronograma-actividades__pista--seleccionada {
   outline: 2px solid var(--color-primary);
@@ -339,8 +322,7 @@ export default {
 }
 
 .cronograma-actividades__leyenda-cuadro--critica {
-  background: var(--color-primary);
-  box-shadow: inset 0 -3px 0 var(--color-danger-text);
+  background: var(--color-ruta-critica);
 }
 
 .cronograma-actividades__nota {
@@ -428,6 +410,26 @@ export default {
   border-radius: 4px;
   background: var(--color-primary);
   pointer-events: none;
+}
+
+/* Modificadores después de la base: misma especificidad, gana el orden. */
+.cronograma-actividades__barra--proyectada {
+  opacity: 0.55;
+  background: var(--color-primary-light, var(--color-primary));
+}
+
+.cronograma-actividades__barra--tentativa {
+  border: 1px dashed var(--color-warning-text);
+}
+
+.cronograma-actividades__barra--fija {
+  border-right: 3px solid var(--color-text-muted);
+}
+
+.cronograma-actividades__barra--critica {
+  border: 0;
+  background: var(--color-ruta-critica);
+  opacity: 1;
 }
 
 .cronograma-actividades__vacio {

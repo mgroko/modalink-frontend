@@ -65,6 +65,7 @@
 
 :root {
   color-scheme: light;
+  --color-ruta-critica: #f0006e;
   --cal-actividad: #6FBF73;
   --cal-actividad-celda: #CDECCF;
   --cal-actividad-card: #EDF8EE;
@@ -80,6 +81,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
+    --color-ruta-critica: #ff3d96;
     --cal-actividad: #4ADE80;
     --cal-actividad-celda: #1D3A28;
     --cal-actividad-card: #172E20;
@@ -149,6 +151,7 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+  --color-ruta-critica: #ff3d96;
   --cal-actividad: #4ADE80;
   --cal-actividad-celda: #1D3A28;
   --cal-actividad-card: #172E20;

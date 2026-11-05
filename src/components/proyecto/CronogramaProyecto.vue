@@ -185,7 +185,7 @@
         </header>
 
         <div
-          v-if="chipsSeleccionada.length || actividadSeleccionada.origenInicio"
+          v-if="chipsSeleccionada.length"
           class="cronograma-proyecto__chips"
         >
           <span
@@ -197,7 +197,6 @@
           >
             {{ chip.etiqueta }}
           </span>
-          <ChipOrigenInicio :origen="actividadSeleccionada.origenInicio" />
         </div>
 
         <dl class="cronograma-proyecto__detalle-lista">
@@ -365,7 +364,6 @@
 <script>
 import BaseAlert from "../AlertaBase.vue";
 import CronogramaActividades from "./CronogramaActividades.vue";
-import ChipOrigenInicio from "./ChipOrigenInicio.vue";
 import actividadService from "../../services/actividadService.js";
 import { refrescarSesion } from "../../services/authState";
 import {
@@ -376,8 +374,6 @@ import {
   ESTADOS_CRONOGRAMA,
   coloresEstadoCronograma,
   esErrorSinFechaEntrega,
-  esProyectadaCronograma,
-  esTentativa,
   etiquetaEstadoCronograma,
   etiquetaTipoConflicto,
   fechaFinInclusiva,
@@ -395,7 +391,7 @@ import { mensajeErrorApi } from "../../utils/apiError";
  */
 export default {
   name: "CronogramaProyecto",
-  components: { BaseAlert, CronogramaActividades, ChipOrigenInicio },
+  components: { BaseAlert, CronogramaActividades },
   props: {
     idProyecto: {
       type: [Number, String],
@@ -594,35 +590,11 @@ export default {
       if (!actividad) return [];
 
       const chips = [];
-      if (esProyectadaCronograma(actividad)) {
-        chips.push({
-          tipo: "proyectada",
-          etiqueta: "Proyectada",
-          detalle:
-            esTentativa(actividad)
-              ? "Proyección provisional hasta confirmar el proyecto."
-              : "Fecha proyectada por CPM; no está persistida.",
-        });
-      } else if (actividad.inicioPersistido) {
-        chips.push({
-          tipo: "persistida",
-          etiqueta: "Fechas guardadas",
-          detalle:
-            "Inicio persistido por el plan. Sigue siendo reprogramable mientras la actividad esté pendiente.",
-        });
-      }
-      if (esTentativa(actividad)) {
-        chips.push({
-          tipo: "estimada",
-          etiqueta: "Estimada",
-          detalle: "Proyección provisional hasta confirmar el proyecto.",
-        });
-      }
-      if (actividad.critica === true) {
+      if (actividad.enRutaCritica === true) {
         chips.push({
           tipo: "critica",
           etiqueta: "Crítica",
-          detalle: "Holgura de makespan igual a cero.",
+          detalle: "La actividad pertenece a la ruta crítica del cronograma.",
         });
       }
       if (actividad.conflicto === true) {
@@ -632,13 +604,6 @@ export default {
           detalle:
             actividad.motivoConflicto ||
             "La ventana CPM de la actividad no es factible.",
-        });
-      }
-      if (actividad.fijo === true) {
-        chips.push({
-          tipo: "proyectada",
-          etiqueta: "Fija",
-          detalle: "Actividad fija del cronograma.",
         });
       }
       return chips;
@@ -1163,24 +1128,6 @@ export default {
   white-space: nowrap;
 }
 
-.cronograma-proyecto__chip--proyectada {
-  border-color: var(--color-info-border);
-  background: var(--color-info-soft);
-  color: var(--color-info-text);
-}
-
-.cronograma-proyecto__chip--persistida {
-  border-color: var(--color-success-border);
-  background: var(--color-success-soft);
-  color: var(--color-success-text);
-}
-
-.cronograma-proyecto__chip--estimada {
-  border-color: var(--color-warning-border);
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
-}
-
 .cronograma-proyecto__chip--critica {
   border-color: var(--color-danger-border);
   background: var(--color-danger-soft);
@@ -1191,12 +1138,6 @@ export default {
   border-color: var(--color-danger-border);
   background: var(--color-danger-soft);
   color: var(--color-danger-text);
-}
-
-.cronograma-proyecto__chip--parcial {
-  border-color: var(--color-warning-border);
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
 }
 
 .cronograma-proyecto__detalle-lista {
