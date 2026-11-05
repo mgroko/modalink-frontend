@@ -79,6 +79,32 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} [mensaje]
  */
 
+/**
+ * @typedef {Object} InvitacionGeneralBatchRequest
+ * @property {number[]} idsPerfilDestinatario
+ * @property {string|null} [mensaje]
+ */
+
+/**
+ * @typedef {Object} InvitacionActividadBatchRequest
+ * @property {number} idRequerimientoActividad
+ * @property {number[]} idsPerfilDestinatario
+ * @property {string|null} [mensaje]
+ */
+
+/**
+ * @typedef {Object} InvitacionBatchError
+ * @property {number} idPerfilDestinatario
+ * @property {string} mensaje
+ * @property {string} codigo
+ */
+
+/**
+ * @typedef {Object} InvitacionBatchResponse
+ * @property {InvitacionResponse[]} creadas
+ * @property {InvitacionBatchError[]} errores
+ */
+
 function normalizarMensaje(mensaje) {
   const texto = String(mensaje ?? "").trim();
   return texto || null;
@@ -174,6 +200,61 @@ const invitacionService = {
       {
         idRequerimientoActividad,
         idPerfilDestinatario,
+        mensaje: normalizarMensaje(mensaje),
+      },
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/invitaciones/general/batch — UC-31.
+   *
+   * Crea una invitación independiente por cada perfil. Responde 200 con
+   * `creadas` y `errores`; un perfil con error no invalida los demás.
+   * @param {number|string} idProyecto
+   * @param {InvitacionGeneralBatchRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionBatchResponse}>} 200 OK
+   */
+  invitarGeneralBatch(
+    idProyecto,
+    { idsPerfilDestinatario, mensaje } = {},
+    signal
+  ) {
+    return http.post(
+      `/proyectos/${idProyecto}/invitaciones/general/batch`,
+      {
+        idsPerfilDestinatario: Array.isArray(idsPerfilDestinatario)
+          ? idsPerfilDestinatario
+          : [],
+        mensaje: normalizarMensaje(mensaje),
+      },
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/invitaciones/actividad/batch — UC-31.
+   *
+   * Mismas reglas que la invitación general múltiple, asociadas a un
+   * requerimiento de actividad.
+   * @param {number|string} idProyecto
+   * @param {InvitacionActividadBatchRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionBatchResponse}>} 200 OK
+   */
+  invitarActividadBatch(
+    idProyecto,
+    { idRequerimientoActividad, idsPerfilDestinatario, mensaje } = {},
+    signal
+  ) {
+    return http.post(
+      `/proyectos/${idProyecto}/invitaciones/actividad/batch`,
+      {
+        idRequerimientoActividad,
+        idsPerfilDestinatario: Array.isArray(idsPerfilDestinatario)
+          ? idsPerfilDestinatario
+          : [],
         mensaje: normalizarMensaje(mensaje),
       },
       { signal }

@@ -90,7 +90,7 @@
                 estaSeleccionado(perfil),
             }"
           >
-            {{ estaSeleccionado(perfil) ? "Seleccionado" : "Seleccionar" }}
+            {{ estaSeleccionado(perfil) ? "Quitar" : "Seleccionar" }}
           </span>
         </button>
       </li>
@@ -146,6 +146,7 @@ let controlador = null;
  * - Con texto: unión OR por nombre artístico, nombre, apellido y profesión,
  *   merge en cliente y paginación local (mismo patrón de BuscarPerfilView).
  * - Oculta perfiles propios y perfiles de miembros activos del proyecto.
+ * - Permite seleccionar y quitar varios perfiles; el padre conserva la lista.
  */
 export default {
   name: "BuscadorPerfilInvitacion",
@@ -167,9 +168,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    /** Perfiles seleccionados. Cada item es un PerfilBusquedaResponse. */
     modelValue: {
-      type: [Number, String],
-      default: null,
+      type: Array,
+      default: () => [],
     },
     tokenRefresco: {
       type: Number,
@@ -180,7 +182,7 @@ export default {
       default: false,
     },
   },
-  emits: ["update:modelValue", "seleccionado"],
+  emits: ["update:modelValue", "seleccionados"],
   data() {
     return {
       busqueda: "",
@@ -217,8 +219,8 @@ export default {
   },
   watch: {
     idProfesion() {
-      this.$emit("update:modelValue", null);
-      this.$emit("seleccionado", null);
+      this.$emit("update:modelValue", []);
+      this.$emit("seleccionados", []);
       this.buscar(0);
     },
     tokenRefresco() {
@@ -254,15 +256,24 @@ export default {
       return lista.slice(0, 3);
     },
     estaSeleccionado(perfil) {
-      return (
-        this.modelValue != null &&
-        String(this.modelValue) === String(perfil?.idPerfil)
+      return (Array.isArray(this.modelValue) ? this.modelValue : []).some(
+        (seleccionado) =>
+          String(seleccionado?.idPerfil) === String(perfil?.idPerfil)
       );
     },
     seleccionar(perfil) {
       if (this.deshabilitado) return;
-      this.$emit("update:modelValue", perfil.idPerfil);
-      this.$emit("seleccionado", perfil);
+
+      const actuales = Array.isArray(this.modelValue) ? this.modelValue : [];
+      const seleccionado = this.estaSeleccionado(perfil);
+      const siguientes = seleccionado
+        ? actuales.filter(
+            (item) => String(item?.idPerfil) !== String(perfil?.idPerfil)
+          )
+        : [...actuales, perfil];
+
+      this.$emit("update:modelValue", siguientes);
+      this.$emit("seleccionados", siguientes);
     },
     programarBusqueda() {
       clearTimeout(this.temporalizador);

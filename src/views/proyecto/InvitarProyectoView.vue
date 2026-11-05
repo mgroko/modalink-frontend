@@ -190,10 +190,11 @@
           <template v-else-if="paso === 2">
             <section class="invitar-proyecto__panel">
               <h2 class="invitar-proyecto__seccion-titulo">
-                Elegí el perfil destinatario
+                Elegí los perfiles destinatarios
               </h2>
 
               <BuscadorPerfilInvitacion
+                v-model="perfilesSeleccionados"
                 :id-profesion="
                   tipoInvitacion === TIPOS_INVITACION.ACTIVIDAD
                     ? requerimiento?.idProfesion ?? null
@@ -202,11 +203,43 @@
                 :nombre-profesion="requerimiento?.nombreProfesion || ''"
                 :id-usuario-actual="idUsuarioActual"
                 :id-perfiles-excluidos="perfilesExcluidos"
-                :model-value="perfil?.idPerfil ?? null"
                 :token-refresco="tokenRefrescoPerfiles"
                 :deshabilitado="enviando"
-                @seleccionado="onPerfilSeleccionado"
               />
+
+              <div
+                v-if="perfilesSeleccionados.length"
+                class="invitar-proyecto__seleccion"
+              >
+                <p class="invitar-proyecto__seleccion-titulo">
+                  {{ cantidadPerfilesSeleccionados }}
+                  {{
+                    cantidadPerfilesSeleccionados === 1
+                      ? "perfil seleccionado"
+                      : "perfiles seleccionados"
+                  }}
+                </p>
+
+                <ul class="invitar-proyecto__seleccion-lista">
+                  <li
+                    v-for="perfil in perfilesSeleccionados"
+                    :key="perfil.idPerfil"
+                    class="invitar-proyecto__seleccion-chip"
+                  >
+                    <span>{{ perfil.nombreArtistico || "Perfil" }}</span>
+                    <button
+                      type="button"
+                      class="invitar-proyecto__seleccion-quitar"
+                      :aria-label="`Quitar a ${perfil.nombreArtistico || 'este perfil'}`"
+                      @click="quitarPerfilSeleccionado(perfil)"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">
+                        close
+                      </span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
             </section>
           </template>
 
@@ -216,29 +249,37 @@
                 Revisá y envía
               </h2>
 
-              <div class="invitar-proyecto__perfil-card">
-                <span class="invitar-proyecto__avatar" aria-hidden="true">
-                  <img
-                    v-if="fotoPerfilSeleccionado && !fotoPerfilRota"
-                    :src="fotoPerfilSeleccionado"
-                    :alt="perfil?.nombreArtistico || 'Perfil'"
-                    @error="fotoPerfilRota = true"
-                  />
-                  <template v-else>{{ inicialPerfilSeleccionado }}</template>
-                </span>
+              <div class="invitar-proyecto__perfiles-resumen">
+                <div
+                  v-for="perfil in perfilesSeleccionados"
+                  :key="perfil.idPerfil"
+                  class="invitar-proyecto__perfil-card"
+                >
+                  <span class="invitar-proyecto__avatar" aria-hidden="true">
+                    {{ inicialDePerfil(perfil) }}
+                  </span>
 
-                <span class="invitar-proyecto__perfil-datos">
-                  <span class="invitar-proyecto__perfil-nombre">
-                    {{ perfil?.nombreArtistico || "Perfil sin nombre" }}
+                  <span class="invitar-proyecto__perfil-datos">
+                    <span class="invitar-proyecto__perfil-nombre">
+                      {{ perfil.nombreArtistico || "Perfil sin nombre" }}
+                    </span>
+                    <span class="invitar-proyecto__perfil-meta">
+                      {{ perfil.profesion || "Sin profesión" }}
+                      <template v-if="ubicacionDePerfil(perfil)">
+                        · {{ ubicacionDePerfil(perfil) }}
+                      </template>
+                    </span>
                   </span>
-                  <span class="invitar-proyecto__perfil-meta">
-                    {{ perfil?.profesion || "Sin profesión" }}
-                    <template v-if="ubicacionPerfilSeleccionado">
-                      · {{ ubicacionPerfilSeleccionado }}
-                    </template>
-                  </span>
-                </span>
+                </div>
               </div>
+
+              <p class="invitar-proyecto__nota">
+                Se enviará la misma invitación a
+                <strong>{{ cantidadPerfilesSeleccionados }}</strong>
+                {{
+                  cantidadPerfilesSeleccionados === 1 ? "perfil" : "perfiles"
+                }}.
+              </p>
 
               <div class="invitar-proyecto__mensaje">
                 <label
@@ -263,9 +304,8 @@
               </div>
 
               <p class="invitar-proyecto__nota">
-                Al enviar,
-                <strong>{{ perfil?.nombreArtistico || "el perfil" }}</strong>
-                recibe una notificación con la invitación.
+                Al enviar, cada perfil seleccionado recibe una notificación con
+                la invitación.
               </p>
             </section>
           </template>
@@ -323,6 +363,14 @@
         </aside>
       </div>
     </template>
+
+    <ModalResultadoInvitaciones
+      :model-value="resultadoBatch.visible"
+      :creadas="resultadoBatch.creadas"
+      :errores="resultadoBatch.errores"
+      :perfiles="perfilesSeleccionados"
+      @update:model-value="onCambioVisibilidadResultadoBatch"
+    />
   </div>
 </template>
 
@@ -330,17 +378,19 @@
 import proyectoService from "../../services/proyectoService.js";
 import invitacionService from "../../services/invitacionService.js";
 import {
+  idPerfilActivo,
   idUsuarioActivo,
   refrescarSesion,
 } from "../../services/authState";
+import { cargarResumenInvitaciones } from "../../services/invitacionState.js";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
 import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.vue";
 import BuscadorPerfilInvitacion from "../../components/proyecto/BuscadorPerfilInvitacion.vue";
 import BuscadorRequerimientoActividad from "../../components/proyecto/BuscadorRequerimientoActividad.vue";
+import ModalResultadoInvitaciones from "../../components/invitacion/ModalResultadoInvitaciones.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { formatearFechaCorta } from "../../utils/fechas.js";
-import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import {
   ETIQUETAS_TIPO_INVITACION,
@@ -348,7 +398,6 @@ import {
   TIPOS_ERROR_INVITACION,
   TIPOS_INVITACION,
   clasificarErrorInvitacion,
-  mensajeExitoInvitacion,
   motivoNoInvitable,
   puedeInvitarProyecto,
 } from "../../utils/invitacionConstants.js";
@@ -361,13 +410,13 @@ const OPCIONES_TIPO = [
   {
     value: TIPOS_INVITACION.GENERAL,
     titulo: "Invitación general",
-    descripcion: "Invitás al perfil a sumarse al proyecto, sin un rol puntual.",
+    descripcion: "Invitás a los perfiles a sumarse al proyecto, sin un rol puntual.",
   },
   {
     value: TIPOS_INVITACION.ACTIVIDAD,
     titulo: "Invitación por actividad",
     descripcion:
-      "Invitás al perfil para cubrir un requerimiento de una actividad.",
+      "Invitás a los perfiles para cubrir un requerimiento de una actividad.",
   },
 ];
 
@@ -384,6 +433,7 @@ export default {
     EstadoProyectoBadge,
     BuscadorPerfilInvitacion,
     BuscadorRequerimientoActividad,
+    ModalResultadoInvitaciones,
   },
   setup() {
     return { toast: useToast() };
@@ -398,16 +448,20 @@ export default {
       paso: 1,
       tipoInvitacion: null,
       requerimiento: null,
-      perfil: null,
+      perfilesSeleccionados: [],
       mensaje: "",
       enviando: false,
       errorEnvio: "",
       campoErrorEnvio: "",
       erroresEnvio: {},
+      resultadoBatch: {
+        visible: false,
+        creadas: [],
+        errores: [],
+      },
       miembrosActivos: [],
       tokenRefrescoPerfiles: 0,
       tokenRefrescoRequerimientos: 0,
-      fotoPerfilRota: false,
       idCarga: 0,
       TIPOS_INVITACION,
       LIMITE_MENSAJE_INVITACION,
@@ -460,7 +514,10 @@ export default {
       return this.requerimiento?.idRequerimiento != null;
     },
     puedeContinuarPaso2() {
-      return this.perfil?.idPerfil != null;
+      return this.perfilesSeleccionados.length > 0;
+    },
+    cantidadPerfilesSeleccionados() {
+      return this.perfilesSeleccionados.length;
     },
     puedeContinuar() {
       if (this.paso === 1) return this.puedeContinuarPaso1;
@@ -496,24 +553,18 @@ export default {
       );
     },
     resumenDestinatario() {
-      return this.perfil?.nombreArtistico || "—";
+      const perfiles = this.perfilesSeleccionados;
+      if (!perfiles.length) return "—";
+      if (perfiles.length === 1) {
+        return perfiles[0]?.nombreArtistico || "1 perfil";
+      }
+      const primero = perfiles[0]?.nombreArtistico || "Perfil";
+      return `${primero} + ${perfiles.length - 1} más`;
     },
     perfilesExcluidos() {
       return (this.miembrosActivos || [])
         .map((miembro) => miembro?.idPerfil)
         .filter((id) => id != null && id !== "");
-    },
-    fotoPerfilSeleccionado() {
-      return resolverFotoUrl(this.perfil?.fotoUrl);
-    },
-    inicialPerfilSeleccionado() {
-      return (
-        String(this.perfil?.nombreArtistico || "?").trim().charAt(0).toUpperCase() ||
-        "?"
-      );
-    },
-    ubicacionPerfilSeleccionado() {
-      return formatUbicacion(this.perfil);
     },
     errorMensaje() {
       if (this.erroresEnvio?.mensaje) return this.erroresEnvio.mensaje;
@@ -546,14 +597,14 @@ export default {
       this.paso = 1;
       this.tipoInvitacion = null;
       this.requerimiento = null;
-      this.perfil = null;
+      this.perfilesSeleccionados = [];
       this.mensaje = "";
       this.enviando = false;
       this.errorEnvio = "";
       this.campoErrorEnvio = "";
       this.erroresEnvio = {};
+      this.resultadoBatch = { visible: false, creadas: [], errores: [] };
       this.miembrosActivos = [];
-      this.fotoPerfilRota = false;
     },
     async cargar() {
       const corrida = ++this.idCarga;
@@ -655,24 +706,33 @@ export default {
       this.errorEnvio = "";
       this.campoErrorEnvio = "";
       this.erroresEnvio = {};
-      this.perfil = null;
+      this.perfilesSeleccionados = [];
       this.requerimiento = null;
-      this.fotoPerfilRota = false;
     },
     onRequerimientoSeleccionado(requerimiento) {
       const anterior = this.requerimiento?.idRequerimiento;
       const siguiente = requerimiento?.idRequerimiento ?? null;
       if (String(anterior) !== String(siguiente)) {
-        this.perfil = null;
-        this.fotoPerfilRota = false;
+        this.perfilesSeleccionados = [];
       }
       this.requerimiento = requerimiento || null;
       this.limpiarErrorEnvio();
     },
-    onPerfilSeleccionado(perfil) {
-      this.perfil = perfil || null;
-      this.fotoPerfilRota = false;
+    quitarPerfilSeleccionado(perfil) {
+      if (this.enviando) return;
+      this.perfilesSeleccionados = this.perfilesSeleccionados.filter(
+        (item) => String(item.idPerfil) !== String(perfil?.idPerfil)
+      );
       this.limpiarErrorEnvio();
+    },
+    inicialDePerfil(perfil) {
+      return (
+        String(perfil?.nombreArtistico || "?").trim().charAt(0).toUpperCase() ||
+        "?"
+      );
+    },
+    ubicacionDePerfil(perfil) {
+      return formatUbicacion(perfil);
     },
     onMensaje(valor) {
       this.mensaje = String(valor || "").slice(0, LIMITE_MENSAJE_INVITACION);
@@ -716,9 +776,12 @@ export default {
     async enviarInvitacion() {
       if (!this.puedeEnviar) return;
 
-      const idPerfilDestinatario = this.perfil?.idPerfil;
-      if (idPerfilDestinatario == null) {
-        this.errorEnvio = "Seleccioná un perfil destinatario.";
+      const idsPerfilDestinatario = this.perfilesSeleccionados
+        .map((perfil) => perfil?.idPerfil)
+        .filter((id) => id != null && id !== "");
+
+      if (!idsPerfilDestinatario.length) {
+        this.errorEnvio = "Seleccioná al menos un perfil destinatario.";
         this.paso = 2;
         return;
       }
@@ -739,40 +802,45 @@ export default {
       try {
         const mensaje = this.mensaje.trim().slice(0, LIMITE_MENSAJE_INVITACION);
         const response = esActividad
-          ? await invitacionService.invitarActividad(
+          ? await invitacionService.invitarActividadBatch(
               this.idProyecto,
               {
                 idRequerimientoActividad,
-                idPerfilDestinatario,
+                idsPerfilDestinatario,
                 mensaje,
               },
               controladorEnvio.signal
             )
-          : await invitacionService.invitarGeneral(
+          : await invitacionService.invitarGeneralBatch(
               this.idProyecto,
-              { idPerfilDestinatario, mensaje },
+              { idsPerfilDestinatario, mensaje },
               controladorEnvio.signal
             );
 
-        const invitacion = response?.data || null;
-        this.toast.init({
-          title: "Invitación enviada",
-          message: mensajeExitoInvitacion(
-            invitacion,
-            this.perfil?.nombreArtistico
-          ),
-          color: "success",
-          position: "top-right",
-          duration: 6000,
-        });
-
-        this.volverAlProyecto();
+        const data = response?.data || {};
+        this.resultadoBatch = {
+          visible: true,
+          creadas: Array.isArray(data.creadas) ? data.creadas : [],
+          errores: Array.isArray(data.errores) ? data.errores : [],
+        };
+        await cargarResumenInvitaciones(idPerfilActivo());
       } catch (error) {
         if (this.esCancelacion(error)) return;
         await this.manejarErrorEnvio(error);
       } finally {
         this.enviando = false;
       }
+    },
+    onCambioVisibilidadResultadoBatch(valor) {
+      if (valor) {
+        this.resultadoBatch.visible = true;
+        return;
+      }
+      this.cerrarResultadoBatch();
+    },
+    cerrarResultadoBatch() {
+      this.resultadoBatch = { visible: false, creadas: [], errores: [] };
+      this.volverAlProyecto();
     },
     async manejarErrorEnvio(error) {
       const clasificacion = clasificarErrorInvitacion(error);
@@ -850,7 +918,7 @@ export default {
       ) {
         this.paso = 1;
         this.requerimiento = null;
-        this.perfil = null;
+        this.perfilesSeleccionados = [];
         this.tokenRefrescoRequerimientos += 1;
         return;
       }
@@ -864,7 +932,7 @@ export default {
         tipo === TIPOS_ERROR_INVITACION.PROFESION_INCOMPATIBLE
       ) {
         this.paso = 2;
-        this.perfil = null;
+        this.perfilesSeleccionados = [];
         this.tokenRefrescoPerfiles += 1;
         return;
       }
@@ -873,14 +941,14 @@ export default {
         if (campo === "mensaje") return;
         if (campo === "idPerfilDestinatario") {
           this.paso = 2;
-          this.perfil = null;
+          this.perfilesSeleccionados = [];
           this.tokenRefrescoPerfiles += 1;
           return;
         }
         if (campo === "idRequerimientoActividad") {
           this.paso = 1;
           this.requerimiento = null;
-          this.perfil = null;
+          this.perfilesSeleccionados = [];
           this.tokenRefrescoRequerimientos += 1;
         }
         return;
@@ -1169,6 +1237,76 @@ export default {
 .invitar-proyecto__opcional {
   color: var(--color-text-muted);
   font-weight: 500;
+}
+
+.invitar-proyecto__seleccion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-soft);
+}
+
+.invitar-proyecto__seleccion-titulo {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.invitar-proyecto__seleccion-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.invitar-proyecto__seleccion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.18rem 0.35rem 0.18rem 0.55rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: 999px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.invitar-proyecto__seleccion-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.invitar-proyecto__seleccion-quitar:hover {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.invitar-proyecto__seleccion-quitar .material-symbols-outlined {
+  font-size: 0.9rem;
+}
+
+.invitar-proyecto__perfiles-resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
 }
 
 .invitar-proyecto__perfil-card {
