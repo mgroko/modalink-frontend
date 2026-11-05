@@ -188,11 +188,54 @@
         </section>
 
         <nav class="home-layout__quick-links">
-          <button @click="$router.push({ name: 'inicioperfil' })"><span class="material-symbols-outlined">person</span>Mi perfil</button>
-          <button @click="$router.push({ name: 'proyectos-inicio' })"><span class="material-symbols-outlined">business_center</span>Proyectos</button>
-          <button @click.stop="noDisponible('Contactos')"><span class="material-symbols-outlined">chat_bubble</span>Contactos</button>
-          <button @click="$router.push({ name: 'calendario' })"><span class="material-symbols-outlined">calendar_month</span>Calendario</button>
-          <button @click="$router.push({ name: 'dashboard-usuario' })"><span class="material-symbols-outlined">dashboard</span>Dashboard</button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('mi-perfil') }"
+            @click="$router.push({ name: 'inicioperfil' })"
+          >
+            <span class="material-symbols-outlined">account_circle</span>
+            Mi perfil
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('calendario') }"
+            @click="irACalendarioPerfil"
+          >
+            <span class="material-symbols-outlined">calendar_month</span>
+            Calendario
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('proyectos') }"
+            @click="$router.push({ name: 'proyectos-inicio' })"
+          >
+            <span class="material-symbols-outlined">business_center</span>
+            Proyectos
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('invitaciones') }"
+            @click="$router.push({ name: 'invitaciones' })"
+          >
+            <span class="material-symbols-outlined">mail</span>
+            <span>Invitaciones</span>
+            <span
+              v-if="invitacionesPendientes > 0"
+              class="home-layout__quick-link-badge"
+            >
+              {{ invitacionesPendientes }}
+            </span>
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('ajustes') }"
+            @click="irAAjustes"
+          >
+            <span class="material-symbols-outlined">settings</span>
+            Ajustes
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('panel') }"
+            @click="$router.push({ name: 'dashboard-usuario' })"
+          >
+            <span class="material-symbols-outlined">space_dashboard</span>
+            Panel de usuario
+          </button>
         </nav>
 
         <button class="home-layout__logout" @click="cerrarSesion">
@@ -220,6 +263,10 @@ import {
   state as notificacionState,
   cargarResumenPerfil,
 } from "../../services/notificacionState";
+import {
+  state as invitacionState,
+  cargarResumenInvitaciones,
+} from "../../services/invitacionState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
@@ -286,15 +333,22 @@ export default {
     noLeidasPerfil() {
       return notificacionState.noLeidasPerfil;
     },
+    invitacionesPendientes() {
+      return invitacionState.pendientesRecibidas;
+    },
   },
   watch: {
     fotoPerfilActiva() {
       this.fotoRota = false;
     },
+    idActivo(nuevo) {
+      cargarResumenInvitaciones(nuevo);
+    },
   },
   mounted() {
     this.cargarDatos();
     cargarResumenPerfil(this.idActivo);
+    cargarResumenInvitaciones(this.idActivo);
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {
@@ -390,6 +444,49 @@ export default {
         query: texto ? { q: texto } : {},
       });
     },
+    irACalendarioPerfil() {
+      this.$router.push({
+        name: "inicioperfil-seccion",
+        params: { seccion: "calendario" },
+      });
+    },
+    irAAjustes() {
+      if (this.idActivo == null) return;
+      this.$router.push({
+        name: "editar-perfil-inicio",
+        params: { id: this.idActivo },
+      });
+    },
+    esQuickActivo(clave) {
+      const ruta = this.$route;
+      if (clave === "mi-perfil") {
+        if (ruta.name === "inicioperfil-seccion") {
+          return ruta.params.seccion !== "calendario";
+        }
+        return ["inicioperfil", "ver-perfil", "ver-perfil-seccion"].includes(
+          ruta.name
+        );
+      }
+      if (clave === "calendario") {
+        return (
+          ruta.name === "inicioperfil-seccion" &&
+          ruta.params.seccion === "calendario"
+        );
+      }
+      if (clave === "proyectos") {
+        return ruta.meta.navActiva === "proyectos";
+      }
+      if (clave === "invitaciones") {
+        return ruta.name === "invitaciones";
+      }
+      if (clave === "ajustes") {
+        return ruta.name === "editar-perfil-inicio";
+      }
+      if (clave === "panel") {
+        return ruta.name === "dashboard-usuario";
+      }
+      return false;
+    },
     async cambiarPerfil(perfil) {
       if (!perfil || perfil.estado !== "Activo" || perfil.idPerfil === this.idActivo) return;
       this.cambiandoPerfilId = perfil.idPerfil;
@@ -483,7 +580,10 @@ export default {
 .home-layout__quick-links { display: grid; gap: .2rem; }
 .home-layout__quick-links button { display: flex; align-items: center; gap: .6rem; padding: .55rem .25rem; border: 0; background: transparent; color: var(--color-text); text-align: left; cursor: pointer; font-size: .82rem; }
 .home-layout__quick-links button:hover { color: var(--color-secondary); }
+.home-layout__quick-links button.home-layout__quick-link--active { color: var(--color-primary); background: var(--color-surface-muted); border-radius: 6px; font-weight: 600; }
+.home-layout__quick-links button.home-layout__quick-link--active .material-symbols-outlined { color: var(--color-primary); }
 .home-layout__quick-links .material-symbols-outlined { font-size: 1.1rem; }
+.home-layout__quick-link-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: auto; padding: 0 0.3rem; border-radius: 999px; background: var(--color-danger-fill); color: var(--color-on-primary); font-size: 0.62rem; font-weight: 700; line-height: 1; }
 .home-layout__logout { display: flex; align-items: center; gap: .5rem; margin-top: auto; padding: .5rem 1rem; border: 0; background: transparent; color: var(--color-danger-text); cursor: pointer; font-size: .8rem; }
 .home-layout__content { min-height: 530px; padding: 1.5rem; background: var(--color-surface); border-radius: 10px; }
 .home-layout__content--transparente { background: transparent; padding: 0; }

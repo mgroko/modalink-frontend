@@ -175,13 +175,6 @@
                 {{ profesional.nombreProfesion }}
               </p>
             </div>
-
-            <span
-              v-if="esHistorico(profesional)"
-              class="profesional-actividad__historico"
-            >
-              {{ etiquetaParticipacion(profesional) }}
-            </span>
           </article>
         </div>
 
@@ -273,11 +266,8 @@ import {
 } from "../../utils/eliminacionActividadConstants.js";
 import {
   coloresEstadoActividad,
-  esProfesionalHistorico,
   etiquetaEstadoActividad,
-  etiquetaParticipacionProfesional,
   formatearDuracionMinutos,
-  mostrarHistoricosEnActividad,
   profesionalesActuales,
 } from "../../utils/actividadConstants.js";
 import {
@@ -382,11 +372,7 @@ export default {
       const lista = Array.isArray(this.actividad?.profesionalesAsignados)
         ? this.actividad.profesionalesAsignados
         : [];
-      // En PENDIENTE no se muestran históricos; en EN_CURSO/FINALIZADA/
-      // CANCELADA sí, con etiqueta y sin acciones operativas.
-      return mostrarHistoricosEnActividad(this.actividad?.estado)
-        ? lista
-        : profesionalesActuales(lista);
+      return profesionalesActuales(lista);
     },
     esProyectada() {
       return (
@@ -452,12 +438,6 @@ export default {
   },
   methods: {
     etiquetaEstadoActividad,
-    esHistorico(profesional) {
-      return esProfesionalHistorico(profesional);
-    },
-    etiquetaParticipacion(profesional) {
-      return etiquetaParticipacionProfesional(profesional);
-    },
     async cargar() {
       if (this.modalEliminarVisible) this.cerrarModalEliminar();
       const corrida = ++this.idCarga;
@@ -1239,17 +1219,6 @@ export default {
   font-size: 0.78rem;
 }
 
-.profesional-actividad__historico {
-  flex: 0 0 auto;
-  padding: 0.12rem 0.5rem;
-  border: 1px dashed var(--color-border-strong);
-  border-radius: 999px;
-  color: var(--color-text-muted);
-  font-size: 0.7rem;
-  font-style: italic;
-  font-weight: 600;
-  white-space: nowrap;
-}
 
 .actividad-detalle__cerrada {
   margin: 0;

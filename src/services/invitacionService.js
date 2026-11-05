@@ -1,10 +1,55 @@
 import http from "./http";
+import { serializarParams } from "../utils/queryParams.js";
 
 /*
- * Contrato de UC-31: invitar a proyecto.
+ * Contrato de UC-30/UC-31: buscar e invitar.
  *
  * El backend resuelve remitente, estado inicial y fecha de envío desde la
  * sesión. El body sólo lleva destinatario, requerimiento (si aplica) y mensaje.
+ */
+
+/**
+ * @typedef {Object} PerfilInvitacionResponse
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string|null} nombre
+ * @property {string|null} apellido
+ * @property {number|null} idProfesion
+ * @property {string|null} nombreProfesion
+ */
+
+/**
+ * @typedef {Object} InvitacionBusquedaResponse
+ * @property {number} idInvitacion
+ * @property {"GENERAL"|"ACTIVIDAD"} tipo
+ * @property {"RECIBIDA"|"ENVIADA"} direccion
+ * @property {"PENDIENTE"|"ACEPTADA"|"RECHAZADA"} estado
+ * @property {string} fechaEnvio ISO-8601 local
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {number|null} idRequerimientoGral
+ * @property {number|null} idRequerimientoActividad
+ * @property {number|null} idActividad
+ * @property {string|null} nombreActividad
+ * @property {PerfilInvitacionResponse} remitente
+ * @property {PerfilInvitacionResponse} destinatario
+ * @property {string|null} mensaje
+ * @property {boolean} puedeEliminar
+ */
+
+/**
+ * @typedef {Object} BuscarInvitacionesParams
+ * @property {number|string} [idProyecto]
+ * @property {string} [nombreProyecto]
+ * @property {string} [fechaDesde] YYYY-MM-DD
+ * @property {string} [fechaHasta] YYYY-MM-DD
+ * @property {string} [nombrePerfil]
+ * @property {"RECIBIDA"|"ENVIADA"} [direccion]
+ * @property {"PENDIENTE"|"ACEPTADA"|"RECHAZADA"} [estado]
+ * @property {"GENERAL"|"ACTIVIDAD"} [tipo]
+ * @property {number} [page] base 0
+ * @property {number} [size] default 20
+ * @property {boolean} [todos]
  */
 
 /**
@@ -40,6 +85,49 @@ function normalizarMensaje(mensaje) {
 }
 
 const invitacionService = {
+  /**
+   * GET /invitaciones/buscar — UC-30.
+   *
+   * Devuelve sólo invitaciones donde el perfil activo es remitente o
+   * destinatario. No requiere membresía ni visibilidad del proyecto.
+   *
+   * Errores:
+   * - 400 rango de fechas inválido
+   * - 401 sesión/cuenta no válida
+   * - 404 perfil activo no seleccionado
+   * @param {BuscarInvitacionesParams} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: {
+   *   contenido: InvitacionBusquedaResponse[],
+   *   paginaActual: number,
+   *   tamanoPagina: number,
+   *   totalElementos: number,
+   *   totalPaginas: number,
+   *   primera: boolean,
+   *   ultima: boolean
+   * }>}>} 200 OK
+   */
+  buscar(params = {}, signal) {
+    const todos = params.todos === true;
+    const query = serializarParams({
+      idProyecto: params.idProyecto ?? "",
+      nombreProyecto: String(params.nombreProyecto || "").trim(),
+      fechaDesde: params.fechaDesde || "",
+      fechaHasta: params.fechaHasta || "",
+      nombrePerfil: String(params.nombrePerfil || "").trim(),
+      direccion: params.direccion || "",
+      estado: params.estado || "",
+      tipo: params.tipo || "",
+      page: todos ? undefined : params.page ?? 0,
+      size: todos ? undefined : params.size ?? 20,
+      todos: todos ? true : undefined,
+    });
+
+    return http.get(`/invitaciones/buscar${query ? `?${query}` : ""}`, {
+      signal,
+    });
+  },
+
   /**
    * POST /proyectos/{idProyecto}/invitaciones/general — UC-31.
    *

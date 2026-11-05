@@ -46,20 +46,10 @@
                 v-for="responsable in responsables(actividad)"
                 :key="responsable.clave"
                 class="tabla-actividades__chip"
-                :class="{
-                  'tabla-actividades__chip--historico': responsable.historico,
-                }"
-                :title="responsable.etiqueta || undefined"
               >
                 <span class="tabla-actividades__chip-texto">
                   {{ responsable.texto }}
                 </span>
-                <small
-                  v-if="responsable.historico"
-                  class="tabla-actividades__chip-estado"
-                >
-                  {{ responsable.etiqueta }}
-                </small>
                 <button
                   v-if="puedeDesasignarResponsable(actividad, responsable)"
                   type="button"
@@ -161,11 +151,8 @@
 <script>
 import {
   coloresEstadoActividad,
-  esProfesionalHistorico,
   etiquetaEstadoActividad,
-  etiquetaParticipacionProfesional,
   formatearDuracionMinutos,
-  mostrarHistoricosEnActividad,
   profesionalesActuales,
   puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
@@ -249,7 +236,6 @@ export default {
         this.puedeDesasignar &&
         puedeEditarActividad(actividad?.estado) &&
         responsable?.idAsignacionActividad != null &&
-        !responsable?.historico &&
         responsable?.activo !== false
       );
     },
@@ -258,7 +244,7 @@ export default {
       if (!puedeEditarActividad(actividad?.estado)) {
         return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede desasignar.`;
       }
-      if (responsable?.historico || responsable?.activo === false) {
+      if (responsable?.activo === false) {
         return "El miembro ya no está activo en el proyecto.";
       }
       return `Quitar a ${responsable?.texto || "este miembro"} de la actividad`;
@@ -294,21 +280,13 @@ export default {
       const lista = Array.isArray(actividad?.responsables)
         ? actividad.responsables
         : [];
-      const visibles = mostrarHistoricosEnActividad(actividad?.estado)
-        ? lista
-        : profesionalesActuales(lista);
 
-      return visibles.map((responsable, indice) => {
+      return profesionalesActuales(lista).map((responsable, indice) => {
         const esVos =
           activo != null && String(responsable?.idPerfil) === String(activo);
-        const historico = esProfesionalHistorico(responsable);
         return {
           clave: `${responsable?.idPerfil ?? "s"}-${responsable?.idUsuario ?? indice}`,
           texto: `${responsable?.nombreArtistico || "Perfil"}${esVos ? " (Vos)" : ""}`,
-          historico,
-          etiqueta: historico
-            ? etiquetaParticipacionProfesional(responsable)
-            : "",
           idAsignacionActividad: responsable?.idAsignacionActividad ?? null,
           idPerfil: responsable?.idPerfil ?? null,
           idUsuario: responsable?.idUsuario ?? null,
@@ -412,20 +390,6 @@ export default {
   border-color: var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
-}
-
-.tabla-actividades__chip--historico {
-  border-style: dashed;
-  border-color: var(--color-border);
-  background: transparent;
-  color: var(--color-text-muted);
-}
-
-.tabla-actividades__chip-estado {
-  margin-left: 0.3rem;
-  font-size: 0.64rem;
-  font-style: italic;
-  font-weight: 600;
 }
 
 .tabla-actividades__chip-texto {

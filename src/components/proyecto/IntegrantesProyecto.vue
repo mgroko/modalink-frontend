@@ -10,6 +10,7 @@
 
       <VaButton
         v-if="puedeInvitar"
+        class="miembros-proyecto__invitar"
         preset="primary"
         size="small"
         @click="$emit('invitar')"
@@ -433,6 +434,16 @@ export default {
 
 .miembros-proyecto__tooltip {
   display: inline-flex;
+}
+
+.miembros-proyecto__invitar {
+  background-color: #f2c94c !important;
+  color: #3a2e00 !important;
+}
+
+.miembros-proyecto__invitar:hover:not(:disabled) {
+  background-color: #e5ba3a !important;
+  color: #2b2200 !important;
 }
 
 .miembros-proyecto__nota,
