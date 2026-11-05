@@ -2,26 +2,28 @@
 Editarperfilview · VUE
 <template>
   <div class="editar-perfil">
-    <h1 class="editar-perfil__titulo">Editar perfil</h1>
-    <p class="editar-perfil__subtitulo">Actualizá la información de tu perfil profesional.</p>
- 
-    <div v-if="cargandoInicial" class="editar-perfil__estado">
+    <header class="editar-perfil__header">
+      <h1 class="editar-perfil__titulo">Editar perfil</h1>
+      <p class="editar-perfil__subtitulo">Actualizá la información de tu perfil profesional.</p>
+    </header>
+
+    <section v-if="cargandoInicial" class="editar-perfil__panel editar-perfil__estado">
       <span class="material-symbols-outlined editar-perfil__estado-icono">hourglass_empty</span>
       Cargando perfil...
-    </div>
- 
-    <div v-else-if="noEncontrado" class="editar-perfil__estado">
+    </section>
+
+    <section v-else-if="noEncontrado" class="editar-perfil__panel editar-perfil__estado">
       <span class="material-symbols-outlined editar-perfil__estado-icono">error</span>
       No se encontró el perfil solicitado.
       <VaButton preset="secondary" @click="volver">{{ textoVolver }}</VaButton>
-    </div>
- 
-    <div v-else-if="sinPermiso" class="editar-perfil__estado">
+    </section>
+
+    <section v-else-if="sinPermiso" class="editar-perfil__panel editar-perfil__estado">
       <span class="material-symbols-outlined editar-perfil__estado-icono">lock</span>
       No tenés permiso para editar este perfil.
       <VaButton preset="secondary" @click="volver">{{ textoVolver }}</VaButton>
-    </div>
- 
+    </section>
+
     <template v-else>
       <div class="editar-perfil__panel">
         <div class="editar-perfil__foto">
@@ -46,21 +48,30 @@ Editarperfilview · VUE
                 class="editar-perfil__foto-input"
                 @change="seleccionarFoto"
               />
-              <VaButton preset="secondary" size="small" icon="mso-photo_camera" @click="$refs.inputFoto.click()">
+              <button
+                type="button"
+                class="editar-perfil__foto-accion"
+                @click="$refs.inputFoto.click()"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
                 {{ fotoPreview ? "Cambiar foto" : "Elegir foto" }}
-              </VaButton>
-              <VaButton v-if="fotoPreview" preset="secondary" size="small" color="danger" @click="limpiarFoto">
+              </button>
+              <button
+                v-if="fotoPreview"
+                type="button"
+                class="editar-perfil__foto-accion editar-perfil__foto-accion--peligro"
+                @click="limpiarFoto"
+              >
                 Quitar selección
-              </VaButton>
-              <VaButton
+              </button>
+              <button
                 v-else-if="perfil.fotoUrl"
-                preset="secondary"
-                size="small"
-                color="danger"
+                type="button"
+                class="editar-perfil__foto-accion editar-perfil__foto-accion--peligro"
                 @click="modalEliminarFoto = true"
               >
                 Eliminar foto
-              </VaButton>
+              </button>
             </div>
           </div>
         </div>
@@ -354,8 +365,17 @@ Editarperfilview · VUE
           </div>
 
           <div class="editar-perfil__acciones">
-            <VaButton preset="secondary" @click="volver" :disabled="cargando || !!mensajeExito">Cancelar</VaButton>
-            <VaButton type="submit" :loading="cargando" :disabled="!!mensajeExito">Guardar cambios</VaButton>
+            <button
+              type="button"
+              class="editar-perfil__cancelar"
+              :disabled="cargando || !!mensajeExito"
+              @click="volver"
+            >
+              Cancelar
+            </button>
+            <VaButton type="submit" :loading="cargando" :disabled="!!mensajeExito">
+              Guardar cambios
+            </VaButton>
           </div>
         </VaForm>
       </div>
@@ -890,24 +910,38 @@ export default {
  
 <style scoped>
 .editar-perfil {
-  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.editar-perfil__header {
+  padding: 1.5rem 1.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 
 .editar-perfil__titulo {
-  font-size: 1.5rem;
-  font-weight: 700;
+  margin: 0;
   color: var(--color-text);
-  margin: 0 0 0.25rem 0;
+  font-size: clamp(1.5rem, 2vw, 1.85rem);
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .editar-perfil__subtitulo {
-  font-size: 0.85rem;
+  margin: 0.35rem 0 0;
   color: var(--color-text-muted);
-  margin: 0 0 1.5rem 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
 }
 
 .editar-perfil__panel {
-  padding: 1.5rem;
+  padding: 1.5rem 1.75rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -916,26 +950,26 @@ export default {
 .editar-perfil__foto {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.1rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .editar-perfil__foto-img {
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .editar-perfil__foto-img--placeholder {
-  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
+  background: var(--color-surface-muted);
 }
 
 .editar-perfil__foto-img--placeholder .material-symbols-outlined {
@@ -946,28 +980,63 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
 }
 
 .editar-perfil__nombre-artistico {
-  font-size: 1.1rem;
-  font-weight: 600;
   color: var(--color-text);
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .editar-perfil__foto-aviso {
-  font-size: 0.8rem;
   color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .editar-perfil__foto-acciones {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.35rem;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+
+.editar-perfil__foto-accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  color: var(--color-primary);
+  background: transparent;
+  border: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editar-perfil__foto-accion:hover {
+  text-decoration: underline;
+}
+
+.editar-perfil__foto-accion .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.editar-perfil__foto-accion--peligro {
+  color: var(--color-danger-text);
 }
 
 .editar-perfil__foto-input {
   display: none;
+}
+
+.editar-perfil__form :deep(.va-input-label) {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .editar-perfil__modal-acciones {
@@ -1024,6 +1093,28 @@ export default {
   }
 }
 
+@media (max-width: 640px) {
+  .editar-perfil__header,
+  .editar-perfil__panel {
+    padding: 1.25rem;
+  }
+
+  .editar-perfil__foto {
+    align-items: flex-start;
+  }
+
+  .editar-perfil__acciones {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .editar-perfil__cancelar {
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+  }
+}
+
 .editar-perfil__estado {
   display: flex;
   flex-direction: column;
@@ -1040,9 +1131,30 @@ export default {
 
 .editar-perfil__acciones {
   display: flex;
-  gap: 0.75rem;
+  align-items: center;
   justify-content: flex-end;
+  gap: 1.25rem;
   padding-top: 0.5rem;
+}
+
+.editar-perfil__cancelar {
+  padding: 0.35rem 0.25rem;
+  color: var(--color-primary);
+  background: transparent;
+  border: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editar-perfil__cancelar:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.editar-perfil__cancelar:disabled {
+  color: var(--color-text-subtle);
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .editar-perfil__habilidades {
@@ -1052,7 +1164,7 @@ export default {
   padding: 1rem 1.1rem;
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: var(--color-surface);
+  background: var(--color-surface-soft);
 }
 
 .editar-perfil__habilidades-cabecera {
