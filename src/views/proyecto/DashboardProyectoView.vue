@@ -134,6 +134,12 @@
                 <span class="dashboard-proyecto__dato-valor">
                   {{ formatearFecha(proyecto.fechaFinalizacion) }}
                 </span>
+                <span
+                  v-if="proyecto.finalizacionPrematura"
+                  class="dashboard-proyecto__chip-prematura"
+                >
+                  Finalizado anticipadamente
+                </span>
               </div>
 
               <div class="dashboard-proyecto__dato">
@@ -2252,7 +2258,10 @@ data() {
       this.puedeReintentarPreviewFinalizacion = true;
     },
     /** UC-37: envía todas las calificaciones del director en un solo POST. */
-    async confirmarFinalizacion(calificaciones) {
+    async confirmarFinalizacion(
+      calificaciones,
+      confirmarFinalizacionPrematura = false
+    ) {
       if (this.finalizandoProyecto) return;
       if (!Array.isArray(calificaciones)) return;
 
@@ -2266,6 +2275,7 @@ data() {
         const response = await proyectoService.finalizar(
           this.idProyecto,
           calificaciones,
+          confirmarFinalizacionPrematura === true,
           controladorFinalizacion.signal
         );
         const data = response?.data || {};
@@ -2289,6 +2299,11 @@ data() {
               data.fechaFinalizacion ??
               this.proyecto?.fechaFinalizacion ??
               null,
+            finalizacionPrematura:
+              data.proyecto.finalizacionPrematura ??
+              data.finalizacionPrematura ??
+              this.proyecto?.finalizacionPrematura ??
+              false,
           };
         } else {
           await this.cargar();
@@ -2296,9 +2311,17 @@ data() {
             this.proyecto = {
               ...this.proyecto,
               fechaFinalizacion: data.fechaFinalizacion,
+              finalizacionPrematura:
+                data.finalizacionPrematura ??
+                this.proyecto?.finalizacionPrematura ??
+                false,
             };
           }
         }
+
+        const finalizacionPrematura =
+          data.proyecto?.finalizacionPrematura === true ||
+          this.proyecto?.finalizacionPrematura === true;
 
         this.modalFinalizacionVisible = false;
         this.previewFinalizacion = null;
@@ -2309,11 +2332,16 @@ data() {
         this.refrescarPersonalRequerido();
 
         const cantidad = Number(data.calificacionesRegistradas) || 0;
+        const cierre = finalizacionPrematura
+          ? "El proyecto quedó finalizado de forma anticipada"
+          : "El proyecto quedó finalizado";
         this.toast.init({
-          title: "Proyecto finalizado",
+          title: finalizacionPrematura
+            ? "Proyecto finalizado anticipadamente"
+            : "Proyecto finalizado",
           message: cantidad
-            ? `El proyecto quedó finalizado y se registraron ${cantidad} calificaciones.`
-            : "El proyecto quedó finalizado y se notificó a los integrantes.",
+            ? `${cierre} y se registraron ${cantidad} calificaciones.`
+            : `${cierre} y se notificó a los integrantes.`,
           color: "success",
           position: "top-right",
           duration: 6000,
@@ -2380,6 +2408,34 @@ data() {
       }
 
       if (status === 409) {
+        if (clasificacion.esConfirmacionPrematuraRequerida) {
+          this.previewFinalizacion = {
+            ...(this.previewFinalizacion || {}),
+            requiereConfirmacionPrematura: true,
+            diasAnticipacion:
+              clasificacion.diasAnticipacion ||
+              this.previewFinalizacion?.diasAnticipacion ||
+              0,
+            advertencias:
+              this.previewFinalizacion?.advertencias?.length
+                ? this.previewFinalizacion.advertencias
+                : [
+                    {
+                      codigo: "FECHA_ENTREGA_FUTURA",
+                      mensaje:
+                        mensaje ||
+                        "La fecha de entrega estipulada todavía no se alcanzó.",
+                      entidadTipo: "PLANIFICACION",
+                      entidadId: null,
+                    },
+                  ],
+          };
+          this.errorFinalizacion =
+            mensaje ||
+            "Confirmá la finalización anticipada para continuar.";
+          return;
+        }
+
         if (clasificacion.esCalificacionesIncompletas) {
           this.faltantesFinalizacion = clasificacion.faltantes;
           this.errorFinalizacion =
@@ -3613,6 +3669,17 @@ data() {
   color: var(--color-primary);
   font-size: 0.78rem;
   font-weight: 500;
+}
+
+.dashboard-proyecto__chip-prematura {
+  align-self: flex-start;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--color-warning-border, var(--color-border));
+  border-radius: 999px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .dashboard-proyecto__objetivos {

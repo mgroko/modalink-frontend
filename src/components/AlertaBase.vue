@@ -23,13 +23,16 @@ export default {
     type: {
       type: String,
       required: true,
-      validator: (value) => ["success", "error"].includes(value),
+      validator: (value) => ["success", "error", "warning"].includes(value),
     },
   },
   computed: {
     config() {
       if (this.type === "success") {
         return { icon: "check_circle" };
+      }
+      if (this.type === "warning") {
+        return { icon: "warning" };
       }
       return { icon: "error" };
     },
@@ -57,6 +60,11 @@ export default {
 .alerta-base--error {
   color: var(--color-danger-text);
   background: var(--color-danger-soft);
+}
+
+.alerta-base--warning {
+  color: var(--color-warning-text);
+  background: var(--color-warning-soft);
 }
 
 .alerta-base__icono {

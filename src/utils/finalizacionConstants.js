@@ -28,6 +28,7 @@ export const CODIGOS_FINALIZACION = {
   PLANIFICACION_NO_ENCONTRADA: "PLANIFICACION_NO_ENCONTRADA",
   FECHA_ENTREGA_NO_DEFINIDA: "FECHA_ENTREGA_NO_DEFINIDA",
   FECHA_ENTREGA_FUTURA: "FECHA_ENTREGA_FUTURA",
+  CONFIRMACION_PREMATURA_REQUERIDA: "CONFIRMACION_PREMATURA_REQUERIDA",
   SIN_ACTIVIDADES: "SIN_ACTIVIDADES",
   ACTIVIDAD_NO_FINALIZADA: "ACTIVIDAD_NO_FINALIZADA",
   CALIFICACIONES_INCOMPLETAS: "CALIFICACIONES_INCOMPLETAS",
@@ -48,6 +49,8 @@ export const MENSAJES_CODIGO_FINALIZACION = {
     "La planificación no tiene fecha de entrega.",
   [CODIGOS_FINALIZACION.FECHA_ENTREGA_FUTURA]:
     "Todavía no se alcanzó la fecha de entrega del proyecto.",
+  [CODIGOS_FINALIZACION.CONFIRMACION_PREMATURA_REQUERIDA]:
+    "Confirmá la finalización anticipada para continuar.",
   [CODIGOS_FINALIZACION.SIN_ACTIVIDADES]:
     "El proyecto no tiene actividades.",
   [CODIGOS_FINALIZACION.ACTIVIDAD_NO_FINALIZADA]:
@@ -180,7 +183,10 @@ export function normalizarCalificacionesEmitidas(lista) {
  * @property {string} estado
  * @property {string|null} fechaEntrega
  * @property {string|null} fechaActual
+ * @property {boolean} requiereConfirmacionPrematura
+ * @property {number} diasAnticipacion
  * @property {BloqueoFinalizacion[]} bloqueos
+ * @property {BloqueoFinalizacion[]} advertencias
  * @property {MiembroACalificar[]} miembrosACalificar
  * @property {number} calificacionesRequeridas
  * @property {number} calificacionesRealizadas
@@ -201,7 +207,11 @@ export function normalizarPreviewFinalizacion(data) {
     estado: preview.estado == null ? "" : String(preview.estado),
     fechaEntrega: preview.fechaEntrega || null,
     fechaActual: preview.fechaActual || null,
+    requiereConfirmacionPrematura:
+      preview.requiereConfirmacionPrematura === true,
+    diasAnticipacion: aEnteroNoNegativo(preview.diasAnticipacion),
     bloqueos: normalizarBloqueos(preview.bloqueos),
+    advertencias: normalizarBloqueos(preview.advertencias),
     miembrosACalificar: normalizarMiembrosACalificar(
       preview.miembrosACalificar
     ),
@@ -528,9 +538,13 @@ export function esProyectoNoCalificable(codigo) {
  * @property {string} mensaje
  * @property {BloqueoFinalizacion[]} bloqueos
  * @property {number[]} faltantes ids de perfil
+ * @property {string|null} fechaEntrega fecha estipulada devuelta por el backend
+ * @property {string|null} fechaActual fecha del sistema devuelta por el backend
+ * @property {number} diasAnticipacion días de anticipación informados
  * @property {boolean} esEstado el proyecto cambió de estado
  * @property {boolean} esCalificacionesIncompletas
  * @property {boolean} esCalificacionInvalida
+ * @property {boolean} esConfirmacionPrematuraRequerida
  */
 
 /**
@@ -550,11 +564,16 @@ export function clasificarErrorFinalizacion(error) {
       data?.message || data?.mensaje || mensajeCodigoFinalizacion(codigo),
     bloqueos: normalizarBloqueos(data?.bloqueos),
     faltantes: normalizarFaltantes(data?.faltantes),
+    fechaEntrega: data?.fechaEntrega || null,
+    fechaActual: data?.fechaActual || null,
+    diasAnticipacion: aEnteroNoNegativo(data?.diasAnticipacion),
     esEstado:
       esBloqueoDeEstadoFinalizacion(codigo) || esProyectoNoCalificable(codigo),
     esCalificacionesIncompletas:
       codigo === CODIGOS_FINALIZACION.CALIFICACIONES_INCOMPLETAS,
     esCalificacionInvalida:
       codigo === CODIGOS_FINALIZACION.CALIFICACION_INVALIDA,
+    esConfirmacionPrematuraRequerida:
+      codigo === CODIGOS_FINALIZACION.CONFIRMACION_PREMATURA_REQUERIDA,
   };
 }

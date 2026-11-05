@@ -12,7 +12,11 @@
       <div class="finalizar-proyecto-modal__header">
         <div class="finalizar-proyecto-modal__header-texto">
           <h3 class="va-h5 finalizar-proyecto-modal__titulo">
-            Finalizar proyecto
+            {{
+              requiereConfirmacionPrematura
+                ? "Finalizar proyecto de forma anticipada"
+                : "Finalizar proyecto"
+            }}
           </h3>
           <p v-if="nombreProyecto" class="finalizar-proyecto-modal__subtitulo">
             {{ nombreProyecto }}
@@ -84,8 +88,32 @@
             </li>
           </ul>
 
+          <BaseAlert
+            v-if="advertencias.length"
+            :message="mensajeAdvertencias"
+            type="warning"
+          />
+
+          <label
+            v-if="requiereConfirmacionPrematura"
+            class="finalizar-proyecto-modal__confirmacion-prematura"
+          >
+            <VaCheckbox
+              v-model="confirmoPrematura"
+              :disabled="finalizando || preview.puedeFinalizar !== true"
+            />
+            <span>
+              Entiendo que la fecha de entrega estipulada todavía no se alcanzó
+              y quiero finalizar el proyecto de forma anticipada.
+            </span>
+          </label>
+
           <p
-            v-if="!bloqueos.length && preview.puedeFinalizar"
+            v-if="
+              !bloqueos.length &&
+              !advertencias.length &&
+              preview.puedeFinalizar
+            "
             class="finalizar-proyecto-modal__listo"
           >
             <span class="material-symbols-outlined" aria-hidden="true">
@@ -163,7 +191,11 @@
           :loading="finalizando"
           @click="confirmar"
         >
-          Finalizar proyecto
+          {{
+            requiereConfirmacionPrematura
+              ? "Finalizar de forma anticipada"
+              : "Finalizar proyecto"
+          }}
         </VaButton>
       </div>
     </template>
@@ -239,6 +271,7 @@ export default {
     return {
       formulario: {},
       tocado: {},
+      confirmoPrematura: false,
     };
   },
   computed: {
@@ -251,6 +284,27 @@ export default {
       return Array.isArray(this.preview?.bloqueos)
         ? this.preview.bloqueos
         : [];
+    },
+    advertencias() {
+      return Array.isArray(this.preview?.advertencias)
+        ? this.preview.advertencias
+        : [];
+    },
+    requiereConfirmacionPrematura() {
+      return (
+        this.preview?.requiereConfirmacionPrematura === true ||
+        this.advertencias.some(
+          (advertencia) => advertencia?.codigo === "FECHA_ENTREGA_FUTURA"
+        )
+      );
+    },
+    mensajeAdvertencias() {
+      const mensajes = this.advertencias
+        .map((advertencia) => advertencia?.mensaje)
+        .filter(Boolean);
+      return mensajes.length
+        ? mensajes.join(" ")
+        : "La fecha de entrega estipulada todavía no se alcanzó.";
     },
     requeridas() {
       const requeridas = Number(this.preview?.calificacionesRequeridas);
@@ -277,7 +331,8 @@ export default {
         !this.cargandoPreview &&
         !this.finalizando &&
         !this.errorPreview &&
-        this.validacion.valido
+        this.validacion.valido &&
+        (!this.requiereConfirmacionPrematura || this.confirmoPrematura)
       );
     },
     mensajeBloqueos() {
@@ -297,11 +352,15 @@ export default {
       if (!valor) {
         this.formulario = {};
         this.tocado = {};
+        this.confirmoPrematura = false;
       }
     },
     preview: {
       immediate: true,
       handler() {
+        if (!this.requiereConfirmacionPrematura) {
+          this.confirmoPrematura = false;
+        }
         this.sincronizarFormulario();
       },
     },
@@ -402,7 +461,11 @@ export default {
     },
     confirmar() {
       if (!this.puedeConfirmar || this.finalizando) return;
-      this.$emit("confirmar", this.validacion.calificaciones);
+      this.$emit(
+        "confirmar",
+        this.validacion.calificaciones,
+        this.confirmoPrematura === true
+      );
     },
   },
 };
@@ -598,6 +661,21 @@ export default {
 .finalizar-proyecto-modal__ayuda {
   color: var(--color-warning-text);
   font-weight: 600;
+}
+
+.finalizar-proyecto-modal__confirmacion-prematura {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-warning-border, var(--color-border));
+  border-radius: 10px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.45;
+  cursor: pointer;
 }
 
 .finalizar-proyecto-modal__acciones {

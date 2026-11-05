@@ -152,6 +152,12 @@
                 class="proyecto-tarjeta__estado"
                 :estado="proyecto.estado"
               />
+              <span
+                v-if="proyecto.finalizacionPrematura"
+                class="proyecto-tarjeta__prematura"
+              >
+                Finalizado anticipadamente
+              </span>
             </div>
 
             <p class="proyecto-tarjeta__descripcion">{{ proyecto.descripcion }}</p>
@@ -683,6 +689,17 @@ export default {
 
 .proyecto-tarjeta__estado {
   margin-left: auto;
+}
+
+.proyecto-tarjeta__prematura {
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--color-warning-border, var(--color-border));
+  border-radius: 999px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .proyecto-tarjeta__descripcion {

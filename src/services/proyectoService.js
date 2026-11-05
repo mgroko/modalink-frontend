@@ -227,6 +227,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} [fechaFinalizacion] UC-37: fecha y hora en que se
  *           finalizó el proyecto (ISO local, ej. "2026-11-05T15:30:00");
  *           null si el proyecto no está finalizado.
+ * @property {boolean} [finalizacionPrematura] UC-37: true si el director
+ *           confirmó finalizar antes de la fecha de entrega estipulada.
  * @property {"PUBLICO"|"PRIVADO"} privacidad
  * @property {boolean} aceptaPostulacionGral
  * @property {UbicacionProyectoResponse|null} ubicacion
@@ -357,7 +359,12 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} estado
  * @property {string|null} fechaEntrega "YYYY-MM-DD"
  * @property {string|null} fechaActual "YYYY-MM-DD"
+ * @property {boolean} requiereConfirmacionPrematura true si la fecha de
+ *           entrega todavía no se alcanzó y el POST necesita el flag
+ * @property {number} diasAnticipacion días entre hoy y la fecha de entrega
  * @property {BloqueoFinalizacionResponse[]} bloqueos
+ * @property {BloqueoFinalizacionResponse[]} advertencias condiciones que no
+ *           bloquean pero requieren confirmación (FECHA_ENTREGA_FUTURA)
  * @property {MiembroACalificarResponse[]} miembrosACalificar
  * @property {number} calificacionesRequeridas miembros activos excluyendo
  *           al perfil activo
@@ -376,6 +383,8 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} FinalizarProyectoRequest
  * @property {CalificacionRequest[]} calificaciones
+ * @property {boolean} confirmarFinalizacionPrematura true sólo si el usuario
+ *           confirmó explícitamente finalizar antes de la fecha de entrega
  */
 
 /**
@@ -467,6 +476,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {"DIRECTOR"|"MIEMBRO"} rolUsuario rol del perfil activo en el proyecto
  * @property {ActividadProximaProyecto|null} proximaActividad null si no hay
  *           actividad futura (PENDIENTE/EN_CURSO) asignada al perfil activo
+ * @property {boolean} [finalizacionPrematura] UC-37: true si el proyecto se
+ *           finalizó antes de la fecha de entrega estipulada
  */
 
 /**
@@ -1091,17 +1102,29 @@ const proyectoService = {
    * - 404 perfil activo, perfil o proyecto inexistente
    * - 409 PROYECTO_YA_FINALIZADO / ESTADO_PROYECTO_INVALIDO
    * - 409 PLANIFICACION_NO_ENCONTRADA / FECHA_ENTREGA_NO_DEFINIDA /
-   *   FECHA_ENTREGA_FUTURA / SIN_ACTIVIDADES / ACTIVIDAD_NO_FINALIZADA
+   *   SIN_ACTIVIDADES / ACTIVIDAD_NO_FINALIZADA
+   * - 409 CONFIRMACION_PREMATURA_REQUERIDA si la fecha es futura y no se
+   *   envió `confirmarFinalizacionPrematura: true`
    * - 409 CALIFICACIONES_INCOMPLETAS con `faltantes[]` de idPerfil
    * @param {number|string} idProyecto
    * @param {CalificacionRequest[]} calificaciones
+   * @param {boolean} [confirmarFinalizacionPrematura] confirmación explícita
    * @param {AbortSignal} [signal] cancela la request en vuelo
    * @returns {Promise<{data: FinalizarProyectoResponse}>} 200 OK
    */
-  finalizar(idProyecto, calificaciones, signal) {
+  finalizar(
+    idProyecto,
+    calificaciones,
+    confirmarFinalizacionPrematura = false,
+    signal
+  ) {
     return http.post(
       `/proyectos/${idProyecto}/finalizar`,
-      { calificaciones: Array.isArray(calificaciones) ? calificaciones : [] },
+      {
+        calificaciones: Array.isArray(calificaciones) ? calificaciones : [],
+        confirmarFinalizacionPrematura:
+          confirmarFinalizacionPrematura === true,
+      },
       { signal }
     );
   },

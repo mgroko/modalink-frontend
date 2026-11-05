@@ -5,6 +5,12 @@
         <div class="proyecto-encabezado__titular">
           <h1 class="proyecto-encabezado__nombre">{{ proyecto.nombre }}</h1>
           <EstadoProyectoBadge :estado="proyecto.estado" />
+          <span
+            v-if="proyecto.finalizacionPrematura"
+            class="proyecto-encabezado__badge-prematura"
+          >
+            Finalizado anticipadamente
+          </span>
         </div>
 
         <p v-if="proyecto.descripcion" class="proyecto-encabezado__descripcion">
@@ -188,6 +194,17 @@ export default {
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.proyecto-encabezado__badge-prematura {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--color-warning-border, var(--color-border));
+  border-radius: 999px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .proyecto-encabezado__descripcion {
