@@ -490,12 +490,12 @@ import { serializarParams } from "../utils/queryParams.js";
 
 /**
  * @typedef {Object} EventoHistorialProyectoResponse
- *   Evento de membresía del proyecto. Contrato propuesto: el endpoint todavía
- *   no existe en backend. La UI tolera campos ausentes y tipos desconocidos.
+ *   Evento de membresía del proyecto. `idActividad`/`nombreActividad` son la
+ *   primera actividad registrada para el integrante al momento de la consulta,
+ *   no la actividad causal de la baja.
  * @property {number} idEvento
- * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"|
- *           "MIEMBRO_AGREGADO"|"ROL_CAMBIADO"|string} tipo
- * @property {string} fecha ISO-8601 local
+ * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"|string} tipo
+ * @property {string} fecha ISO-8601 local, formato yyyy-MM-dd'T'HH:mm:ss
  * @property {number|null} idPerfilAfectado
  * @property {string|null} nombreArtisticoAfectado
  * @property {string|null} nombreUsuarioAfectado
@@ -509,9 +509,9 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} apellidoUsuarioActor
  * @property {number|null} idUsuarioActor
  * @property {string|null} motivo
- * @property {"ACTIVO"|"ELIMINADO"|"BAJA_VOLUNTARIA"|string|null}
+ * @property {"ELIMINADO"|"BAJA_VOLUNTARIA"|string|null}
  *           estadoParticipacion
- * @property {number|null} idActividad actividad asociada, si aplica
+ * @property {number|null} idActividad primera actividad registrada, si existe
  * @property {string|null} nombreActividad
  */
 
@@ -528,11 +528,10 @@ import { serializarParams } from "../utils/queryParams.js";
 
 /**
  * @typedef {Object} BuscarHistorialProyectoParams
- * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"|
- *           "MIEMBRO_AGREGADO"|"ROL_CAMBIADO"} [tipo]
+ * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"} [tipo]
  * @property {string} [nombre] coincidencia sobre el perfil afectado
  * @property {number} [page] base 0, default 0
- * @property {number} [size] default 20
+ * @property {number} [size] default 20, máximo 100
  */
 
 const proyectoService = {
@@ -569,30 +568,30 @@ const proyectoService = {
   /**
    * GET /proyectos/{idProyecto}/historial — historial de membresías.
    *
-   * **Pendiente backend:** este endpoint todavía no existe. El frontend ya
-   * consume el contrato propuesto para que, cuando backend lo implemente, la
-   * pestaña funcione sin cambios de UI. Mientras tanto, un 404 se muestra como
-   * "historial no disponible".
-   *
-   * Solo lo puede consultar un director activo del proyecto. Devuelve los
-   * movimientos de miembros (eliminaciones, bajas voluntarias, ingresos y
-   * cambios de rol) con el perfil afectado y el actor que ejecutó la acción.
+   * Solo lo puede consultar un Director activo del proyecto. Devuelve los
+   * movimientos de miembros eliminados o con baja voluntaria, con el perfil
+   * afectado y el perfil que ejecutó la acción.
    *
    * Errores:
+   * - 400 page, size o tipo inválidos
    * - 401 sesión ausente/vencida
    * - 403 sin membresía activa o sin rol Director
-   * - 404 endpoint todavía no implementado o proyecto inexistente
+   * - 404 proyecto inexistente
    * @param {number|string} idProyecto
    * @param {BuscarHistorialProyectoParams} [params]
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: PaginaHistorialProyectoResponse}>} 200 OK
    */
   listarHistorial(idProyecto, params = {}, signal) {
+    const page = Number(params.page ?? 0);
+    const size = Number(params.size ?? 20);
     const query = serializarParams({
       tipo: params.tipo || "",
       nombre: String(params.nombre || "").trim(),
-      page: params.page ?? 0,
-      size: params.size ?? 20,
+      page: Number.isFinite(page) && page >= 0 ? Math.floor(page) : 0,
+      size: Number.isFinite(size)
+        ? Math.min(Math.max(Math.floor(size), 1), 100)
+        : 20,
     });
     return http.get(
       `/proyectos/${idProyecto}/historial${query ? `?${query}` : ""}`,
@@ -735,8 +734,9 @@ const proyectoService = {
    * - 401 sesión/cuenta no válida
    * - 404 perfil activo, perfil, requerimiento inexistente o de otro proyecto
    * - 409 proyecto no Publicado/Confirmado, director, actividad no PENDIENTE,
-   *   profesión distinta, cupo completo, postulación duplicada, sin
-   *   disponibilidad o perfil inactivo
+   *   profesión distinta, cupo completo, postulación duplicada, usuario ya
+   *   asignado a la actividad con otro perfil, sin disponibilidad o perfil
+   *   inactivo
    * @param {number|string} idProyecto
    * @param {number} idRequerimientoActividad
    * @param {AbortSignal} [signal] cancela la request en vuelo

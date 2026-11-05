@@ -15,6 +15,10 @@ import {
   mensajeMotivo,
 } from "./disponibilidadConstants.js";
 import { normalizarBloqueos } from "./confirmacionConstants.js";
+import {
+  MENSAJE_USUARIO_YA_ASIGNADO,
+  esConflictoAsignacionUnica,
+} from "./asignacionUnicaConstants.js";
 
 /*
  * Reglas y textos de UC-70 (ficha técnica `ficha-tecnica-asignar-actividad.md`).
@@ -56,6 +60,7 @@ export const TIPOS_ERROR_ASIGNACION = {
   MIEMBRO_INACTIVO: "MIEMBRO_INACTIVO",
   PERFIL_INACTIVO: "PERFIL_INACTIVO",
   DUPLICADO: "DUPLICADO",
+  USUARIO_YA_ASIGNADO: "USUARIO_YA_ASIGNADO",
   ESTADO_INVALIDO: "ESTADO_INVALIDO",
   SIN_AGENDA: "SIN_AGENDA",
   SIN_DISPONIBILIDAD: "SIN_DISPONIBILIDAD",
@@ -73,6 +78,7 @@ export const TEXTOS_ASIGNACION = {
   SIN_DISPONIBILIDAD:
     "El miembro no tiene disponibilidad suficiente dentro del rango factible de la actividad.",
   DUPLICADO: "El miembro ya está asignado a esta actividad.",
+  USUARIO_YA_ASIGNADO: MENSAJE_USUARIO_YA_ASIGNADO,
   MIEMBRO_INACTIVO: "El perfil no es miembro activo del proyecto.",
   PERFIL_INACTIVO: "El usuario del miembro no se encuentra activo.",
   SIN_AGENDA:
@@ -409,6 +415,37 @@ export function perfilesAsignadosDe(actividad) {
 }
 
 /**
+ * Usuarios con una asignación activa a la actividad. La regla de negocio es
+ * por usuario: si cualquiera de sus perfiles ya está asignado, no se puede
+ * volver a asignar otro perfil del mismo usuario a la misma actividad.
+ *
+ * Sólo cuentan las asignaciones vigentes; los perfiles históricos no bloquean.
+ * @param {object|null|undefined} actividad
+ * @returns {Array<number|string>}
+ */
+export function usuariosAsignadosDe(actividad) {
+  const ids = [];
+  const agregar = (elemento) => {
+    if (esProfesionalHistorico(elemento)) return;
+    const id = elemento?.idUsuario;
+    if (id == null || id === "") return;
+    if (ids.some((existente) => String(existente) === String(id))) return;
+    ids.push(id);
+  };
+
+  const responsables = Array.isArray(actividad?.responsables)
+    ? actividad.responsables
+    : [];
+  const profesionales = Array.isArray(actividad?.profesionalesAsignados)
+    ? actividad.profesionalesAsignados
+    : [];
+
+  responsables.forEach(agregar);
+  profesionales.forEach(agregar);
+  return ids;
+}
+
+/**
  * @param {object|null|undefined} actividad
  * @param {number|string|null|undefined} idPerfil
  * @returns {boolean}
@@ -595,6 +632,15 @@ export function clasificarErrorAsignacion(error) {
   }
 
   if (status === 409) {
+    // El mismo usuario ya está asignado a la actividad con otro perfil. Se
+    // valida antes que codigoMotivo para no reportarlo como disponibilidad.
+    if (esConflictoAsignacionUnica(error)) {
+      return crear(
+        TIPOS_ERROR_ASIGNACION.USUARIO_YA_ASIGNADO,
+        mensajeBackend || TEXTOS_ASIGNACION.USUARIO_YA_ASIGNADO
+      );
+    }
+
     const codigoMotivo = String(payload.codigoMotivo || "").toUpperCase();
     if (codigoMotivo) {
       const esCalendario = [

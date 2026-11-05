@@ -371,6 +371,7 @@
           :actividad="actividadAsignar"
           :nombre-proyecto="proyecto.nombre"
           :id-perfiles-asignados="perfilesAsignadosActividad"
+          :id-usuarios-asignados="usuariosAsignadosActividad"
           :tiene-fecha-entrega="tieneFechaEntrega"
           :asignando="asignando"
           :error="errorAsignar"
@@ -450,9 +451,14 @@ import {
   mensajeExitoAsignacion,
   mensajeExitoDesasignacion,
   perfilesAsignadosDe,
+  usuariosAsignadosDe,
   puedeAsignarActividad,
   puedeDesasignarActividad,
 } from "../../utils/asignacionConstants.js";
+import {
+  MENSAJE_USUARIO_YA_ASIGNADO_POSTULACION,
+  esConflictoAsignacionUnica,
+} from "../../utils/asignacionUnicaConstants.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
   LIMITE_MOTIVO_BAJA,
@@ -602,6 +608,7 @@ data() {
       modalAsignarVisible: false,
       actividadAsignar: null,
       perfilesAsignadosActividad: [],
+      usuariosAsignadosActividad: [],
       asignando: false,
       errorAsignar: "",
       bloqueosAsignar: [],
@@ -763,6 +770,7 @@ data() {
       this.modalAsignarVisible = false;
       this.actividadAsignar = null;
       this.perfilesAsignadosActividad = [];
+      this.usuariosAsignadosActividad = [];
       this.asignando = false;
       this.errorAsignar = "";
       this.bloqueosAsignar = [];
@@ -2215,6 +2223,22 @@ data() {
       }
 
       if (status === 409) {
+        // Mismo usuario ya asignado a la actividad con otro perfil: no se
+        // genera la postulación y se refresca el listado de asignados.
+        if (esConflictoAsignacionUnica(error)) {
+          this.modalPostulacion.visible = false;
+          this.toast.init({
+            title: "Ya estás asignado",
+            message: mensaje || MENSAJE_USUARIO_YA_ASIGNADO_POSTULACION,
+            color: "danger",
+            position: "top-right",
+            duration: 6000,
+          });
+          await this.cargar();
+          this.refrescarPersonalRequerido();
+          return;
+        }
+
         // Sin disponibilidad: el modal queda abierto para leer el mensaje.
         if (esErrorDisponibilidad(error)) {
           this.errorPostulacion = mensaje;
@@ -2301,6 +2325,7 @@ data() {
 
       this.actividadAsignar = { ...actividad };
       this.perfilesAsignadosActividad = perfilesAsignadosDe(actividad);
+      this.usuariosAsignadosActividad = usuariosAsignadosDe(actividad);
       this.errorAsignar = "";
       this.bloqueosAsignar = [];
       this.miembrosBloqueantesAsignar = [];
@@ -2319,6 +2344,7 @@ data() {
       this.modalAsignarVisible = false;
       this.actividadAsignar = null;
       this.perfilesAsignadosActividad = [];
+      this.usuariosAsignadosActividad = [];
       this.errorAsignar = "";
       this.bloqueosAsignar = [];
       this.miembrosBloqueantesAsignar = [];
@@ -2352,6 +2378,7 @@ data() {
         this.modalAsignarVisible = false;
         this.actividadAsignar = null;
         this.perfilesAsignadosActividad = [];
+        this.usuariosAsignadosActividad = [];
         this.bloqueosAsignar = [];
         this.miembrosBloqueantesAsignar = [];
 
@@ -2522,6 +2549,37 @@ data() {
 
       this.errorDesasignar = mensaje;
     },
+    /**
+     * Recarga el detalle de la actividad abierta en el modal para actualizar
+     * los perfiles y usuarios ya asignados después de un 409.
+     */
+    async refrescarAsignadosActividad() {
+      const idActividad = this.actividadAsignar?.idActividad;
+      if (idActividad == null) return;
+
+      try {
+        const response = await actividadService.obtener(
+          this.idProyecto,
+          idActividad
+        );
+        const detalle = response?.data;
+        if (!detalle) return;
+
+        // El modal pudo cerrarse o cambiar de actividad mientras cargaba.
+        if (
+          !this.modalAsignarVisible ||
+          String(this.actividadAsignar?.idActividad) !== String(idActividad)
+        ) {
+          return;
+        }
+
+        this.actividadAsignar = detalle;
+        this.perfilesAsignadosActividad = perfilesAsignadosDe(detalle);
+        this.usuariosAsignadosActividad = usuariosAsignadosDe(detalle);
+      } catch {
+        // El refresco del listado es best-effort; el error original manda.
+      }
+    },
     async manejarErrorAsignacion(error) {
       const clasificacion = clasificarErrorAsignacion(error);
       const { tipo, mensaje, bloqueos = [] } = clasificacion;
@@ -2534,6 +2592,7 @@ data() {
         this.modalAsignarVisible = false;
         this.actividadAsignar = null;
         this.perfilesAsignadosActividad = [];
+        this.usuariosAsignadosActividad = [];
         this.errorAsignar = "";
       };
 
@@ -2647,9 +2706,13 @@ data() {
         return;
       }
 
-      if (tipo === TIPOS_ERROR_ASIGNACION.DUPLICADO) {
+      if (
+        tipo === TIPOS_ERROR_ASIGNACION.USUARIO_YA_ASIGNADO ||
+        tipo === TIPOS_ERROR_ASIGNACION.DUPLICADO
+      ) {
         this.errorAsignar = mensaje;
         this.tokenRefrescoMiembros += 1;
+        await this.refrescarAsignadosActividad();
         await this.$nextTick(() => {
           this.tokenRefrescoPlanificacion += 1;
         });

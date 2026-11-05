@@ -170,6 +170,10 @@ import TablaPostulaciones from "./TablaPostulaciones.vue";
 import ModalGestionPostulacion from "./ModalGestionPostulacion.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
+  MENSAJE_USUARIO_YA_ASIGNADO,
+  esConflictoAsignacionUnica,
+} from "../../utils/asignacionUnicaConstants.js";
+import {
   RESULTADOS_PREFERENCIA,
   formatearVentana,
   mensajeAjustePreferencia,
@@ -774,6 +778,21 @@ export default {
       }
 
       if (status === 409) {
+        // El usuario de la postulación ya está asignado a la actividad con
+        // otro perfil. No se creó membresía ni asignación: refrescar listados.
+        if (esConflictoAsignacionUnica(error)) {
+          this.modal.visible = false;
+          this.toast.init({
+            title: "Usuario ya asignado",
+            message: mensaje || MENSAJE_USUARIO_YA_ASIGNADO,
+            color: "danger",
+            position: "top-right",
+            duration: 6000,
+          });
+          await this.buscar(this.paginacion.paginaActual);
+          return;
+        }
+
         // Sin hueco común o fuera de tolerancia de preferencia: el modal queda
         // abierto para leer el mensaje y reconsultar la disponibilidad.
         const esDisponibilidad =

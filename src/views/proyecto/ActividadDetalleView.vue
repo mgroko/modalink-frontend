@@ -295,6 +295,10 @@ import {
   mensajeExitoPostulacion,
   puedePostularRequerimiento,
 } from "../../utils/postulacionConstants.js";
+import {
+  MENSAJE_USUARIO_YA_ASIGNADO_POSTULACION,
+  esConflictoAsignacionUnica,
+} from "../../utils/asignacionUnicaConstants.js";
 
 /*
  * Detalle de actividad (ficha unificada §5.3). Accesible a miembros y no
@@ -720,6 +724,21 @@ export default {
       }
 
       if (status === 409) {
+        // Mismo usuario ya asignado a la actividad con otro perfil: no se
+        // genera la postulación y se refresca el detalle/asignados.
+        if (esConflictoAsignacionUnica(error)) {
+          this.modal.visible = false;
+          this.toast.init({
+            title: "Ya estás asignado",
+            message: mensaje || MENSAJE_USUARIO_YA_ASIGNADO_POSTULACION,
+            color: "danger",
+            position: "top-right",
+            duration: 6000,
+          });
+          await this.cargar();
+          return;
+        }
+
         if (esErrorDisponibilidad(error)) {
           this.errorPostulacion = mensaje;
           this.errorEsDisponibilidad = true;

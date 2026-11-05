@@ -625,7 +625,8 @@ const actividadService = {
    * - 403 sin perfil activo, sin membresía o sin `ASIGNAR_ACTIVIDAD`
    * - 404 proyecto, actividad o perfil inexistente
    * - 409 perfil no es miembro activo, usuario/perfil inactivo, duplicado,
-   *   estado del proyecto/actividad no permitido, sin agenda o sin
+   *   usuario ya asignado a la actividad con otro perfil, estado del
+   *   proyecto/actividad no permitido, sin agenda o sin
    *   disponibilidad (incluye `motivo`, `provisional`, `inicioEvaluado`,
    *   `finEvaluado` y `miembrosBloqueantes`)
    * @param {number|string} idProyecto

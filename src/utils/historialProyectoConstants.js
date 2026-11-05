@@ -1,24 +1,18 @@
 /*
  * Historial de membresías de un proyecto.
  *
- * El contrato todavía no existe en el backend. El frontend está preparado para
- * `GET /proyectos/{idProyecto}/historial` según el DTO documentado en
- * `proyectoService.listarHistorial`. Mientras el endpoint no exista, la UI
- * degrada a un estado "no disponible".
+ * Contrato backend vigente: `GET /proyectos/{idProyecto}/historial`.
+ * Solo devuelve eventos de miembros eliminados o con baja voluntaria.
  */
 
 export const TIPOS_EVENTO_HISTORIAL = {
   MIEMBRO_ELIMINADO: "MIEMBRO_ELIMINADO",
   MIEMBRO_BAJA_VOLUNTARIA: "MIEMBRO_BAJA_VOLUNTARIA",
-  MIEMBRO_AGREGADO: "MIEMBRO_AGREGADO",
-  ROL_CAMBIADO: "ROL_CAMBIADO",
 };
 
 export const ETIQUETAS_TIPO_EVENTO_HISTORIAL = {
   [TIPOS_EVENTO_HISTORIAL.MIEMBRO_ELIMINADO]: "Eliminado del proyecto",
   [TIPOS_EVENTO_HISTORIAL.MIEMBRO_BAJA_VOLUNTARIA]: "Baja voluntaria",
-  [TIPOS_EVENTO_HISTORIAL.MIEMBRO_AGREGADO]: "Se unió al proyecto",
-  [TIPOS_EVENTO_HISTORIAL.ROL_CAMBIADO]: "Cambio de rol",
 };
 
 export const OPCIONES_TIPO_EVENTO_HISTORIAL = Object.entries(
@@ -35,16 +29,6 @@ export const COLORES_TIPO_EVENTO_HISTORIAL = {
     fondo: "var(--color-warning-soft)",
     texto: "var(--color-warning-text)",
     borde: "var(--color-warning-border)",
-  },
-  [TIPOS_EVENTO_HISTORIAL.MIEMBRO_AGREGADO]: {
-    fondo: "var(--color-success-soft)",
-    texto: "var(--color-success-text)",
-    borde: "var(--color-success-border)",
-  },
-  [TIPOS_EVENTO_HISTORIAL.ROL_CAMBIADO]: {
-    fondo: "var(--color-info-soft)",
-    texto: "var(--color-info-text)",
-    borde: "var(--color-info-border)",
   },
 };
 
@@ -111,10 +95,7 @@ export function nombreAfectadoHistorial(evento) {
     evento?.nombreUsuarioAfectado,
     evento?.apellidoUsuarioAfectado
   );
-  if (nombre) return nombre;
-  return evento?.idPerfilAfectado != null
-    ? `Perfil #${evento.idPerfilAfectado}`
-    : "Perfil no identificado";
+  return nombre || "—";
 }
 
 /**
@@ -127,10 +108,7 @@ export function nombreActorHistorial(evento) {
     evento?.nombreUsuarioActor,
     evento?.apellidoUsuarioActor
   );
-  if (nombre) return nombre;
-  return evento?.idPerfilActor != null || evento?.idUsuarioActor != null
-    ? "Perfil no identificado"
-    : "—";
+  return nombre || "—";
 }
 
 /**
@@ -211,7 +189,7 @@ export function normalizarPaginaHistorial(data) {
 }
 
 /**
- * `true` si el error indica que el endpoint de historial todavía no existe.
+ * `true` si el 404 corresponde a un proyecto inexistente.
  * @param {object} error error Axios
  * @returns {boolean}
  */
@@ -232,7 +210,7 @@ export function mensajeErrorHistorial(
   const mensaje = String(error?.response?.data?.message || "").trim();
 
   if (esHistorialNoDisponible(error)) {
-    return "El historial del proyecto todavía no está disponible.";
+    return "El proyecto no existe o ya no está disponible.";
   }
   if (status === 403) {
     return mensaje || "No tenés permiso para ver el historial de este proyecto.";

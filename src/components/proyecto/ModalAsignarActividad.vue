@@ -53,12 +53,22 @@
         :id-proyecto="idProyecto"
         :model-value="idPerfilSeleccionado"
         :id-perfiles-asignados="idPerfilesAsignados"
+        :id-usuarios-asignados="usuariosAsignados"
         :deshabilitado="asignando || !tieneFechaEntrega"
         :token-refresco="tokenRefrescoMiembros"
         @update:model-value="onCambioSeleccionId"
         @seleccionado="onSeleccionado"
       />
     </section>
+
+    <p
+      v-if="miembroYaAsignado"
+      class="asignar-actividad-modal__aviso asignar-actividad-modal__aviso--bloqueo"
+    >
+      <span class="material-symbols-outlined" aria-hidden="true">person_off</span>
+      Ese usuario ya tiene una asignación activa en esta actividad con otro
+      perfil. Elegí otro miembro u otra actividad.
+    </p>
 
     <p
       v-if="esDirectorSeleccionado"
@@ -148,12 +158,19 @@ import {
   etiquetaEstadoActividad,
   formatearDuracionMinutos,
 } from "../../utils/actividadConstants.js";
-import { perfilesAsignadosDe } from "../../utils/asignacionConstants.js";
+import {
+  perfilesAsignadosDe,
+  usuariosAsignadosDe,
+} from "../../utils/asignacionConstants.js";
 
 /*
  * Confirmación de UC-70. El contenedor hace el POST; este modal sólo muestra la
  * actividad, el selector de miembros y la disponibilidad. El backend revalida
  * siempre la disponibilidad y las reglas de negocio.
+ *
+ * La disponibilidad sólo responde por horarios: no confirma que el usuario sea
+ * elegible. La duplicidad por usuario se controla con los asignados activos y
+ * el 409 del backend; nunca reutilizando `disponible`.
  */
 export default {
   name: "ModalAsignarActividad",
@@ -180,6 +197,11 @@ export default {
       default: "",
     },
     idPerfilesAsignados: {
+      type: Array,
+      default: () => [],
+    },
+    /** Usuarios con asignación activa en la actividad (regla por usuario). */
+    idUsuariosAsignados: {
       type: Array,
       default: () => [],
     },
@@ -242,6 +264,20 @@ export default {
         ? this.idPerfilesAsignados
         : [];
     },
+    usuariosAsignados() {
+      const desdeActividad = usuariosAsignadosDe(this.actividad);
+      if (desdeActividad.length) return desdeActividad;
+      return Array.isArray(this.idUsuariosAsignados)
+        ? this.idUsuariosAsignados
+        : [];
+    },
+    miembroYaAsignado() {
+      const idUsuario = this.miembroSeleccionado?.idUsuario;
+      if (idUsuario == null || idUsuario === "") return false;
+      return this.usuariosAsignados.some(
+        (existente) => String(existente) === String(idUsuario)
+      );
+    },
     textoAsignados() {
       const total = this.perfilesAsignados.length;
       if (!total) return "Sin miembros asignados";
@@ -270,6 +306,7 @@ export default {
         !this.asignando &&
         this.tieneFechaEntrega &&
         this.idPerfilSeleccionado != null &&
+        !this.miembroYaAsignado &&
         this.disponibilidad?.disponible !== false
       );
     },

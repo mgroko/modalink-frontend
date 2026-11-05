@@ -278,8 +278,9 @@ const postulacionService = {
    *
    * Errores esperables: 401, 403, 404, 409 (ya gestionada, proyecto no
    * habilitado, actividad no PENDIENTE, requerimiento satisfecho, director,
-   * asignación existente, sin hueco común, fuera de tolerancia, perfil
-   * inactivo, proyecto sin fecha de entrega).
+   * asignación existente, usuario ya asignado con otro perfil, sin hueco
+   * común, fuera de tolerancia, perfil inactivo, proyecto sin fecha de
+   * entrega).
    * @param {number|string} idProyecto
    * @param {number|string} idPostulacion
    * @param {AbortSignal} [signal]

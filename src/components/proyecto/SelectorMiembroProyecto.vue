@@ -83,6 +83,7 @@
         role="option"
         :aria-selected="estaSeleccionado(miembro) ? 'true' : 'false'"
         :disabled="deshabilitado || estaAsignado(miembro)"
+        :title="motivoAsignado(miembro)"
         @click="seleccionar(miembro)"
       >
         <span class="selector-miembro__avatar" aria-hidden="true">
@@ -112,7 +113,7 @@
               v-if="estaAsignado(miembro)"
               class="selector-miembro__chip selector-miembro__chip--asignado"
             >
-              Ya asignado
+              {{ textoAsignado(miembro) }}
             </span>
           </span>
         </span>
@@ -198,6 +199,14 @@ export default {
       type: Array,
       default: () => [],
     },
+    /**
+     * Usuarios con una asignación activa en la actividad. Bloquea todos sus
+     * perfiles: la restricción del backend es por usuario, no por perfil.
+     */
+    idUsuariosAsignados: {
+      type: Array,
+      default: () => [],
+    },
     deshabilitado: {
       type: Boolean,
       default: false,
@@ -248,6 +257,13 @@ export default {
           .map((id) => String(id))
       );
     },
+    idsUsuariosAsignados() {
+      return new Set(
+        (this.idUsuariosAsignados || [])
+          .filter((id) => id != null && id !== "")
+          .map((id) => String(id))
+      );
+    },
   },
   watch: {
     idProyecto() {
@@ -293,8 +309,28 @@ export default {
     esDirector(miembro) {
       return String(miembro?.rol || "").toUpperCase() === "DIRECTOR";
     },
-    estaAsignado(miembro) {
+    perfilAsignado(miembro) {
       return this.idsAsignados.has(String(miembro?.idPerfil));
+    },
+    usuarioAsignado(miembro) {
+      if (miembro?.idUsuario == null || miembro.idUsuario === "") return false;
+      return this.idsUsuariosAsignados.has(String(miembro.idUsuario));
+    },
+    estaAsignado(miembro) {
+      return this.perfilAsignado(miembro) || this.usuarioAsignado(miembro);
+    },
+    textoAsignado(miembro) {
+      if (this.perfilAsignado(miembro)) return "Ya asignado";
+      return "Mismo usuario ya asignado";
+    },
+    motivoAsignado(miembro) {
+      if (this.perfilAsignado(miembro)) {
+        return "Este perfil ya está asignado a la actividad.";
+      }
+      if (this.usuarioAsignado(miembro)) {
+        return "El usuario ya tiene una asignación activa en esta actividad con otro perfil.";
+      }
+      return "";
     },
     estaSeleccionado(miembro) {
       return (

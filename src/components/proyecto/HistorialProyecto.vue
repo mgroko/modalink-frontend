@@ -84,11 +84,7 @@
         history
       </span>
       <p class="historial-proyecto__vacio-titulo">
-        {{
-          hayFiltrosActivos
-            ? "No hay movimientos para los filtros seleccionados."
-            : "Todavía no hay movimientos de miembros en este proyecto."
-        }}
+        {{ mensajeVacio }}
       </p>
       <VaButton
         v-if="hayFiltrosActivos"
@@ -110,7 +106,9 @@
               <th>Estado</th>
               <th>Motivo</th>
               <th>Responsable</th>
-              <th>Actividad</th>
+              <th title="Primera actividad registrada para el integrante al momento de la consulta">
+                Actividad registrada
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -134,8 +132,13 @@
                   <span v-if="evento.nombreProfesionAfectado">
                     {{ evento.nombreProfesionAfectado }}
                   </span>
-                  <span v-else-if="evento.rolAfectado">
+                  <span v-if="evento.rolAfectado">
                     {{ etiquetaRol(evento.rolAfectado) }}
+                  </span>
+                  <span
+                    v-if="!evento.nombreProfesionAfectado && !evento.rolAfectado"
+                  >
+                    —
                   </span>
                 </div>
               </td>
@@ -147,15 +150,12 @@
               </td>
 
               <td class="historial-proyecto__motivo">
-                {{ evento.motivo || "Sin motivo registrado" }}
+                {{ evento.motivo || "—" }}
               </td>
 
               <td>
                 <div class="historial-proyecto__perfil">
                   <strong>{{ nombreActorHistorial(evento) }}</strong>
-                  <span v-if="evento.idUsuarioActor != null">
-                    Usuario #{{ evento.idUsuarioActor }}
-                  </span>
                 </div>
               </td>
 
@@ -264,6 +264,15 @@ export default {
         String(this.filtros.tipo || "").trim() !== ""
       );
     },
+    mensajeVacio() {
+      if (this.hayFiltrosActivos) {
+        return "No hay movimientos para los filtros seleccionados.";
+      }
+      if (this.paginacion.paginaActual > 0) {
+        return "No hay movimientos en esta página.";
+      }
+      return "Todavía no hay movimientos de miembros en este proyecto.";
+    },
   },
   watch: {
     idProyecto(nuevo, anterior) {
@@ -336,7 +345,10 @@ export default {
             tipo: this.filtros.tipo || "",
             nombre: String(this.filtros.nombre || "").trim(),
             page: Math.max(0, Number(pagina) || 0),
-            size: this.paginacion.tamanoPagina || PAGINA_INICIAL.tamanoPagina,
+            size:
+              this.paginacion.tamanoPagina > 0
+                ? this.paginacion.tamanoPagina
+                : PAGINA_INICIAL.tamanoPagina,
           },
           this.controlador.signal
         );
