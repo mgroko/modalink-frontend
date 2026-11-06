@@ -369,6 +369,7 @@
           </header>
 
           <VaInput
+            class="crear-perfil__biografia"
             :model-value="form.biografia"
             :rules="[reglas.requerido, reglas.max500]"
             type="textarea"
@@ -1515,6 +1516,17 @@ export default {
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 50%;
   vertical-align: middle;
+}
+
+.crear-perfil__biografia {
+  display: block;
+  width: 100%;
+}
+
+.crear-perfil__biografia :deep(textarea) {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
 }
 
 .crear-perfil__contador {
