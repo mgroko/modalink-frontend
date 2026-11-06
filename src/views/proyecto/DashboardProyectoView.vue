@@ -36,6 +36,9 @@
           :mostrar-planificacion="esMiembro"
           :mostrar-integrantes="esMiembro"
           :mostrar-historial="esDirector"
+          :mostrar-reemplazos="esDirector"
+          :reemplazos-pendientes="reemplazosPendientes"
+          :reemplazos-sin-candidatos="reemplazosSinCandidatos"
           @cambiar-tab="cambiarTab"
         >
           <template #acciones>
@@ -298,6 +301,13 @@
           :id-proyecto="idProyecto"
         />
 
+        <ReemplazosProyecto
+          v-else-if="tabActiva === 'reemplazos' && esDirector"
+          :id-proyecto="idProyecto"
+          @resumen="actualizarResumenReemplazos"
+          @actualizado="refrescarTrasReemplazo"
+        />
+
         <template v-else-if="tabActiva === 'postulaciones'">
           <template v-if="puedeGestionarPostulaciones">
             <h2 class="dashboard-proyecto__titulo">Postulaciones del proyecto</h2>
@@ -476,6 +486,7 @@
 import proyectoService from "../../services/proyectoService";
 import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
+import reemplazoService from "../../services/reemplazoService.js";
 import { idPerfilActivo, refrescarSesion } from "../../services/authState";
 import { cargarResumenPerfil } from "../../services/notificacionState";
 import BaseAlert from "../../components/AlertaBase.vue";
@@ -483,6 +494,7 @@ import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
 import IntegrantesProyecto from "../../components/proyecto/IntegrantesProyecto.vue";
 import HistorialProyecto from "../../components/proyecto/HistorialProyecto.vue";
+import ReemplazosProyecto from "../../components/proyecto/ReemplazosProyecto.vue";
 import PersonalRequerido from "../../components/proyecto/PersonalRequerido.vue";
 import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
 import GestionPostulaciones from "../../components/proyecto/GestionPostulaciones.vue";
@@ -564,6 +576,7 @@ import {
   ROLES_PROYECTO,
   normalizarEstadoProyecto,
 } from "../../utils/proyectoConstants.js";
+import { calcularResumenReemplazos } from "../../utils/reemplazoConstants.js";
 
 // Cancela la request en vuelo si cambia el id o se reintenta
 // (no reactivo a propósito: AbortController no debe pasar por reactive()).
@@ -578,6 +591,7 @@ let controladorDesasignacion = null;
 let controladorPostulacion = null;
 let controladorConfirmacion = null;
 let controladorFinalizacion = null;
+let controladorResumenReemplazos = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -587,6 +601,7 @@ export default {
     PlanificacionProyecto,
     IntegrantesProyecto,
     HistorialProyecto,
+    ReemplazosProyecto,
     PersonalRequerido,
     RequerimientoCard,
     GestionPostulaciones,
@@ -696,6 +711,8 @@ data() {
       errorDesasignar: "",
       tokenRefrescoDisponibilidad: 0,
       tokenRefrescoPlanificacion: 0,
+      reemplazosPendientes: 0,
+      reemplazosSinCandidatos: 0,
     };
   },
   computed: {
@@ -891,6 +908,12 @@ data() {
         controladorDarseDeBaja.abort();
         controladorDarseDeBaja = null;
       }
+      this.reemplazosPendientes = 0;
+      this.reemplazosSinCandidatos = 0;
+      if (controladorResumenReemplazos) {
+        controladorResumenReemplazos.abort();
+        controladorResumenReemplazos = null;
+      }
       this.modalEliminarActividadVisible = false;
       this.actividadEliminar = {};
       this.eliminandoActividad = false;
@@ -952,7 +975,12 @@ data() {
     },
     esMiembro(valor) {
       if (!valor) {
-        if (["planificacion", "integrantes", "historial"].includes(this.tabActiva)) {
+        this.limpiarResumenReemplazos();
+        if (
+          ["planificacion", "integrantes", "historial", "reemplazos"].includes(
+            this.tabActiva
+          )
+        ) {
           this.tabActiva = "informacion";
         }
         this.aplicarTabDesdeQuery();
@@ -961,10 +989,15 @@ data() {
       this.aplicarTabDesdeQuery();
     },
     esDirector(valor) {
-      if (!valor && this.tabActiva === "historial") {
-        this.tabActiva = "informacion";
-        this.aplicarTabDesdeQuery();
+      if (!valor) {
+        this.limpiarResumenReemplazos();
+        if (["historial", "reemplazos"].includes(this.tabActiva)) {
+          this.tabActiva = "informacion";
+          this.aplicarTabDesdeQuery();
+        }
+        return;
       }
+      this.cargarResumenReemplazos();
     },
   },
   created() {
@@ -1010,6 +1043,8 @@ data() {
         // Reaplicar la tab de la URL una vez conocido el rol del proyecto:
         // `?tab=historial` solo es válida para directores.
         this.aplicarTabDesdeQuery();
+        if (this.esDirector) this.cargarResumenReemplazos(corrida);
+        else this.limpiarResumenReemplazos();
         await this.cargarCatalogos(this.proyecto, corrida);
       } catch (error) {
         if (
@@ -1062,6 +1097,66 @@ data() {
         catalogos[id] = Array.isArray(datos) ? datos : datos?.caracteristicas || [];
       });
       this.catalogosCaracteristicas = catalogos;
+    },
+    /**
+     * Badge de la pestaña Reemplazos. El backend no tiene endpoint de resumen:
+     * se cuenta sobre el listado (sin paginación) y se silencian los errores
+     * para no bloquear el dashboard del proyecto.
+     * @param {number} [corrida] id de carga del proyecto
+     */
+    async cargarResumenReemplazos(corrida = this.idCarga) {
+      if (!this.esDirector || this.idProyecto == null) {
+        this.limpiarResumenReemplazos();
+        return;
+      }
+
+      if (controladorResumenReemplazos) controladorResumenReemplazos.abort();
+      controladorResumenReemplazos = new AbortController();
+
+      try {
+        const response = await reemplazoService.listar(
+          this.idProyecto,
+          controladorResumenReemplazos.signal
+        );
+        if (corrida !== this.idCarga || !this.esDirector) return;
+
+        const data = response?.data;
+        const lista = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.contenido)
+            ? data.contenido
+            : [];
+        const resumen = calcularResumenReemplazos(lista);
+        this.reemplazosPendientes = resumen.totalAccionesPendientes;
+        this.reemplazosSinCandidatos = resumen.sinCandidatos;
+      } catch (error) {
+        if (
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError" ||
+          error?.name === "AbortError"
+        ) {
+          return;
+        }
+        if (corrida === this.idCarga) this.limpiarResumenReemplazos();
+      }
+    },
+    limpiarResumenReemplazos() {
+      this.reemplazosPendientes = 0;
+      this.reemplazosSinCandidatos = 0;
+    },
+    actualizarResumenReemplazos({ pendientes, sinCandidatos } = {}) {
+      this.reemplazosPendientes = Number(pendientes) || 0;
+      this.reemplazosSinCandidatos = Number(sinCandidatos) || 0;
+    },
+    /**
+     * Después de aprobar/rechazar/cancelar/regenerar, el proyecto cambia:
+     * requerimientos, miembros y planificación pueden haber cambiado.
+     */
+    async refrescarTrasReemplazo() {
+      await this.cargar();
+      this.tokenRefrescoIntegrantes += 1;
+      this.tokenRefrescoPlanificacion += 1;
+      this.refrescarNotificacionesPerfil();
     },
     async manejarError(error) {
       const status = error?.response?.status;
@@ -1147,6 +1242,7 @@ data() {
         "planificacion",
         "integrantes",
         "historial",
+        "reemplazos",
         "postulaciones",
       ];
       const tab = permitidas.includes(solicitada) ? solicitada : "informacion";
@@ -1156,6 +1252,10 @@ data() {
         return;
       }
       if (tab === "historial" && !this.esDirector) {
+        this.tabActiva = "informacion";
+        return;
+      }
+      if (tab === "reemplazos" && !this.esDirector) {
         this.tabActiva = "informacion";
         return;
       }
@@ -1182,6 +1282,7 @@ data() {
     cambiarTab(tab) {
       if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) return;
       if (tab === "historial" && !this.esDirector) return;
+      if (tab === "reemplazos" && !this.esDirector) return;
       if (this.tabActiva === tab) return;
 
       this.tabActiva = tab;

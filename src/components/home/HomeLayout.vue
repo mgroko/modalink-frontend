@@ -267,6 +267,10 @@ import {
   state as invitacionState,
   cargarResumenInvitaciones,
 } from "../../services/invitacionState";
+import {
+  state as reemplazoState,
+  cargarResumenReemplazos,
+} from "../../services/reemplazoState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
@@ -334,7 +338,9 @@ export default {
       return notificacionState.noLeidasPerfil;
     },
     invitacionesPendientes() {
-      return invitacionState.pendientesRecibidas;
+      return (
+        invitacionState.pendientesRecibidas + reemplazoState.pendientes
+      );
     },
   },
   watch: {
@@ -343,12 +349,14 @@ export default {
     },
     idActivo(nuevo) {
       cargarResumenInvitaciones(nuevo);
+      cargarResumenReemplazos(nuevo);
     },
   },
   mounted() {
     this.cargarDatos();
     cargarResumenPerfil(this.idActivo);
     cargarResumenInvitaciones(this.idActivo);
+    cargarResumenReemplazos(this.idActivo);
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {

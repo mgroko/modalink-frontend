@@ -27,6 +27,15 @@ export const TIPOS_NOTIFICACION = {
   HABILIDAD_MODIFICADA: "HABILIDAD_MODIFICADA",
   HABILIDAD_ELIMINADA: "HABILIDAD_ELIMINADA",
   CALIFICACION_SOLICITADA: "CALIFICACION_SOLICITADA",
+  REEMPLAZO_CANDIDATOS_DISPONIBLES: "REEMPLAZO_CANDIDATOS_DISPONIBLES",
+  REEMPLAZO_SIN_CANDIDATOS: "REEMPLAZO_SIN_CANDIDATOS",
+  REEMPLAZO_INVITACION_RECIBIDA: "REEMPLAZO_INVITACION_RECIBIDA",
+  REEMPLAZO_CANDIDATO_RECHAZO: "REEMPLAZO_CANDIDATO_RECHAZO",
+  REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION:
+    "REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION",
+  REEMPLAZO_INCORPORACION_APROBADA: "REEMPLAZO_INCORPORACION_APROBADA",
+  REEMPLAZO_INCORPORACION_RECHAZADA: "REEMPLAZO_INCORPORACION_RECHAZADA",
+  REEMPLAZO_CANCELADO: "REEMPLAZO_CANCELADO",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -35,6 +44,7 @@ export const RUTAS_NOTIFICACION = {
   ACTIVIDAD: "actividad-proyecto",
   ADMIN_REPORTE_PERFIL: "admin-reporte-perfil",
   CALIFICACIONES: "calificaciones-proyecto",
+  INVITACIONES: "invitaciones",
 };
 
 const ETIQUETAS_TIPO = {
@@ -57,6 +67,20 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "Habilidad modificada",
   [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "Habilidad eliminada",
   [TIPOS_NOTIFICACION.CALIFICACION_SOLICITADA]: "Calificación solicitada",
+  [TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATOS_DISPONIBLES]:
+    "Candidatos de reemplazo",
+  [TIPOS_NOTIFICACION.REEMPLAZO_SIN_CANDIDATOS]: "Reemplazo sin candidatos",
+  [TIPOS_NOTIFICACION.REEMPLAZO_INVITACION_RECIBIDA]:
+    "Invitación de reemplazo",
+  [TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATO_RECHAZO]:
+    "Candidato rechazó la invitación",
+  [TIPOS_NOTIFICACION.REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION]:
+    "Incorporación pendiente de aprobación",
+  [TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_APROBADA]:
+    "Incorporación aprobada",
+  [TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_RECHAZADA]:
+    "Incorporación rechazada",
+  [TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO]: "Reemplazo cancelado",
 };
 
 const ICONOS_TIPO = {
@@ -79,6 +103,15 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "edit",
   [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "delete",
   [TIPOS_NOTIFICACION.CALIFICACION_SOLICITADA]: "reviews",
+  [TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATOS_DISPONIBLES]: "person_search",
+  [TIPOS_NOTIFICACION.REEMPLAZO_SIN_CANDIDATOS]: "person_off",
+  [TIPOS_NOTIFICACION.REEMPLAZO_INVITACION_RECIBIDA]: "mail",
+  [TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATO_RECHAZO]: "person_remove",
+  [TIPOS_NOTIFICACION.REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION]:
+    "how_to_reg",
+  [TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_APROBADA]: "check_circle",
+  [TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_RECHAZADA]: "cancel",
+  [TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO]: "cancel",
 };
 
 /**
@@ -246,6 +279,48 @@ export function destinoNotificacion(notificacion) {
           params: { id: idProyecto, idActividad },
         },
       };
+    }
+
+    case TIPOS_NOTIFICACION.REEMPLAZO_INVITACION_RECIBIDA:
+    case TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_RECHAZADA: {
+      return {
+        etiqueta: "Ver invitaciones",
+        ruta: {
+          name: RUTAS_NOTIFICACION.INVITACIONES,
+          query: { seccion: "reemplazos" },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATOS_DISPONIBLES:
+    case TIPOS_NOTIFICACION.REEMPLAZO_SIN_CANDIDATOS:
+    case TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATO_RECHAZO:
+    case TIPOS_NOTIFICACION.REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION:
+    case TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO: {
+      const id = idValido(notificacion.idProyecto);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver reemplazos",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PROYECTO,
+              params: { id },
+              query: { tab: "reemplazos" },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_APROBADA: {
+      const id = idValido(notificacion.idProyecto);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver proyecto",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PROYECTO,
+              params: { id },
+            },
+          };
     }
 
     case TIPOS_NOTIFICACION.PERFIL_REPORTADO: {

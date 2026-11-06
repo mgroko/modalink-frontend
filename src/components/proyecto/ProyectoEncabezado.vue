@@ -44,6 +44,12 @@
         <span v-if="tab.badge" class="proyecto-encabezado__badge">
           {{ tab.badge }}
         </span>
+        <span
+          v-if="tab.alerta"
+          class="proyecto-encabezado__alerta"
+          title="Hay procesos de reemplazo sin candidatos"
+          aria-label="Hay procesos de reemplazo sin candidatos"
+        ></span>
       </button>
     </nav>
   </section>
@@ -91,6 +97,21 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Pestaña Reemplazos. Sólo para el Director activo. */
+    mostrarReemplazos: {
+      type: Boolean,
+      default: false,
+    },
+    /** Procesos que requieren una acción del director. */
+    reemplazosPendientes: {
+      type: Number,
+      default: 0,
+    },
+    /** Procesos sin candidatos: aviso separado del badge de acciones. */
+    reemplazosSinCandidatos: {
+      type: Number,
+      default: 0,
+    },
     /** Texto opcional; si no llega, se compone con rol, privacidad, ubicación y entrega. */
     subtitulo: {
       type: String,
@@ -109,6 +130,14 @@ export default {
       }
       if (this.mostrarHistorial) {
         tabs.push({ id: "historial", label: "Historial" });
+      }
+      if (this.mostrarReemplazos) {
+        tabs.push({
+          id: "reemplazos",
+          label: "Reemplazos",
+          badge: this.reemplazosPendientes || null,
+          alerta: this.reemplazosSinCandidatos > 0,
+        });
       }
       if (this.mostrarPostulaciones) {
         tabs.push({
@@ -266,6 +295,14 @@ export default {
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.proyecto-encabezado__alerta {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-warning-text);
+  box-shadow: 0 0 0 2px var(--color-warning-soft);
 }
 
 .proyecto-encabezado__tab:hover {

@@ -3,11 +3,11 @@
     <header class="invitaciones__cabecera">
       <h1 class="invitaciones__titulo">Invitaciones</h1>
       <p class="invitaciones__subtitulo">
-        Revisá las invitaciones a proyectos que recibiste o enviaste.
+        Revisá las invitaciones a proyectos y las invitaciones de reemplazo.
       </p>
     </header>
 
-    <div class="invitaciones__tabs" role="tablist" aria-label="Dirección de invitaciones">
+    <div class="invitaciones__tabs" role="tablist" aria-label="Invitaciones y reemplazos">
       <button
         v-for="tab in tabs"
         :key="tab.value || 'todas'"
@@ -26,6 +26,7 @@
     </div>
 
     <FiltrosInvitaciones
+      v-if="!esSeccionReemplazos"
       :filtros="filtros"
       :error-fechas="errorFechas"
       :etiqueta-perfil="etiquetaPerfil"
@@ -34,10 +35,14 @@
       @limpiar="limpiarFiltros"
     />
 
-    <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
+    <BaseAlert
+      v-if="!esSeccionReemplazos && mensajeError"
+      :message="mensajeError"
+      type="error"
+    />
 
     <div
-      v-if="puedeReintentar && !cargando"
+      v-if="!esSeccionReemplazos && puedeReintentar && !cargando"
       class="invitaciones__reintento"
     >
       <VaButton preset="primary" icon="mso-refresh" @click="buscar(paginacion.paginaActual)">
@@ -45,14 +50,14 @@
       </VaButton>
     </div>
 
-    <div v-if="cargando" class="invitaciones__estado">
+    <div v-if="!esSeccionReemplazos && cargando" class="invitaciones__estado">
       <span class="material-symbols-outlined invitaciones__estado-icono">
         hourglass_empty
       </span>
       Cargando invitaciones...
     </div>
 
-    <template v-else-if="!mensajeError">
+    <template v-else-if="!esSeccionReemplazos && !mensajeError">
       <div
         v-if="paginacion.totalElementos > 0"
         class="invitaciones__resultado-cabecera"
@@ -125,6 +130,78 @@
       </div>
     </template>
 
+    <template v-if="esSeccionReemplazos">
+      <BaseAlert v-if="errorReemplazos" :message="errorReemplazos" type="error" />
+
+      <div
+        v-if="errorReemplazos && puedeReintentarReemplazos"
+        class="invitaciones__reintento"
+      >
+        <VaButton preset="primary" icon="mso-refresh" @click="cargarReemplazos">
+          Reintentar
+        </VaButton>
+      </div>
+
+      <div
+        v-if="cargandoReemplazos && !reemplazos.length"
+        class="invitaciones__estado"
+      >
+        <span class="material-symbols-outlined invitaciones__estado-icono">
+          hourglass_empty
+        </span>
+        Cargando invitaciones de reemplazo...
+      </div>
+
+      <template v-else-if="!errorReemplazos">
+        <div
+          v-if="reemplazos.length"
+          class="invitaciones__resultado-cabecera"
+        >
+          <span class="invitaciones__resultado-total">
+            {{ textoResumenReemplazos }}
+          </span>
+
+          <button
+            type="button"
+            class="invitaciones__orden"
+            :disabled="cargandoReemplazos"
+            @click="cargarReemplazos"
+          >
+            Actualizar
+            <span class="material-symbols-outlined" aria-hidden="true">
+              refresh
+            </span>
+          </button>
+        </div>
+
+        <div v-if="reemplazos.length" class="invitaciones__lista">
+          <InvitacionReemplazoCard
+            v-for="invitacion in reemplazos"
+            :key="invitacion.idCandidato"
+            :invitacion="invitacion"
+            @abrir="abrirDetalleReemplazo"
+            @aceptar="
+              abrirGestionReemplazo(
+                $event,
+                ACCIONES_GESTION_REEMPLAZO.ACEPTAR
+              )
+            "
+            @rechazar="
+              abrirGestionReemplazo(
+                $event,
+                ACCIONES_GESTION_REEMPLAZO.RECHAZAR
+              )
+            "
+          />
+        </div>
+
+        <div v-else class="invitaciones__vacio">
+          <span class="material-symbols-outlined" aria-hidden="true">mail</span>
+          <p>No tenés invitaciones de reemplazo activas.</p>
+        </div>
+      </template>
+    </template>
+
     <ModalDetalleInvitacion
       :model-value="modalDetalle.visible"
       :invitacion="modalDetalle.invitacion"
@@ -159,6 +236,36 @@
       @confirmar="confirmarGestionInvitacion"
       @rechazar="rechazarDesdeErrorGestion"
     />
+
+    <ModalDetalleInvitacionReemplazo
+      :model-value="modalDetalleReemplazo.visible"
+      :invitacion="modalDetalleReemplazo.invitacion"
+      @update:model-value="onCambioVisibilidadDetalleReemplazo"
+      @aceptar="
+        onGestionDesdeDetalleReemplazo(
+          $event,
+          ACCIONES_GESTION_REEMPLAZO.ACEPTAR
+        )
+      "
+      @rechazar="
+        onGestionDesdeDetalleReemplazo(
+          $event,
+          ACCIONES_GESTION_REEMPLAZO.RECHAZAR
+        )
+      "
+    />
+
+    <ModalGestionInvitacionReemplazo
+      :model-value="modalGestionReemplazo.visible"
+      :invitacion="modalGestionReemplazo.invitacion"
+      :accion="modalGestionReemplazo.accion"
+      :gestionando="gestionandoReemplazo"
+      :error="errorGestionReemplazo"
+      :mostrar-rechazo="mostrarRechazoReemplazo"
+      @update:model-value="onCambioVisibilidadGestionReemplazo"
+      @confirmar="confirmarGestionReemplazo"
+      @rechazar="rechazarDesdeErrorReemplazo"
+    />
   </div>
 </template>
 
@@ -170,8 +277,15 @@ import InvitacionCard from "../../components/invitacion/InvitacionCard.vue";
 import ModalDetalleInvitacion from "../../components/invitacion/ModalDetalleInvitacion.vue";
 import ModalEliminarInvitacion from "../../components/invitacion/ModalEliminarInvitacion.vue";
 import ModalGestionInvitacion from "../../components/invitacion/ModalGestionInvitacion.vue";
+import InvitacionReemplazoCard from "../../components/invitacion/InvitacionReemplazoCard.vue";
+import ModalDetalleInvitacionReemplazo from "../../components/invitacion/ModalDetalleInvitacionReemplazo.vue";
+import ModalGestionInvitacionReemplazo from "../../components/invitacion/ModalGestionInvitacionReemplazo.vue";
 import invitacionService from "../../services/invitacionService.js";
+import reemplazoService from "../../services/reemplazoService.js";
 import { cargarResumenInvitaciones } from "../../services/invitacionState.js";
+import {
+  actualizarResumenReemplazos,
+} from "../../services/reemplazoState.js";
 import { idPerfilActivo, refrescarSesion } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
@@ -192,6 +306,13 @@ import {
 } from "../../utils/invitacionBusquedaConstants.js";
 import { TIPOS_INVITACION } from "../../utils/invitacionConstants.js";
 import { mensajeMotivo } from "../../utils/disponibilidadConstants.js";
+import {
+  ACCIONES_GESTION_REEMPLAZO,
+  ESTADOS_CANDIDATO_REEMPLAZO,
+  TIPOS_ERROR_REEMPLAZO,
+  clasificarErrorReemplazo,
+  puedeGestionarInvitacionReemplazo,
+} from "../../utils/reemplazoConstants.js";
 
 const FILTROS_INICIALES = {
   nombreProyecto: "",
@@ -202,9 +323,13 @@ const FILTROS_INICIALES = {
   tipo: "",
 };
 
+const SECCION_REEMPLAZOS = "REEMPLAZOS";
+
 let controlador = null;
 let controladorEliminar = null;
 let controladorGestion = null;
+let controladorReemplazos = null;
+let controladorGestionReemplazo = null;
 
 /*
  * UC-30: invitaciones recibidas o enviadas por el perfil activo.
@@ -221,6 +346,9 @@ export default {
     ModalDetalleInvitacion,
     ModalEliminarInvitacion,
     ModalGestionInvitacion,
+    InvitacionReemplazoCard,
+    ModalDetalleInvitacionReemplazo,
+    ModalGestionInvitacionReemplazo,
   },
   setup() {
     return { toast: useToast() };
@@ -229,6 +357,7 @@ export default {
     return {
       DIRECCIONES_INVITACION,
       ACCIONES_GESTION_INVITACION,
+      ACCIONES_GESTION_REEMPLAZO,
       tabActual: DIRECCIONES_INVITACION.RECIBIDA,
       ordenFecha: ORDEN_FECHA_INVITACION.DESC,
       filtros: { ...FILTROS_INICIALES },
@@ -271,11 +400,31 @@ export default {
       mostrarRechazoTrasError: false,
       idsNoGestionables: [],
       idCarga: 0,
+      reemplazos: [],
+      cargandoReemplazos: false,
+      errorReemplazos: "",
+      puedeReintentarReemplazos: false,
+      modalDetalleReemplazo: {
+        visible: false,
+        invitacion: null,
+      },
+      modalGestionReemplazo: {
+        visible: false,
+        accion: ACCIONES_GESTION_REEMPLAZO.ACEPTAR,
+        invitacion: null,
+      },
+      gestionandoReemplazo: false,
+      errorGestionReemplazo: "",
+      mostrarRechazoReemplazo: false,
+      idCargaReemplazos: 0,
     };
   },
   computed: {
     idPerfilActivo() {
       return idPerfilActivo();
+    },
+    esSeccionReemplazos() {
+      return this.tabActual === SECCION_REEMPLAZOS;
     },
     errorFechas() {
       return validarRangoFechasInvitaciones(
@@ -319,6 +468,11 @@ export default {
           label: "Enviadas",
           total: this.conteos[DIRECCIONES_INVITACION.ENVIADA],
         },
+        {
+          value: SECCION_REEMPLAZOS,
+          label: "Reemplazos",
+          total: this.reemplazos.length,
+        },
       ];
     },
     textoResumen() {
@@ -344,24 +498,71 @@ export default {
       }
       return "Todavía no tenés invitaciones.";
     },
+    textoResumenReemplazos() {
+      const total = this.reemplazos.length;
+      const pendientes = this.reemplazos.filter(
+        (invitacion) =>
+          invitacion?.estado === ESTADOS_CANDIDATO_REEMPLAZO.INVITADO
+      ).length;
+      const palabra = total === 1 ? "invitación" : "invitaciones";
+      if (!total) return "";
+      return `${total} ${palabra} de reemplazo · ${pendientes} pendiente${
+        pendientes === 1 ? "" : "s"
+      } de respuesta`;
+    },
+  },
+  watch: {
+    "$route.query.seccion"(nuevo, anterior) {
+      if (nuevo === anterior) return;
+      if (nuevo === "reemplazos") {
+        if (this.tabActual !== SECCION_REEMPLAZOS) {
+          this.tabActual = SECCION_REEMPLAZOS;
+          this.cargarReemplazos();
+        }
+        return;
+      }
+      if (this.tabActual === SECCION_REEMPLAZOS) {
+        this.tabActual = DIRECCIONES_INVITACION.RECIBIDA;
+        this.buscar(0);
+      }
+    },
   },
   created() {
     this.controlador = null;
   },
   mounted() {
-    this.buscar(0);
+    this.aplicarSeccionDesdeQuery();
+    this.cargarReemplazos();
+    if (!this.esSeccionReemplazos) this.buscar(0);
     cargarResumenInvitaciones(this.idPerfilActivo);
   },
   beforeUnmount() {
     this.abortar();
     if (controladorEliminar) controladorEliminar.abort();
     if (controladorGestion) controladorGestion.abort();
+    if (controladorReemplazos) controladorReemplazos.abort();
+    if (controladorGestionReemplazo) controladorGestionReemplazo.abort();
   },
   methods: {
+    aplicarSeccionDesdeQuery() {
+      if (this.$route.query.seccion === "reemplazos") {
+        this.tabActual = SECCION_REEMPLAZOS;
+      }
+    },
     cambiarTab(direccion) {
       if (this.tabActual === direccion) return;
       this.tabActual = direccion;
-      this.buscar(0);
+
+      const query = { ...this.$route.query };
+      if (direccion === SECCION_REEMPLAZOS) query.seccion = "reemplazos";
+      else delete query.seccion;
+      this.$router.replace({ name: "invitaciones", query }).catch(() => {});
+
+      if (direccion === SECCION_REEMPLAZOS) {
+        this.cargarReemplazos();
+      } else {
+        this.buscar(0);
+      }
     },
     cambiarFiltro({ campo, valor }) {
       this.filtros = { ...this.filtros, [campo]: valor ?? "" };
@@ -564,6 +765,303 @@ export default {
       this.mensajeError =
         mensaje ||
         "Ocurrió un error al cargar las invitaciones. Inténtalo nuevamente.";
+    },
+    async cargarReemplazos() {
+      if (this.cargandoReemplazos) {
+        if (controladorReemplazos) controladorReemplazos.abort();
+      }
+      const corrida = ++this.idCargaReemplazos;
+      if (controladorReemplazos) controladorReemplazos.abort();
+      controladorReemplazos = new AbortController();
+
+      this.cargandoReemplazos = true;
+      this.errorReemplazos = "";
+      this.puedeReintentarReemplazos = false;
+
+      try {
+        const response = await reemplazoService.listarInvitaciones(
+          controladorReemplazos.signal
+        );
+        if (corrida !== this.idCargaReemplazos) return;
+        const data = response?.data;
+        this.reemplazos = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.contenido)
+            ? data.contenido
+            : [];
+        actualizarResumenReemplazos(this.reemplazos);
+      } catch (error) {
+        if (this.esCancelacion(error) || corrida !== this.idCargaReemplazos) {
+          return;
+        }
+        await this.manejarErrorReemplazos(error);
+      } finally {
+        if (corrida === this.idCargaReemplazos) {
+          this.cargandoReemplazos = false;
+        }
+      }
+    },
+    async manejarErrorReemplazos(error) {
+      const clasificacion = clasificarErrorReemplazo(error);
+      const mensaje = mensajeErrorApi(
+        error,
+        "No se pudieron cargar las invitaciones de reemplazo."
+      );
+
+      this.reemplazos = [];
+      this.errorReemplazos = "";
+      this.puedeReintentarReemplazos = false;
+      actualizarResumenReemplazos([]);
+
+      if (clasificacion.tipo === TIPOS_ERROR_REEMPLAZO.SESION) {
+        await refrescarSesion();
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (clasificacion.tipo === TIPOS_ERROR_REEMPLAZO.PERFIL_ACTIVO) {
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (clasificacion.tipo === TIPOS_ERROR_REEMPLAZO.PERFIL_NO_ENCONTRADO) {
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (clasificacion.tipo === TIPOS_ERROR_REEMPLAZO.CUENTA) {
+        this.errorReemplazos = mensaje;
+        return;
+      }
+
+      if (clasificacion.tipo === TIPOS_ERROR_REEMPLAZO.PERMISO) {
+        this.errorReemplazos =
+          clasificacion.mensaje ||
+          "No tenés permiso para consultar invitaciones de reemplazo.";
+        return;
+      }
+
+      if (clasificacion.tipo === TIPOS_ERROR_REEMPLAZO.NO_ENCONTRADO) {
+        this.errorReemplazos =
+          clasificacion.mensaje ||
+          "Las invitaciones de reemplazo ya no están disponibles.";
+        return;
+      }
+
+      this.errorReemplazos = mensaje;
+      this.puedeReintentarReemplazos = true;
+    },
+    abrirDetalleReemplazo(invitacion) {
+      if (!invitacion?.idCandidato) return;
+      this.modalDetalleReemplazo = { visible: true, invitacion };
+    },
+    onCambioVisibilidadDetalleReemplazo(valor) {
+      if (!valor) {
+        this.modalDetalleReemplazo = { visible: false, invitacion: null };
+        return;
+      }
+      this.modalDetalleReemplazo = {
+        ...this.modalDetalleReemplazo,
+        visible: true,
+      };
+    },
+    onGestionDesdeDetalleReemplazo(invitacion, accion) {
+      this.modalDetalleReemplazo = { visible: false, invitacion: null };
+      this.$nextTick(() => {
+        this.abrirGestionReemplazo(invitacion, accion);
+      });
+    },
+    puedeGestionarInvitacionReemplazo,
+    abrirGestionReemplazo(invitacion, accion) {
+      if (
+        this.gestionandoReemplazo ||
+        !puedeGestionarInvitacionReemplazo(invitacion)
+      ) {
+        return;
+      }
+      this.modalGestionReemplazo = {
+        visible: true,
+        accion,
+        invitacion,
+      };
+      this.errorGestionReemplazo = "";
+      this.mostrarRechazoReemplazo = false;
+    },
+    onCambioVisibilidadGestionReemplazo(valor) {
+      if (!valor) {
+        this.cerrarModalGestionReemplazo();
+        return;
+      }
+      this.modalGestionReemplazo = {
+        ...this.modalGestionReemplazo,
+        visible: true,
+      };
+    },
+    cerrarModalGestionReemplazo(forzar = false) {
+      if (this.gestionandoReemplazo && !forzar) return;
+      this.modalGestionReemplazo = {
+        visible: false,
+        accion: ACCIONES_GESTION_REEMPLAZO.ACEPTAR,
+        invitacion: null,
+      };
+      this.errorGestionReemplazo = "";
+      this.mostrarRechazoReemplazo = false;
+    },
+    rechazarDesdeErrorReemplazo() {
+      if (this.gestionandoReemplazo) return;
+      this.modalGestionReemplazo = {
+        ...this.modalGestionReemplazo,
+        accion: ACCIONES_GESTION_REEMPLAZO.RECHAZAR,
+      };
+      this.errorGestionReemplazo = "";
+      this.mostrarRechazoReemplazo = false;
+    },
+    async confirmarGestionReemplazo(motivo) {
+      if (this.gestionandoReemplazo) return;
+
+      const { accion, invitacion } = this.modalGestionReemplazo;
+      if (!invitacion || !puedeGestionarInvitacionReemplazo(invitacion)) {
+        return;
+      }
+
+      const esAceptar = accion === ACCIONES_GESTION_REEMPLAZO.ACEPTAR;
+      this.gestionandoReemplazo = true;
+      this.errorGestionReemplazo = "";
+      this.mostrarRechazoReemplazo = false;
+      if (controladorGestionReemplazo) controladorGestionReemplazo.abort();
+      controladorGestionReemplazo = new AbortController();
+
+      try {
+        if (esAceptar) {
+          await reemplazoService.aceptarInvitacion(
+            invitacion.idCandidato,
+            controladorGestionReemplazo.signal
+          );
+        } else {
+          await reemplazoService.rechazarInvitacion(
+            invitacion.idCandidato,
+            motivo,
+            controladorGestionReemplazo.signal
+          );
+        }
+
+        this.cerrarModalGestionReemplazo(true);
+        this.toast.init({
+          title: esAceptar
+            ? "Invitación aceptada"
+            : "Invitación rechazada",
+          message: esAceptar
+            ? "Tu aceptación quedó pendiente de aprobación del director."
+            : "La invitación de reemplazo quedó rechazada.",
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargarReemplazos();
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        await this.manejarErrorGestionReemplazo(error, esAceptar);
+      } finally {
+        this.gestionandoReemplazo = false;
+      }
+    },
+    async manejarErrorGestionReemplazo(error, esAceptar) {
+      const clasificacion = clasificarErrorReemplazo(error);
+      const { tipo, mensaje, codigo } = clasificacion;
+      const invitacion = this.modalGestionReemplazo.invitacion;
+
+      if (tipo === TIPOS_ERROR_REEMPLAZO.SESION) {
+        this.cerrarModalGestionReemplazo(true);
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_REEMPLAZO.PERFIL_ACTIVO) {
+        this.cerrarModalGestionReemplazo(true);
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_REEMPLAZO.PERFIL_NO_ENCONTRADO) {
+        this.cerrarModalGestionReemplazo(true);
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      const codigosConRechazo = [
+        "CANDIDATO_SIN_DISPONIBILIDAD",
+        "VACANTE_YA_CUBIERTA",
+        "ACTIVIDAD_NO_GESTIONABLE",
+        "REQUERIMIENTO_NO_ACTIVO",
+      ];
+
+      if (esAceptar && codigosConRechazo.includes(codigo)) {
+        this.errorGestionReemplazo =
+          mensaje ||
+          "No se pudo aceptar la invitación. Podés rechazarla para cerrar la gestión.";
+        this.mostrarRechazoReemplazo = true;
+        return;
+      }
+
+      if (
+        tipo === TIPOS_ERROR_REEMPLAZO.NO_ENCONTRADO ||
+        tipo === TIPOS_ERROR_REEMPLAZO.PROYECTO_NO_ENCONTRADO ||
+        tipo === TIPOS_ERROR_REEMPLAZO.CONFLICTO
+      ) {
+        this.cerrarModalGestionReemplazo(true);
+        this.toast.init({
+          title: "La invitación ya no está disponible",
+          message:
+            mensaje ||
+            "La invitación cambió de estado. Actualizamos el listado.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargarReemplazos();
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_REEMPLAZO.CUENTA) {
+        this.cerrarModalGestionReemplazo(true);
+        this.toast.init({
+          title: "Cuenta no habilitada",
+          message: mensajeErrorApi(error, "Tu cuenta no se encuentra activa."),
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_REEMPLAZO.PERMISO) {
+        this.cerrarModalGestionReemplazo(true);
+        if (invitacion?.idCandidato != null) {
+          this.reemplazos = this.reemplazos.filter(
+            (item) => item.idCandidato !== invitacion.idCandidato
+          );
+          actualizarResumenReemplazos(this.reemplazos);
+        }
+        this.toast.init({
+          title: "Sin permiso",
+          message:
+            mensaje ||
+            "La invitación no pertenece al perfil activo o ya no está disponible.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        return;
+      }
+
+      this.errorGestionReemplazo = mensajeErrorApi(
+        error,
+        "No se pudo gestionar la invitación de reemplazo."
+      );
+      this.mostrarRechazoReemplazo = false;
     },
     abrirDetalle(invitacion) {
       if (!invitacion) return;
