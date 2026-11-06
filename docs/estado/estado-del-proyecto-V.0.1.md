@@ -131,8 +131,9 @@ El frontend no utiliza Pinia ni Vuex. El perfil activo se mantiene dentro del es
 | Ruta | Funcion | Acceso |
 |---|---|---|
 | `/login` | Inicio de sesion | Publico |
-| `/registro` | Registro de usuario | Publico |
-| `/recuperar-password` | Recuperacion de contraseña | Publico |
+| `/registro` | Registro de usuario (local o Google) | Publico |
+| `/auth/google/callback` | Callback OAuth2 de Google | Publico |
+| `/auth/google/completar` | Onboarding de usuario nuevo de Google | Publico |
 | `/home` | Inicio contextual del perfil activo | Usuario autenticado con perfil activo |
 | `/dashboard-usuario` | Administracion de perfiles | Usuario autenticado |
 | `/dashboard-usuario/seleccionar-perfil` | Seleccion de perfil | Usuario autenticado sin perfil activo |

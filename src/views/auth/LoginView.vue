@@ -32,6 +32,17 @@
 
     <VaButton type="submit" size="medium" class="auth-button">Iniciar sesión</VaButton>
 
+    <div class="auth-divider"><span>o</span></div>
+
+    <VaButton
+      type="button"
+      preset="secondary"
+      class="auth-google"
+      @click="iniciarConGoogle"
+    >
+      Continuar con Google
+    </VaButton>
+
     <p class="text-base mb-4 leading-9 text-center" color="gray-700">
       ¿Nuevo en ModaLink?
       <RouterLink :to="{ name: 'registro' }" class="font-semibold text-primary">Regístrate</RouterLink>
@@ -129,9 +140,25 @@ export default {
     },
   },
   mounted() {
+    this.mostrarErrorGoogle();
     this.mostrarAvisoBajaCuenta();
   },
   methods: {
+    iniciarConGoogle() {
+      this.errorMessage = "";
+      authService.iniciarSesionGoogle();
+    },
+    mostrarErrorGoogle() {
+      const codigo = this.$route.query?.googleError;
+      if (!codigo) return;
+
+      const mensajes = {
+        google_auth_failed: "No se pudo completar el inicio de sesión con Google. Intentá de nuevo.",
+        sesion_activa: "Ya tenés una sesión activa. Cerrá sesión antes de usar Google.",
+        registro_expirado: "El proceso de registro con Google expiró. Volvé a intentarlo.",
+      };
+      this.errorMessage = mensajes[codigo] || "No se pudo iniciar sesión con Google.";
+    },
     async iniciarSesion() {
       const isValid = this.$refs.form.validate();
       if (!isValid) return;
@@ -262,6 +289,29 @@ export default {
   justify-content: center;
   align-items: center;
   margin: 0 auto;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  color: var(--va-secondary);
+  font-size: 0.85rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--va-background-border);
+}
+
+.auth-google {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 </style>

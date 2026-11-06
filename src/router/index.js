@@ -7,6 +7,8 @@ import HomeLayout from "../components/home/HomeLayout.vue";
 
 import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
+import GoogleCallbackView from "../views/auth/GoogleCallbackView.vue";
+import GoogleCompletarView from "../views/auth/GoogleCompletarView.vue";
 import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
 import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
@@ -28,7 +30,6 @@ import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyecto
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
 import NotificacionesView from "../views/usuario/NotificacionesView.vue";
-import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
@@ -288,9 +289,15 @@ const routes = [
     meta: { layout: UserDashboardLayout, titulo: "Editar perfil", permiteSinPerfil: true },
   },
   {
-    path: "/recuperar-password",
-    name: "recuperar-password",
-    component: RecuperarPasswordView,
+    path: "/auth/google/callback",
+    name: "google-callback",
+    component: GoogleCallbackView,
+    meta: { layout: AuthLayout }
+  },
+  {
+    path: "/auth/google/completar",
+    name: "google-completar",
+    component: GoogleCompletarView,
     meta: { layout: AuthLayout }
   },
   {
