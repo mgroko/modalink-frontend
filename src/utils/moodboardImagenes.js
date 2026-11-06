@@ -2,7 +2,7 @@ import { MOODBOARD_IMAGENES } from "./proyectoConstants.js";
 
 /*
  * Validación y manejo de las imágenes del moodboard (ficha UC-24 §7).
- * Espejo cliente de los límites del backend (formato, 10 MB, 10 imágenes,
+ * Espejo cliente de los límites del sistema (formato, 10 MB, 10 imágenes,
  * dimensiones): los archivos se retienen en el wizard como previews locales
  * y sólo salen en Finalizar vía POST /proyectos/{id}/moodboard/imagenes.
  * Funciones puras salvo la lectura de dimensiones, que decodifica el archivo.

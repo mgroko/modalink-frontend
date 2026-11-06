@@ -1,4 +1,5 @@
 import http from "./http";
+import { serializarParams } from "../utils/queryParams.js";
 
 /*
  * Contrato UC-24 — Crear Proyecto (docs/backend/ficha-tecnica-crear-proyecto.md).
@@ -51,7 +52,7 @@ import http from "./http";
  * @property {string} descripcion máx. 200; no blanco
  * @property {"PUBLICO"|"PRIVADO"} privacidad en mayúsculas
  * @property {string} [fechaEntregaEstipulada] "YYYY-MM-DD"; si se envía no puede
- *           ser anterior a hoy. `fechaInicio` no se envía: la calcula el backend
+ *           ser anterior a hoy. `fechaInicio` no se envía: la calcula el sistema
  *           a partir de la planificación y responde null hasta entonces.
  * @property {boolean} [aceptaPostulacionGral] default false
  * @property {UbicacionProyectoRequest} [ubicacion] si se envía, localidadId no puede ir en blanco
@@ -63,7 +64,12 @@ import http from "./http";
 /**
  * @typedef {Object} RequerimientoGralModificarRequest
  *   Igual que RequerimientoGralRequest más el id de un requerimiento existente.
- *   Si se envía, debe pertenecer al proyecto y NO estar satisfecho.
+ *   Los requerimientos protegidos (`protegido === true` en el GET) deben
+ *   omitirse del payload: el backend los conserva. Un requerimiento no
+ *   protegido que se omite sí se elimina, por eso hay que enviar completos
+ *   todos los no protegidos que deban conservarse. Un requerimiento existente
+ *   enviado sin cambios no se valida ni se reescribe; si cambia, se actualiza
+ *   en el lugar conservando su id.
  * @property {number} [idRequerimientoGral] sólo en requerimientos existentes
  *           editables (omitir en los nuevos)
  * @property {number} cantidad > 0
@@ -80,7 +86,8 @@ import http from "./http";
  *   omitirla en Borrador borra la ubicación (por eso el front la reenvía
  *   siempre salvo que el usuario la quite explícitamente). `[]` en
  *   `objetivos` elimina todos; en `requerimientosGral` elimina los no
- *   satisfechos (los satisfechos se conservan solos).
+ *   protegidos y conserva los protegidos. Ausente/null en
+ *   `requerimientosGral` no toca ningún requerimiento.
  * @property {string} descripcion máx. 200; no blanco
  * @property {"PUBLICO"|"PRIVADO"} privacidad
  * @property {boolean|null} [aceptaPostulacionGral] null/omitido = no cambia
@@ -91,7 +98,8 @@ import http from "./http";
  * @property {ObjetivoProyectoRequest[]|null} [objetivos] si se envía
  *           reemplaza todos; [] elimina todos
  * @property {RequerimientoGralModificarRequest[]|null} [requerimientosGral]
- *           lista completa deseada (no delta); excluir los satisfechos
+ *           lista completa deseada (no delta); incluir todos los no
+ *           protegidos que deban conservarse y omitir los protegidos
  * @property {MoodboardRequest|null} [moodboard] si se envía actualiza/crea;
  *           descripcion null borra la descripción
  */
@@ -139,9 +147,47 @@ import http from "./http";
  * @property {string} nombreProfesion
  * @property {CaracteristicaRequerimientoResponse[]} caracteristicas
  * @property {number[]} habilidades
- * @property {boolean} satisfecho true si tiene al menos una postulación
- *           ACEPTADA: no se puede editar/eliminar desde el front y se excluye
- *           del payload de modificación (ficha UC-36 §7)
+ * @property {number} cubiertos miembros/asignaciones ACTIVAS vinculadas al
+ *           requerimiento; el front no lo deriva
+ * @property {number} faltantes max(0, cantidad - cubiertos)
+ * @property {boolean} satisfecho cupo completo (`cubiertos >= cantidad`), no
+ *           "al menos una postulación ACEPTADA" (ficha UC-26 §11). Con cupo
+ *           completo el requerimiento queda protegido y no se puede
+ *           editar/eliminar desde UC-36; se excluye del payload de
+ *           modificación.
+ * @property {boolean} protegido fuente de verdad para bloquear edición y
+ *           eliminación (ficha modificar-proyecto-confirmado §5). true si el
+ *           cupo está completo, tiene miembros vinculados (activos o
+ *           históricos), postulaciones/invitaciones ACEPTADAS o, en
+ *           CONFIRMADO, PENDIENTES. Omitir los protegidos del payload del PUT:
+ *           el backend los conserva. En requerimientos recién creados puede
+ *           venir false hasta refrescar el proyecto.
+ * @property {boolean} puedePostularse fuente de verdad por requerimiento:
+ *           true sólo si el perfil activo puede postularse a ESTE
+ *           requerimiento (estado del proyecto, membresía, profesión y cupo).
+ *           Usar este campo para habilitar el botón; no recalcular en el front.
+ */
+
+/**
+ * @typedef {"GENERAL"|"ACTIVIDAD"} TipoPostulacion
+ */
+
+/**
+ * @typedef {"PENDIENTE"|"ACEPTADA"|"RECHAZADA"} EstadoPostulacion
+ */
+
+/**
+ * @typedef {Object} PostulacionResponse
+ *   UC-26. Respuesta de POST /proyectos/{idProyecto}/postulaciones/{general|actividad}.
+ * @property {number} idPostulacion
+ * @property {TipoPostulacion} tipo
+ * @property {EstadoPostulacion} estado siempre "PENDIENTE" al crear
+ * @property {string} fechaPostulacion ISO-8601 del servidor
+ * @property {number} idProyecto
+ * @property {number} idRequerimiento idRequerimientoGral o
+ *           idRequerimientoActividad según `tipo`
+ * @property {boolean} tentativa true si la disponibilidad se evaluó de forma
+ *           provisional; siempre false en postulaciones generales
  */
 
 /**
@@ -165,7 +211,7 @@ import http from "./http";
  * @typedef {Object} CancelarProyectoRequest
  *   UC-35. Único campo del body: no enviar idPerfilActivo, idUsuario ni estado.
  * @property {string} motivoCancelacion obligatorio; no vacío ni sólo espacios;
- *           máx. 200 caracteres. El backend lo persiste sin espacios al
+ *           máx. 200 caracteres. El sistema lo persiste sin espacios al
  *           inicio/final y lo devuelve en `ProyectoResponse.motivoCancelacion`.
  */
 
@@ -178,6 +224,11 @@ import http from "./http";
  *           planificación del proyecto defina las actividades
  * @property {string|null} fechaEntregaEstipulada "YYYY-MM-DD"
  * @property {string} estado estado inicial tras la creación: "Borrador"
+ * @property {string|null} [fechaFinalizacion] UC-37: fecha y hora en que se
+ *           finalizó el proyecto (ISO local, ej. "2026-11-05T15:30:00");
+ *           null si el proyecto no está finalizado.
+ * @property {boolean} [finalizacionPrematura] UC-37: true si el director
+ *           confirmó finalizar antes de la fecha de entrega estipulada.
  * @property {"PUBLICO"|"PRIVADO"} privacidad
  * @property {boolean} aceptaPostulacionGral
  * @property {UbicacionProyectoResponse|null} ubicacion
@@ -193,14 +244,214 @@ import http from "./http";
  * @property {string[]} [permisos] permisos del rol en este proyecto, ordenados
  *           alfabéticamente; vacío si no es miembro; sólo en
  *           GET /proyectos/{idProyecto}
- * @property {boolean} [elegibleParaPostularse] true sólo si no es miembro,
- *           acepta postulaciones y la profesión del perfil coincide con algún
- *           requerimiento; sólo en GET /proyectos/{idProyecto}
+ * @property {boolean} [elegibleParaPostularse] resumen global histórico;
+ *           true sólo si el proyecto está Publicado o Confirmado, el perfil no
+ *           es miembro activo, el proyecto acepta postulaciones generales y la
+ *           profesión del perfil activo coincide con algún requerimiento
+ *           general. NO evalúa cupo ni es la fuente de verdad por
+ *           requerimiento: para el gating usar
+ *           `requerimientosGral[].puedePostularse`. Sólo en
+ *           GET /proyectos/{idProyecto}
+ * @property {boolean} [puedeDarseDeBaja] UC-40: fuente de verdad para mostrar
+ *           la acción "Darse de baja". Sólo presente en
+ *           GET /proyectos/{idProyecto}. No recalcular en el frontend: el
+ *           backend evalúa estado del proyecto, membresía activa y último
+ *           Director.
  * @property {string|null} [motivoCancelacion] UC-35: motivo ingresado al
  *           cancelar; null si el proyecto no está cancelado. Presente en
  *           GET /proyectos/{idProyecto}, POST /proyectos, POST
  *           /proyectos/{idProyecto}/publicar y PUT /proyectos/{idProyecto}.
  *           `GET /proyectos/propios` usa otro DTO y NO lo incluye.
+ */
+
+/**
+ * @typedef {Object} BloqueoConfirmacionResponse
+ *   UC-60. Motivo por el que el proyecto todavía no puede confirmarse.
+ * @property {string} codigo uno de los códigos de la ficha §4
+ * @property {string} mensaje texto listo para mostrar
+ * @property {string|null} entidadTipo entidad afectada (p. ej.
+ *           "REQUERIMIENTO_GRAL"); no se usa para navegar
+ * @property {number|null} entidadId id de la entidad afectada
+ */
+
+/**
+ * @typedef {Object} RequerimientoConfirmacionResponse
+ *   UC-60. Mismo shape para requerimientos generales y de actividad.
+ * @property {number} idRequerimiento id del requerimiento (general o actividad)
+ * @property {number|null} idActividad null en los requerimientos generales
+ * @property {string|null} nombreActividad null en los requerimientos generales
+ * @property {number} idProfesion
+ * @property {string} nombreProfesion
+ * @property {number} cantidad
+ * @property {number} cubiertos
+ * @property {number} faltantes
+ * @property {boolean} satisfecho `cubiertos >= cantidad`
+ */
+
+/**
+ * @typedef {Object} PropuestaHorarioResponse
+ *   UC-60. Horario propuesto por el planificador; NO está persistido.
+ * @property {number} idActividad
+ * @property {string} nombre
+ * @property {string} inicio ISO-8601 local
+ * @property {string} fin ISO-8601 local
+ * @property {boolean} fija
+ */
+
+/**
+ * @typedef {Object} ConfirmacionPreviewResponse
+ *   UC-60 GET /proyectos/{id}/confirmacion. Siempre responde 200: los
+ *   problemas de negocio/planificación vienen en `bloqueos` con
+ *   `puedeConfirmar: false` (y `propuestaHorarios` vacío). Sólo 403/404 son
+ *   errores HTTP.
+ * @property {boolean} puedeConfirmar
+ * @property {string} estado forma legible ("Publicado", etc.)
+ * @property {string|null} fechaInicioPropuesta ISO-8601 local; null si no se
+ *           pudo calcular
+ * @property {string|null} fechaEntrega "YYYY-MM-DD"
+ * @property {BloqueoConfirmacionResponse[]} bloqueos
+ * @property {RequerimientoConfirmacionResponse[]} requerimientosGenerales
+ * @property {RequerimientoConfirmacionResponse[]} requerimientosActividad
+ * @property {PropuestaHorarioResponse[]} propuestaHorarios vacío si hay bloqueos
+ */
+
+/**
+ * @typedef {Object} ConfirmarProyectoResponse
+ *   UC-60 POST /proyectos/{id}/confirmar.
+ * @property {ProyectoResponse} proyecto proyecto completo ya confirmado;
+ *           reemplaza el estado local
+ * @property {string} fechaInicioConfirmada ISO-8601 local con hora exacta;
+ *           `ProyectoResponse.fechaInicio` sigue siendo "YYYY-MM-DD"
+ * @property {{resumen: object, actividades: object[], conflictos: object[]}} cronograma
+ *           Se ignora para render: el front reconsulta
+ *           GET /proyectos/{id}/cronograma para no duplicar la fuente de verdad
+ */
+
+/**
+ * @typedef {Object} MiembroACalificarResponse
+ *   UC-37. Integrante activo habilitado para recibir una calificación.
+ *   El backend ya lo devuelve ordenado por nombreArtistico y luego por
+ *   idMiembro; el front no lo reordena.
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string} nombreUsuario
+ * @property {string} apellidoUsuario
+ * @property {"DIRECTOR"|"MIEMBRO"|string} rol
+ * @property {boolean} yaCalificado true si el perfil activo ya lo calificó.
+ *           No incluye valoración ni reseña: esos datos se buscan en
+ *           `calificacionesEmitidas` por `idPerfilReceptor`.
+ */
+
+/**
+ * @typedef {Object} BloqueoFinalizacionResponse
+ *   UC-37. Motivo por el que el proyecto todavía no puede finalizarse.
+ * @property {string} codigo
+ * @property {string} mensaje
+ * @property {string|null} entidadTipo
+ * @property {number|null} entidadId
+ */
+
+/**
+ * @typedef {Object} FinalizacionPreviewResponse
+ *   UC-37 GET /proyectos/{id}/finalizacion. Siempre responde 200: los
+ *   problemas de negocio vienen en `bloqueos` con `puedeFinalizar: false`.
+ * @property {boolean} puedeFinalizar
+ * @property {string} estado
+ * @property {string|null} fechaEntrega "YYYY-MM-DD"
+ * @property {string|null} fechaActual "YYYY-MM-DD"
+ * @property {boolean} requiereConfirmacionPrematura true si la fecha de
+ *           entrega todavía no se alcanzó y el POST necesita el flag
+ * @property {number} diasAnticipacion días entre hoy y la fecha de entrega
+ * @property {BloqueoFinalizacionResponse[]} bloqueos
+ * @property {BloqueoFinalizacionResponse[]} advertencias condiciones que no
+ *           bloquean pero requieren confirmación (FECHA_ENTREGA_FUTURA)
+ * @property {MiembroACalificarResponse[]} miembrosACalificar
+ * @property {number} calificacionesRequeridas miembros activos excluyendo
+ *           al perfil activo
+ * @property {number} calificacionesRealizadas
+ * @property {number} calificacionesPendientes
+ */
+
+/**
+ * @typedef {Object} CalificacionRequest
+ *   UC-37. Mismo shape para finalizar y para calificar entre participantes.
+ * @property {number} idPerfil perfil receptor
+ * @property {number} valoracion entero de 1 a 5
+ * @property {string} resenia obligatoria, no vacía, máximo 200 caracteres
+ */
+
+/**
+ * @typedef {Object} FinalizarProyectoRequest
+ * @property {CalificacionRequest[]} calificaciones
+ * @property {boolean} confirmarFinalizacionPrematura true sólo si el usuario
+ *           confirmó explícitamente finalizar antes de la fecha de entrega
+ */
+
+/**
+ * @typedef {Object} FinalizarProyectoResponse
+ *   UC-37 POST /proyectos/{id}/finalizar.
+ * @property {ProyectoResponse} proyecto proyecto completo ya finalizado
+ * @property {string} fechaFinalizacion ISO local date-time
+ * @property {number} calificacionesRegistradas
+ */
+
+/**
+ * @typedef {Object} CalificacionEmitidaResponse
+ *   UC-37. Calificación ya emitida por el perfil activo en el proyecto.
+ *   No incluye idProyecto, nombre ni rol del receptor, datos anidados del
+ *   perfil ni promedio.
+ * @property {number} idCalificacion
+ * @property {number} idPerfilEmisor
+ * @property {number} idPerfilReceptor
+ * @property {number} valoracion entero de 1 a 5
+ * @property {string} resenia máximo 200 caracteres
+ * @property {string} fechaRegistro ISO local date-time
+ */
+
+/**
+ * @typedef {Object} CalificacionesProyectoResponse
+ *   UC-37 GET/POST /proyectos/{id}/calificaciones. El POST devuelve el estado
+ *   actualizado: las calificaciones previas más las recién creadas.
+ *   `calificacionesEmitidas` no tiene orden garantizado.
+ * @property {boolean} calificacionesCompletas `calificacionesPendientes === 0`
+ * @property {number} calificacionesRequeridas
+ * @property {number} calificacionesRealizadas
+ * @property {number} calificacionesPendientes
+ * @property {MiembroACalificarResponse[]} miembrosACalificar
+ * @property {CalificacionEmitidaResponse[]} calificacionesEmitidas
+ */
+
+/**
+ * @typedef {Object} ActividadReprogramadaResponse
+ *   UC-61: actividad movida por una reprogramación automática o manual.
+ * @property {number} idActividad
+ * @property {string} nombre
+ * @property {string} estado
+ * @property {string|null} inicioAnterior
+ * @property {string|null} inicioNuevo
+ */
+
+/**
+ * @typedef {Object} BloqueoReprogramacionResponse
+ *   Mismo contrato que los bloqueos de confirmación, con alias `entidad` /
+ *   `idEntidad` en las respuestas de reprogramación.
+ * @property {string} codigo
+ * @property {string} mensaje
+ * @property {string|null} entidad
+ * @property {number|null} idEntidad
+ */
+
+/**
+ * @typedef {Object} ProyectoReprogramadoResponse
+ *   UC-61 POST /proyectos/{idProyecto}/reprogramar.
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {string} motivo ej. "REINTENTO"
+ * @property {string|null} fechaEntrega
+ * @property {ActividadReprogramadaResponse[]} actividades
+ * @property {BloqueoReprogramacionResponse[]} conflictosFijos actividades
+ *           EN_CURSO/FINALIZADA que quedaron fuera de la disponibilidad y no
+ *           se movieron
  */
 
 /**
@@ -225,6 +476,8 @@ import http from "./http";
  * @property {"DIRECTOR"|"MIEMBRO"} rolUsuario rol del perfil activo en el proyecto
  * @property {ActividadProximaProyecto|null} proximaActividad null si no hay
  *           actividad futura (PENDIENTE/EN_CURSO) asignada al perfil activo
+ * @property {boolean} [finalizacionPrematura] UC-37: true si el proyecto se
+ *           finalizó antes de la fecha de entrega estipulada
  */
 
 /**
@@ -254,7 +507,7 @@ import http from "./http";
 /**
  * @typedef {Object} ProyectoBusquedaItem
  *   Item de `GET /proyectos/buscar` (UC-29). La visibilidad la aplica el
- *   backend: solo aparecen proyectos visibles para el perfil activo
+ *   sistema: solo aparecen proyectos visibles para el perfil activo
  *   (miembro activo, o no-Borrador y Público).
  * @property {number} idProyecto
  * @property {string} nombre
@@ -294,11 +547,270 @@ import http from "./http";
  * @property {boolean} [todos] true (o size ≤ 0) devuelve todo sin paginar
  */
 
+/**
+ * @typedef {Object} MiembroProyectoResponse
+ *   Item de `GET /proyectos/{idProyecto}/miembros` (UC-70). Sólo incluye
+ *   miembros con participación ACTIVA.
+ * @property {number} idMiembro
+ * @property {number} idPerfil clave para el POST de asignación
+ * @property {number} idUsuario
+ * @property {string} nombreArtistico
+ * @property {string} nombreUsuario
+ * @property {string} apellidoUsuario
+ * @property {number} idProfesion
+ * @property {string} nombreProfesion
+ * @property {"DIRECTOR"|"MIEMBRO"} rol
+ * @property {"ACTIVO"|string} estadoParticipacion
+ * @property {boolean} eliminable fuente de verdad para habilitar la baja
+ *           (UC-38). No recalcular en el frontend.
+ * @property {"SIN_PERMISO"|"PROYECTO_NO_PERMITE_BAJA"|"AUTOELIMINACION"|
+ *           "ULTIMO_DIRECTOR"|null} motivoNoEliminable motivo cuando
+ *           `eliminable` es false.
+ */
+
+/**
+ * @typedef {Object} PaginaMiembrosResponse
+ * @property {MiembroProyectoResponse[]} contenido
+ * @property {number} paginaActual base 0
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} BuscarMiembrosParams
+ * @property {string} [nombre] busca por nombre artístico, nombre o apellido
+ * @property {"DIRECTOR"|"MIEMBRO"} [rol]
+ * @property {number|string} [idProfesion]
+ * @property {number} [page] base 0, default 0
+ * @property {number} [size] default 20
+ * @property {boolean} [todos] true devuelve todo sin paginar
+ */
+
+/**
+ * @typedef {Object} ActividadHistorialResponse
+ *   Actividad asignada a un miembro histórico.
+ * @property {number} idActividad
+ * @property {string} nombreActividad
+ * @property {string|null} estadoActividad
+ * @property {number|null} idRequerimiento
+ * @property {string|null} nombreProfesion
+ */
+
+/**
+ * @typedef {Object} EventoHistorialProyectoResponse
+ *   Evento de membresía del proyecto. `idActividad`/`nombreActividad` se
+ *   mantienen por compatibilidad y reflejan la primera actividad registrada;
+ *   `actividades` trae la lista completa.
+ * @property {number} idEvento
+ * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"|string} tipo
+ * @property {string} fecha ISO-8601 local, formato yyyy-MM-dd'T'HH:mm:ss
+ * @property {number|null} idPerfilAfectado
+ * @property {string|null} nombreArtisticoAfectado
+ * @property {string|null} nombreUsuarioAfectado
+ * @property {string|null} apellidoUsuarioAfectado
+ * @property {string|null} nombreProfesionAfectado
+ * @property {"DIRECTOR"|"MIEMBRO"|string|null} rolAfectado
+ * @property {number|null} idUsuarioAfectado
+ * @property {number|null} idPerfilActor perfil que ejecutó la acción
+ * @property {string|null} nombreArtisticoActor
+ * @property {string|null} nombreUsuarioActor
+ * @property {string|null} apellidoUsuarioActor
+ * @property {number|null} idUsuarioActor
+ * @property {string|null} motivo
+ * @property {"ELIMINADO"|"BAJA_VOLUNTARIA"|string|null}
+ *           estadoParticipacion
+ * @property {number|null} idActividad primera actividad registrada, si existe
+ * @property {string|null} nombreActividad
+ * @property {ActividadHistorialResponse[]} actividades lista completa;
+ *           puede ser []
+ */
+
+/**
+ * @typedef {Object} PaginaHistorialProyectoResponse
+ * @property {EventoHistorialProyectoResponse[]} contenido
+ * @property {number} paginaActual base 0
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} BuscarHistorialProyectoParams
+ * @property {"MIEMBRO_ELIMINADO"|"MIEMBRO_BAJA_VOLUNTARIA"} [tipo]
+ * @property {string} [nombre] coincidencia sobre el perfil afectado
+ * @property {number} [page] base 0, default 0
+ * @property {number} [size] default 20, máximo 100
+ */
+
 const proyectoService = {
+  /**
+   * GET /proyectos/{idProyecto}/miembros — UC-70.
+   * Puebla el selector de destinatario de una actividad. Devuelve sólo
+   * miembros ACTIVOS y requiere `VER_PROYECTO`.
+   *
+   * Errores:
+   * - 400 filtro de rol o profesión inválido
+   * - 403 sin perfil activo, sin membresía activa o sin `VER_PROYECTO`
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {BuscarMiembrosParams} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PaginaMiembrosResponse}>} 200 OK
+   */
+  listarMiembros(idProyecto, params = {}, signal) {
+    const todos = params.todos === true;
+    const query = serializarParams({
+      nombre: String(params.nombre || "").trim(),
+      rol: params.rol || "",
+      idProfesion: params.idProfesion ?? "",
+      page: todos ? undefined : params.page ?? 0,
+      size: todos ? undefined : params.size ?? 20,
+      todos: todos ? true : undefined,
+    });
+    return http.get(
+      `/proyectos/${idProyecto}/miembros${query ? `?${query}` : ""}`,
+      { signal }
+    );
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/requerimientos-actividad/buscar — UC-31.
+   *
+   * Devuelve los requerimientos de actividad del proyecto con su actividad y
+   * profesión. El endpoint no busca por texto libre: los filtros son por ids.
+   * Para el buscador de invitaciones se recomienda `todos: true` y filtrar en
+   * el frontend por nombre de actividad/profesión.
+   *
+   * Errores:
+   * - 401/403 sesión, perfil activo o visibilidad del proyecto
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {{
+   *   idActividad?: number|string,
+   *   idProfesion?: number|string,
+   *   idCaracteristica?: number|string,
+   *   idValorCaracteristica?: number|string,
+   *   idsHabilidades?: Array<number|string>,
+   *   page?: number,
+   *   size?: number,
+   *   todos?: boolean
+   * }} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: {
+   *   contenido: Array<{
+   *     idRequerimiento: number,
+   *     cantidad: number,
+   *     descripcion: string|null,
+   *     idProfesion: number,
+   *     nombreProfesion: string,
+   *     idActividad: number,
+   *     nombreActividad: string,
+   *     estadoActividad: string,
+   *     idProyecto: number,
+   *     nombreProyecto: string,
+   *     caracteristicas: Array<object>,
+   *     habilidades: Array<number|object|string>
+   *   }>,
+   *   paginaActual: number,
+   *   tamanoPagina: number,
+   *   totalElementos: number,
+   *   totalPaginas: number,
+   *   primera: boolean,
+   *   ultima: boolean
+   * }>}>} 200 OK
+   */
+  buscarRequerimientosActividad(idProyecto, params = {}, signal) {
+    const todos = params.todos === true;
+    const query = serializarParams({
+      idActividad: params.idActividad ?? "",
+      idProfesion: params.idProfesion ?? "",
+      idCaracteristica: params.idCaracteristica ?? "",
+      idValorCaracteristica: params.idValorCaracteristica ?? "",
+      idsHabilidades: Array.isArray(params.idsHabilidades)
+        ? params.idsHabilidades
+        : [],
+      page: todos ? undefined : params.page ?? 0,
+      size: todos ? undefined : params.size ?? 20,
+      todos: todos ? true : undefined,
+    });
+
+    return http.get(
+      `/proyectos/${idProyecto}/requerimientos-actividad/buscar${
+        query ? `?${query}` : ""
+      }`,
+      { signal }
+    );
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/historial — historial de membresías.
+   *
+   * Solo lo puede consultar un Director activo del proyecto. Devuelve los
+   * movimientos de miembros eliminados o con baja voluntaria, con el perfil
+   * afectado y el perfil que ejecutó la acción.
+   *
+   * Errores:
+   * - 400 page, size o tipo inválidos
+   * - 401 sesión ausente/vencida
+   * - 403 sin membresía activa o sin rol Director
+   * - 404 proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {BuscarHistorialProyectoParams} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PaginaHistorialProyectoResponse}>} 200 OK
+   */
+  listarHistorial(idProyecto, params = {}, signal) {
+    const page = Number(params.page ?? 0);
+    const size = Number(params.size ?? 20);
+    const query = serializarParams({
+      tipo: params.tipo || "",
+      nombre: String(params.nombre || "").trim(),
+      page: Number.isFinite(page) && page >= 0 ? Math.floor(page) : 0,
+      size: Number.isFinite(size)
+        ? Math.min(Math.max(Math.floor(size), 1), 100)
+        : 20,
+    });
+    return http.get(
+      `/proyectos/${idProyecto}/historial${query ? `?${query}` : ""}`,
+      { signal }
+    );
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/miembros/{idMiembro} — UC-38.
+   * Da de baja a un integrante activo del proyecto. El backend es la fuente de
+   * verdad: el frontend sólo debe enviar el motivo y refrescar después del 204.
+   *
+   * Errores:
+   * - 400 motivo vacío/sólo espacios o mayor a 100 caracteres
+   * - 401 sesión ausente/vencida
+   * - 403 sin `ELIMINAR_INTEGRANTE`, sin membresía activa o sin Director activo
+   * - 404 sin perfil activo / perfil inexistente / proyecto inexistente /
+   *   miembro inexistente o de otro proyecto
+   * - 409 miembro ya inactivo, proyecto en estado no permitido,
+   *   autoeliminación o último Director activo
+   * @param {number|string} idProyecto
+   * @param {number|string} idMiembro
+   * @param {string} motivo se envía normalizado con trim()
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  eliminarIntegrante(idProyecto, idMiembro, motivo, signal) {
+    return http.delete(`/proyectos/${idProyecto}/miembros/${idMiembro}`, {
+      data: { motivo: String(motivo || "").trim() },
+      signal,
+    });
+  },
+
   /**
    * GET /proyectos/propios — lista los proyectos en los que participa el
    * perfil activo de la sesión como director o miembro (UC-29 bis).
-   * El id del perfil activo lo resuelve el backend desde la sesión: no se envía.
+   * El id del perfil activo lo resuelve el sistema desde la sesión: no se envía.
    *
    * Errores:
    * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
@@ -319,7 +831,7 @@ const proyectoService = {
    * Aplica la regla de visibilidad server-side: el proyecto aparece si el
    * perfil activo es miembro activo, o si no está en Borrador y es Público.
    * Los invisibles se omiten (no hay 403 por elemento). El id del perfil
-   * activo lo resuelve el backend desde la sesión: no se envía.
+   * activo lo resuelve el sistema desde la sesión: no se envía.
    *
    * Errores:
    * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
@@ -340,8 +852,10 @@ const proyectoService = {
    * (ficha docs/backend/ficha-tecnica-ver-proyecto.md). A diferencia del
    * listado (UC-29, que omite los invisibles), el detalle responde 403 si el
    * proyecto no es visible para el perfil activo. Devuelve además el contexto
-   * del consultante (`rolUsuario`, `esMiembro`, `permisos`,
-   * `elegibleParaPostularse`) para condicionar la UI sin llamadas extra.
+   * del consultante (`rolUsuario`, `esMiembro`, `permisos`) y
+   * `requerimientosGral[].puedePostularse` para condicionar la UI sin
+   * llamadas extra. `elegibleParaPostularse` queda como resumen global
+   * deprecado para el gating.
    *
    * Errores:
    * - 404 PerfilActivoNoSeleccionadoException → "No hay un perfil activo
@@ -357,6 +871,65 @@ const proyectoService = {
    */
   obtener(idProyecto, signal) {
     return http.get(`/proyectos/${idProyecto}`, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/postulaciones/general — UC-26.
+   * Da de alta una postulación PENDIENTE a un requerimiento general. El
+   * sistema resuelve el perfil activo desde la sesión: NO enviar idPerfil,
+   * idPerfilActivo, idUsuario, estado, tipo, tentativa ni idProyecto en el
+   * body (el proyecto va en la URL). El body debe tener exactamente
+   * `{ idRequerimientoGral }`.
+   *
+   * Errores:
+   * - 400 MethodArgumentNotValidException → falta idRequerimientoGral
+   * - 401 sesión/cuenta no válida
+   * - 404 PerfilActivoNoSeleccionadoException / PerfilNoEncontradoException /
+   *   requerimiento inexistente o de otro proyecto
+   * - 409 proyecto no Publicado/Confirmado, sin postulaciones generales,
+   *   perfil miembro, profesión distinta, cupo completo, postulación duplicada
+   *   o perfil inactivo
+   * @param {number|string} idProyecto
+   * @param {number} idRequerimientoGral
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: PostulacionResponse}>} 201 Created
+   */
+  postularARequerimientoGeneral(idProyecto, idRequerimientoGral, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/postulaciones/general`,
+      { idRequerimientoGral },
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/postulaciones/actividad — UC-26.
+   * Da de alta una postulación PENDIENTE a un requerimiento de actividad.
+   * Mismas reglas de sesión que la postulación general: el body debe tener
+   * exactamente `{ idRequerimientoActividad }`. La actividad debe pertenecer
+   * al proyecto del path y estar PENDIENTE; el sistema verifica además
+   * profesión, cupo, duplicado y disponibilidad (con `tentativa` si el
+   * proyecto aún no tiene fecha de inicio confirmada).
+   *
+   * Errores:
+   * - 400 MethodArgumentNotValidException → falta idRequerimientoActividad
+   * - 401 sesión/cuenta no válida
+   * - 404 perfil activo, perfil, requerimiento inexistente o de otro proyecto
+   * - 409 proyecto no Publicado/Confirmado, director, actividad no PENDIENTE,
+   *   profesión distinta, cupo completo, postulación duplicada, usuario ya
+   *   asignado a la actividad con otro perfil, sin disponibilidad o perfil
+   *   inactivo
+   * @param {number|string} idProyecto
+   * @param {number} idRequerimientoActividad
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: PostulacionResponse}>} 201 Created
+   */
+  postularARequerimientoActividad(idProyecto, idRequerimientoActividad, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/postulaciones/actividad`,
+      { idRequerimientoActividad },
+      { signal }
+    );
   },
 
   /**
@@ -416,6 +989,220 @@ const proyectoService = {
   },
 
   /**
+   * POST /proyectos/{idProyecto}/baja — UC-40.
+   * Da de baja voluntariamente al perfil activo de la sesión. El backend
+   * resuelve el perfil y la membresía: NO enviar idPerfilActivo, idUsuario,
+   * idMiembro, idProyecto ni motivoBaja en el body. El body debe tener
+   * exactamente `{ motivo }`.
+   *
+   * Efectos (transaccionales): la membresía pasa a `BAJA_VOLUNTARIA`, se
+   * guarda motivo y fecha, las asignaciones se conservan como historial y se
+   * notifica a los directores activos restantes.
+   *
+   * Errores:
+   * - 400 motivo vacío, sólo espacios o mayor a 100 caracteres
+   * - 401 sesión ausente o vencida
+   * - 403 sin perfil activo o sin membresía activa
+   * - 404 proyecto inexistente
+   * - 409 proyecto no Publicado/Confirmado, membresía ya dada de baja o
+   *   último Director activo
+   * @param {number|string} idProyecto
+   * @param {string} motivo se envía normalizado con trim()
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  darseDeBajaProyecto(idProyecto, motivo, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/baja`,
+      { motivo: String(motivo || "").trim() },
+      { signal }
+    );
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/confirmacion — UC-60, previsualización.
+   * Requiere perfil activo y permiso CONFIRMAR_PROYECTO. Es de solo lectura:
+   * NO persiste horarios ni cambia el estado.
+   *
+   * Siempre responde 200. Los problemas de negocio o de planificación vienen
+   * en `bloqueos` con `puedeConfirmar: false` y `propuestaHorarios: []`.
+   * No usar `propuestaHorarios` como horarios persistidos: el POST replanifica.
+   *
+   * Errores:
+   * - 403 AccesoDenegadoProyectoException (sin CONFIRMAR_PROYECTO / no miembro)
+   * - 404 PerfilActivoNoSeleccionadoException / ProyectoNoEncontradoException
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ConfirmacionPreviewResponse}>} 200 OK
+   */
+  previsualizarConfirmacion(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/confirmacion`, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/confirmar — UC-60, confirmación atómica.
+   * Sin body. Requiere perfil Director activo con CONFIRMAR_PROYECTO y que el
+   * proyecto esté en estado Publicado. Vuelve a planificar (no reutiliza el
+   * preview), fija `fechaInicio` con el reloj del sistema, persiste horarios y
+   * pasa el proyecto a Confirmado.
+   *
+   * Errores (ficha §4). El sobre trae `{ message, httpStatus, timestamp,
+   * codigo, bloqueos }`; `codigo` corresponde al primer bloqueo y `bloqueos`
+   * puede traer varios con el mismo shape del preview:
+   * - 403 ACCESO_DENEGADO
+   * - 404 PROYECTO_NO_ENCONTRADO / PERFIL_ACTIVO_NO_SELECCIONADO
+   * - 409 PROYECTO_YA_CONFIRMADO / ESTADO_PROYECTO_INVALIDO
+   * - 409 SIN_ACTIVIDADES / REQUERIMIENTOS_INCOMPLETOS /
+   *   ACTIVIDADES_SIN_ASIGNACION / FECHA_ENTREGA_INVALIDA /
+   *   CRONOGRAMA_NO_VIABLE / SIN_DISPONIBILIDAD / DATOS_INCONSISTENTES
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ConfirmarProyectoResponse}>} 200 OK
+   */
+  confirmar(idProyecto, signal) {
+    return http.post(`/proyectos/${idProyecto}/confirmar`, null, { signal });
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/finalizacion — UC-37, previsualización.
+   * Requiere sesión, perfil activo, membresía activa, rol Director y permiso
+   * `FINALIZAR_PROYECTO`. Es de solo lectura: no persiste calificaciones ni
+   * cambia el estado.
+   *
+   * Siempre responde 200. Los problemas de negocio vienen en `bloqueos` con
+   * `puedeFinalizar: false`. No se deben recalcular en el frontend: mostrar
+   * `puedeFinalizar`, `bloqueos`, `miembrosACalificar` y los contadores tal
+   * como llegan.
+   *
+   * Errores:
+   * - 403 sin perfil activo, sin membresía activa o sin `FINALIZAR_PROYECTO`
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: FinalizacionPreviewResponse}>} 200 OK
+   */
+  previsualizarFinalizacion(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/finalizacion`, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/finalizar — UC-37.
+   * Finaliza un proyecto `Confirmado` y registra las calificaciones del
+   * director en una sola operación atómica. El body debe tener exactamente
+   * `{ calificaciones }`; el perfil activo lo resuelve la sesión.
+   *
+   * Se deben enviar todas las calificaciones pendientes del director. Cada
+   * elemento es `{ idPerfil, valoracion, resenia }`; `resenia` es obligatoria
+   * y máximo 200 caracteres.
+   *
+   * Errores (ficha §6). Los errores de finalización conservan
+   * `{ message, httpStatus, timestamp }` y agregan `codigo` y `bloqueos`:
+   * - 400 CALIFICACION_INVALIDA
+   * - 403 sin perfil activo, membresía o `FINALIZAR_PROYECTO`
+   * - 404 perfil activo, perfil o proyecto inexistente
+   * - 409 PROYECTO_YA_FINALIZADO / ESTADO_PROYECTO_INVALIDO
+   * - 409 PLANIFICACION_NO_ENCONTRADA / FECHA_ENTREGA_NO_DEFINIDA /
+   *   SIN_ACTIVIDADES / ACTIVIDAD_NO_FINALIZADA
+   * - 409 CONFIRMACION_PREMATURA_REQUERIDA si la fecha es futura y no se
+   *   envió `confirmarFinalizacionPrematura: true`
+   * - 409 CALIFICACIONES_INCOMPLETAS con `faltantes[]` de idPerfil
+   * @param {number|string} idProyecto
+   * @param {CalificacionRequest[]} calificaciones
+   * @param {boolean} [confirmarFinalizacionPrematura] confirmación explícita
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: FinalizarProyectoResponse}>} 200 OK
+   */
+  finalizar(
+    idProyecto,
+    calificaciones,
+    confirmarFinalizacionPrematura = false,
+    signal
+  ) {
+    return http.post(
+      `/proyectos/${idProyecto}/finalizar`,
+      {
+        calificaciones: Array.isArray(calificaciones) ? calificaciones : [],
+        confirmarFinalizacionPrematura:
+          confirmarFinalizacionPrematura === true,
+      },
+      { signal }
+    );
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/calificaciones — UC-37.
+   * Requiere proyecto `Finalizado` y membresía activa. Devuelve el estado de
+   * calificación del perfil activo y las calificaciones que ya emitió.
+   *
+   * `calificacionesEmitidas` no tiene orden garantizado: el front decide si
+   * necesita ordenarlo (por `fechaRegistro` o `idCalificacion`). Para mostrar
+   * el nombre del receptor, cruzar `idPerfilReceptor` con
+   * `miembrosACalificar[]` por `idPerfil`.
+   *
+   * Errores:
+   * - 403 sin perfil activo, sin membresía activa o sin acceso
+   * - 404 perfil activo o proyecto inexistente
+   * - 409 PROYECTO_NO_CALIFICABLE si el proyecto no está Finalizado
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: CalificacionesProyectoResponse}>} 200 OK
+   */
+  obtenerCalificaciones(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/calificaciones`, { signal });
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/calificaciones — UC-37.
+   * Permite que un participante califique a los demás integrantes activos una
+   * vez finalizado el proyecto. Se deben enviar todas las calificaciones
+   * pendientes en una sola solicitud; no se puede calificar dos veces al mismo
+   * compañero. El body debe tener exactamente `{ calificaciones }`.
+   *
+   * La respuesta 200 devuelve el estado actualizado con las calificaciones
+   * previas más las recién creadas; reemplaza el estado local sin hacer otro
+   * GET.
+   *
+   * Errores:
+   * - 400 CALIFICACION_INVALIDA (valoración 1-5, reseña vacía/larga,
+   *   auto-calificación, perfil ajeno o duplicado)
+   * - 403 sin perfil activo, sin membresía activa o sin acceso
+   * - 404 perfil activo, perfil o proyecto inexistente
+   * - 409 PROYECTO_NO_CALIFICABLE si el proyecto no está Finalizado
+   * - 409 CALIFICACIONES_INCOMPLETAS con `faltantes[]` de idPerfil
+   * @param {number|string} idProyecto
+   * @param {CalificacionRequest[]} calificaciones
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: CalificacionesProyectoResponse}>} 200 OK
+   */
+  calificarEquipo(idProyecto, calificaciones, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/calificaciones`,
+      { calificaciones: Array.isArray(calificaciones) ? calificaciones : [] },
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/reprogramar — UC-61.
+   * Reintenta la reprogramación de un proyecto confirmado que falló al
+   * cambiar la jornada. Solo puede ejecutarlo un director activo del proyecto.
+   * Recalcula y persiste el plan; no mueve actividades EN_CURSO ni FINALIZADA.
+   *
+   * Errores:
+   * - 401 sesión ausente/vencida
+   * - 403 sin perfil activo, sin membresía o sin rol Director
+   * - 404 proyecto inexistente
+   * - 409 ProyectoNoConfirmableException → `{ message, codigo, bloqueos }`;
+   *   no se modifica el cronograma
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la request en vuelo
+   * @returns {Promise<{data: ProyectoReprogramadoResponse}>} 200 OK
+   */
+  reprogramar(idProyecto, signal) {
+    return http.post(`/proyectos/${idProyecto}/reprogramar`, null, { signal });
+  },
+
+  /**
    * POST /proyectos — crea un proyecto con el perfil activo de la sesión
    * (cookie JWT HttpOnly + header X-XSRF-TOKEN lo resuelve http.js).
    *
@@ -442,6 +1229,12 @@ const proyectoService = {
    * borra). La respuesta 200 tiene el mismo contrato que GET
    * /proyectos/{idProyecto}: el frontend reemplaza el estado local con ella.
    *
+   * `requerimientosGral`: los protegidos (`protegido === true`) deben
+   * omitirse y el backend los conserva; los no protegidos que se omiten se
+   * eliminan, así que hay que enviar completos los que deban conservarse. Un
+   * existente enviado con cambios se actualiza conservando su id (ya no se
+   * recrea).
+   *
    * Errores:
    * - 400 MethodArgumentNotValidException → body { errores: { campo: msg } }
    * - 400 UbicacionObligatoriaException (Publicado/Confirmado sin ubicación)
@@ -450,8 +1243,9 @@ const proyectoService = {
    * - 403 AccesoDenegadoProyectoException (sin MODIFICAR_PROYECTO o no miembro)
    * - 404 PerfilActivoNoSeleccionadoException / PerfilNoEncontradoException /
    *   ProyectoNoEncontradoException / HabilidadNoEncontradaException
-   * - 409 estado Finalizado/Cancelado, requerimiento satisfecho enviado,
-   *   PerfilEnBajaException
+   * - 409 estado Finalizado/Cancelado, requerimiento protegido enviado con
+   *   cambios (`{ codigo: "REQUERIMIENTO_CON_VINCULOS",
+   *   idRequerimientoGral }`), PerfilEnBajaException
    * @param {number} idProyecto
    * @param {ModificarProyectoRequest} request
    * @param {AbortSignal} [signal] cancela la request en vuelo
@@ -466,7 +1260,7 @@ const proyectoService = {
    * en una sola petición multipart (ficha UC-24 §7.2). El nombre del campo
    * debe ser exactamente `archivos`. Las imágenes NO viajan en `crear()`: se
    * ejecuta después, sólo si hay archivos retenidos. Si el proyecto se creó
-   * sin moodboard, el backend lo crea al subir (descripcion queda null).
+   * sin moodboard, el sistema lo crea al subir (descripcion queda null).
    *
    * Límites: JPG/PNG/WEBP; ≤ 10 MB por imagen; ≤ 10 imágenes en total;
    * ≤ 110 MB por petición; lado ≤ 8000 px o ≤ 24 megapíxeles.

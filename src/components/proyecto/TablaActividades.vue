@@ -5,7 +5,7 @@
         <tr>
           <th scope="col">#</th>
           <th scope="col">Actividad</th>
-          <th scope="col">Requerimientos</th>
+          <th scope="col">Responsables</th>
           <th scope="col">Dur.</th>
           <th scope="col">Depende de</th>
           <th scope="col">Inicio – Fin</th>
@@ -27,6 +27,8 @@
           :class="{
             'tabla-actividades__fila--resaltada':
               String(actividad.idActividad) === String(idActividadResaltada),
+            'tabla-actividades__fila--cancelada':
+              actividad.estado === 'CANCELADA',
           }"
         >
           <td>{{ indice + 1 }}</td>
@@ -39,13 +41,32 @@
           </td>
 
           <td>
-            <div v-if="resumenRequerimientos(actividad).length" class="tabla-actividades__chips">
+            <div v-if="responsables(actividad).length" class="tabla-actividades__chips">
               <span
-                v-for="requerimiento in resumenRequerimientos(actividad)"
-                :key="requerimiento"
+                v-for="responsable in responsables(actividad)"
+                :key="responsable.clave"
                 class="tabla-actividades__chip"
               >
-                {{ requerimiento }}
+                <span class="tabla-actividades__chip-texto">
+                  {{ responsable.texto }}
+                </span>
+                <button
+                  v-if="puedeDesasignarResponsable(actividad, responsable)"
+                  type="button"
+                  class="tabla-actividades__chip-quitar"
+                  :title="motivoNoDesasignableResponsable(actividad, responsable)"
+                  :aria-label="`Quitar a ${responsable.texto} de la actividad`"
+                  @click.stop="
+                    $emit('desasignar-actividad', {
+                      actividad,
+                      responsable,
+                    })
+                  "
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">
+                    person_remove
+                  </span>
+                </button>
               </span>
             </div>
             <span v-else class="tabla-actividades__vacio-celda">—</span>
@@ -72,17 +93,42 @@
           </td>
 
           <td class="tabla-actividades__fechas">
-            {{ rangoFechas(actividad) }}
-          </td>
-
-          <td>
-            <span class="tabla-actividades__estado" :style="estiloEstado(actividad.estado)">
-              {{ etiquetaEstadoActividad(actividad.estado) }}
+            <span class="tabla-actividades__fecha-rango">
+              {{ rangoFechas(actividad) }}
+            </span>
+            <span
+              v-if="rangoHorario(actividad)"
+              class="tabla-actividades__horario"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">
+                schedule
+              </span>
+              {{ rangoHorario(actividad) }}
             </span>
           </td>
 
           <td>
+            <div class="tabla-actividades__estado-celda">
+              <span class="tabla-actividades__estado" :style="estiloEstado(actividad.estado)">
+                {{ etiquetaEstadoActividad(actividad.estado) }}
+              </span>
+              <ChipOrigenInicio :origen="actividad.origenInicio" />
+            </div>
+          </td>
+
+          <td>
             <div class="tabla-actividades__acciones">
+              <button
+                type="button"
+                class="tabla-actividades__accion"
+                :class="{ 'tabla-actividades__accion--habilitada': puedeAsignarFila(actividad) }"
+                :disabled="!puedeAsignarFila(actividad)"
+                :title="motivoNoAsignableFila(actividad)"
+                aria-label="Asignar miembro"
+                @click="$emit('asignar-actividad', actividad)"
+              >
+                <span class="material-symbols-outlined">person_add</span>
+              </button>
               <button
                 type="button"
                 class="tabla-actividades__accion"
@@ -118,12 +164,20 @@ import {
   coloresEstadoActividad,
   etiquetaEstadoActividad,
   formatearDuracionMinutos,
+  profesionalesActuales,
   puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
-import { formatearFechaCorta } from "../../utils/fechas.js";
+import { idPerfilActivo } from "../../services/authState";
+import { formatearFechaCorta, formatearRangoHoras } from "../../utils/fechas.js";
+import ChipOrigenInicio from "./ChipOrigenInicio.vue";
+import {
+  motivoNoEliminableActividad,
+  puedeEliminarActividad,
+} from "../../utils/eliminacionActividadConstants.js";
 
 export default {
   name: "TablaActividades",
+  components: { ChipOrigenInicio },
   props: {
     actividades: {
       type: Array,
@@ -145,11 +199,67 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Estado del proyecto en forma legible ("Confirmado", "Borrador", ...). */
+    estadoProyecto: {
+      type: String,
+      default: "",
+    },
+    puedeAsignar: {
+      type: Boolean,
+      default: false,
+    },
+    motivoNoAsignar: {
+      type: String,
+      default: "No podés asignar miembros a esta actividad.",
+    },
+    puedeDesasignar: {
+      type: Boolean,
+      default: false,
+    },
+    motivoNoDesasignar: {
+      type: String,
+      default: "No podés desasignar miembros de esta actividad.",
+    },
   },
-  emits: ["editar-actividad", "eliminar-actividad"],
+  emits: [
+    "editar-actividad",
+    "eliminar-actividad",
+    "asignar-actividad",
+    "desasignar-actividad",
+  ],
   methods: {
     formatearDuracionMinutos,
     etiquetaEstadoActividad,
+    puedeAsignarFila(actividad) {
+      return this.puedeAsignar && puedeEditarActividad(actividad?.estado);
+    },
+    motivoNoAsignableFila(actividad) {
+      if (!this.puedeAsignar) {
+        return this.motivoNoAsignar;
+      }
+      if (!puedeEditarActividad(actividad?.estado)) {
+        return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede asignar.`;
+      }
+      return "Asignar miembro";
+    },
+    puedeDesasignarResponsable(actividad, responsable) {
+      return (
+        this.puedeDesasignar &&
+        puedeEditarActividad(actividad?.estado) &&
+        responsable?.idAsignacionActividad != null &&
+        responsable?.activo !== false
+      );
+    },
+    motivoNoDesasignableResponsable(actividad, responsable) {
+      if (!this.puedeDesasignar) return this.motivoNoDesasignar;
+      if (!puedeEditarActividad(actividad?.estado)) {
+        return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede desasignar.`;
+      }
+      if (responsable?.activo === false) {
+        return "El miembro ya no está activo en el proyecto.";
+      }
+      return `Quitar a ${responsable?.texto || "este miembro"} de la actividad`;
+    },
     puedeEditarFila(actividad) {
       return this.puedeEditar && puedeEditarActividad(actividad?.estado);
     },
@@ -163,28 +273,51 @@ export default {
       return "Editar actividad";
     },
     puedeEliminarFila(actividad) {
-      return this.puedeEliminar && puedeEditarActividad(actividad?.estado);
+      return puedeEliminarActividad({
+        tienePermiso: this.puedeEliminar,
+        estadoProyecto: this.estadoProyecto,
+        estadoActividad: actividad?.estado,
+      });
     },
     motivoNoEliminable(actividad) {
-      if (!this.puedeEliminar) {
-        return "No tenés permiso para eliminar actividades en este proyecto.";
-      }
-      if (!puedeEditarActividad(actividad?.estado)) {
-        return `La actividad está ${etiquetaEstadoActividad(actividad?.estado).toLowerCase()} y no se puede eliminar.`;
-      }
-      return "Eliminar actividad";
+      return motivoNoEliminableActividad({
+        tienePermiso: this.puedeEliminar,
+        estadoProyecto: this.estadoProyecto,
+        estadoActividad: actividad?.estado,
+      });
     },
-    resumenRequerimientos(actividad) {
-      return (actividad?.requerimientos || []).map(
-        (requerimiento) =>
-          `${requerimiento.cantidad} × ${requerimiento.nombreProfesion}`
-      );
+    responsables(actividad) {
+      const activo = idPerfilActivo();
+      const lista = Array.isArray(actividad?.responsables)
+        ? actividad.responsables
+        : [];
+
+      return profesionalesActuales(lista).map((responsable, indice) => {
+        const esVos =
+          activo != null && String(responsable?.idPerfil) === String(activo);
+        return {
+          clave: `${responsable?.idPerfil ?? "s"}-${responsable?.idUsuario ?? indice}`,
+          texto: `${responsable?.nombreArtistico || "Perfil"}${esVos ? " (Vos)" : ""}`,
+          idAsignacionActividad: responsable?.idAsignacionActividad ?? null,
+          idPerfil: responsable?.idPerfil ?? null,
+          idUsuario: responsable?.idUsuario ?? null,
+          activo: responsable?.activo,
+          estadoParticipacion: responsable?.estadoParticipacion ?? null,
+        };
+      });
     },
     rangoFechas(actividad) {
       const inicio = formatearFechaCorta(actividad?.fechaHoraInicio);
       const fin = formatearFechaCorta(actividad?.fechaHoraFin);
       if (inicio === "—" && fin === "—") return "—";
       return `${inicio} – ${fin}`;
+    },
+    rangoHorario(actividad) {
+      if (!actividad?.fechaHoraInicio) return "";
+      return formatearRangoHoras(
+        actividad.fechaHoraInicio,
+        actividad.fechaHoraFin
+      );
     },
     estiloEstado(estado) {
       const colores = coloresEstadoActividad(estado);
@@ -232,6 +365,10 @@ export default {
   background: var(--color-info-soft);
 }
 
+.tabla-actividades__fila--cancelada {
+  opacity: 0.6;
+}
+
 .tabla-actividades__fila--resaltada td:first-child {
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
@@ -273,9 +410,63 @@ export default {
   color: var(--color-text-muted);
 }
 
+.tabla-actividades__chip-texto {
+  vertical-align: middle;
+}
+
+.tabla-actividades__chip-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.tabla-actividades__chip-quitar:hover,
+.tabla-actividades__chip-quitar:focus-visible {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  outline: none;
+}
+
+.tabla-actividades__chip-quitar .material-symbols-outlined {
+  font-size: 0.88rem;
+}
+
 .tabla-actividades__duracion,
 .tabla-actividades__fechas {
   white-space: nowrap;
+}
+
+.tabla-actividades__fecha-rango {
+  display: block;
+}
+
+.tabla-actividades__horario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
+.tabla-actividades__horario .material-symbols-outlined {
+  font-size: 0.9rem;
+}
+
+.tabla-actividades__estado-celda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .tabla-actividades__estado {

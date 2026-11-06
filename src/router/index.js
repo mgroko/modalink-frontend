@@ -7,10 +7,13 @@ import HomeLayout from "../components/home/HomeLayout.vue";
 
 import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
+import GoogleCallbackView from "../views/auth/GoogleCallbackView.vue";
+import GoogleCompletarView from "../views/auth/GoogleCompletarView.vue";
 import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
 import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
 import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
+import AjustesPerfilView from "../views/perfil/AjustesPerfilView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
@@ -19,20 +22,28 @@ import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
 import CrearActividadView from "../views/proyecto/CrearActividadView.vue";
 import ModificarActividadView from "../views/proyecto/ModificarActividadView.vue";
 import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
+import ActividadDetalleView from "../views/proyecto/ActividadDetalleView.vue";
+import InvitarProyectoView from "../views/proyecto/InvitarProyectoView.vue";
+import InvitacionesView from "../views/proyecto/InvitacionesView.vue";
+import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
+import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
 import NotificacionesView from "../views/usuario/NotificacionesView.vue";
-import RecuperarPasswordView from "../views/auth/RecuperarPasswordView.vue";
 import GestionUsuariosView from "../views/admin/GestionUsuariosView.vue";
 import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
+import GestionHabilidadesView from "../views/admin/GestionHabilidadesView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
 import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
+import ReparacionCronogramaView from "../views/admin/ReparacionCronogramaView.vue";
 import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
+import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
+import ReportePerfilDetalleView from "../views/admin/ReportePerfilDetalleView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
 
@@ -64,6 +75,31 @@ const routes = [
     name: "inicioperfil",
     component: InicioPerfilView,
     meta: { layout: HomeLayout, titulo: "Mi perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/inicio-perfil/ajustes",
+    name: "ajustes-perfil-inicio",
+    component: AjustesPerfilView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Ajustes de perfil",
+      requiresActiveProfile: true,
+      sinFondoBlanco: true,
+      navActiva: "ajustes",
+    },
+  },
+  {
+    path: "/inicio-perfil/ajustes/editar/:id",
+    name: "editar-perfil-ajustes",
+    component: EditarPerfilView,
+    props: { desdeAjustes: true },
+    meta: {
+      layout: HomeLayout,
+      titulo: "Editar perfil",
+      requiresActiveProfile: true,
+      sinFondoBlanco: true,
+      navActiva: "ajustes",
+    },
   },
   {
     path: "/inicio-perfil/:seccion",
@@ -112,6 +148,18 @@ const routes = [
     meta: { layout: HomeLayout, titulo: "Modificar proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
+    path: "/proyectos/:id/invitar",
+    name: "invitar-proyecto",
+    component: InvitarProyectoView,
+    meta: { layout: HomeLayout, titulo: "Invitar a proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/invitaciones",
+    name: "invitaciones",
+    component: InvitacionesView,
+    meta: { layout: HomeLayout, titulo: "Invitaciones", requiresActiveProfile: true, navActiva: "invitaciones" },
+  },
+  {
     path: "/proyectos/:id/actividades/crear",
     name: "crear-actividad",
     component: CrearActividadView,
@@ -122,6 +170,63 @@ const routes = [
     name: "modificar-actividad",
     component: ModificarActividadView,
     meta: { layout: HomeLayout, titulo: "Editar actividad", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    // Destino de notificaciones de actividad: abre la planificación del
+    // proyecto y resalta la actividad indicada.
+    path: "/proyectos/:id/actividades/:idActividad",
+    name: "actividad-proyecto",
+    redirect: (to) => ({
+      name: "dashboard-proyecto",
+      params: { id: to.params.id },
+      query: {
+        ...to.query,
+        tab: "planificacion",
+        actividad: to.params.idActividad,
+      },
+    }),
+  },
+  {
+    path: "/proyectos/mis-postulaciones",
+    name: "mis-postulaciones",
+    component: MisPostulacionesView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Mis postulaciones",
+      requiresActiveProfile: true,
+      navActiva: "proyectos",
+    },
+  },
+  {
+    path: "/proyectos/:id/actividades/:idActividad/detalle",
+    name: "actividad-detalle",
+    component: ActividadDetalleView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Actividad",
+      requiresActiveProfile: true,
+      navActiva: "proyectos",
+    },
+  },
+  {
+    path: "/proyectos/:id/postulaciones",
+    name: "postulaciones-proyecto",
+    redirect: (to) => ({
+      name: "dashboard-proyecto",
+      params: { id: to.params.id },
+      query: { tab: "postulaciones" },
+    }),
+  },
+  {
+    path: "/proyectos/:id/calificaciones",
+    name: "calificaciones-proyecto",
+    component: CalificacionesProyectoView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Calificaciones del equipo",
+      requiresActiveProfile: true,
+      navActiva: "proyectos",
+    },
   },
   {
     path: "/proyectos/:id",
@@ -184,9 +289,15 @@ const routes = [
     meta: { layout: UserDashboardLayout, titulo: "Editar perfil", permiteSinPerfil: true },
   },
   {
-    path: "/recuperar-password",
-    name: "recuperar-password",
-    component: RecuperarPasswordView,
+    path: "/auth/google/callback",
+    name: "google-callback",
+    component: GoogleCallbackView,
+    meta: { layout: AuthLayout }
+  },
+  {
+    path: "/auth/google/completar",
+    name: "google-completar",
+    component: GoogleCompletarView,
     meta: { layout: AuthLayout }
   },
   {
@@ -218,6 +329,26 @@ const routes = [
     meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Reportes" }
   },
   {
+    path: "/admin/reportes-perfil",
+    name: "admin-reportes-perfil",
+    component: ReportesPerfilView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Reportes de perfil",
+    },
+  },
+  {
+    path: "/admin/reportes-perfil/:id",
+    name: "admin-reporte-perfil",
+    component: ReportePerfilDetalleView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Detalle del reporte",
+    },
+  },
+  {
     path: "/admin/gestion-usuarios",
     name: "gestion-usuarios",
     component: GestionUsuariosView,
@@ -239,6 +370,17 @@ const routes = [
     name: "gestionar-caracteristicas",
     component: GestionarCaracteristicasView,
     meta: { layout: AdminLayout, requiereAdmin: true }
+  },
+  {
+    path: "/admin/habilidades",
+    name: "gestion-habilidades",
+    component: GestionHabilidadesView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "VER_HABILIDADES",
+      titulo: "Habilidades",
+    }
   },
   {
     path: "/admin/unidades-medida",
@@ -277,6 +419,17 @@ const routes = [
       requiereAdmin: true,
       requierePermiso: "ADMINISTRAR_CONFIGURACION",
       titulo: "Scheduler de bajas",
+    }
+  },
+  {
+    path: "/admin/configuracion/cronograma",
+    name: "admin-cronograma",
+    component: ReparacionCronogramaView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Reparación de cronogramas",
     }
   }
 ];

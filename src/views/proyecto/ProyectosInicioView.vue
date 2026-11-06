@@ -2,9 +2,14 @@
   <div class="proyectos-inicio">
     <header class="proyectos-inicio__header">
       <h1 class="proyectos-inicio__titulo">Proyectos / Inicio</h1>
-      <VaButton color="#5CA4A9" text-color="#17161F" icon="mso-add" @click="irACrearProyecto">
-        Crear proyecto
-      </VaButton>
+      <div class="proyectos-inicio__acciones">
+        <VaButton preset="secondary" icon="mso-assignment" @click="irAMisPostulaciones">
+          Mis postulaciones
+        </VaButton>
+        <VaButton color="#5CA4A9" text-color="#17161F" icon="mso-add" @click="irACrearProyecto">
+          Crear proyecto
+        </VaButton>
+      </div>
     </header>
 
     <section class="proyectos-inicio__panel">
@@ -147,6 +152,12 @@
                 class="proyecto-tarjeta__estado"
                 :estado="proyecto.estado"
               />
+              <span
+                v-if="proyecto.finalizacionPrematura"
+                class="proyecto-tarjeta__prematura"
+              >
+                Finalizado anticipadamente
+              </span>
             </div>
 
             <p class="proyecto-tarjeta__descripcion">{{ proyecto.descripcion }}</p>
@@ -309,7 +320,10 @@ export default {
     await this.buscar();
   },
   methods: {
+    // Expuestas al template (Options API): sin esto el render falla con
+    // "_ctx.formatearFechaCorta is not a function" y la vista queda en el spinner.
     etiquetaRolProyecto,
+    formatearFechaCorta,
     estiloRol(rol) {
       const colores = coloresRolProyecto(rol);
       return {
@@ -318,7 +332,7 @@ export default {
         borderColor: colores.borde,
       };
     },
-    /** "18:00 – 20:00": el backend no envía la hora de fin calculada. */
+    /** "18:00 – 20:00": el sistema no envía la hora de fin calculada. */
     rangoHorario(actividad) {
       const inicio = horaCorta(String(actividad?.fechaHoraInicio || "").split("T")[1] || "");
       if (!inicio) return "";
@@ -328,6 +342,9 @@ export default {
     },
     irACrearProyecto() {
       this.$router.push({ name: "crear-proyecto" });
+    },
+    irAMisPostulaciones() {
+      this.$router.push({ name: "mis-postulaciones" });
     },
     irAProyecto(proyecto) {
       if (proyecto?.idProyecto) {
@@ -502,7 +519,15 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.25rem;
+}
+
+.proyectos-inicio__acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .proyectos-inicio__titulo {
@@ -664,6 +689,17 @@ export default {
 
 .proyecto-tarjeta__estado {
   margin-left: auto;
+}
+
+.proyecto-tarjeta__prematura {
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--color-warning-border, var(--color-border));
+  border-radius: 999px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .proyecto-tarjeta__descripcion {

@@ -2,6 +2,12 @@
 
 Esta especificación detalla la interacción con la API para editar un proyecto existente: payload, reglas de negocio, semántica de campos opcionales, respuesta, errores y consideraciones de UX/UI.
 
+> **Actualizado 2026-11-04:** se incorporó el contrato de
+> `docs/backend/ficha-tecnica-modificar-proyecto-confirmado.md`. La protección
+> de requerimientos ahora es por ítem (`requerimientosGral[].protegido`), un
+> protegido omitido se conserva y los existentes se actualizan conservando su
+> ID. Las secciones 4, 5.2 y 7 reflejan la regla vigente.
+
 ---
 
 ## 1. Endpoint y Contexto de Autenticación
@@ -83,7 +89,7 @@ Esta especificación detalla la interacción con la API para editar un proyecto 
 | `objetivos[].nombre` | `string` | Sí (por ítem) | Máx. 100 caracteres. No blanco. | Input. |
 | `objetivos[].descripcion` | `string` | No | Máx. 300 caracteres. | Textarea. |
 | `requerimientosGral[]` | `array` | No | Ver sección de reglas de requerimientos. | Sección +/- requerimientos. |
-| `requerimientosGral[].idRequerimientoGral` | `long` | No | Si se envía, debe pertenecer al proyecto y **no estar satisfecho**. | Se incluye solo para requerimientos existentes editables. |
+| `requerimientosGral[].idRequerimientoGral` | `long` | No | Si se envía, debe pertenecer al proyecto. Los protegidos (`protegido === true` en el GET) deben omitirse. | Se incluye solo para requerimientos existentes editables. |
 | `requerimientosGral[].cantidad` | `int` | **Sí** | > 0 (`@Positive`). | Number input. |
 | `requerimientosGral[].idProfesion` | `long` | **Sí** | Debe existir. | Select de profesiones. |
 | `requerimientosGral[].descripcion` | `string` | No | Máx. 200 caracteres. | Input. |
@@ -102,7 +108,7 @@ Esta especificación detalla la interacción con la API para editar un proyecto 
 | Campo | Ausente o `null` | Lista vacía `[]` |
 | :--- | :--- | :--- |
 | `objetivos` | No se tocan | Se eliminan todos |
-| `requerimientosGral` | No se tocan (se conservan todos, incluidos los satisfechos) | Se eliminan los no satisfechos; los satisfechos se conservan |
+| `requerimientosGral` | No se tocan | Se eliminan los no protegidos; los protegidos se conservan |
 | `aceptaPostulacionGral` | No cambia | — |
 | `fechaEntregaEstipulada` | No cambia | — |
 | `moodboard` | No se toca | — |
@@ -125,13 +131,29 @@ Esta especificación detalla la interacción con la API para editar un proyecto 
 
 ### 5.2 Requerimientos de personal
 
-Un requerimiento está **satisfecho** cuando tiene al menos una postulación en estado `ACEPTADA`.
+La protección es **por requerimiento**, no por proyecto. Un requerimiento está
+protegido (`protegido === true`) cuando:
 
-* **No se pueden enviar requerimientos satisfechos** en `requerimientosGral` → `409` (`RequerimientoSatisfechoException`).
-* Si un requerimiento satisfecho **se omite del payload, se conserva automáticamente**.
-* Los requerimientos **no satisfechos** que se envían se **eliminan y recrean** (el `id` solo se usa para validar pertenencia y estado).
+1. El cupo está completo (`satisfecho === true`).
+2. Tiene cualquier miembro vinculado, activo o histórico.
+3. Tiene una postulación o invitación `ACEPTADA`.
+4. En un proyecto `CONFIRMADO`, tiene una postulación o invitación `PENDIENTE`.
+
+Las postulaciones e invitaciones `RECHAZADA` no bloquean.
+
+Reglas del payload:
+
+* **Omitir los requerimientos protegidos.** Si se omiten, el backend los conserva.
+* **Enviar completos todos los no protegidos que deban conservarse.** Un no protegido omitido se elimina.
+* Un requerimiento existente enviado sin cambios no se valida ni se reescribe.
+* Un requerimiento existente no protegido enviado con cambios se actualiza en el lugar, conservando su `idRequerimientoGral`.
+* Un requerimiento existente protegido enviado con cambios → `409` (`REQUERIMIENTO_CON_VINCULOS`).
+* Un requerimiento nuevo (`idRequerimientoGral: null` o ausente) se crea.
 * Un `idRequerimientoGral` que no pertenece al proyecto → `400` (`RequerimientoInvalidoException`).
 * Si `requerimientosGral` es `null`/ausente, no se modifica ningún requerimiento.
+
+> En `CONFIRMADO` se pueden agregar, editar y eliminar los requerimientos no
+> protegidos. No hay que ocultar toda la sección.
 
 ### 5.3 Objetivos
 
@@ -226,7 +248,8 @@ Se devuelve el proyecto completo, con el mismo contrato que `GET /proyectos/{idP
         }
       ],
       "habilidades": [1, 4],
-      "satisfecho": false
+      "satisfecho": false,
+      "protegido": true
     }
   ],
   "moodboard": {
@@ -246,9 +269,14 @@ Se devuelve el proyecto completo, con el mismo contrato que `GET /proyectos/{idP
 
 ---
 
-## 7. Cambio Transversal: Campo `satisfecho`
+## 7. Campos transversales: `satisfecho` y `protegido`
 
-Se agregó el campo `satisfecho: boolean` a cada elemento de `requerimientosGral[]`. Está presente en:
+`satisfecho: boolean` sigue indicando cupo completo (`cubiertos >= cantidad`).
+Se usa para mostrar “Cupo completo” en la vista de lectura; ya no es el único
+criterio de bloqueo del formulario.
+
+`protegido: boolean` es la fuente de verdad para bloquear edición y
+eliminación. Está presente en:
 
 * `PUT /proyectos/{idProyecto}`
 * `GET /proyectos/{idProyecto}`
@@ -257,9 +285,25 @@ Se agregó el campo `satisfecho: boolean` a cada elemento de `requerimientosGral
 
 ### Uso en el front
 
-* `satisfecho === true`: el requerimiento **no se puede editar ni eliminar**.
-* `satisfecho === false`: se puede editar/eliminar.
-* Al construir el payload de modificación, **excluir los requerimientos satisfechos**.
+* `protegido === true`: solo lectura, sin botón de eliminar, badge “Protegido”.
+* `protegido === false`: editar y eliminar habilitados.
+* Al construir el payload de modificación, **excluir los protegidos**.
+* En requerimientos recién creados puede venir `false` hasta refrescar el proyecto.
+
+### Error `409` de requerimiento protegido
+
+```json
+{
+  "message": "No se puede modificar ni eliminar el requerimiento 28 porque tiene cupo cubierto, miembros vinculados o postulaciones/invitaciones pendientes o aceptadas.",
+  "codigo": "REQUERIMIENTO_CON_VINCULOS",
+  "idRequerimientoGral": 28,
+  "httpStatus": 409,
+  "timestamp": 1760000000000
+}
+```
+
+El front debe leer `codigo`, resaltar el `idRequerimientoGral`, ofrecer
+“Descartar cambios” o “Gestionar postulaciones” y no reintentar automáticamente.
 
 ---
 
@@ -305,7 +349,7 @@ Se agregó el campo `satisfecho: boolean` a cada elemento de `requerimientosGral
 | `404` | Proyecto inexistente | `El proyecto con id {id} no existe.` |
 | `404` | Habilidad inexistente | `HabilidadNoEncontradaException` |
 | `409` | Proyecto `Finalizado` / `Cancelado` | `No se puede modificar un proyecto en estado {estado}.` |
-| `409` | Se intentó enviar un requerimiento satisfecho | `No se puede modificar ni eliminar el requerimiento {id} porque ya tiene postulaciones aceptadas.` |
+| `409` | Se intentó enviar un requerimiento protegido con cambios | `{ codigo: "REQUERIMIENTO_CON_VINCULOS", idRequerimientoGral }` con el mensaje de cupo/miembros/postulaciones |
 | `409` | Perfil en baja | `El perfil no se encuentra activo.` |
 
 ---
@@ -319,20 +363,22 @@ Se agregó el campo `satisfecho: boolean` a cada elemento de `requerimientosGral
 3. En `Publicado`/`Confirmado`:
    * La ubicación es **obligatoria** y no debe permitirse vaciarla.
    * No permitir guardar si falta fecha de entrega, moodboard o al menos un requerimiento.
-4. **Requerimientos satisfechos:**
-   * Mostrar badge/estado “Satisfecho”.
+4. **Requerimientos protegidos (`protegido === true`):**
+   * Mostrar badge “Protegido” y el motivo (cupo completo o personal/postulaciones vinculadas).
    * Deshabilitar edición y eliminación.
    * Excluirlos del payload.
-5. **Requerimientos editables:**
-   * Enviar `idRequerimientoGral` si ya existían.
+5. **Requerimientos no protegidos:**
+   * Enviar todos los que deban conservarse, con `idRequerimientoGral` si ya existían.
    * Omitir el `id` para los nuevos.
+   * Si se quitan del formulario, se eliminan en el backend.
 6. **Actualizaciones parciales:**
    * Enviar `null`/omitir `objetivos` y `requerimientosGral` si no se tocaron esas secciones.
-   * Enviar el array completo si se editó (reemplazo total).
+   * Enviar el array completo de no protegidos si se editó la sección.
 7. **Fechas:** enviar en formato `YYYY-MM-DD`.
 8. **Manejo de errores:**
    * Mostrar `message` en errores `403`, `404`, `409`.
    * Mapear `errores` por campo en errores `400` de validación.
+   * En `409` con `codigo: "REQUERIMIENTO_CON_VINCULOS"`, resaltar el `idRequerimientoGral` y ofrecer descartar el cambio o gestionar postulaciones.
 9. **Confirmación:** al modificar un proyecto publicado, mostrar un diálogo de confirmación antes de guardar.
 
 ---
@@ -348,7 +394,7 @@ Se agregó el campo `satisfecho: boolean` a cada elemento de `requerimientosGral
 }
 ```
 
-### 10.2 Publicado: mantener ubicación y quitar un requerimiento no satisfecho
+### 10.2 Publicado: mantener ubicación y quitar un requerimiento no protegido
 
 ```json
 {
@@ -369,7 +415,7 @@ Se agregó el campo `satisfecho: boolean` a cada elemento de `requerimientosGral
 }
 ```
 
-> El requerimiento `10` (no satisfecho) se elimina porque no viaja en el array. El requerimiento satisfecho (si existe) se conserva aunque no viaje.
+> El requerimiento `10` (no protegido) se elimina porque no viaja en el array. Un requerimiento protegido se conserva aunque no viaje.
 
 ### 10.3 Borrador: quitar la ubicación
 

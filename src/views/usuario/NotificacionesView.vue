@@ -8,7 +8,7 @@
 
       <div class="notificaciones-view__actions">
         <select
-          v-if="!modoPerfil"
+          v-if="!modoPerfil && !modoAdmin"
           v-model="filtroPerfil"
           class="notificaciones-view__select"
           @change="cargar"
@@ -59,10 +59,27 @@
 
         <div class="notificacion-card__contenido">
           <div class="notificacion-card__cabecera">
-            <span class="notificacion-card__tipo">{{ etiquetaTipo(notificacion.tipo) }}</span>
+            <span class="notificacion-card__tipo">{{ tituloNotificacion(notificacion) }}</span>
             <span class="notificacion-card__fecha">{{ formatearFecha(notificacion.fechaGenerada) }}</span>
           </div>
           <p class="notificacion-card__mensaje">{{ notificacion.mensaje }}</p>
+
+          <a
+            v-if="notificacion.destino"
+            :href="hrefDestino(notificacion)"
+            class="notificacion-card__enlace"
+            :class="{
+              'notificacion-card__enlace--cargando': activandoNotificacion,
+            }"
+            :aria-disabled="activandoNotificacion ? 'true' : 'false'"
+            @click.prevent="navegarA(notificacion)"
+          >
+            {{ notificacion.destino.etiqueta }}
+            <span class="material-symbols-outlined" aria-hidden="true">
+              arrow_forward
+            </span>
+          </a>
+
           <span
             v-if="!modoPerfil && notificacion.idPerfilContexto != null"
             class="notificacion-card__perfil"
@@ -93,6 +110,16 @@ import {
   cargarResumenPerfil,
   cargarResumenUsuario,
 } from "../../services/notificacionState";
+import {
+  destinoNotificacion,
+  etiquetaTipoNotificacion,
+  iconoNotificacion,
+} from "../../utils/notificacionConstants.js";
+import {
+  hrefNotificacion,
+  navegarANotificacion,
+} from "../../utils/notificacionNavegacion.js";
+import { formatearFechaNotificacion } from "../../utils/fechas.js";
 
 export default {
   name: "NotificacionesView",
@@ -108,19 +135,27 @@ export default {
       error: null,
       marcandoTodas: false,
       marcandoId: null,
+      activandoNotificacion: false,
     };
   },
   computed: {
     modoPerfil() {
       return this.$route.meta.soloPerfilActivo === true;
     },
+    modoAdmin() {
+      return this.$route.meta.requiereAdmin === true;
+    },
     idPerfilContexto() {
+      if (this.modoAdmin) return null;
       return this.modoPerfil ? idPerfilActivo() : this.filtroPerfil;
     },
     titulo() {
       return this.modoPerfil ? "Notificaciones del perfil" : "Notificaciones";
     },
     subtitulo() {
+      if (this.modoAdmin) {
+        return "Reportes de perfil y actividad del sistema.";
+      }
       return this.modoPerfil
         ? "Actividad reciente del perfil activo."
         : "Todas las notificaciones de tu cuenta. Podés filtrar por perfil.";
@@ -142,6 +177,10 @@ export default {
   },
   methods: {
     async cargarPerfiles() {
+      if (this.modoAdmin) {
+        this.perfiles = [];
+        return;
+      }
       try {
         const response = await perfilService.listarMisPerfiles();
         this.perfiles = response?.data || [];
@@ -150,18 +189,30 @@ export default {
       }
     },
     async cargar() {
-      if (this.modoPerfil && this.idPerfilContexto == null) return;
-
       this.cargando = true;
       this.error = null;
 
       try {
+        const idPerfilContexto = this.idPerfilContexto;
+
+        if (this.modoPerfil && idPerfilContexto == null) {
+          this.notificaciones = [];
+          this.error =
+            "No hay un perfil activo para mostrar las notificaciones.";
+          return;
+        }
+
         const response = await notificacionService.listar({
-          idPerfilContexto: this.idPerfilContexto,
+          idPerfilContexto,
           page: 0,
           size: 100,
         });
-        this.notificaciones = response?.data?.contenido || [];
+        this.notificaciones = (response?.data?.contenido || []).map(
+          (notificacion) => ({
+            ...notificacion,
+            destino: destinoNotificacion(notificacion),
+          })
+        );
       } catch (error) {
         this.notificaciones = [];
         this.error = error?.response?.data?.message || "No se pudieron cargar las notificaciones.";
@@ -170,10 +221,14 @@ export default {
       }
     },
     async cargarResumen() {
-      if (this.modoPerfil) {
-        await cargarResumenPerfil(this.idPerfilContexto);
-      } else {
-        await cargarResumenUsuario();
+      try {
+        if (this.modoPerfil) {
+          await cargarResumenPerfil(this.idPerfilContexto);
+        } else {
+          await cargarResumenUsuario();
+        }
+      } catch {
+        // El resumen no debe bloquear el listado de notificaciones.
       }
     },
     async marcarLeida(notificacion) {
@@ -189,6 +244,41 @@ export default {
         this.error = error?.response?.data?.message || "No se pudo marcar la notificación.";
       } finally {
         this.marcandoId = null;
+      }
+    },
+    hrefDestino(notificacion) {
+      return hrefNotificacion(notificacion, this.$router) || "#";
+    },
+    /**
+     * La ruta del proyecto exige perfil activo. La utilidad compartida activa
+     * el perfil de contexto de la notificación antes de navegar; si no, el
+     * guard del router redirige a dashboard-usuario.
+     */
+    async navegarA(notificacion) {
+      if (!notificacion?.destino || this.activandoNotificacion) return;
+
+      this.activandoNotificacion = true;
+      this.error = "";
+
+      const resultado = await navegarANotificacion(
+        notificacion,
+        this.$router,
+        { modoAdmin: this.modoAdmin }
+      );
+
+      this.activandoNotificacion = false;
+
+      if (!resultado.ok) {
+        if (resultado.error) this.error = resultado.error;
+        return;
+      }
+
+      this.marcarLeidaAlNavegar(notificacion);
+    },
+    marcarLeidaAlNavegar(notificacion) {
+      if (!notificacion.leida) {
+        // No bloquear la navegación: si el PATCH falla, se navega igual.
+        void this.marcarLeida(notificacion);
       }
     },
     async marcarTodas() {
@@ -210,40 +300,20 @@ export default {
         this.marcandoTodas = false;
       }
     },
+    tituloNotificacion(notificacion) {
+      return notificacion?.titulo || etiquetaTipoNotificacion(notificacion?.tipo);
+    },
     etiquetaTipo(tipo) {
-      const etiquetas = {
-        PROYECTO_CANCELADO: "Proyecto cancelado",
-        POSTULACION_RECHAZADA: "Postulación rechazada",
-        INVITACION_RECHAZADA: "Invitación rechazada",
-        HITO_CUMPLIDO: "Hito cumplido",
-        ACTIVIDAD_ASIGNADA: "Actividad asignada",
-      };
-      return etiquetas[tipo] || String(tipo || "").replaceAll("_", " ");
+      return etiquetaTipoNotificacion(tipo);
     },
     iconoPorTipo(tipo) {
-      const iconos = {
-        PROYECTO_CANCELADO: "cancel",
-        POSTULACION_RECHAZADA: "person_remove",
-        INVITACION_RECHAZADA: "mail_off",
-        HITO_CUMPLIDO: "flag",
-        ACTIVIDAD_ASIGNADA: "assignment",
-      };
-      return iconos[tipo] || "notifications";
+      return iconoNotificacion(tipo);
     },
     nombrePerfil(idPerfil) {
       return this.perfiles.find((perfil) => perfil.idPerfil === idPerfil)?.nombreArtistico || "Perfil";
     },
     formatearFecha(fecha) {
-      if (!fecha) return "";
-      const valor = new Date(fecha);
-      if (Number.isNaN(valor.getTime())) return "";
-      return valor.toLocaleString("es-AR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      return formatearFechaNotificacion(fecha);
     },
   },
 };
@@ -367,6 +437,31 @@ export default {
   margin: 0.3rem 0 0;
   font-size: 0.88rem;
   line-height: 1.4;
+}
+
+.notificacion-card__enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.35rem;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.notificacion-card__enlace:hover {
+  text-decoration: underline;
+}
+
+.notificacion-card__enlace--cargando {
+  cursor: wait;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.notificacion-card__enlace .material-symbols-outlined {
+  font-size: 0.95rem;
 }
 
 .notificacion-card__perfil {

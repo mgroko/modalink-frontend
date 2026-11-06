@@ -33,6 +33,17 @@
 
   <VaButton type="submit" size="medium" class="auth-button">Registrarme</VaButton>
 
+  <div class="auth-divider"><span>o</span></div>
+
+  <VaButton
+    type="button"
+    preset="secondary"
+    class="auth-google"
+    @click="registrarmeConGoogle"
+  >
+    Registrarme con Google
+  </VaButton>
+
   <p class="auth-page__footer" color="gray-700">
     ¿Ya tenés una cuenta?
     <RouterLink :to="{ name: 'login' }" class="font-semibold text-primary">Inicia Sesión</RouterLink>
@@ -85,6 +96,10 @@ export default {
     };
   },
   methods: {
+    registrarmeConGoogle() {
+      this.errorMessage = "";
+      authService.iniciarSesionGoogle();
+    },
     async registrarUsuario() {
       // Disparamos las validaciones de Vuestic
       const isValid = this.$refs.form.validate();
@@ -156,5 +171,27 @@ export default {
   margin: 0 auto;
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  color: var(--va-secondary);
+  font-size: 0.85rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--va-background-border);
+}
+
+.auth-google {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
 
 </style>

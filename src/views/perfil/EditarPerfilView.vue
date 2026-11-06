@@ -2,20 +2,28 @@
 Editarperfilview · VUE
 <template>
   <div class="editar-perfil">
-    <h1 class="editar-perfil__titulo">Editar perfil</h1>
-    <p class="editar-perfil__subtitulo">Actualizá la información de tu perfil profesional.</p>
- 
-    <div v-if="cargandoInicial" class="editar-perfil__estado">
+    <header class="editar-perfil__header">
+      <h1 class="editar-perfil__titulo">Editar perfil</h1>
+      <p class="editar-perfil__subtitulo">Actualizá la información de tu perfil profesional.</p>
+    </header>
+
+    <section v-if="cargandoInicial" class="editar-perfil__panel editar-perfil__estado">
       <span class="material-symbols-outlined editar-perfil__estado-icono">hourglass_empty</span>
       Cargando perfil...
-    </div>
- 
-    <div v-else-if="noEncontrado" class="editar-perfil__estado">
+    </section>
+
+    <section v-else-if="noEncontrado" class="editar-perfil__panel editar-perfil__estado">
       <span class="material-symbols-outlined editar-perfil__estado-icono">error</span>
       No se encontró el perfil solicitado.
-      <VaButton preset="secondary" @click="volver">{{ desdeInicio ? 'Volver a mi perfil' : 'Volver al dashboard' }}</VaButton>
-    </div>
- 
+      <VaButton preset="secondary" @click="volver">{{ textoVolver }}</VaButton>
+    </section>
+
+    <section v-else-if="sinPermiso" class="editar-perfil__panel editar-perfil__estado">
+      <span class="material-symbols-outlined editar-perfil__estado-icono">lock</span>
+      No tenés permiso para editar este perfil.
+      <VaButton preset="secondary" @click="volver">{{ textoVolver }}</VaButton>
+    </section>
+
     <template v-else>
       <div class="editar-perfil__panel">
         <div class="editar-perfil__foto">
@@ -40,21 +48,30 @@ Editarperfilview · VUE
                 class="editar-perfil__foto-input"
                 @change="seleccionarFoto"
               />
-              <VaButton preset="secondary" size="small" icon="mso-photo_camera" @click="$refs.inputFoto.click()">
+              <button
+                type="button"
+                class="editar-perfil__foto-accion"
+                @click="$refs.inputFoto.click()"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
                 {{ fotoPreview ? "Cambiar foto" : "Elegir foto" }}
-              </VaButton>
-              <VaButton v-if="fotoPreview" preset="secondary" size="small" color="danger" @click="limpiarFoto">
+              </button>
+              <button
+                v-if="fotoPreview"
+                type="button"
+                class="editar-perfil__foto-accion editar-perfil__foto-accion--peligro"
+                @click="limpiarFoto"
+              >
                 Quitar selección
-              </VaButton>
-              <VaButton
+              </button>
+              <button
                 v-else-if="perfil.fotoUrl"
-                preset="secondary"
-                size="small"
-                color="danger"
+                type="button"
+                class="editar-perfil__foto-accion editar-perfil__foto-accion--peligro"
                 @click="modalEliminarFoto = true"
               >
                 Eliminar foto
-              </VaButton>
+              </button>
             </div>
           </div>
         </div>
@@ -255,6 +272,88 @@ Editarperfilview · VUE
             />
           </div>
 
+          <section class="editar-perfil__habilidades">
+            <header class="editar-perfil__habilidades-cabecera">
+              <h2 class="editar-perfil__habilidades-titulo">Habilidades</h2>
+              <p class="editar-perfil__habilidades-ayuda">
+                Las habilidades son globales y se guardan al instante.
+              </p>
+            </header>
+
+            <BaseAlert v-if="errorHabilidades" :message="errorHabilidades" type="error" />
+            <BaseAlert v-if="exitoHabilidades" :message="exitoHabilidades" type="success" />
+
+            <div v-if="cargandoHabilidades" class="editar-perfil__estado">
+              <span class="material-symbols-outlined editar-perfil__estado-icono">hourglass_empty</span>
+              Cargando habilidades...
+            </div>
+
+            <template v-else>
+              <div
+                v-if="habilidadesActuales.length"
+                class="editar-perfil__habilidades-chips"
+              >
+                <span
+                  v-for="habilidad in habilidadesActuales"
+                  :key="habilidad.idHabilidad"
+                  class="editar-perfil__habilidad-chip"
+                >
+                  {{ habilidad.nombre }}
+                  <button
+                    type="button"
+                    class="editar-perfil__habilidad-quitar"
+                    :disabled="guardandoHabilidad"
+                    :aria-label="`Quitar ${habilidad.nombre}`"
+                    title="Quitar habilidad"
+                    @click="quitarHabilidad(habilidad)"
+                  >
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </span>
+              </div>
+
+              <p v-else class="editar-perfil__habilidades-vacio">
+                Todavía no cargaste habilidades en tu perfil.
+              </p>
+
+              <div
+                class="editar-perfil__habilidad-agregar"
+                @keydown.enter.prevent
+              >
+                <VaSelect
+                  v-model="habilidadSeleccionada"
+                  :options="habilidadesDisponibles"
+                  value-by="idHabilidad"
+                  text-by="nombre"
+                  placeholder="Seleccionar habilidad"
+                  allow-search
+                  clearable
+                  :disabled="guardandoHabilidad || habilidadesDisponibles.length === 0"
+                />
+                <VaButton
+                  type="button"
+                  preset="primary"
+                  :loading="guardandoHabilidad"
+                  :disabled="
+                    guardandoHabilidad ||
+                    habilidadSeleccionada == null ||
+                    habilidadesDisponibles.length === 0
+                  "
+                  @click="agregarHabilidad"
+                >
+                  Agregar
+                </VaButton>
+              </div>
+
+              <p
+                v-if="habilidadesCatalogo.length === 0"
+                class="editar-perfil__habilidades-vacio"
+              >
+                No hay habilidades disponibles en el catálogo.
+              </p>
+            </template>
+          </section>
+
           <div
             class="editar-perfil__alertas-wrapper"
             :class="{ 'editar-perfil__alertas-wrapper--visible': mensajeExito || mensajeError }"
@@ -266,8 +365,17 @@ Editarperfilview · VUE
           </div>
 
           <div class="editar-perfil__acciones">
-            <VaButton preset="secondary" @click="volver" :disabled="cargando || !!mensajeExito">Cancelar</VaButton>
-            <VaButton type="submit" :loading="cargando" :disabled="!!mensajeExito">Guardar cambios</VaButton>
+            <button
+              type="button"
+              class="editar-perfil__cancelar"
+              :disabled="cargando || !!mensajeExito"
+              @click="volver"
+            >
+              Cancelar
+            </button>
+            <VaButton type="submit" :loading="cargando" :disabled="!!mensajeExito">
+              Guardar cambios
+            </VaButton>
           </div>
         </VaForm>
       </div>
@@ -297,6 +405,7 @@ Editarperfilview · VUE
  
 <script>
 import perfilService from "../../services/perfilService.js";
+import habilidadService from "../../services/habilidadService.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import {
   ETIQUETAS_CARACTERISTICAS,
@@ -321,8 +430,22 @@ export default {
       type: Boolean,
       default: false,
     },
+    desdeAjustes: {
+      type: Boolean,
+      default: false,
+    },
   },
   computed: {
+    rutaVolver() {
+      if (this.desdeAjustes) return "ajustes-perfil-inicio";
+      if (this.desdeInicio) return "inicioperfil";
+      return "dashboard-usuario";
+    },
+    textoVolver() {
+      if (this.desdeAjustes) return "Volver a ajustes";
+      if (this.desdeInicio) return "Volver a mi perfil";
+      return "Volver al dashboard";
+    },
     fotoVisible() {
       return this.fotoPreview || resolverFotoUrl(this.perfil?.fotoUrl);
     },
@@ -351,6 +474,14 @@ export default {
       const resto = this.caracteristicas.filter((c) => !excluidos.has(c.idCaracteristica));
       return resto.sort((a, b) => (ORDEN_PRIORIDAD[normCodigo(a.codigo)] || 99) - (ORDEN_PRIORIDAD[normCodigo(b.codigo)] || 99));
     },
+    habilidadesDisponibles() {
+      const actuales = new Set(
+        this.habilidadesActuales.map((habilidad) => String(habilidad.idHabilidad))
+      );
+      return this.habilidadesCatalogo.filter(
+        (habilidad) => !actuales.has(String(habilidad.idHabilidad))
+      );
+    },
   },
   data() {
     return {
@@ -361,6 +492,7 @@ export default {
       cargandoInicial: true,
       cargandoCaracteristicas: false,
       noEncontrado: false,
+      sinPermiso: false,
       form: {
         nombreArtistico: "",
         idProfesion: null,
@@ -374,6 +506,13 @@ export default {
       fotoPreview: null,
       modalEliminarFoto: false,
       eliminandoFoto: false,
+      habilidadesCatalogo: [],
+      habilidadesActuales: [],
+      habilidadSeleccionada: null,
+      cargandoHabilidades: false,
+      guardandoHabilidad: false,
+      errorHabilidades: "",
+      exitoHabilidades: "",
       reglas: reglasPerfil,
     };
   },
@@ -388,6 +527,7 @@ export default {
     async cargarPerfil() {
       this.cargandoInicial = true;
       this.noEncontrado = false;
+      this.sinPermiso = false;
       try {
         const response = await perfilService.obtener(this.idPerfil);
         this.perfil = response?.data;
@@ -395,9 +535,27 @@ export default {
           this.noEncontrado = true;
           return;
         }
+        // El endpoint de detalle es público para perfiles activos de terceros:
+        // solo el dueño puede editar. Se corta antes de cargar habilidades o
+        // características para no mostrar ni precargar datos ajenos.
+        if (this.perfil.esPropietario !== true) {
+          this.perfil = null;
+          this.sinPermiso = true;
+          return;
+        }
         this.form.nombreArtistico = this.perfil.nombreArtistico || "";
         this.form.biografia = this.perfil.biografia || "";
- 
+
+        this.cargandoHabilidades = true;
+        try {
+          await Promise.all([
+            this.cargarHabilidadesCatalogo(),
+            this.cargarHabilidadesPerfil(),
+          ]);
+        } finally {
+          this.cargandoHabilidades = false;
+        }
+
         const profesiones = await this.cargarProfesiones();
         this.form.idProfesion = this.resolverIdProfesion(this.perfil.profesion, profesiones);
         if (this.form.idProfesion != null) {
@@ -428,6 +586,133 @@ export default {
         this.profesiones = [];
       }
       return this.profesiones;
+    },
+    async cargarHabilidadesCatalogo() {
+      try {
+        const response = await habilidadService.listar();
+        const datos = response?.data;
+        this.habilidadesCatalogo = Array.isArray(datos) ? datos : [];
+      } catch {
+        this.habilidadesCatalogo = [];
+        this.errorHabilidades =
+          "No se pudo cargar el catálogo de habilidades.";
+      }
+    },
+    async cargarHabilidadesPerfil() {
+      try {
+        const response = await perfilService.listarHabilidades(this.idPerfil);
+        const datos = response?.data;
+        this.habilidadesActuales = Array.isArray(datos) ? datos : [];
+        this.sincronizarNombresHabilidades();
+      } catch (error) {
+        this.habilidadesActuales = [];
+        this.errorHabilidades =
+          error?.response?.data?.message ||
+          "No se pudieron cargar tus habilidades.";
+      }
+    },
+    sincronizarNombresHabilidades() {
+      if (!this.perfil) return;
+      this.perfil.habilidades = this.habilidadesActuales
+        .map((habilidad) => habilidad?.nombre)
+        .filter(Boolean);
+    },
+    async agregarHabilidad() {
+      if (this.guardandoHabilidad || this.habilidadSeleccionada == null) return;
+
+      const idHabilidad = this.habilidadSeleccionada;
+      this.guardandoHabilidad = true;
+      this.errorHabilidades = "";
+      this.exitoHabilidades = "";
+
+      try {
+        const response = await perfilService.agregarHabilidad(
+          this.idPerfil,
+          idHabilidad
+        );
+        const habilidad = response?.data;
+        if (
+          habilidad?.idHabilidad != null &&
+          !this.habilidadesActuales.some(
+            (item) => String(item.idHabilidad) === String(habilidad.idHabilidad)
+          )
+        ) {
+          this.habilidadesActuales = [...this.habilidadesActuales, habilidad];
+        }
+        this.sincronizarNombresHabilidades();
+        this.habilidadSeleccionada = null;
+        this.exitoHabilidades = "Habilidad agregada correctamente.";
+      } catch (error) {
+        const status = error?.response?.status;
+        const mensaje = error?.response?.data?.message || "";
+
+        if (status === 409) {
+          this.errorHabilidades =
+            mensaje || "La habilidad ya está asociada a este perfil.";
+          this.habilidadSeleccionada = null;
+          await this.cargarHabilidadesPerfil();
+        } else if (status === 404) {
+          this.errorHabilidades =
+            mensaje || "La habilidad ya no está disponible.";
+          this.habilidadSeleccionada = null;
+          await Promise.all([
+            this.cargarHabilidadesCatalogo(),
+            this.cargarHabilidadesPerfil(),
+          ]);
+        } else if (status === 403) {
+          this.errorHabilidades =
+            mensaje || "No tenés permiso para modificar este perfil.";
+        } else {
+          this.errorHabilidades =
+            mensaje || "No se pudo agregar la habilidad. Intentá nuevamente.";
+        }
+      } finally {
+        this.guardandoHabilidad = false;
+      }
+    },
+    async quitarHabilidad(habilidad) {
+      if (this.guardandoHabilidad || habilidad?.idHabilidad == null) return;
+
+      this.guardandoHabilidad = true;
+      this.errorHabilidades = "";
+      this.exitoHabilidades = "";
+
+      try {
+        await perfilService.quitarHabilidad(
+          this.idPerfil,
+          habilidad.idHabilidad
+        );
+        this.habilidadesActuales = this.habilidadesActuales.filter(
+          (item) =>
+            String(item.idHabilidad) !== String(habilidad.idHabilidad)
+        );
+        this.sincronizarNombresHabilidades();
+        this.exitoHabilidades = "Habilidad quitada correctamente.";
+      } catch (error) {
+        const status = error?.response?.status;
+        const mensaje = error?.response?.data?.message || "";
+
+        if (status === 409) {
+          this.errorHabilidades =
+            mensaje || "La habilidad ya no está asociada a este perfil.";
+          await this.cargarHabilidadesPerfil();
+        } else if (status === 404) {
+          this.errorHabilidades =
+            mensaje || "La habilidad o el perfil ya no existen.";
+          await Promise.all([
+            this.cargarHabilidadesCatalogo(),
+            this.cargarHabilidadesPerfil(),
+          ]);
+        } else if (status === 403) {
+          this.errorHabilidades =
+            mensaje || "No tenés permiso para modificar este perfil.";
+        } else {
+          this.errorHabilidades =
+            mensaje || "No se pudo quitar la habilidad. Intentá nuevamente.";
+        }
+      } finally {
+        this.guardandoHabilidad = false;
+      }
     },
     async cargarCaracteristicas(idProfesion) {
       this.cargandoCaracteristicas = true;
@@ -603,7 +888,7 @@ export default {
         }
 
         setTimeout(() => {
-          this.$router.push({ name: this.desdeInicio ? "inicioperfil" : "dashboard-usuario" });
+          this.$router.push({ name: this.rutaVolver });
         }, 1200);
       } catch (error) {
         const errores = error?.response?.data?.errores;
@@ -617,7 +902,7 @@ export default {
       }
     },
     volver() {
-      this.$router.push({ name: this.desdeInicio ? "inicioperfil" : "dashboard-usuario" });
+      this.$router.push({ name: this.rutaVolver });
     },
   },
 };
@@ -625,24 +910,38 @@ export default {
  
 <style scoped>
 .editar-perfil {
-  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.editar-perfil__header {
+  padding: 1.5rem 1.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 
 .editar-perfil__titulo {
-  font-size: 1.5rem;
-  font-weight: 700;
+  margin: 0;
   color: var(--color-text);
-  margin: 0 0 0.25rem 0;
+  font-size: clamp(1.5rem, 2vw, 1.85rem);
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .editar-perfil__subtitulo {
-  font-size: 0.85rem;
+  margin: 0.35rem 0 0;
   color: var(--color-text-muted);
-  margin: 0 0 1.5rem 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
 }
 
 .editar-perfil__panel {
-  padding: 1.5rem;
+  padding: 1.5rem 1.75rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -651,58 +950,93 @@ export default {
 .editar-perfil__foto {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.1rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .editar-perfil__foto-img {
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .editar-perfil__foto-img--placeholder {
-  background: var(--color-surface-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
+  background: var(--color-surface-muted);
 }
 
 .editar-perfil__foto-img--placeholder .material-symbols-outlined {
-  font-size: 2.2rem;
+  font-size: 1.7rem;
 }
 
 .editar-perfil__foto-info {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
 }
 
 .editar-perfil__nombre-artistico {
-  font-size: 1.1rem;
-  font-weight: 600;
   color: var(--color-text);
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .editar-perfil__foto-aviso {
-  font-size: 0.8rem;
   color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .editar-perfil__foto-acciones {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.35rem;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+
+.editar-perfil__foto-accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  color: var(--color-primary);
+  background: transparent;
+  border: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editar-perfil__foto-accion:hover {
+  text-decoration: underline;
+}
+
+.editar-perfil__foto-accion .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.editar-perfil__foto-accion--peligro {
+  color: var(--color-danger-text);
 }
 
 .editar-perfil__foto-input {
   display: none;
+}
+
+.editar-perfil__form :deep(.va-input-label) {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .editar-perfil__modal-acciones {
@@ -759,6 +1093,28 @@ export default {
   }
 }
 
+@media (max-width: 640px) {
+  .editar-perfil__header,
+  .editar-perfil__panel {
+    padding: 1.25rem;
+  }
+
+  .editar-perfil__foto {
+    align-items: flex-start;
+  }
+
+  .editar-perfil__acciones {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .editar-perfil__cancelar {
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+  }
+}
+
 .editar-perfil__estado {
   display: flex;
   flex-direction: column;
@@ -775,9 +1131,119 @@ export default {
 
 .editar-perfil__acciones {
   display: flex;
-  gap: 0.75rem;
+  align-items: center;
   justify-content: flex-end;
+  gap: 1.25rem;
   padding-top: 0.5rem;
+}
+
+.editar-perfil__cancelar {
+  padding: 0.35rem 0.25rem;
+  color: var(--color-primary);
+  background: transparent;
+  border: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editar-perfil__cancelar:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.editar-perfil__cancelar:disabled {
+  color: var(--color-text-subtle);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.editar-perfil__habilidades {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-soft);
+}
+
+.editar-perfil__habilidades-cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.editar-perfil__habilidades-titulo {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.editar-perfil__habilidades-ayuda {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.editar-perfil__habilidades-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.editar-perfil__habilidad-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.35rem 0.2rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.78rem;
+}
+
+.editar-perfil__habilidad-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.05rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.editar-perfil__habilidad-quitar:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.editar-perfil__habilidad-quitar:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.editar-perfil__habilidad-quitar .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+.editar-perfil__habilidad-agregar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.editar-perfil__habilidad-agregar > :first-child {
+  flex: 1 1 240px;
+}
+
+.editar-perfil__habilidades-vacio {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .editar-perfil__alertas-wrapper {

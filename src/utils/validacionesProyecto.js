@@ -186,7 +186,7 @@ export function validarProyecto(form, catalogosPorProfesion = {}, hoy = "") {
 }
 
 /**
- * Unicidad de nombre por perfil director (UC-24): el backend rechaza con 409
+ * Unicidad de nombre por perfil director (UC-24): el sistema rechaza con 409
  * si el perfil director activo ya tiene un proyecto con ese nombre. Acá se
  * anticipa la regla contra los nombres ya conocidos (GET /proyectos/propios
  * con rol DIRECTOR). La comparación ignora mayúsculas/minúsculas y espacios
@@ -224,7 +224,7 @@ export function normalizarClaveCampo(clave) {
 
 /**
  * Mapea `data.errores` de un 400 a un objeto plano { claveNormalizada: msg }.
- * @param {object} errores body.errores del backend
+ * @param {object} errores body.errores del sistema
  * @returns {Object<string,string>} vacío si no hay errores de campo
  */
 export function mapearErroresBackend(errores) {

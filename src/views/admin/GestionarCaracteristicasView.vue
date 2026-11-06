@@ -688,7 +688,7 @@ export default {
         tipoDato: this.form.tipoDato,
       };
       if (this.modoEdicion) {
-        // el PUT es completo; "valores" se ignora del lado del backend
+        // el PUT es completo; "valores" se ignora del lado del sistema
         request.valores = [];
       } else if (this.form.tipoDato === "ENUMERADO") {
         request.valores = this.form.valores
@@ -724,7 +724,7 @@ export default {
         const status = error?.response?.status;
         const mensaje = error?.response?.data?.message;
         if (status === 409 && this.modoEdicion) {
-          // enUso es un snapshot: re-fetch y resync del form (fuente de verdad: backend)
+          // enUso es un snapshot: re-fetch y resync del form (fuente de verdad: sistema)
           await this.cargarCaracteristicas();
           this.resincronizarEnUso();
           this.errorMessage =

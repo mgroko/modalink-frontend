@@ -252,7 +252,7 @@ import { refrescarSesion } from "../../services/authState.js";
 /*
  * Raíz de cada clave del formulario (claves planas de `erroresBackend`) → paso
  * del wizard que la contiene. Sirve para validar de a un paso y para volver al
- * paso correspondiente cuando el backend responde 400/409 con errores de campo.
+ * paso correspondiente cuando el sistema responde 400/409 con errores de campo.
  */
 const RAICES_PASO = {
   1: ["nombre", "descripcion", "privacidad", "fechaEntregaEstipulada", "ubicacion"],
@@ -358,9 +358,9 @@ export default {
 
     /**
      * Nombres de los proyectos propios (rol DIRECTOR) del perfil activo: se
-     * usan para anticipar en el paso 1 la regla de unicidad del backend
+     * usan para anticipar en el paso 1 la regla de unicidad del sistema
      * (409 NombreProyectoDuplicadoException). Si falla, queda en [] y la
-     * validación anticipada se omite: el 409 del backend sigue cubriendo.
+     * validación anticipada se omite: el 409 del sistema sigue cubriendo.
      */
     async cargarNombresPropios() {
       try {
@@ -503,7 +503,7 @@ export default {
       return encontrado ? Number(encontrado[0]) : 1;
     },
 
-    /** Tras un error del backend, lleva al paso donde está el campo malo. */
+    /** Tras un error del sistema, lleva al paso donde está el campo malo. */
     irAlPasoDeErrores(claves) {
       const pasos = (claves || []).map((c) => this.pasoDeClave(c));
       if (pasos.length === 0) return;

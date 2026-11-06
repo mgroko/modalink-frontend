@@ -27,7 +27,7 @@ src/
 ├── assets/auth/                # Imágenes de autenticación
 ├── components/
 │   ├── AlertaBase.vue          # Alerta reutilizable
-│   ├── AuthLayout.vue          # Layout login/registro/recuperar
+│   ├── AuthLayout.vue          # Layout login/registro/Google
 │   ├── admin/AdminLayout.vue   # Layout panel admin
 │   ├── usuario/UserDashboardLayout.vue  # Layout panel usuario
 │   ├── home/HomeLayout.vue     # Layout del home (con sidebar de perfil)
@@ -39,7 +39,7 @@ src/
 ├── router/index.js             # Rutas + guards (admin, permisos, perfil activo)
 ├── services/                   # Capa de acceso HTTP (sin Axios directo en vistas)
 │   ├── http.js                 # Instancia Axios + interceptores (CSRF, 401/403)
-│   ├── authService.js          # Login/logout/session
+│   ├── authService.js          # Login/logout/session + Google OAuth
 │   ├── authState.js            # Estado de sesión (reactive) + permisos
 │   ├── usuarioService.js       # Endpoints de usuario
 │   ├── perfilService.js        # Endpoints de perfiles
@@ -60,7 +60,7 @@ src/
 │   ├── reglas.js               # Reglas de validación
 │   └── ubicacion.js            # Mapeo de ubicación del sistema
 └── views/
-    ├── auth/                   # Login, Registro, Recuperar Password
+    ├── auth/                   # Login, Registro, callback y onboarding de Google
     ├── perfil/                 # Home, Inicio/Ver perfil, Buscar, Crear, Editar
     ├── usuario/                # Dashboard, Modificar datos, Calendario
     └── admin/                  # Dashboard, Usuarios, Búsqueda, Características,
@@ -73,9 +73,10 @@ src/
 | Ruta | Descripción |
 |------|-------------|
 | `/` | Redirige a `/login` |
-| `/login` | Inicio de sesión |
-| `/registro` | Registro de cuenta |
-| `/recuperar-password` | Recuperación de contraseña |
+| `/login` | Inicio de sesión (local o con Google) |
+| `/registro` | Registro de cuenta (local o con Google) |
+| `/auth/google/callback` | Callback del flujo OAuth2; hidrata la sesión y redirige |
+| `/auth/google/completar` | Onboarding para usuarios nuevos de Google (DNI, fecha, género) |
 
 ### Autenticadas (requieren sesión; algunas requieren perfil activo)
 | Ruta | Descripción | Perfil activo |

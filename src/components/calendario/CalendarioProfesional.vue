@@ -27,6 +27,14 @@
       </div>
     </div>
 
+    <ReprogramacionResumen
+      :reprogramacion="reprogramacion"
+      :proyectos-director="proyectosDirector"
+      :reintentando-id="reintentandoReprogramacionId"
+      :errores-reintento="erroresReintento"
+      @reintentar="reintentarReprogramacion"
+    />
+
     <div v-if="cargando" class="calendario__estado">
       <span class="material-symbols-outlined calendario__estado-icono">hourglass_empty</span>
       Cargando calendario...
@@ -110,7 +118,6 @@
                   :class="`calendario__evento-${parte.clase}`"
                 >{{ parte.texto }}</span>
               </span>
-              <span v-if="item.proyecto" class="calendario__evento-badge">{{ item.proyecto }}</span>
               <button
                 v-if="item.tipo === 'bloqueo' && !soloLectura"
                 class="calendario__evento-eliminar"
@@ -121,6 +128,21 @@
               </button>
             </div>
             <span class="calendario__evento-desc">{{ item.descripcion }}</span>
+            <div
+              v-if="item.proyecto || item.perfiles.length"
+              class="calendario__evento-etiquetas"
+            >
+              <span v-if="item.proyecto" class="calendario__evento-badge">
+                Proyecto: {{ item.proyecto }}
+              </span>
+              <span
+                v-for="perfil in item.perfiles"
+                :key="perfil.idPerfil"
+                class="calendario__evento-badge calendario__evento-badge--perfil"
+              >
+                Perfil: {{ perfil.nombreArtistico }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -160,12 +182,26 @@
 
 <script>
 import calendarioService from "../../services/calendarioService";
+import proyectoService from "../../services/proyectoService";
+import { idPerfilActivo } from "../../services/authState";
+import {
+  cargarResumenPerfil,
+  cargarResumenUsuario,
+} from "../../services/notificacionState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ConfigurarJornada from "./ConfigurarJornada.vue";
+import ReprogramacionResumen from "./ReprogramacionResumen.vue";
 import CrearBloqueo from "./CrearBloqueo.vue";
 import { rangoSemana, formatearFechaCorta } from "../../utils/fechas.js";
 import { horaCorta, aMinutos, aHora } from "../../utils/horas";
 import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  TIPOS_ERROR_REPROGRAMACION,
+  clasificarErrorReintento,
+  mensajeResumenJornada,
+  normalizarExitoReprogramacion,
+  normalizarReprogramacion,
+} from "../../utils/reprogramacionConstants.js";
 
 const NOMBRES_DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const NOMBRES_DIAS_LARGOS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -214,6 +250,7 @@ export default {
   components: {
     BaseAlert,
     ConfigurarJornada,
+    ReprogramacionResumen,
     CrearBloqueo,
   },
   props: {
@@ -244,6 +281,10 @@ export default {
       eliminando: false,
       mensajeExito: "",
       mensajeError: "",
+      reprogramacion: null,
+      proyectosDirector: [],
+      reintentandoReprogramacionId: null,
+      erroresReintento: {},
     };
   },
   computed: {
@@ -284,10 +325,19 @@ export default {
         if (inicio && inicio.slice(0, 5) < min) min = inicio.slice(0, 5);
         if (fin && fin.slice(0, 5) > max) max = fin.slice(0, 5);
       });
+      // Los bloques del backend ya vienen expandidos por la mitad del margen.
+      // La grilla debe cubrir el rango completo para no recortarlos.
       (this.calendario?.actividades || []).forEach((a) => {
-        if (!a.fechaHoraFin) return;
-        const hora = a.fechaHoraFin.split("T")[1]?.slice(0, 5);
-        if (hora && hora > max) max = hora;
+        const inicio = a.fechaHoraInicio?.split("T")[1]?.slice(0, 5);
+        const fin = a.fechaHoraFin?.split("T")[1]?.slice(0, 5);
+        if (inicio && inicio < min) min = inicio;
+        if (fin && fin > max) max = fin;
+      });
+      (this.calendario?.bloqueosManuales || []).forEach((b) => {
+        const inicio = b.fechaHoraInicio?.split("T")[1]?.slice(0, 5);
+        const fin = b.fechaHoraFin?.split("T")[1]?.slice(0, 5);
+        if (inicio && inicio < min) min = inicio;
+        if (fin && fin > max) max = fin;
       });
       return { horaInicio: min, horaFin: max };
     },
@@ -309,6 +359,7 @@ export default {
           rango: rangoFechaHora(b.fechaHoraInicio, b.fechaHoraFin),
           descripcion: `Bloqueo manual: ${b.motivo || "Sin motivo"}`,
           proyecto: null,
+          perfiles: [],
           orden: aDate(b.fechaHoraInicio).getTime(),
           original: b,
         });
@@ -321,7 +372,8 @@ export default {
           tipo: "actividad",
           rango: rangoFechaHora(a.fechaHoraInicio, a.fechaHoraFin),
           descripcion: a.nombre || "Actividad de proyecto",
-          proyecto: a.proyectoNombre || (a.idProyecto ? `Proyecto #${a.idProyecto}` : null),
+          proyecto: a.nombreProyecto || a.proyectoNombre || (a.idProyecto ? `Proyecto #${a.idProyecto}` : null),
+          perfiles: (a.perfiles || []).filter((perfil) => perfil?.nombreArtistico),
           orden: aDate(a.fechaHoraInicio).getTime(),
           original: a,
         });
@@ -336,6 +388,10 @@ export default {
   },
   watch: {
     idUsuario() {
+      this.reprogramacion = null;
+      this.proyectosDirector = [];
+      this.reintentandoReprogramacionId = null;
+      this.erroresReintento = {};
       this.cargarCalendario();
     },
   },
@@ -399,7 +455,9 @@ export default {
     },
     generarSlots(horaInicio, horaFin) {
       const slots = [];
-      const inicio = aMinutos(horaInicio);
+      // Alinear al inicio de la hora para que el margen expandido no rompa
+      // la grilla horaria existente.
+      const inicio = Math.floor(aMinutos(horaInicio) / 60) * 60;
       const fin = aMinutos(horaFin);
       for (let t = inicio; t < fin; t += 60) {
         const h = Math.floor(t / 60);
@@ -418,17 +476,29 @@ export default {
     celdaClase(dia, slot) {
       const clases = [];
       const diaSemana = dia.fecha.getDay() === 0 ? 7 : dia.fecha.getDay();
-      const laborableEnEsteSlot = dia.laborable && this.estaEnJornadaLaboral(diaSemana, slot.inicio, slot.fin);
+      const actividad = this.actividadEnSlot(dia, slot);
+      const bloqueo = this.bloqueoEnSlot(dia, slot);
 
+      // El backend expande las actividades por el margen; se pintan antes de
+      // evaluar la jornada para no recortar ese rango.
+      if (actividad) {
+        clases.push("calendario__celda--actividad");
+        return clases;
+      }
+      if (bloqueo) {
+        clases.push("calendario__celda--bloqueo");
+        return clases;
+      }
+
+      const laborableEnEsteSlot =
+        dia.laborable &&
+        this.estaEnJornadaLaboral(diaSemana, slot.inicio, slot.fin);
       if (!laborableEnEsteSlot) {
         clases.push("calendario__celda--nolaborable");
         return clases;
       }
-      const actividad = this.actividadEnSlot(dia, slot);
-      const bloqueo = this.bloqueoEnSlot(dia, slot);
-      if (actividad) clases.push("calendario__celda--actividad");
-      else if (bloqueo) clases.push("calendario__celda--bloqueo");
-      else clases.push("calendario__celda--disponible");
+
+      clases.push("calendario__celda--disponible");
       return clases;
     },
     actividadEnSlot(dia, slot) {
@@ -464,12 +534,110 @@ export default {
     abrirBloqueo() {
       this.modalBloqueoVisible = true;
     },
-    async onJornadaGuardada() {
+    async onJornadaGuardada(respuesta) {
       this.modalJornadaVisible = false;
-      this.mensajeExito = "Jornada laboral actualizada correctamente.";
+      this.reprogramacion = normalizarReprogramacion(respuesta?.reprogramacion);
+      this.mensajeExito = this.reprogramacion
+        ? mensajeResumenJornada(this.reprogramacion)
+        : "Jornada laboral actualizada correctamente.";
       this.mensajeError = "";
+      this.erroresReintento = {};
+      this.reintentandoReprogramacionId = null;
+      this.proyectosDirector = [];
+
       await this.cargarCalendario();
-      this.$emit("actualizado");
+      await this.refrescarNotificacionesCalendario();
+
+      if (this.reprogramacion?.fallidos?.length) {
+        await this.cargarProyectosDirector();
+      }
+
+      this.$emit("actualizado", this.reprogramacion);
+    },
+    async refrescarNotificacionesCalendario() {
+      const idPerfil = idPerfilActivo();
+      if (idPerfil != null) {
+        await cargarResumenPerfil(idPerfil);
+      } else {
+        await cargarResumenUsuario();
+      }
+    },
+    async cargarProyectosDirector() {
+      try {
+        const response = await proyectoService.propios({
+          rol: "DIRECTOR",
+          todos: true,
+        });
+        const contenido = Array.isArray(response?.data?.contenido)
+          ? response.data.contenido
+          : [];
+        this.proyectosDirector = contenido
+          .map((proyecto) => proyecto?.idProyecto)
+          .filter((id) => id != null);
+      } catch {
+        // Sin esta consulta el resumen sigue visible, solo se ocultan los
+        // botones de reintento.
+        this.proyectosDirector = [];
+      }
+    },
+    async reintentarReprogramacion(idProyecto) {
+      if (this.reintentandoReprogramacionId != null) return;
+
+      this.reintentandoReprogramacionId = idProyecto;
+      this.mensajeExito = "";
+      const errores = { ...this.erroresReintento };
+      delete errores[idProyecto];
+      delete errores[String(idProyecto)];
+      this.erroresReintento = errores;
+
+      try {
+        const response = await proyectoService.reprogramar(idProyecto);
+        const exito = normalizarExitoReprogramacion(response?.data);
+
+        if (!exito) {
+          throw new Error("Respuesta de reprogramación inválida");
+        }
+
+        const exitosos = [
+          ...(this.reprogramacion?.exitosos || []),
+          exito,
+        ];
+        const fallidos = (this.reprogramacion?.fallidos || []).filter(
+          (proyecto) => String(proyecto.idProyecto) !== String(idProyecto)
+        );
+        this.reprogramacion = {
+          totalProyectos: Math.max(
+            Number(this.reprogramacion?.totalProyectos) || 0,
+            exitosos.length + fallidos.length
+          ),
+          exitosos,
+          fallidos,
+        };
+
+        await this.cargarCalendario();
+        await this.refrescarNotificacionesCalendario();
+        this.mensajeExito = "Proyecto reprogramado correctamente.";
+        this.$emit("actualizado", this.reprogramacion);
+      } catch (error) {
+        const clasificacion = clasificarErrorReintento(error);
+        this.erroresReintento = {
+          ...this.erroresReintento,
+          [idProyecto]: clasificacion,
+        };
+
+        if (
+          [
+            TIPOS_ERROR_REPROGRAMACION.PERMISO,
+            TIPOS_ERROR_REPROGRAMACION.NO_ENCONTRADO,
+          ].includes(clasificacion.tipo)
+        ) {
+          this.proyectosDirector = this.proyectosDirector.filter(
+            (id) => String(id) !== String(idProyecto)
+          );
+        }
+      } finally {
+        this.reintentandoReprogramacionId = null;
+      }
     },
     async onBloqueoCreado() {
       this.modalBloqueoVisible = false;
@@ -808,14 +976,26 @@ export default {
   color: var(--color-text-muted);
 }
 
+.calendario__evento-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
+}
+
 .calendario__evento-badge {
-  margin-left: auto;
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--color-success-text);
   background: var(--color-success-soft);
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
+}
+
+.calendario__evento-badge--perfil {
+  color: var(--color-info-text);
+  background: var(--color-info-soft);
+  border: 1px solid var(--color-info-border);
 }
 
 .calendario__evento-eliminar {

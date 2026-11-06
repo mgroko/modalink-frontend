@@ -4,16 +4,28 @@
       <div class="cronograma-actividades__leyenda">
         <span class="cronograma-actividades__leyenda-item">
           <span class="cronograma-actividades__leyenda-cuadro"></span>
-          Actividad
+          Ejecución
+        </span>
+        <span class="cronograma-actividades__leyenda-item">
+          <span
+            class="cronograma-actividades__leyenda-cuadro cronograma-actividades__leyenda-cuadro--holgura"
+          ></span>
+          Holgura
+        </span>
+        <span class="cronograma-actividades__leyenda-item">
+          <span
+            class="cronograma-actividades__leyenda-cuadro cronograma-actividades__leyenda-cuadro--critica"
+          ></span>
+          Ruta crítica
         </span>
       </div>
       <p class="cronograma-actividades__nota">
-        Ruta crítica y holgura: próximamente (UC-33).
+        Las fechas proyectadas son orientativas hasta confirmar el proyecto.
       </p>
     </div>
 
     <p v-if="!items.length" class="cronograma-actividades__vacio">
-      No hay actividades con fechas para graficar.
+      No hay actividades programables con fechas para graficar.
     </p>
 
     <div v-else class="cronograma-actividades__scroll">
@@ -39,11 +51,35 @@
         <span class="cronograma-actividades__nombre" :title="item.nombre">
           {{ item.indice }} · {{ item.nombre }}
         </span>
-        <div class="cronograma-actividades__pista">
+        <div
+          class="cronograma-actividades__pista"
+          :class="{
+            'cronograma-actividades__pista--conflicto': item.conflicto,
+            'cronograma-actividades__pista--seleccionada': item.seleccionada,
+          }"
+          role="button"
+          tabindex="0"
+          :aria-label="`${item.nombre}. ${item.titulo}`"
+          :title="item.titulo"
+          @click="$emit('seleccionar', item.idActividad)"
+          @keydown.enter.prevent="$emit('seleccionar', item.idActividad)"
+          @keydown.space.prevent="$emit('seleccionar', item.idActividad)"
+        >
+          <div
+            v-if="item.holguraAncho > 0"
+            class="cronograma-actividades__holgura"
+            :style="estiloHolgura(item)"
+          ></div>
           <div
             class="cronograma-actividades__barra"
+            :class="{
+              'cronograma-actividades__barra--proyectada': item.proyectada,
+              'cronograma-actividades__barra--critica': item.critica,
+              'cronograma-actividades__barra--tentativa': item.tentativa,
+              'cronograma-actividades__barra--fija': item.fijo,
+              'cronograma-actividades__barra--seleccionada': item.seleccionada,
+            }"
             :style="estiloBarra(item)"
-            :title="tituloBarra(item)"
           ></div>
         </div>
       </div>
@@ -53,7 +89,13 @@
 
 <script>
 import { parseFechaLocal } from "../../utils/actividadConstants.js";
-import { formatearFecha } from "../../utils/fechas.js";
+import {
+  esProyectadaCronograma,
+  fechasVisiblesCronograma,
+  formatearHolgura,
+  formatearRangoCpm,
+  textoProyeccion,
+} from "../../utils/cpmConstants.js";
 
 const FORMATO_TICK = new Intl.DateTimeFormat("es-AR", {
   day: "numeric",
@@ -63,38 +105,84 @@ const FORMATO_TICK = new Intl.DateTimeFormat("es-AR", {
 export default {
   name: "CronogramaActividades",
   props: {
+    /** Actividades de `GET /cronograma` con fechas absolutas. */
     actividades: {
       type: Array,
       default: () => [],
     },
+    seleccionada: {
+      type: [Number, String],
+      default: null,
+    },
+    /** Proyecto confirmado: priorizar fechas persistidas (ficha §9.2). */
+    confirmado: {
+      type: Boolean,
+      default: false,
+    },
   },
+  emits: ["seleccionar"],
   computed: {
     items() {
       return (this.actividades || [])
-        .map((actividad, indice) => {
-          const inicio = parseFechaLocal(actividad?.fechaHoraInicio);
-          const fin = parseFechaLocal(actividad?.fechaHoraFin);
+        .map((actividad) => {
+          const visibles = fechasVisiblesCronograma(actividad, {
+            confirmado: this.confirmado,
+          });
+          const inicio = parseFechaLocal(visibles.inicio);
+          const fin = parseFechaLocal(visibles.fin);
           if (!inicio || !fin) return null;
 
           const inicioMs = inicio.getTime();
           const finMs = Math.max(fin.getTime(), inicioMs + 60000);
+          const holguraFecha = parseFechaLocal(actividad?.finConHolgura);
+          const holguraMs =
+            holguraFecha && holguraFecha.getTime() > finMs
+              ? holguraFecha.getTime()
+              : finMs;
+
+          const tieneHolgura = holguraMs > finMs;
+          const proyectada = esProyectadaCronograma(actividad);
+          const tentativa =
+            actividad?.tentativo === true || actividad?.tentative === "true";
 
           return {
             idActividad: actividad.idActividad,
             nombre: actividad.nombre,
-            indice: indice + 1,
-            inicio,
-            fin,
+            indice: 0,
             inicioMs,
             finMs,
+            holguraMs,
+            holguraAncho: holguraMs - finMs,
+            tieneHolgura,
+            proyectada,
+            persistida: visibles.persistida,
+            tentativa,
+            tentativo: tentativa,
+            critica: actividad?.enRutaCritica === true,
+            conflicto: actividad?.conflicto === true,
+            fijo: actividad?.fijo === true,
+            motivoConflicto: actividad?.motivoConflicto || "",
+            holguraMakespan: actividad?.holguraMakespan,
+            holguraEntrega: actividad?.holguraEntrega,
+            rangoInicio: actividad?.rangoInicio,
+            rangoEjecucion: actividad?.rangoEjecucion,
+            seleccionada:
+              this.seleccionada != null &&
+              String(actividad.idActividad) === String(this.seleccionada),
           };
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .sort((a, b) => a.inicioMs - b.inicioMs || a.idActividad - b.idActividad)
+        .map((item, indice) => ({
+          ...item,
+          indice: indice + 1,
+          titulo: this.tituloItem(item),
+        }));
     },
     rango() {
       if (!this.items.length) return null;
       const inicioMs = Math.min(...this.items.map((item) => item.inicioMs));
-      const finMs = Math.max(...this.items.map((item) => item.finMs));
+      const finMs = Math.max(...this.items.map((item) => item.holguraMs));
       const totalMs = Math.max(finMs - inicioMs, 60000);
       return { inicioMs, finMs, totalMs };
     },
@@ -112,16 +200,67 @@ export default {
     },
   },
   methods: {
+    porcentaje(ms) {
+      return ((ms - this.rango.inicioMs) / this.rango.totalMs) * 100;
+    },
     estiloBarra(item) {
-      const left = ((item.inicioMs - this.rango.inicioMs) / this.rango.totalMs) * 100;
-      const width = ((item.finMs - item.inicioMs) / this.rango.totalMs) * 100;
       return {
-        left: `${left}%`,
-        width: `${Math.max(width, 0.4)}%`,
+        left: `${this.porcentaje(item.inicioMs)}%`,
+        width: `${Math.max(
+          this.porcentaje(item.finMs) - this.porcentaje(item.inicioMs),
+          0.4
+        )}%`,
       };
     },
-    tituloBarra(item) {
-      return `${item.nombre}: ${formatearFecha(item.inicio)} – ${formatearFecha(item.fin)}`;
+    estiloHolgura(item) {
+      return {
+        left: `${this.porcentaje(item.finMs)}%`,
+        width: `${Math.max(
+          this.porcentaje(item.holguraMs) - this.porcentaje(item.finMs),
+          0.4
+        )}%`,
+      };
+    },
+    tituloItem(item) {
+      const partes = [
+        formatearRangoCpm(new Date(item.inicioMs), new Date(item.finMs)),
+      ];
+
+      if (item.proyectada) partes.push(textoProyeccion(item));
+      if (item.persistida) partes.push("Fechas guardadas en el proyecto.");
+      if (item.tentativa && !item.proyectada) {
+        partes.push("Proyección provisional hasta confirmar el proyecto.");
+      }
+      if (item.critica) partes.push("Ruta crítica.");
+      if (item.fijo) partes.push("Actividad fija.");
+      if (item.conflicto) {
+        partes.push(
+          item.motivoConflicto
+            ? `Conflicto: ${item.motivoConflicto}`
+            : "Conflicto CPM."
+        );
+      }
+
+      const holgura = formatearHolgura(item.holguraMakespan);
+      if (holgura) partes.push(`Holgura makespan: ${holgura}.`);
+
+      const holguraEntrega = formatearHolgura(item.holguraEntrega);
+      if (holguraEntrega) {
+        partes.push(`Holgura entrega: ${holguraEntrega}.`);
+      }
+
+      if (item.rangoInicio) {
+        partes.push(
+          `Ventana de inicio: +${Math.round(item.rangoInicio.inicioMinutos)} a +${Math.round(item.rangoInicio.finMinutos)} min desde t0.`
+        );
+      }
+      if (item.rangoEjecucion) {
+        partes.push(
+          `Ventana de ejecución: +${Math.round(item.rangoEjecucion.inicioMinutos)} a +${Math.round(item.rangoEjecucion.finMinutos)} min desde t0.`
+        );
+      }
+
+      return partes.join(" ");
     },
   },
 };
@@ -136,10 +275,30 @@ export default {
   margin-bottom: 1rem;
 }
 
+.cronograma-actividades__barra--seleccionada,
+.cronograma-actividades__pista--seleccionada {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.cronograma-actividades__pista--conflicto {
+  background: var(--color-danger-soft);
+}
+
+.cronograma-actividades__holgura {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  pointer-events: none;
+}
+
 .cronograma-actividades__leyenda {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .cronograma-actividades__leyenda-item {
@@ -155,6 +314,15 @@ export default {
   height: 10px;
   border-radius: 2px;
   background: var(--color-primary);
+}
+
+.cronograma-actividades__leyenda-cuadro--holgura {
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  border: 1px solid var(--color-primary);
+}
+
+.cronograma-actividades__leyenda-cuadro--critica {
+  background: var(--color-ruta-critica);
 }
 
 .cronograma-actividades__nota {
@@ -226,6 +394,12 @@ export default {
   height: 22px;
   border-radius: 4px;
   background: var(--color-surface-muted);
+  cursor: pointer;
+}
+
+.cronograma-actividades__pista:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .cronograma-actividades__barra {
@@ -235,6 +409,27 @@ export default {
   min-width: 3px;
   border-radius: 4px;
   background: var(--color-primary);
+  pointer-events: none;
+}
+
+/* Modificadores después de la base: misma especificidad, gana el orden. */
+.cronograma-actividades__barra--proyectada {
+  opacity: 0.55;
+  background: var(--color-primary-light, var(--color-primary));
+}
+
+.cronograma-actividades__barra--tentativa {
+  border: 1px dashed var(--color-warning-text);
+}
+
+.cronograma-actividades__barra--fija {
+  border-right: 3px solid var(--color-text-muted);
+}
+
+.cronograma-actividades__barra--critica {
+  border: 0;
+  background: var(--color-ruta-critica);
+  opacity: 1;
 }
 
 .cronograma-actividades__vacio {

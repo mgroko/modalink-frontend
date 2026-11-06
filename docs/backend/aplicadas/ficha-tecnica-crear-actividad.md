@@ -69,8 +69,8 @@ La actividad siempre se crea en estado `PENDIENTE`. El estado no se envía ni se
 {
   "nombre": "Prueba de vestuario",
   "descripcion": "Prueba final con modelos y ajustes.",
-  "duracion": 3,
-  "unidadDuracion": "DIAS",
+  "duracion": 90,
+  "unidadDuracion": "MINUTOS",
   "ubicacion": {
     "localidadId": "06049010000",
     "provinciaId": "06"
@@ -102,7 +102,7 @@ No enviar `fechaHoraInicio`, `fechaHoraFin` ni `estado`: el backend los calcula 
 | `nombre` | `string` | **Sí** | No blanco. Máx. 20 caracteres. Único en la planificación, comparado sin distinguir mayúsculas y sin espacios al inicio/fin. | Input con contador `(x/20)`. Aplicar `trim`. Error `409` inline. |
 | `descripcion` | `string` | No | Máx. 200 caracteres. | Textarea con contador `(x/200)`. |
 | `duracion` | `int` | **Sí** | Entero `> 0`. Valores demasiado grandes pueden producir `400`. | Number input, mínimo `1`, sin decimales. |
-| `unidadDuracion` | `enum` | **Sí** | `DIAS` o `HORAS` (mayúsculas). | Segmented control o select. |
+| `unidadDuracion` | `enum` | **Sí** | `HORAS` o `MINUTOS` (mayúsculas). `1 HORA = 60` min; `1 MINUTO = 1` min. | Segmented control o select. |
 | `ubicacion` | `object` | No | Si se envía, `localidadId` es obligatorio y no puede estar en blanco. | Enviar solo si el usuario eligió una localidad. |
 | `ubicacion.localidadId` | `string` | Condicional | Debe existir en el catálogo Georef. | Select dependiente de la provincia. |
 | `ubicacion.provinciaId` | `string` | No | Si se envía, debe corresponder a la localidad. | Select de provincia. |
@@ -135,8 +135,8 @@ Reglas adicionales:
   "nombreProyecto": "Colección Primavera-Verano",
   "nombre": "Prueba de vestuario",
   "descripcion": "Prueba final con modelos y ajustes.",
-  "duracionMinutos": 4320,
-  "fechaHoraInicio": "2026-12-12T23:59",
+  "duracionMinutos": 90,
+  "fechaHoraInicio": "2026-12-15T22:29",
   "fechaHoraFin": "2026-12-15T23:59",
   "estado": "PENDIENTE",
   "ubicacion": {
@@ -200,7 +200,7 @@ Reglas adicionales:
 Notas de respuesta:
 
 - `estado` se devuelve con el nombre del enum en mayúsculas: `PENDIENTE`, `EN_CURSO`, `FINALIZADA`, `CANCELADA`.
-- `duracionMinutos` es la duración persistida. Para mostrarla: `1 día = 1440` minutos y `1 hora = 60` minutos.
+- `duracionMinutos` es la duración persistida. Para mostrarla: `1 hora = 60` minutos; las fracciones se expresan en minutos. Las actividades históricas creadas como “1 día” conservan `1440` minutos y se muestran como `24 h`.
 - `fechaHoraInicio` y `fechaHoraFin` son fechas locales ISO-8601, sin zona horaria.
 - `fechaHoraFin` no se almacena: se deriva de `fechaHoraInicio + duracionMinutos`.
 - `predecesoras` se devuelve ordenado por `nombre`.
@@ -298,7 +298,7 @@ Errores de regla de negocio:
 | **400** | `CaracteristicaProfesionNoCoincideException` | Recargar características de la profesión y limpiar la selección inválida. |
 | **400** | `ValorCaracteristicaNoEncontradoException` | Recargar valores de la característica. |
 | **400** | `LocalidadNoEncontradaException`, `LocalidadSinProvinciaException`, `ProvinciaSinLocalidadException` | Error en el selector de ubicación. |
-| **400** | JSON malformado, `unidadDuracion` fuera de `DIAS`/`HORAS` | Validar en cliente y mostrar error de formulario. |
+| **400** | JSON malformado, `unidadDuracion` fuera de `HORAS`/`MINUTOS` | Validar en cliente y mostrar error de formulario. Un `DIAS` legado responde “Unidad de duración inválida. Usá HORAS o MINUTOS.” |
 | **400** | `DataIntegrityViolationException` | Alerta genérica; no reintentar automáticamente. |
 | **401** | Sesión ausente o inválida | Redirigir a login. |
 | **403** | `AccesoDenegadoProyectoException`: sin `CREAR_ACTIVIDAD` o sin membresía activa. | Ocultar la acción; no permitir reintento. |
@@ -317,7 +317,7 @@ Errores de regla de negocio:
 
 1. **Fecha de entrega obligatoria:** si el proyecto no tiene `fechaEntregaEstipulada`, no permitir confirmar. Mostrar un aviso con enlace a la edición del proyecto.
 2. **Estado calculado, no editable:** mostrar un resumen de `fechaHoraInicio` y `fechaHoraFin` estimados, pero no incluir inputs para esas fechas.
-3. **Duración flexible:** permitir alternar `DIAS`/`HORAS` sin perder el valor numérico. Mostrar equivalencia en la vista previa.
+3. **Duración flexible:** permitir alternar `HORAS`/`MINUTOS` sin perder el valor numérico. Mostrar equivalencia en la vista previa. Para 1 h 30 min, usar `90 MINUTOS` o dos inputs que envíen el total en minutos.
 4. **Predecesoras:** multi-select con nombre, estado y fechas. No permitir duplicados. Aclarar que la nueva actividad quedará al final del cronograma y que las predecesoras pendientes se reprogramarán.
 5. **Requerimientos dinámicos:** cada fila tiene profesión, cantidad, descripción, características y habilidades. Al cambiar la profesión, limpiar características y valores dependientes.
 6. **Coherencia por tipo de dato:** renderizar rango, checklist o ningún control según `tipoDato`. No enviar `valorMin`/`valorMax` para enumeradas ni `valores` para numéricas.

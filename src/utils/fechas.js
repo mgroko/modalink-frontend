@@ -58,11 +58,62 @@ export function formatearFecha(valor) {
   return `${pad(p.dia)}/${pad(p.mes)}/${p.anio} ${pad(p.hora)}:${pad(p.minuto)}`;
 }
 
+/**
+ * Solo la hora en formato HH:mm. Acepta una hora (`08:00`) o un ISO-8601
+ * (`2026-11-02T08:00:00`) y descarta la fecha.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearHora(valor) {
+  if (valor == null || valor === "") return "—";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+  return `${pad(p.hora)}:${pad(p.minuto)}`;
+}
+
 export function formatearFechaCorta(valor) {
   if (valor == null || valor === "") return "—";
   const p = aPartes(valor);
   if (!p) return String(valor);
   return `${pad(p.dia)}/${pad(p.mes)}/${p.anio}`;
+}
+
+/**
+ * Fecha con día de semana abreviado, como en el detalle de actividad:
+ * "Sáb 14/11/2026".
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearFechaConDia(valor) {
+  if (valor == null || valor === "") return "—";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+  const dia = DIAS_CORTOS[aFecha(p).getDay()];
+  return `${dia} ${pad(p.dia)}/${pad(p.mes)}/${p.anio}`;
+}
+
+/**
+ * Rango horario "10:00–14:00". Si falta el fin, usa el inicio.
+ * @param {string|Date|null|undefined} inicio
+ * @param {string|Date|null|undefined} fin
+ * @returns {string} "—" si no hay inicio válido
+ */
+export function formatearRangoHoras(inicio, fin) {
+  const pIni = aPartes(inicio);
+  if (!pIni) return "—";
+  const pFin = aPartes(fin) || pIni;
+  return `${pad(pIni.hora)}:${pad(pIni.minuto)}–${pad(pFin.hora)}:${pad(pFin.minuto)}`;
+}
+
+/**
+ * Formato compacto usado en notificaciones: `28 oct 2026, 17:48`.
+ * No interpreta la fecha como UTC: se usan las partes tal como llegan.
+ */
+export function formatearFechaNotificacion(valor) {
+  if (valor == null || valor === "") return "";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+  return `${p.dia} ${MESES_CORTOS[p.mes - 1]} ${p.anio}, ${pad(p.hora)}:${pad(p.minuto)}`;
 }
 
 function diasDesdeHoy(p) {

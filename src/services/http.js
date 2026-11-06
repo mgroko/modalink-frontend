@@ -71,16 +71,36 @@ http.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // 401: el filtro JWT lo deja pasar pero el servicio exige usuario ACTIVO
-    // (ej. cuenta PENDIENTE_BAJA). No es un problema de sesión.
+    // 401: sesión ausente o vencida. Se limpia el estado local y se redirige
+    // a login (la cuenta PENDIENTE_BAJA llega como 403 con código).
     if (status === 401) {
+      error._esSesionExpirada = true;
+      limpiarSesion();
+      await redirigirALogin();
+      return Promise.reject(error);
+    }
+
+    // 403 de cuenta pendiente de baja: no es un problema de CSRF ni de
+    // permisos del proyecto, así que no se reintenta ni se redirige.
+    if (status === 403 && response?.data?.codigo === "CUENTA_PENDIENTE_BAJA") {
       error._esCuentaNoActiva = true;
       return Promise.reject(error);
     }
 
+    const mensaje403 = String(response?.data?.message || "");
+    const codigo403 = response?.data?.codigo;
+    // Distinguir permiso de CSRF usando el mensaje/código del backend.
+    const parecePermiso403 =
+      codigo403 === "ACCESO_DENEGADO" ||
+      /permiso|no ten[eé]s|acceso denegado|prohibido|no (?:sos|eres) miembro|director activo|membres[ií]a/i.test(
+        mensaje403
+      );
+
     // 403 en métodos mutantes: primero, reintento con el token CSRF vigente.
+    // Un 403 de permiso no se reintenta: el backend ya respondió.
     if (
       status === 403 &&
+      !parecePermiso403 &&
       isMutatingMethod(config.method) &&
       !config._csrfRetried
     ) {
@@ -103,8 +123,10 @@ http.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      error._esCsrf = isMutatingMethod(config.method);
-      error._esPermiso = !error._esCsrf;
+      // Ante la duda, un 403 mutante sigue tratándose como CSRF para no
+      // romper el reintento de token.
+      error._esCsrf = !parecePermiso403 && isMutatingMethod(config.method);
+      error._esPermiso = parecePermiso403 || !isMutatingMethod(config.method);
     }
 
     return Promise.reject(error);

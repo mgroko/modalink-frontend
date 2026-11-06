@@ -16,7 +16,7 @@
         v-model="credenciales.password"
         :rules="[reglas.requerido]"
         :type="isPasswordVisible.value ? 'text' : 'password'"
-        class="mb-1"
+        class="mb-4"
         label="Contraseña"
         @clickAppendInner.stop="isPasswordVisible.value = !isPasswordVisible.value"
       >
@@ -30,11 +30,18 @@
       </VaInput>
     </VaValue>
 
-    <p class="text-xs mb-4 text-left">
-      <RouterLink :to="{ name: 'recuperar-password' }" class="link-recuperar">Olvidé mi contraseña</RouterLink>
-    </p>
+    <VaButton type="submit" size="medium" class="auth-button">Iniciar sesión</VaButton>
 
-   <VaButton type="submit" size="medium" class="auth-button">Iniciar sesión</VaButton>
+    <div class="auth-divider"><span>o</span></div>
+
+    <VaButton
+      type="button"
+      preset="secondary"
+      class="auth-google"
+      @click="iniciarConGoogle"
+    >
+      Continuar con Google
+    </VaButton>
 
     <p class="text-base mb-4 leading-9 text-center" color="gray-700">
       ¿Nuevo en ModaLink?
@@ -133,9 +140,25 @@ export default {
     },
   },
   mounted() {
+    this.mostrarErrorGoogle();
     this.mostrarAvisoBajaCuenta();
   },
   methods: {
+    iniciarConGoogle() {
+      this.errorMessage = "";
+      authService.iniciarSesionGoogle();
+    },
+    mostrarErrorGoogle() {
+      const codigo = this.$route.query?.googleError;
+      if (!codigo) return;
+
+      const mensajes = {
+        google_auth_failed: "No se pudo completar el inicio de sesión con Google. Intentá de nuevo.",
+        sesion_activa: "Ya tenés una sesión activa. Cerrá sesión antes de usar Google.",
+        registro_expirado: "El proceso de registro con Google expiró. Volvé a intentarlo.",
+      };
+      this.errorMessage = mensajes[codigo] || "No se pudo iniciar sesión con Google.";
+    },
     async iniciarSesion() {
       const isValid = this.$refs.form.validate();
       if (!isValid) return;
@@ -268,16 +291,27 @@ export default {
   margin: 0 auto;
 }
 
-.link-recuperar {
-  font-size: 12px; 
-  color: var(--color-text-muted); 
-  text-decoration: none; 
-  transition: color 0.2s ease; 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  color: var(--va-secondary);
+  font-size: 0.85rem;
 }
 
-.link-recuperar:hover {
-  color: var(--color-text); 
-  text-decoration: underline;
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--va-background-border);
+}
+
+.auth-google {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 </style>

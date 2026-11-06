@@ -1,5 +1,5 @@
 <template>
-  <div class="home-layout" @click="cerrarMenu">
+  <div class="home-layout" @click="cerrarPaneles">
     <header class="home-layout__topbar">
       <div class="home-layout__brand">
         <span class="material-symbols-outlined">apps</span>
@@ -11,7 +11,7 @@
         <input
           v-model="busqueda"
           type="search"
-          placeholder="Buscar perfiles o proyectos..."
+          placeholder="Buscar..."
           @keyup.enter="irABuscar"
         />
       </div>
@@ -33,23 +33,44 @@
           <span class="material-symbols-outlined">business_center</span>
           <span>Proyectos</span>
         </button>
-        <button class="home-layout__nav-item">
+        <button
+          class="home-layout__nav-item"
+          @click.stop="noDisponible('Mi red')"
+        >
           <span class="material-symbols-outlined">group</span>
           <span>Mi red</span>
         </button>
-        <button class="home-layout__nav-item">
+        <button
+          class="home-layout__nav-item"
+          @click.stop="noDisponible('Mensajes')"
+        >
           <span class="material-symbols-outlined">chat_bubble</span>
           <span>Mensajes</span>
         </button>
-        <button
-          class="home-layout__nav-item"
-          :class="{ 'home-layout__nav-item--active': navActiva === 'notificaciones' }"
-          @click.stop="$router.push({ name: 'notificaciones-perfil' })"
-        >
-          <span class="material-symbols-outlined">notifications</span>
-          <span>Notificaciones</span>
-          <span v-if="noLeidasPerfil > 0" class="home-layout__nav-badge">{{ noLeidasPerfil }}</span>
-        </button>
+        <div class="home-layout__notificaciones-wrapper" @click.stop>
+          <button
+            ref="notificacionesTrigger"
+            class="home-layout__nav-item"
+            :class="{ 'home-layout__nav-item--active': navActiva === 'notificaciones' }"
+            aria-haspopup="dialog"
+            aria-controls="notificaciones-popover"
+            :aria-expanded="notificacionesAbiertas ? 'true' : 'false'"
+            @click="alternarNotificaciones"
+          >
+            <span class="material-symbols-outlined">notifications</span>
+            <span>Notificaciones</span>
+            <span v-if="noLeidasPerfil > 0" class="home-layout__nav-badge">{{ noLeidasPerfil }}</span>
+          </button>
+
+          <NotificacionesPopover
+            id="notificaciones-popover"
+            :model-value="notificacionesAbiertas"
+            :id-perfil-contexto="idActivo"
+            :ruta-ver-todas="{ name: 'notificaciones-perfil' }"
+            :limite="6"
+            @update:model-value="alCambiarNotificaciones"
+          />
+        </div>
       </nav>
 
       <ThemeToggle class="home-layout__theme" />
@@ -167,11 +188,54 @@
         </section>
 
         <nav class="home-layout__quick-links">
-          <button @click="$router.push({ name: 'inicioperfil' })"><span class="material-symbols-outlined">person</span>Mi perfil</button>
-          <button @click="$router.push({ name: 'proyectos-inicio' })"><span class="material-symbols-outlined">business_center</span>Proyectos</button>
-          <button><span class="material-symbols-outlined">chat_bubble</span>Contactos</button>
-          <button @click="$router.push({ name: 'calendario' })"><span class="material-symbols-outlined">calendar_month</span>Calendario</button>
-          <button @click="$router.push({ name: 'dashboard-usuario' })"><span class="material-symbols-outlined">dashboard</span>Dashboard</button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('mi-perfil') }"
+            @click="$router.push({ name: 'inicioperfil' })"
+          >
+            <span class="material-symbols-outlined">account_circle</span>
+            Mi perfil
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('calendario') }"
+            @click="irACalendarioPerfil"
+          >
+            <span class="material-symbols-outlined">calendar_month</span>
+            Calendario
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('proyectos') }"
+            @click="$router.push({ name: 'proyectos-inicio' })"
+          >
+            <span class="material-symbols-outlined">business_center</span>
+            Proyectos
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('invitaciones') }"
+            @click="$router.push({ name: 'invitaciones' })"
+          >
+            <span class="material-symbols-outlined">mail</span>
+            <span>Invitaciones</span>
+            <span
+              v-if="invitacionesPendientes > 0"
+              class="home-layout__quick-link-badge"
+            >
+              {{ invitacionesPendientes }}
+            </span>
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('ajustes') }"
+            @click="irAAjustes"
+          >
+            <span class="material-symbols-outlined">settings</span>
+            Ajustes
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('panel') }"
+            @click="$router.push({ name: 'dashboard-usuario' })"
+          >
+            <span class="material-symbols-outlined">space_dashboard</span>
+            Panel de usuario
+          </button>
         </nav>
 
         <button class="home-layout__logout" @click="cerrarSesion">
@@ -199,20 +263,36 @@ import {
   state as notificacionState,
   cargarResumenPerfil,
 } from "../../services/notificacionState";
+import {
+  state as invitacionState,
+  cargarResumenInvitaciones,
+} from "../../services/invitacionState";
+import {
+  state as reemplazoState,
+  cargarResumenReemplazos,
+} from "../../services/reemplazoState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import { nextTick } from "vue";
+import { useToast } from "vuestic-ui";
 import ThemeToggle from "../ThemeToggle.vue";
+import NotificacionesPopover from "../notificaciones/NotificacionesPopover.vue";
 
 export default {
   name: "HomeLayout",
   components: {
     ThemeToggle,
+    NotificacionesPopover,
+  },
+  setup() {
+    return { toast: useToast() };
   },
   data() {
     return {
       busqueda: "",
       menuAbierto: false,
+      notificacionesAbiertas: false,
       perfilesAbiertos: false,
       perfiles: [],
       ubicacion: null,
@@ -257,15 +337,26 @@ export default {
     noLeidasPerfil() {
       return notificacionState.noLeidasPerfil;
     },
+    invitacionesPendientes() {
+      return (
+        invitacionState.pendientesRecibidas + reemplazoState.pendientes
+      );
+    },
   },
   watch: {
     fotoPerfilActiva() {
       this.fotoRota = false;
     },
+    idActivo(nuevo) {
+      cargarResumenInvitaciones(nuevo);
+      cargarResumenReemplazos(nuevo);
+    },
   },
   mounted() {
     this.cargarDatos();
     cargarResumenPerfil(this.idActivo);
+    cargarResumenInvitaciones(this.idActivo);
+    cargarResumenReemplazos(this.idActivo);
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {
@@ -293,7 +384,32 @@ export default {
       this.menuAbierto = false;
       this.perfilesAbiertos = false;
     },
+    cerrarPaneles() {
+      this.cerrarMenu();
+      if (this.notificacionesAbiertas) {
+        this.alCambiarNotificaciones(false);
+      }
+    },
+    alternarNotificaciones() {
+      if (this.notificacionesAbiertas) {
+        this.alCambiarNotificaciones(false);
+        return;
+      }
+      this.cerrarMenu();
+      this.alCambiarNotificaciones(true);
+    },
+    alCambiarNotificaciones(abierto) {
+      this.notificacionesAbiertas = abierto;
+      if (abierto) {
+        this.cerrarMenu();
+        return;
+      }
+      nextTick(() => this.$refs.notificacionesTrigger?.focus());
+    },
     async alternarMenu() {
+      if (!this.menuAbierto && this.notificacionesAbiertas) {
+        this.notificacionesAbiertas = false;
+      }
       this.menuAbierto = !this.menuAbierto;
       if (this.menuAbierto) {
         await this.recalcularPosicionDropdown();
@@ -326,12 +442,55 @@ export default {
       this.perfilesAbiertos = false;
       this.$router.push({ name: "inicioperfil" });
     },
+    noDisponible(nombre) {
+      mostrarNoDisponible(this.toast, nombre);
+    },
     irABuscar() {
       const texto = this.busqueda.trim();
       this.$router.push({
         name: "buscar",
         query: texto ? { q: texto } : {},
       });
+    },
+    irACalendarioPerfil() {
+      this.$router.push({
+        name: "inicioperfil-seccion",
+        params: { seccion: "calendario" },
+      });
+    },
+    irAAjustes() {
+      if (this.idActivo == null) return;
+      this.$router.push({ name: "ajustes-perfil-inicio" });
+    },
+    esQuickActivo(clave) {
+      const ruta = this.$route;
+      if (clave === "mi-perfil") {
+        if (ruta.name === "inicioperfil-seccion") {
+          return ruta.params.seccion !== "calendario";
+        }
+        return ["inicioperfil", "ver-perfil", "ver-perfil-seccion"].includes(
+          ruta.name
+        );
+      }
+      if (clave === "calendario") {
+        return (
+          ruta.name === "inicioperfil-seccion" &&
+          ruta.params.seccion === "calendario"
+        );
+      }
+      if (clave === "proyectos") {
+        return ruta.meta.navActiva === "proyectos";
+      }
+      if (clave === "invitaciones") {
+        return ruta.name === "invitaciones";
+      }
+      if (clave === "ajustes") {
+        return ["ajustes-perfil-inicio", "editar-perfil-ajustes"].includes(ruta.name);
+      }
+      if (clave === "panel") {
+        return ruta.name === "dashboard-usuario";
+      }
+      return false;
     },
     async cambiarPerfil(perfil) {
       if (!perfil || perfil.estado !== "Activo" || perfil.idPerfil === this.idActivo) return;
@@ -371,6 +530,8 @@ export default {
 .home-layout__search { display: flex; align-items: center; gap: .5rem; width: 300px; padding: .5rem .75rem; border: 1px solid var(--color-border); border-radius: 8px; color: var(--color-text-muted); }
 .home-layout__search input { width: 100%; border: 0; outline: 0; font-size: .8rem; }
 .home-layout__navigation { display: flex; align-self: stretch; gap: .7rem; }
+.home-layout__notificaciones-wrapper { position: relative; display: flex; align-self: stretch; }
+.home-layout__notificaciones-wrapper .home-layout__nav-item { height: 100%; }
 .home-layout__nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; min-width: 58px; background: transparent; border: 0; color: var(--color-text); font-size: .7rem; cursor: pointer; }
 .home-layout__nav-item .material-symbols-outlined { font-size: 1.35rem; }
 .home-layout__nav-item--active { border-bottom: 2px solid var(--color-primary); color: var(--color-primary); }
@@ -424,7 +585,10 @@ export default {
 .home-layout__quick-links { display: grid; gap: .2rem; }
 .home-layout__quick-links button { display: flex; align-items: center; gap: .6rem; padding: .55rem .25rem; border: 0; background: transparent; color: var(--color-text); text-align: left; cursor: pointer; font-size: .82rem; }
 .home-layout__quick-links button:hover { color: var(--color-secondary); }
+.home-layout__quick-links button.home-layout__quick-link--active { color: var(--color-primary); background: var(--color-surface-muted); border-radius: 6px; font-weight: 600; }
+.home-layout__quick-links button.home-layout__quick-link--active .material-symbols-outlined { color: var(--color-primary); }
 .home-layout__quick-links .material-symbols-outlined { font-size: 1.1rem; }
+.home-layout__quick-link-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: auto; padding: 0 0.3rem; border-radius: 999px; background: var(--color-danger-fill); color: var(--color-on-primary); font-size: 0.62rem; font-weight: 700; line-height: 1; }
 .home-layout__logout { display: flex; align-items: center; gap: .5rem; margin-top: auto; padding: .5rem 1rem; border: 0; background: transparent; color: var(--color-danger-text); cursor: pointer; font-size: .8rem; }
 .home-layout__content { min-height: 530px; padding: 1.5rem; background: var(--color-surface); border-radius: 10px; }
 .home-layout__content--transparente { background: transparent; padding: 0; }

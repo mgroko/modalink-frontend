@@ -22,6 +22,7 @@
           :proyecto="proyecto"
           tab-activa="planificacion"
           :mostrar-planificacion="true"
+          :mostrar-integrantes="esMiembro"
           @cambiar-tab="cambiarTabEncabezado"
         />
 
@@ -43,6 +44,17 @@
             </p>
           </header>
 
+          <div v-if="proyectoConfirmado" class="crear-actividad__aviso">
+            <p class="crear-actividad__aviso-titulo">
+              El proyecto está confirmado
+            </p>
+            <p class="crear-actividad__aviso-texto">
+              La actividad se creará en estado PENDIENTE y se agendará
+              automáticamente. Otras actividades PENDIENTES del proyecto pueden
+              reprogramarse.
+            </p>
+          </div>
+
           <div class="crear-actividad__layout">
             <VaForm
               ref="formRef"
@@ -51,13 +63,23 @@
             >
               <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
 
+              <ul
+                v-if="bloqueosError.length"
+                class="crear-actividad__lista-errores"
+              >
+                <li v-for="(bloqueo, i) in bloqueosError" :key="i">
+                  {{ bloqueo.mensaje || bloqueo.codigo }}
+                </li>
+              </ul>
+
               <div v-if="!tieneFechaEntrega" class="crear-actividad__aviso">
                 <p class="crear-actividad__aviso-titulo">
                   El proyecto no tiene fecha de entrega
                 </p>
                 <p class="crear-actividad__aviso-texto">
-                  La actividad se programa desde el final del proyecto. Completá la
-                  fecha de entrega para poder crearla.
+                  La actividad se creará sin programación. El cronograma y la
+                  disponibilidad se calcularán cuando definas la fecha de
+                  entrega del proyecto.
                 </p>
                 <VaButton
                   v-if="puedeModificar"
@@ -91,7 +113,7 @@
                     v-model="form.duracion"
                     type="number"
                     label="Duración*"
-                    placeholder="Ej: 3"
+                    placeholder="Ej: 2"
                     min="1"
                     step="1"
                     :error="!!errores.duracion"
@@ -110,7 +132,7 @@
                           'crear-actividad__unidad-boton--activa':
                             form.unidadDuracion === unidad,
                         }"
-                        @click="form.unidadDuracion = unidad"
+                        @click="cambiarUnidadDuracion(unidad)"
                       >
                         {{ ETIQUETAS_UNIDAD_DURACION[unidad] }}
                       </button>
@@ -121,6 +143,14 @@
                 <p v-if="errores.unidadDuracion" class="crear-actividad__error">
                   {{ errores.unidadDuracion }}
                 </p>
+
+                <CampoHora
+                  v-model="form.horarioPreferenciaInicio"
+                  label="Horario preferido de inicio"
+                  hint="Opcional. No es el horario definitivo de la actividad."
+                  :error="!!errores.horarioPreferenciaInicio"
+                  :error-message="errores.horarioPreferenciaInicio || ''"
+                />
 
                 <VaTextarea
                   v-model="form.descripcion"
@@ -244,55 +274,11 @@
                   </article>
                 </div>
 
-                <div v-if="mostrandoDraft" class="crear-actividad__nuevo-requerimiento">
-                  <div class="crear-actividad__nuevo-cabecera">
-                    <h3 class="crear-actividad__nuevo-titulo">Nuevo requerimiento</h3>
-                  </div>
-
-                  <RequerimientoForm
-                    v-model="requerimientoDraft"
-                    :indice="form.requerimientos.length"
-                    :profesiones="profesiones"
-                    :errores="erroresDraft"
-                    :mostrar-habilidades="false"
-                    @eliminar="descartarRequerimiento"
-                    @catalogo-cargado="guardarCatalogo"
-                  />
-
-                  <ul v-if="errorDraftSeccion.length" class="crear-actividad__lista-errores">
-                    <li v-for="(mensaje, i) in errorDraftSeccion" :key="i">
-                      {{ mensaje }}
-                    </li>
-                  </ul>
-
-                  <div class="crear-actividad__nuevo-acciones">
-                    <VaButton
-                      preset="secondary"
-                      size="small"
-                      color="danger"
-                      icon="mso-close"
-                      title="Cancelar requerimiento"
-                      aria-label="Cancelar requerimiento"
-                      @click="descartarRequerimiento"
-                    />
-                    <VaButton
-                      preset="secondary"
-                      size="small"
-                      color="success"
-                      icon="mso-check"
-                      title="Confirmar requerimiento"
-                      aria-label="Confirmar requerimiento"
-                      @click="agregarRequerimiento"
-                    />
-                  </div>
-                </div>
-
                 <VaButton
-                  v-if="!mostrandoDraft"
                   preset="secondary"
                   icon="mso-add"
                   class="crear-actividad__agregar-requerimiento"
-                  @click="iniciarRequerimiento"
+                  @click="abrirNuevoRequerimiento"
                 >
                   Agregar requerimiento
                 </VaButton>
@@ -319,7 +305,7 @@
                   type="submit"
                   preset="primary"
                   :loading="guardando"
-                  :disabled="guardando || !tieneFechaEntrega"
+                  :disabled="guardando"
                 >
                   Crear actividad
                 </VaButton>
@@ -338,11 +324,11 @@
                   <dt>Duración</dt>
                   <dd>{{ duracionResumen }}</dd>
                 </div>
-                <div>
+                <div v-if="tieneFechaEntrega">
                   <dt>Inicio estimado</dt>
                   <dd>{{ inicioEstimadoTexto }}</dd>
                 </div>
-                <div>
+                <div v-if="tieneFechaEntrega">
                   <dt>Fin estimado</dt>
                   <dd>{{ finEstimadoTexto }}</dd>
                 </div>
@@ -355,6 +341,10 @@
                   <dd>{{ totalPersonasRequeridas }}</dd>
                 </div>
               </dl>
+
+              <p v-if="!tieneFechaEntrega" class="crear-actividad__resumen-aviso">
+                La programación se calculará cuando definas la fecha de entrega.
+              </p>
 
               <p v-if="advertenciaInicio" class="crear-actividad__resumen-aviso">
                 {{ advertenciaInicio }}
@@ -387,6 +377,47 @@
         </div>
       </section>
     </template>
+
+    <VaModal
+      v-model="modalRequerimientoVisible"
+      hide-default-actions
+      size="large"
+      blur
+      class="crear-actividad-modal"
+    >
+      <template #header>
+        <h3 class="va-h5 crear-actividad-modal__titulo">Nuevo requerimiento</h3>
+      </template>
+
+      <RequerimientoForm
+        :key="modalRequerimientoKey"
+        v-model="requerimientoDraft"
+        :indice="form.requerimientos.length"
+        :profesiones="profesiones"
+        :habilidades="habilidades"
+        :cargando-habilidades="cargandoHabilidades"
+        :errores="erroresDraft"
+        :mostrar-eliminar="false"
+        @catalogo-cargado="guardarCatalogo"
+      />
+
+      <ul v-if="errorDraftSeccion.length" class="crear-actividad__lista-errores">
+        <li v-for="(mensaje, i) in errorDraftSeccion" :key="i">
+          {{ mensaje }}
+        </li>
+      </ul>
+
+      <template #footer>
+        <div class="crear-actividad-modal__acciones">
+          <VaButton preset="secondary" @click="cerrarModalRequerimiento">
+            Cancelar
+          </VaButton>
+          <VaButton preset="primary" @click="agregarRequerimiento">
+            Agregar
+          </VaButton>
+        </div>
+      </template>
+    </VaModal>
   </div>
 </template>
 
@@ -394,9 +425,12 @@
 import proyectoService from "../../services/proyectoService";
 import perfilService from "../../services/perfilService.js";
 import actividadService from "../../services/actividadService.js";
-import { refrescarSesion } from "../../services/authState";
+import habilidadService from "../../services/habilidadService.js";
+import { refrescarSesion, idPerfilActivo } from "../../services/authState";
+import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
+import CampoHora from "../../components/CampoHora.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import SelectorUbicacion from "../../components/proyecto/SelectorUbicacion.vue";
 import RequerimientoForm from "../../components/proyecto/RequerimientoForm.vue";
@@ -406,6 +440,7 @@ import {
   MINUTOS_POR_UNIDAD,
   UNIDADES_DURACION,
   calcularInicioEstimado,
+  convertirDuracion,
   etiquetaEstadoActividad,
   finDelDiaEntrega,
   formatearDuracionMinutos,
@@ -419,6 +454,7 @@ import {
 import { validarRequerimiento } from "../../utils/validacionesProyecto.js";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { normalizarBloqueos } from "../../utils/confirmacionConstants.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
   ESTADOS_PROYECTO,
@@ -437,6 +473,7 @@ export default {
   name: "CrearActividadView",
   components: {
     BaseAlert,
+    CampoHora,
     ProyectoEncabezado,
     SelectorUbicacion,
     RequerimientoForm,
@@ -454,22 +491,27 @@ export default {
       puedeReintentar: false,
       errorBloqueante: "",
       mensajeError: "",
+      bloqueosError: [],
       guardando: false,
       profesiones: [],
       actividades: [],
       cargandoActividades: false,
       advertenciaActividades: "",
+      habilidades: [],
+      cargandoHabilidades: false,
       catalogosPorProfesion: {},
       form: {
         nombre: "",
         descripcion: "",
         duracion: "",
-        unidadDuracion: UNIDADES_DURACION.DIAS,
+        unidadDuracion: UNIDADES_DURACION.HORAS,
+        horarioPreferenciaInicio: "",
         ubicacion: null,
         predecesoras: [],
         requerimientos: [],
       },
-      mostrandoDraft: false,
+      modalRequerimientoVisible: false,
+      modalRequerimientoKey: 0,
       requerimientoDraft: this.nuevoRequerimiento(0),
       errores: {},
       seccionErrores: {},
@@ -494,6 +536,9 @@ export default {
     },
     estadoNormalizado() {
       return normalizarEstadoProyecto(this.proyecto?.estado);
+    },
+    proyectoConfirmado() {
+      return this.estadoNormalizado === ESTADOS_PROYECTO.CONFIRMADO;
     },
     estadoPermiteActividades() {
       return ESTADOS_CON_ACTIVIDADES.includes(this.estadoNormalizado);
@@ -551,15 +596,6 @@ export default {
         0
       );
     },
-    draftTieneDatos() {
-      const draft = this.requerimientoDraft;
-      return (
-        !!draft.idProfesion ||
-        String(draft.descripcion || "").trim() !== "" ||
-        (draft.caracteristicas || []).length > 0 ||
-        Number(draft.cantidad) !== 1
-      );
-    },
   },
   watch: {
     idProyecto(nuevo, anterior) {
@@ -578,6 +614,41 @@ export default {
     if (controladorCarga) controladorCarga.abort();
   },
   methods: {
+    cambiarUnidadDuracion(unidad) {
+      if (unidad === this.form.unidadDuracion) return;
+
+      const actual = Number(this.form.duracion);
+      if (!Number.isFinite(actual) || actual <= 0) {
+        this.form.unidadDuracion = unidad;
+        return;
+      }
+
+      const convertida = convertirDuracion(
+        this.form.duracion,
+        this.form.unidadDuracion,
+        unidad
+      );
+
+      if (convertida == null) {
+        if (unidad === UNIDADES_DURACION.MINUTOS) {
+          this.form.duracion =
+            actual * MINUTOS_POR_UNIDAD[this.form.unidadDuracion];
+          this.form.unidadDuracion = unidad;
+          return;
+        }
+
+        this.errores = {
+          ...this.errores,
+          unidadDuracion:
+            "Para usar horas, la duración total debe ser múltiplo de 60 minutos.",
+        };
+        return;
+      }
+
+      this.form.duracion = convertida;
+      this.form.unidadDuracion = unidad;
+      this.errores = { ...this.errores, unidadDuracion: undefined };
+    },
     nuevoRequerimiento(uid) {
       return {
         uid,
@@ -641,6 +712,7 @@ export default {
         await Promise.all([
           this.cargarProfesiones(),
           this.cargarActividades(),
+          this.cargarHabilidades(),
         ]);
       } catch (error) {
         if (
@@ -679,6 +751,18 @@ export default {
           "No se pudieron cargar las actividades existentes. Podés continuar, pero no vas a poder elegir predecesoras.";
       } finally {
         this.cargandoActividades = false;
+      }
+    },
+    async cargarHabilidades() {
+      this.cargandoHabilidades = true;
+      try {
+        const response = await habilidadService.listar();
+        const datos = response?.data;
+        this.habilidades = Array.isArray(datos) ? datos : [];
+      } catch {
+        this.habilidades = [];
+      } finally {
+        this.cargandoHabilidades = false;
       }
     },
     async manejarErrorCarga(error) {
@@ -736,11 +820,15 @@ export default {
         [idProfesion]: caracteristicas,
       };
     },
-    iniciarRequerimiento() {
+    abrirNuevoRequerimiento() {
       this.requerimientoDraft = this.crearRequerimientoVacio();
       this.erroresDraft = {};
       this.errorDraftSeccion = [];
-      this.mostrandoDraft = true;
+      this.modalRequerimientoKey += 1;
+      this.modalRequerimientoVisible = true;
+    },
+    cerrarModalRequerimiento() {
+      this.modalRequerimientoVisible = false;
     },
     agregarRequerimiento() {
       const { campos, seccion } = validarRequerimiento(
@@ -752,28 +840,14 @@ export default {
       this.errorDraftSeccion = seccion;
 
       if (Object.keys(campos).length || seccion.length) {
-        this.mensajeError = "Revisá el requerimiento antes de agregarlo.";
-        this.$refs.requerimientosRef?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
         return;
       }
 
       this.form.requerimientos.push(
         JSON.parse(JSON.stringify(this.requerimientoDraft))
       );
-      this.descartarRequerimiento();
+      this.modalRequerimientoVisible = false;
       this.mensajeError = "";
-    },
-    descartarRequerimiento() {
-      this.requerimientoDraft = this.crearRequerimientoVacio();
-      this.erroresDraft = {};
-      this.errorDraftSeccion = [];
-      this.mostrandoDraft = false;
-      if (this.mensajeError === "Revisá el requerimiento antes de agregarlo.") {
-        this.mensajeError = "";
-      }
     },
     quitarRequerimiento(indice) {
       this.form.requerimientos.splice(indice, 1);
@@ -821,38 +895,17 @@ export default {
       }
       return relativos;
     },
+    async refrescarNotificaciones() {
+      const idPerfil = idPerfilActivo();
+      if (idPerfil != null) await cargarResumenPerfil(idPerfil);
+    },
     async crearActividad() {
       if (this.guardando || this.errorBloqueante) return;
 
       this.mensajeError = "";
       this.errores = {};
       this.seccionErrores = {};
-
-      if (!this.tieneFechaEntrega) {
-        this.mensajeError =
-          "El proyecto necesita una fecha de entrega para programar actividades.";
-        return;
-      }
-
-      if (this.mostrandoDraft) {
-        if (this.draftTieneDatos) {
-          const { campos, seccion } = validarRequerimiento(
-            this.requerimientoDraft,
-            this.catalogosPorProfesion[this.requerimientoDraft.idProfesion]
-          );
-          this.erroresDraft = campos;
-          this.errorDraftSeccion = seccion;
-          this.mensajeError =
-            "Agregá o descartá el requerimiento pendiente antes de crear la actividad.";
-          this.$refs.requerimientosRef?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-          return;
-        }
-
-        this.descartarRequerimiento();
-      }
+      this.bloqueosError = [];
 
       const { campos, secciones } = validarActividad(
         this.form,
@@ -876,15 +929,30 @@ export default {
           buildActividadRequest(this.form)
         );
         const actividad = response?.data;
+        const fechaAsignada = actividad?.fechaHoraInicio
+          ? formatearFecha(actividad.fechaHoraInicio)
+          : "";
+        const inicioProvisional =
+          String(actividad?.origenInicio || "").toUpperCase() === "PROYECTADA";
+
+        let mensajeCreacion = fechaAsignada
+          ? `La actividad se creó y se agendó para ${fechaAsignada}.`
+          : "La actividad se agregó a la planificación del proyecto.";
+        if (inicioProvisional) {
+          mensajeCreacion = fechaAsignada
+            ? `La actividad se creó con inicio provisional para ${fechaAsignada}; puede cambiar al asignar miembros.`
+            : "La actividad se creó con inicio provisional; puede cambiar al asignar miembros.";
+        }
 
         this.toast.init({
           title: "Actividad creada",
-          message: "La actividad se agregó a la planificación del proyecto.",
+          message: mensajeCreacion,
           color: "success",
           position: "top-right",
-          duration: 5000,
+          duration: 6000,
         });
 
+        await this.refrescarNotificaciones();
         this.$router.push({
           name: "dashboard-proyecto",
           params: { id: this.idProyecto },
@@ -906,6 +974,7 @@ export default {
       const status = error?.response?.status;
       const data = error?.response?.data || {};
       const mensaje = data.message || data.mensaje || "";
+      this.bloqueosError = normalizarBloqueos(data.bloqueos);
 
       if (status === 400) {
         if (data.errores && typeof data.errores === "object") {
@@ -955,6 +1024,13 @@ export default {
       }
 
       if (status === 409) {
+        if (this.bloqueosError.length) {
+          this.mensajeError =
+            mensaje ||
+            "El cronograma no tiene un plan viable con la disponibilidad actual.";
+          return;
+        }
+
         if (/nombre|existe|duplicad/i.test(mensaje)) {
           this.errores = {
             ...this.errores,
@@ -1014,7 +1090,7 @@ export default {
       this.$router.push({
         name: "dashboard-proyecto",
         params: { id: this.idProyecto },
-        query: { tab: tab === "planificacion" ? "planificacion" : "informacion" },
+        query: tab === "informacion" ? {} : { tab },
       });
     },
     cancelar() {
@@ -1224,36 +1300,20 @@ export default {
   font-size: 0.8rem;
 }
 
-.crear-actividad__nuevo-requerimiento {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 0.35rem;
+.crear-actividad__agregar-requerimiento {
+  align-self: flex-start;
 }
 
-.crear-actividad__nuevo-cabecera {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.crear-actividad__nuevo-titulo {
+.crear-actividad-modal__titulo {
   margin: 0;
-  color: var(--color-text);
-  font-size: 0.88rem;
-  font-weight: 600;
 }
 
-.crear-actividad__nuevo-acciones {
+.crear-actividad-modal__acciones {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.crear-actividad__agregar-requerimiento {
-  align-self: flex-start;
+  gap: 1rem;
+  width: 100%;
 }
 
 .crear-actividad__lista-errores {

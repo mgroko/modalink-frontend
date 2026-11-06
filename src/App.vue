@@ -25,10 +25,14 @@ export default {
     );
   },
   computed: {
-    // Remonta la vista al cambiar el perfil activo para recargar datos contextuales.
+    // Remonta la vista al cambiar de ruta o de perfil activo para recargar datos
+    // contextuales. No se usa `fullPath` a propósito: cambiar solo el query
+    // string (pestañas, filtros, ids de resaltado) no debe destruir la vista ni
+    // volver a pedir todo el proyecto.
     viewKey() {
       const idPerfil = state.usuario?.idPerfilActivo ?? "sin-perfil";
-      return `${this.$route.fullPath}:${idPerfil}`;
+      const params = JSON.stringify(this.$route.params || {});
+      return `${this.$route.name}:${params}:${idPerfil}`;
     },
   },
   async mounted() {

@@ -27,7 +27,7 @@ export const ETIQUETAS_ESTADO_PROYECTO = Object.values(ESTADOS_PROYECTO);
 /*
  * Opciones para el select de filtro de estado. `value` va en MAYÚSCULAS porque
  * es lo que exige el query param (`?estado=PUBLICADO`), mientras que `text`
- * usa la forma legible que devuelve el backend (`"Publicado"`).
+ * usa la forma legible que devuelve el sistema (`"Publicado"`).
  */
 export const OPCIONES_ESTADO_FILTRO = Object.entries(ESTADOS_PROYECTO).map(
   ([value, text]) => ({ text, value })
@@ -83,7 +83,7 @@ export function etiquetaRolProyecto(rol) {
 /*
  * Paleta de estados (docs/pantallas/Pantallas - Modulo Proyecto/Estados proyecto.png).
  * `fondo`/`texto`/`borde` van juntos: el chip se pinta con los tres.
- * Claves = valor exacto que devuelve el backend en `proyecto.estado`.
+ * Claves = valor exacto que devuelve el sistema en `proyecto.estado`.
  */
 export const COLORES_ESTADO_PROYECTO = {
   [ESTADOS_PROYECTO.BORRADOR]: { fondo: "#F3F4F6", texto: "#485563", borde: "#D1D5DB" },
@@ -109,7 +109,7 @@ export function coloresEstadoProyecto(estado) {
   return clave ? COLORES_ESTADO_PROYECTO[clave] : COLORES_ESTADO_POR_DEFECTO;
 }
 
-/** Normaliza el estado del backend a la forma canónica ("publicado" → "Publicado"). */
+/** Normaliza el estado del sistema a la forma canónica ("publicado" → "Publicado"). */
 export function normalizarEstadoProyecto(estado) {
   if (!estado) return ESTADOS_PROYECTO.BORRADOR;
   const clave = Object.keys(COLORES_ESTADO_PROYECTO).find(
@@ -129,7 +129,7 @@ export const LIMITES_PROYECTO = {
 
 /*
  * Imágenes del moodboard (ficha UC-24 §7.2): espejo cliente de los límites
- * del backend para rechazar en el dropzone lo que la subida rechazaría
+ * del sistema para rechazar en el dropzone lo que la subida rechazaría
  * en Finalizar. `MAX_BYTES_PETICION` limita la petición completa (§7.4).
  */
 export const MOODBOARD_IMAGENES = {

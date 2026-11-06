@@ -1,9 +1,17 @@
 <template>
-  <div class="requerimiento">
+  <div
+    class="requerimiento"
+    :class="{ 'requerimiento--resaltado': resaltado }"
+    :aria-describedby="
+      soloLectura ? `requerimiento-bloqueo-${indice}` : undefined
+    "
+  >
     <div class="requerimiento__encabezado">
       <div class="requerimiento__encabezado-titulos">
         <span class="requerimiento__titulo">Requerimiento {{ indice + 1 }}</span>
-        <span v-if="soloLectura" class="requerimiento__badge-satisfecho">Satisfecho</span>
+        <span v-if="soloLectura" class="requerimiento__badge-satisfecho">
+          {{ etiquetaBloqueo }}
+        </span>
       </div>
       <VaButton
         v-if="!soloLectura && mostrarEliminar"
@@ -19,9 +27,34 @@
       </VaButton>
     </div>
 
-    <p v-if="soloLectura" class="requerimiento__hint">
-      Ya tiene postulaciones aceptadas: no se puede editar ni eliminar.
+    <p
+      v-if="soloLectura"
+      :id="`requerimiento-bloqueo-${indice}`"
+      class="requerimiento__hint"
+    >
+      {{ motivoBloqueo }}
     </p>
+
+    <div v-if="resaltado" class="requerimiento__conflicto" role="alert">
+      <p>{{ mensajeConflicto }}</p>
+      <div class="requerimiento__conflicto-acciones">
+        <VaButton
+          preset="secondary"
+          size="small"
+          @click="$emit('descartar-cambios')"
+        >
+          Descartar cambios
+        </VaButton>
+        <VaButton
+          preset="secondary"
+          size="small"
+          title="Se pierden los cambios no guardados del formulario"
+          @click="$emit('gestionar-postulaciones')"
+        >
+          Gestionar postulaciones
+        </VaButton>
+      </div>
+    </div>
 
     <div class="requerimiento__fila">
       <VaInput
@@ -204,12 +237,32 @@ export default {
       type: Boolean,
       default: true,
     },
-    /** Requerimiento satisfecho (UC-36 §7): sólo lectura y badge "Satisfecho". */
+    /** Requerimiento con cupo completo o protegido: sólo lectura y badge. */
     soloLectura: {
       type: Boolean,
       default: false,
     },
-    /** UC-49: el catálogo de habilidades aún no está expuesto (UC-48). */
+    /** Texto del badge cuando `soloLectura` está activo. */
+    etiquetaBloqueo: {
+      type: String,
+      default: "Cupo completo",
+    },
+    /** Explica por qué el requerimiento está bloqueado. */
+    motivoBloqueo: {
+      type: String,
+      default: "Tiene miembros activos: no se puede editar ni eliminar.",
+    },
+    /** Resalta el requerimiento que devolvió 409 REQUERIMIENTO_CON_VINCULOS. */
+    resaltado: {
+      type: Boolean,
+      default: false,
+    },
+    /** Mensaje del conflicto mostrado cuando `resaltado` es true. */
+    mensajeConflicto: {
+      type: String,
+      default: "",
+    },
+    /** Permite ocultar el selector de habilidades en contextos especiales. */
     mostrarHabilidades: {
       type: Boolean,
       default: true,
@@ -219,7 +272,13 @@ export default {
       default: () => ({}),
     },
   },
-  emits: ["update:modelValue", "eliminar", "catalogo-cargado"],
+  emits: [
+    "update:modelValue",
+    "eliminar",
+    "catalogo-cargado",
+    "descartar-cambios",
+    "gestionar-postulaciones",
+  ],
   data() {
     return {
       reglas: reglasProyecto,
@@ -334,6 +393,34 @@ export default {
   border: 1px solid var(--va-background-border);
   border-radius: 8px;
   background: var(--va-background-element);
+}
+
+.requerimiento--resaltado {
+  border-color: var(--color-danger-border, #fca5a5);
+  box-shadow: 0 0 0 2px var(--color-danger-soft, rgba(220, 38, 38, 0.12));
+}
+
+.requerimiento__conflicto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-danger-border, #fca5a5);
+  border-radius: 8px;
+  background: var(--color-danger-soft, rgba(220, 38, 38, 0.1));
+  color: var(--color-danger-text, #dc2626);
+  font-size: 0.82rem;
+}
+
+.requerimiento__conflicto p {
+  margin: 0;
+}
+
+.requerimiento__conflicto-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .requerimiento__encabezado {

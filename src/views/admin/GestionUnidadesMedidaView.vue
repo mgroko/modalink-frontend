@@ -193,7 +193,7 @@
         </p>
         <p class="gestion-unidades__texto-muted">
           Esta acción es permanente: la unidad desaparece del sistema.
-          Si está asociada a una característica técnica, el backend responderá con un error.
+          Si está asociada a una característica técnica, el sistema responderá con un error.
         </p>
       </div>
 

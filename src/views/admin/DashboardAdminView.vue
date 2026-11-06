@@ -391,6 +391,9 @@ export default {
 }
 
 .dashboard-admin__gauge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100px;
   height: 50px;
   margin: 0.8rem auto 0.5rem;
@@ -402,10 +405,11 @@ export default {
 
 .dashboard-admin__gauge span {
   display: block;
-  margin-top: 0.2rem;
+  margin: 0;
   color: var(--color-primary);
   font-size: 1.15rem;
   font-weight: 800;
+  line-height: 1;
 }
 
 .dashboard-admin__skeleton {

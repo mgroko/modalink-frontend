@@ -197,11 +197,17 @@ baja (por eso no quedan cookies huérfanas que restauren una sesión `PENDIENTE_
 
 **Front:** vista `RegistroView.vue` → `authService.registrar()`; ya implementada.
 
-### 2.8 (pendiente) Recuperar contraseña — `POST /auth/recuperar-password`
+### 2.8 Autenticación con Google — `/auth/google`
 
-> **No está implementado en el backend.** El front ya tiene la vista
-> (`RecuperarPasswordView.vue` → `authService.recuperarPassword()`) y hoy recibiría `404`.
-> Documentar el contrato recién cuando el backend lo agregue.
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/auth/google` | Redirige al flujo OAuth2 de Google |
+| GET | `/auth/google/pendiente` | Devuelve nombre, apellido y correo para prellenar el onboarding |
+| POST | `/auth/google/completar` | Completa DNI, fecha de nacimiento y género; emite el JWT |
+
+**Front:** `LoginView.vue` y `RegistroView.vue` tienen el botón “Continuar con Google”.
+`GoogleCallbackView.vue` hidrata la sesión y redirige; `GoogleCompletarView.vue`
+pide los datos faltantes. No hay caso de uso de recuperar/cambiar contraseña.
 
 ## 3. Modelos de Datos para Frontend
 

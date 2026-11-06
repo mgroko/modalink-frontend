@@ -22,6 +22,7 @@
           :proyecto="proyecto"
           tab-activa="planificacion"
           :mostrar-planificacion="true"
+          :mostrar-integrantes="esMiembro"
           @cambiar-tab="cambiarTabEncabezado"
         />
 
@@ -43,13 +44,163 @@
                 cronograma del proyecto.
               </p>
             </div>
-            <span
-              class="modificar-actividad__estado-actual"
-              :style="estiloEstado(form.estado)"
-            >
-              {{ etiquetaEstadoActividad(form.estado) }}
-            </span>
           </header>
+
+          <section
+            class="modificar-actividad__estado-card"
+            aria-labelledby="estado-actividad-label"
+          >
+            <div class="modificar-actividad__estado-card-cabecera">
+              <div class="modificar-actividad__estado-card-info">
+                <span
+                  id="estado-actividad-label"
+                  class="modificar-actividad__estado-label"
+                >
+                  Estado de la actividad
+                </span>
+                <strong class="modificar-actividad__estado-valor">
+                  {{ etiquetaEstadoActividad(estadoOriginal) }}
+                </strong>
+              </div>
+
+              <div
+                v-if="accionesEstado.length"
+                class="modificar-actividad__estado-card-acciones"
+              >
+                <VaButton
+                  v-if="accionPrincipal"
+                  class="modificar-actividad__estado-btn-principal"
+                  preset="primary"
+                  :disabled="
+                    guardando ||
+                    cambiandoEstado ||
+                    !puedeEjecutarAccion(accionPrincipal)
+                  "
+                  :title="motivoAccion(accionPrincipal)"
+                  @click="solicitarCambioEstado(accionPrincipal)"
+                >
+                  {{ ETIQUETAS_ACCION_ESTADO[accionPrincipal] }}
+                </VaButton>
+
+                <VaDropdown
+                  v-if="accionesSecundarias.length"
+                  placement="bottom-end"
+                  :disabled="guardando || cambiandoEstado"
+                >
+                  <template #anchor>
+                    <button
+                      type="button"
+                      class="modificar-actividad__estado-mas"
+                      aria-label="Más acciones"
+                      :disabled="guardando || cambiandoEstado"
+                    >
+                      <span class="material-symbols-outlined" aria-hidden="true">
+                        more_horiz
+                      </span>
+                    </button>
+                  </template>
+
+                  <VaDropdownContent>
+                    <VaMenuList>
+                      <VaMenuItem
+                        v-for="accion in accionesSecundarias"
+                        :key="accion"
+                        class="modificar-actividad__estado-menu-item--peligro"
+                        :disabled="
+                          guardando ||
+                          cambiandoEstado ||
+                          !puedeEjecutarAccion(accion)
+                        "
+                        @click="solicitarCambioEstado(accion)"
+                      >
+                        {{ ETIQUETAS_ACCION_ESTADO[accion] }}
+                      </VaMenuItem>
+                    </VaMenuList>
+                  </VaDropdownContent>
+                </VaDropdown>
+              </div>
+            </div>
+
+            <div
+              v-if="mostrarStepper"
+              class="modificar-actividad__stepper"
+              role="list"
+              aria-label="Progreso del estado de la actividad"
+            >
+              <template
+                v-for="(paso, indice) in pasosEstado"
+                :key="paso.estado"
+              >
+                <span
+                  class="modificar-actividad__stepper-paso"
+                  :class="{
+                    'modificar-actividad__stepper-paso--completado':
+                      paso.completado,
+                    'modificar-actividad__stepper-paso--actual': paso.actual,
+                    'modificar-actividad__stepper-paso--futuro': paso.futuro,
+                  }"
+                  role="listitem"
+                >
+                  <span class="modificar-actividad__stepper-circulo">
+                    <span
+                      v-if="paso.completado"
+                      class="material-symbols-outlined"
+                      aria-hidden="true"
+                    >
+                      check
+                    </span>
+                    <span
+                      v-else-if="paso.actual"
+                      class="modificar-actividad__stepper-punto"
+                      aria-hidden="true"
+                    ></span>
+                  </span>
+                  <span class="modificar-actividad__stepper-etiqueta">
+                    {{ paso.etiqueta }}
+                  </span>
+                </span>
+
+                <span
+                  v-if="indice < pasosEstado.length - 1"
+                  class="modificar-actividad__stepper-linea"
+                  :class="{
+                    'modificar-actividad__stepper-linea--completada':
+                      indice < indiceEstadoActividad,
+                  }"
+                  aria-hidden="true"
+                ></span>
+              </template>
+            </div>
+
+            <div
+              v-if="avisoEstado"
+              class="modificar-actividad__aviso-estado"
+              role="status"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">
+                error
+              </span>
+              <p class="modificar-actividad__aviso-estado-texto">
+                <strong>{{ avisoEstado.titulo }}</strong>
+                {{ avisoEstado.motivo }}
+              </p>
+              <button
+                v-if="avisoEstado.predecesora"
+                type="button"
+                class="modificar-actividad__aviso-estado-link"
+                @click="verPredecesora(avisoEstado.predecesora)"
+              >
+                Ver «{{
+                  avisoEstado.predecesora.nombre ||
+                  `Actividad #${avisoEstado.predecesora.idActividad}`
+                }}»
+              </button>
+            </div>
+
+            <p class="modificar-actividad__estado-ayuda">
+              {{ textoAyudaEstado }}
+            </p>
+          </section>
 
           <div class="modificar-actividad__layout">
             <VaForm
@@ -58,6 +209,15 @@
               @submit.prevent="guardar"
             >
               <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
+
+              <ul
+                v-if="bloqueosEstado.length"
+                class="modificar-actividad__lista-errores"
+              >
+                <li v-for="(bloqueo, i) in bloqueosEstado" :key="i">
+                  {{ bloqueo.mensaje || bloqueo.codigo }}
+                </li>
+              </ul>
 
               <div v-if="!tieneFechaEntrega" class="modificar-actividad__aviso">
                 <p class="modificar-actividad__aviso-titulo">
@@ -79,6 +239,11 @@
               <section class="modificar-actividad__panel">
                 <h2 class="modificar-actividad__seccion-titulo">Datos de la actividad</h2>
 
+                <p v-if="proyectoConfirmado" class="modificar-actividad__hint">
+                  En un proyecto confirmado no se pueden cambiar el nombre, la
+                  duración ni las predecesoras.
+                </p>
+
                 <VaInput
                   ref="nombreInput"
                   v-model="form.nombre"
@@ -86,6 +251,7 @@
                   placeholder="Ej: Sesión de fotos"
                   :max-length="LIMITES_ACTIVIDAD.NOMBRE"
                   counter
+                  :disabled="proyectoConfirmado"
                   :error="!!errores.nombre"
                   :error-messages="errores.nombre || undefined"
                 />
@@ -96,9 +262,10 @@
                     v-model="form.duracion"
                     type="number"
                     label="Duración*"
-                    placeholder="Ej: 3"
+                    placeholder="Ej: 2"
                     min="1"
                     step="1"
+                    :disabled="proyectoConfirmado"
                     :error="!!errores.duracion"
                     :error-messages="errores.duracion || undefined"
                   />
@@ -119,7 +286,8 @@
                           'modificar-actividad__unidad-boton--activa':
                             form.unidadDuracion === unidad,
                         }"
-                        @click="form.unidadDuracion = unidad"
+                        :disabled="proyectoConfirmado"
+                        @click="cambiarUnidadDuracion(unidad)"
                       >
                         {{ ETIQUETAS_UNIDAD_DURACION[unidad] }}
                       </button>
@@ -131,15 +299,12 @@
                   {{ errores.unidadDuracion }}
                 </p>
 
-                <VaSelect
-                  ref="estadoSelect"
-                  v-model="form.estado"
-                  :options="opcionesEstado"
-                  value-by="value"
-                  text-by="text"
-                  label="Estado*"
-                  :error="!!errores.estado"
-                  :error-messages="errores.estado || undefined"
+                <CampoHora
+                  v-model="form.horarioPreferenciaInicio"
+                  label="Horario preferido de inicio"
+                  hint="Opcional. No es el horario definitivo de la actividad."
+                  :error="!!errores.horarioPreferenciaInicio"
+                  :error-message="errores.horarioPreferenciaInicio || ''"
                 />
 
                 <VaTextarea
@@ -199,6 +364,7 @@
                   multiple
                   clearable
                   :loading="cargandoActividades"
+                  :disabled="proyectoConfirmado"
                   :error="!!errores.predecesoras"
                   :error-messages="errores.predecesoras || undefined"
                   no-options-text="No hay actividades disponibles"
@@ -238,7 +404,14 @@
                   <article
                     v-for="(requerimiento, indice) in form.requerimientos"
                     :key="requerimiento.uid"
+                    :id="`requerimiento-${requerimiento.idRequerimiento ?? requerimiento.uid}`"
                     class="modificar-actividad__requerimiento"
+                    :class="{
+                      'modificar-actividad__requerimiento--protegido':
+                        esProtegido(requerimiento),
+                      'modificar-actividad__requerimiento--resaltado':
+                        esRequerimientoConVinculos(requerimiento),
+                    }"
                   >
                     <div class="modificar-actividad__requerimiento-cabecera">
                       <div>
@@ -249,6 +422,13 @@
                           {{ requerimiento.cantidad }}
                           {{ Number(requerimiento.cantidad) === 1 ? "persona" : "personas" }}
                         </span>
+                        <span
+                          v-if="esProtegido(requerimiento)"
+                          class="modificar-actividad__badge-protegido"
+                          :title="textoProteccionRequerimiento"
+                        >
+                          Protegido
+                        </span>
                       </div>
 
                       <div class="modificar-actividad__requerimiento-acciones">
@@ -256,6 +436,12 @@
                           preset="secondary"
                           size="small"
                           icon="mso-edit"
+                          :disabled="guardando || esProtegido(requerimiento)"
+                          :title="
+                            esProtegido(requerimiento)
+                              ? textoProteccionRequerimiento
+                              : 'Editar requerimiento'
+                          "
                           @click="abrirEditarRequerimiento(indice)"
                         >
                           Editar
@@ -265,12 +451,32 @@
                           size="small"
                           color="danger"
                           icon="mso-delete"
-                          title="Quitar requerimiento"
+                          :disabled="guardando || esProtegido(requerimiento)"
+                          :title="
+                            esProtegido(requerimiento)
+                              ? textoProteccionRequerimiento
+                              : 'Quitar requerimiento'
+                          "
                           @click="quitarRequerimiento(indice)"
                         >
                           Quitar
                         </VaButton>
                       </div>
+                    </div>
+
+                    <div
+                      v-if="esRequerimientoConVinculos(requerimiento)"
+                      class="modificar-actividad__requerimiento-error"
+                    >
+                      <p>{{ textoErrorVinculos }}</p>
+                      <VaButton
+                        preset="secondary"
+                        size="small"
+                        :disabled="guardando"
+                        @click="descartarCambiosRequerimiento(requerimiento)"
+                      >
+                        Descartar cambios
+                      </VaButton>
                     </div>
 
                     <p
@@ -323,7 +529,7 @@
               <div class="modificar-actividad__acciones">
                 <VaButton
                   preset="secondary"
-                  :disabled="guardando"
+                  :disabled="guardando || cambiandoEstado"
                   @click="cancelar"
                 >
                   Cancelar
@@ -332,7 +538,7 @@
                   type="submit"
                   preset="primary"
                   :loading="guardando"
-                  :disabled="guardando || !tieneFechaEntrega"
+                  :disabled="guardando || cambiandoEstado"
                 >
                   Guardar cambios
                 </VaButton>
@@ -351,6 +557,20 @@
                   <dt>Estado del cronograma</dt>
                   <dd>{{ estadoCronogramaTexto }}</dd>
                 </div>
+                <div v-if="actividad?.origenInicio">
+                  <dt>Origen del inicio</dt>
+                  <dd>
+                    <ChipOrigenInicio :origen="actividad.origenInicio" />
+                  </dd>
+                </div>
+                <div v-if="holguraMakespanTexto">
+                  <dt>Holgura makespan</dt>
+                  <dd>{{ holguraMakespanTexto }}</dd>
+                </div>
+                <div v-if="holguraEntregaTexto">
+                  <dt>Holgura entrega</dt>
+                  <dd>{{ holguraEntregaTexto }}</dd>
+                </div>
                 <div>
                   <dt>Requerimientos</dt>
                   <dd>{{ form.requerimientos.length }} cargados</dd>
@@ -365,11 +585,40 @@
                 </div>
               </dl>
 
+              <p
+                v-if="sinFechaEntrega"
+                class="modificar-actividad__resumen-aviso"
+              >
+                El proyecto no tiene fecha de entrega: no se calculan fechas
+                proyectadas, holguras ni ruta crítica.
+              </p>
+
+              <div
+                v-if="chipsCpm.length"
+                class="modificar-actividad__resumen-chips"
+              >
+                <span
+                  v-for="chip in chipsCpm"
+                  :key="chip.tipo"
+                  class="modificar-actividad__resumen-chip"
+                  :title="chip.detalle"
+                >
+                  {{ chip.etiqueta }}
+                </span>
+              </div>
+
+              <p
+                v-if="motivoConflicto"
+                class="modificar-actividad__resumen-conflicto"
+              >
+                {{ motivoConflicto }}
+              </p>
+
               <div class="modificar-actividad__resumen-fechas">
                 <span class="modificar-actividad__resumen-fechas-label">
                   Fechas actuales
                 </span>
-                <span>{{ rangoFechasActuales }}</span>
+                <span :title="textoFechasActuales">{{ rangoFechasActuales }}</span>
               </div>
 
               <p class="modificar-actividad__resumen-nota">
@@ -475,36 +724,46 @@
     <VaModal
       v-model="modalEstadoVisible"
       hide-default-actions
-      size="small"
-      :no-dismiss="guardando"
+      size="medium"
+      :no-dismiss="cambiandoEstado"
       blur
       class="modificar-actividad-modal"
     >
       <template #header>
-        <h3 class="va-h5 modificar-actividad-modal__titulo">Cambiar estado</h3>
+        <h3 class="va-h5 modificar-actividad-modal__titulo">
+          {{ tituloConfirmacionEstado }}
+        </h3>
       </template>
 
       <p class="modificar-actividad-modal__mensaje">
-        {{ mensajeConfirmacionEstado }}
+        La actividad pasará a estado <strong>Cancelada</strong> y el cronograma
+        del proyecto se va a recalcular. Esta acción no se puede deshacer.
       </p>
 
       <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
+
+      <ul v-if="bloqueosEstado.length" class="modificar-actividad__lista-errores">
+        <li v-for="(bloqueo, i) in bloqueosEstado" :key="i">
+          {{ bloqueo.mensaje || bloqueo.codigo }}
+        </li>
+      </ul>
 
       <template #footer>
         <div class="modificar-actividad-modal__acciones">
           <VaButton
             preset="secondary"
-            :disabled="guardando"
+            :disabled="cambiandoEstado"
             @click="cancelarConfirmacionEstado"
           >
-            Cancelar
+            Volver
           </VaButton>
           <VaButton
             preset="primary"
-            :loading="guardando"
+            color="danger"
+            :loading="cambiandoEstado"
             @click="confirmarCambioEstado"
           >
-            Continuar
+            Sí, cancelar actividad
           </VaButton>
         </div>
       </template>
@@ -517,36 +776,63 @@ import proyectoService from "../../services/proyectoService";
 import perfilService from "../../services/perfilService.js";
 import actividadService from "../../services/actividadService.js";
 import habilidadService from "../../services/habilidadService.js";
-import { refrescarSesion } from "../../services/authState";
+import { refrescarSesion, idPerfilActivo } from "../../services/authState";
+import { cargarResumenPerfil } from "../../services/notificacionState";
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
+import CampoHora from "../../components/CampoHora.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
+import ChipOrigenInicio from "../../components/proyecto/ChipOrigenInicio.vue";
 import SelectorUbicacion from "../../components/proyecto/SelectorUbicacion.vue";
 import RequerimientoForm from "../../components/proyecto/RequerimientoForm.vue";
 import {
   ESTADOS_ACTIVIDAD,
-  ESTADOS_CRONOGRAMA,
-  ETIQUETAS_ESTADO_ACTIVIDAD,
-  ETIQUETAS_ESTADO_CRONOGRAMA,
   ETIQUETAS_UNIDAD_DURACION,
   LIMITES_ACTIVIDAD,
   MINUTOS_POR_UNIDAD,
   UNIDADES_DURACION,
-  coloresEstadoActividad,
+  convertirDuracion,
   descomponerDuracionMinutos,
-  estadosPermitidosActividad,
   etiquetaEstadoActividad,
   formatearDuracionMinutos,
   normalizarEstadoActividad,
   puedeEditarActividad,
 } from "../../utils/actividadConstants.js";
 import {
+  ESTADOS_CRONOGRAMA,
+  describirCpm,
+  esProyectada,
+  etiquetaEstadoCronograma,
+  formatearHolgura,
+  formatearRangoCpm,
+  textoProyeccion,
+} from "../../utils/cpmConstants.js";
+import {
   buildModificarActividadRequest,
   mapearErroresActividad,
   validarActividadEdicion,
 } from "../../utils/validacionesActividad.js";
+import {
+  ACCIONES_ESTADO,
+  ETIQUETAS_ACCION_ESTADO,
+  TIPOS_ERROR_CAMBIO_ESTADO,
+  accionesEstadoPermitidas,
+  clasificarErrorCambioEstado,
+  estadoDestinoDeAccion,
+  mensajeExitoCambioEstado,
+  motivoAccionNoDisponible,
+  puedeEjecutarAccionEstado,
+  predecesorasPendientes,
+} from "../../utils/cambioEstadoActividadConstants.js";
+import {
+  esErrorRequerimientoConVinculos,
+  esRequerimientoProtegido,
+  idRequerimientoConVinculos,
+  mensajeErrorRequerimientoConVinculos,
+  mensajeProteccionRequerimiento,
+} from "../../utils/requerimientoActividadConstants.js";
 import { validarRequerimiento } from "../../utils/validacionesProyecto.js";
-import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
+import { formatearFechaCorta } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
@@ -562,12 +848,15 @@ const ESTADOS_CON_ACTIVIDADES = [
 
 let controladorCarga = null;
 let controladorGuardado = null;
+let controladorEstado = null;
 
 export default {
   name: "ModificarActividadView",
   components: {
     BaseAlert,
+    CampoHora,
     ProyectoEncabezado,
+    ChipOrigenInicio,
     SelectorUbicacion,
     RequerimientoForm,
   },
@@ -598,6 +887,7 @@ export default {
         descripcion: "",
         duracion: "",
         unidadDuracion: UNIDADES_DURACION.HORAS,
+        horarioPreferenciaInicio: "",
         estado: ESTADOS_ACTIVIDAD.PENDIENTE,
         ubicacion: null,
         predecesoras: [],
@@ -614,6 +904,14 @@ export default {
       guardandoRequerimiento: false,
       modalRequerimientoKey: 0,
       modalEstadoVisible: false,
+      accionEstado: null,
+      estadoDestino: null,
+      cambiandoEstado: false,
+      bloqueosEstado: [],
+      ACCIONES_ESTADO,
+      ETIQUETAS_ACCION_ESTADO,
+      requerimientosOriginales: [],
+      idRequerimientoConVinculos: null,
       siguienteUid: 0,
       idCarga: 0,
     };
@@ -640,6 +938,27 @@ export default {
     estadoPermiteActividades() {
       return ESTADOS_CON_ACTIVIDADES.includes(this.estadoNormalizado);
     },
+    proyectoConfirmado() {
+      return this.estadoNormalizado === ESTADOS_PROYECTO.CONFIRMADO;
+    },
+    accionesEstado() {
+      if (!this.puedeModificarActividad || !this.estadoPermiteActividades) {
+        return [];
+      }
+      return accionesEstadoPermitidas(this.estadoOriginal);
+    },
+    /** Predecesoras que todavía no finalizaron (ficha §6). */
+    predecesorasBloqueantes() {
+      return predecesorasPendientes(this.actividad, this.actividades);
+    },
+    textoProteccionRequerimiento() {
+      return mensajeProteccionRequerimiento();
+    },
+    textoErrorVinculos() {
+      return mensajeErrorRequerimientoConVinculos(
+        this.idRequerimientoConVinculos
+      );
+    },
     puedeModificarActividad() {
       return this.permisos.includes("MODIFICAR_ACTIVIDAD");
     },
@@ -654,23 +973,52 @@ export default {
         ? normalizarEstadoActividad(this.actividad.estado)
         : ESTADOS_ACTIVIDAD.PENDIENTE;
     },
-    opcionesEstado() {
-      return estadosPermitidosActividad(this.estadoOriginal).map((value) => ({
-        value,
-        text: ETIQUETAS_ESTADO_ACTIVIDAD[value],
-      }));
-    },
     estadoCronogramaTexto() {
-      const estado = this.actividad?.estadoCronograma;
-      return ETIQUETAS_ESTADO_CRONOGRAMA[estado] || "—";
+      return etiquetaEstadoCronograma(this.actividad?.estadoCronograma);
+    },
+    sinFechaEntrega() {
+      return (
+        this.actividad?.estadoCronograma ===
+        ESTADOS_CRONOGRAMA.SIN_FECHA_ENTREGA
+      );
     },
     fechaEntregaTexto() {
       return formatearFechaCorta(this.proyecto?.fechaEntregaEstipulada);
     },
     rangoFechasActuales() {
-      const inicio = formatearFecha(this.actividad?.fechaHoraInicio);
-      const fin = formatearFecha(this.actividad?.fechaHoraFin);
-      return `${inicio} – ${fin}`;
+      if (this.actividad?.fechaHoraInicio) {
+        return formatearRangoCpm(
+          this.actividad?.fechaHoraInicio,
+          this.actividad?.fechaHoraFin
+        );
+      }
+      if (this.actividad?.inicioProyectado) {
+        return `${formatearRangoCpm(
+          this.actividad?.inicioProyectado,
+          this.actividad?.finProyectado
+        )} (proyectada)`;
+      }
+      return "—";
+    },
+    textoFechasActuales() {
+      return esProyectada(this.actividad)
+        ? textoProyeccion(this.actividad)
+        : "Fechas persistidas de la actividad.";
+    },
+    chipsCpm() {
+      return describirCpm(this.actividad);
+    },
+    holguraMakespanTexto() {
+      return formatearHolgura(this.actividad?.holguraMakespan);
+    },
+    holguraEntregaTexto() {
+      return formatearHolgura(this.actividad?.holguraEntrega);
+    },
+    motivoConflicto() {
+      return this.actividad?.conflicto === true
+        ? this.actividad?.motivoConflicto ||
+            "La ventana CPM de la actividad no es factible."
+        : "";
     },
     totalPersonasRequeridas() {
       return this.form.requerimientos.reduce(
@@ -683,14 +1031,83 @@ export default {
         ? "Nuevo requerimiento"
         : "Editar requerimiento";
     },
-    mensajeConfirmacionEstado() {
-      if (this.form.estado === ESTADOS_ACTIVIDAD.CANCELADA) {
-        return "La actividad quedará CANCELADA. Esta acción es irreversible: no se podrá modificar ni reactivar. ¿Querés continuar?";
+    accionPrincipal() {
+      return (
+        this.accionesEstado.find(
+          (accion) => accion !== ACCIONES_ESTADO.CANCELAR
+        ) || null
+      );
+    },
+    accionesSecundarias() {
+      return this.accionesEstado.filter(
+        (accion) => accion !== this.accionPrincipal
+      );
+    },
+    indiceEstadoActividad() {
+      return [
+        ESTADOS_ACTIVIDAD.PENDIENTE,
+        ESTADOS_ACTIVIDAD.EN_CURSO,
+        ESTADOS_ACTIVIDAD.FINALIZADA,
+      ].indexOf(this.estadoOriginal);
+    },
+    mostrarStepper() {
+      return this.indiceEstadoActividad >= 0;
+    },
+    pasosEstado() {
+      const actual = this.indiceEstadoActividad;
+      return [
+        {
+          estado: ESTADOS_ACTIVIDAD.PENDIENTE,
+          etiqueta: "Pendiente",
+        },
+        {
+          estado: ESTADOS_ACTIVIDAD.EN_CURSO,
+          etiqueta: "En curso",
+        },
+        {
+          estado: ESTADOS_ACTIVIDAD.FINALIZADA,
+          etiqueta: "Finalizada",
+        },
+      ].map((paso, indice) => ({
+        ...paso,
+        completado: actual >= 0 && indice < actual,
+        actual: indice === actual,
+        futuro: actual >= 0 && indice > actual,
+      }));
+    },
+    avisoEstado() {
+      const accion = this.accionPrincipal;
+      if (!accion) return null;
+
+      const motivo = this.motivoAccion(accion);
+      if (!motivo) return null;
+
+      return {
+        titulo:
+          accion === ACCIONES_ESTADO.INICIAR
+            ? "Todavía no se puede iniciar."
+            : "Todavía no se puede finalizar.",
+        motivo,
+        predecesora:
+          this.predecesorasBloqueantes.length > 0
+            ? this.predecesorasBloqueantes[0]
+            : null,
+      };
+    },
+    textoAyudaEstado() {
+      if (!this.accionesEstado.length) {
+        return "El estado de la actividad ya no admite cambios.";
       }
-      if (this.form.estado === ESTADOS_ACTIVIDAD.FINALIZADA) {
-        return "La actividad quedará FINALIZADA. Esta acción es irreversible: no se podrá modificar ni reactivar. ¿Querés continuar?";
+      if (this.accionesEstado.includes(ACCIONES_ESTADO.CANCELAR)) {
+        return "Cambiar el estado se aplica de inmediato y recalcula el cronograma. «Cancelar actividad» está en Más acciones.";
       }
-      return "Se actualizará el estado de la actividad. ¿Querés continuar?";
+      return "Cambiar el estado se aplica de inmediato y recalcula el cronograma.";
+    },
+    tituloConfirmacionEstado() {
+      const nombre = String(this.actividad?.nombre || "").trim();
+      return nombre
+        ? `¿Cancelar «${nombre}»?`
+        : "¿Cancelar la actividad?";
     },
   },
   watch: {
@@ -702,6 +1119,12 @@ export default {
       if (nuevo === anterior) return;
       this.cargar();
     },
+    modalEstadoVisible(valor) {
+      if (valor || this.cambiandoEstado) return;
+      this.accionEstado = null;
+      this.estadoDestino = null;
+      this.bloqueosEstado = [];
+    },
   },
   mounted() {
     this.cargar();
@@ -709,8 +1132,45 @@ export default {
   beforeUnmount() {
     if (controladorCarga) controladorCarga.abort();
     if (controladorGuardado) controladorGuardado.abort();
+    if (controladorEstado) controladorEstado.abort();
   },
   methods: {
+    cambiarUnidadDuracion(unidad) {
+      if (this.proyectoConfirmado) return;
+      if (unidad === this.form.unidadDuracion) return;
+
+      const actual = Number(this.form.duracion);
+      if (!Number.isFinite(actual) || actual <= 0) {
+        this.form.unidadDuracion = unidad;
+        return;
+      }
+
+      const convertida = convertirDuracion(
+        this.form.duracion,
+        this.form.unidadDuracion,
+        unidad
+      );
+
+      if (convertida == null) {
+        if (unidad === UNIDADES_DURACION.MINUTOS) {
+          this.form.duracion =
+            actual * MINUTOS_POR_UNIDAD[this.form.unidadDuracion];
+          this.form.unidadDuracion = unidad;
+          return;
+        }
+
+        this.errores = {
+          ...this.errores,
+          unidadDuracion:
+            "Para usar horas, la duración total debe ser múltiplo de 60 minutos.",
+        };
+        return;
+      }
+
+      this.form.duracion = convertida;
+      this.form.unidadDuracion = unidad;
+      this.errores = { ...this.errores, unidadDuracion: undefined };
+    },
     nuevoRequerimiento(uid) {
       return {
         uid,
@@ -827,6 +1287,7 @@ export default {
         descripcion: actividad.descripcion || "",
         duracion,
         unidadDuracion,
+        horarioPreferenciaInicio: actividad.horarioPreferenciaInicio || "",
         estado: normalizarEstadoActividad(actividad.estado),
         ubicacion: this.mapearUbicacion(actividad.ubicacion),
         predecesoras: (actividad.predecesoras || []).map(
@@ -839,6 +1300,11 @@ export default {
 
       this.errores = {};
       this.seccionErrores = {};
+      this.idRequerimientoConVinculos = null;
+      this.bloqueosEstado = [];
+      this.requerimientosOriginales = this.form.requerimientos.map((item) =>
+        JSON.parse(JSON.stringify(item))
+      );
     },
     mapearRequerimiento(requerimiento) {
       this.siguienteUid += 1;
@@ -848,6 +1314,7 @@ export default {
         cantidad: requerimiento.cantidad,
         idProfesion: requerimiento.idProfesion,
         descripcion: requerimiento.descripcion || "",
+        protegido: requerimiento.protegido === true,
         caracteristicas: (requerimiento.caracteristicas || []).map((carac) => ({
           idCaracteristica: carac.idCaracteristica,
           valorMin: carac.valorMin ?? null,
@@ -1000,7 +1467,7 @@ export default {
     },
     abrirEditarRequerimiento(indice) {
       const requerimiento = this.form.requerimientos[indice];
-      if (!requerimiento) return;
+      if (!requerimiento || requerimiento.protegido === true) return;
 
       this.indiceRequerimientoEnEdicion = indice;
       this.indiceDraft = indice;
@@ -1057,6 +1524,8 @@ export default {
       }
     },
     quitarRequerimiento(indice) {
+      const requerimiento = this.form.requerimientos[indice];
+      if (!requerimiento || requerimiento.protegido === true) return;
       this.form.requerimientos.splice(indice, 1);
 
       const errores = {};
@@ -1111,14 +1580,6 @@ export default {
       }
       return relativos;
     },
-    estiloEstado(estado) {
-      const colores = coloresEstadoActividad(estado);
-      return {
-        backgroundColor: colores.fondo,
-        color: colores.texto,
-        borderColor: colores.borde,
-      };
-    },
     etiquetaEstadoActividad(estado) {
       return etiquetaEstadoActividad(estado);
     },
@@ -1126,7 +1587,13 @@ export default {
       return formatearDuracionMinutos(minutos);
     },
     guardar() {
-      if (this.guardando || this.errorBloqueante) return;
+      if (this.guardando || this.cambiandoEstado || this.errorBloqueante) return;
+
+      // El estado se cambia sólo por PATCH. El PUT siempre envía el estado
+      // actual sin modificarlo.
+      if (this.actividad) {
+        this.form.estado = normalizarEstadoActividad(this.actividad.estado);
+      }
 
       this.mensajeError = "";
       this.errores = {};
@@ -1154,31 +1621,219 @@ export default {
         return;
       }
 
-      if (
-        [ESTADOS_ACTIVIDAD.FINALIZADA, ESTADOS_ACTIVIDAD.CANCELADA].includes(
-          this.form.estado
-        )
-      ) {
+      this.ejecutarGuardado();
+    },
+    puedeEjecutarAccion(accion) {
+      return puedeEjecutarAccionEstado(accion, this.actividad, {
+        puedeModificar: this.puedeModificarActividad,
+        predecesorasBloqueantes: this.predecesorasBloqueantes,
+      });
+    },
+    motivoAccion(accion) {
+      return motivoAccionNoDisponible(accion, this.actividad, {
+        puedeModificar: this.puedeModificarActividad,
+        predecesorasBloqueantes: this.predecesorasBloqueantes,
+      });
+    },
+    solicitarCambioEstado(accion) {
+      if (this.guardando || this.cambiandoEstado) return;
+      if (!this.puedeEjecutarAccion(accion)) return;
+
+      const estadoDestino = estadoDestinoDeAccion(accion);
+      if (!estadoDestino) return;
+
+      this.accionEstado = accion;
+      this.estadoDestino = estadoDestino;
+      this.mensajeError = "";
+      this.bloqueosEstado = [];
+
+      // Iniciar y finalizar se aplican directo desde la tarjeta de estado.
+      // Cancelar es irreversible y conserva la confirmación explícita.
+      if (accion === ACCIONES_ESTADO.CANCELAR) {
         this.modalEstadoVisible = true;
         return;
       }
 
-      this.ejecutarGuardado();
+      this.ejecutarCambioEstado();
+    },
+    verPredecesora(predecesora) {
+      const idActividad = predecesora?.idActividad;
+      if (idActividad == null) return;
+      this.$router.push({
+        name: "modificar-actividad",
+        params: { id: this.idProyecto, idActividad },
+      });
     },
     cancelarConfirmacionEstado() {
-      if (this.guardando) return;
+      if (this.cambiandoEstado) return;
       this.modalEstadoVisible = false;
+      this.accionEstado = null;
+      this.estadoDestino = null;
+      this.bloqueosEstado = [];
       this.mensajeError = "";
     },
     confirmarCambioEstado() {
-      if (this.guardando) return;
-      this.ejecutarGuardado();
+      if (this.cambiandoEstado) return;
+      this.ejecutarCambioEstado();
+    },
+    async ejecutarCambioEstado() {
+      if (this.cambiandoEstado || !this.estadoDestino) return;
+
+      this.cambiandoEstado = true;
+      this.mensajeError = "";
+      this.bloqueosEstado = [];
+      if (controladorEstado) controladorEstado.abort();
+      controladorEstado = new AbortController();
+
+      try {
+        const response = await actividadService.cambiarEstado(
+          this.idProyecto,
+          this.idActividad,
+          this.estadoDestino,
+          controladorEstado.signal
+        );
+
+        const actividad = response?.data || null;
+        if (actividad) {
+          this.actividad = actividad;
+          this.form.estado = normalizarEstadoActividad(actividad.estado);
+        }
+
+        this.modalEstadoVisible = false;
+        this.toast.init({
+          title: "Estado actualizado",
+          message: mensajeExitoCambioEstado(this.accionEstado, actividad),
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        await this.refrescarNotificaciones();
+        this.$router.push({
+          name: "dashboard-proyecto",
+          params: { id: this.idProyecto },
+          query: {
+            tab: "planificacion",
+            editada: actividad?.idActividad ?? this.idActividad,
+          },
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorCambioEstado(error);
+      } finally {
+        this.cambiandoEstado = false;
+      }
+    },
+    async manejarErrorCambioEstado(error) {
+      const clasificacion = clasificarErrorCambioEstado(error);
+      const { tipo, mensaje, bloqueos } = clasificacion;
+
+      this.bloqueosEstado = Array.isArray(bloqueos) ? bloqueos : [];
+
+      if (
+        tipo === TIPOS_ERROR_CAMBIO_ESTADO.SESION ||
+        tipo === TIPOS_ERROR_CAMBIO_ESTADO.CUENTA
+      ) {
+        this.mensajeError = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_CAMBIO_ESTADO.PERMISO) {
+        this.errorBloqueante = mensaje;
+        this.modalEstadoVisible = false;
+        this.accionEstado = null;
+        this.estadoDestino = null;
+        this.bloqueosEstado = [];
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_CAMBIO_ESTADO.NO_ENCONTRADO) {
+        this.modalEstadoVisible = false;
+        this.accionEstado = null;
+        this.estadoDestino = null;
+        this.bloqueosEstado = [];
+        await this.cargar();
+        if (!this.errorCarga) this.mensajeError = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_CAMBIO_ESTADO.BLOQUEO) {
+        this.mensajeError = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_CAMBIO_ESTADO.PREDECESORAS) {
+        this.modalEstadoVisible = false;
+        this.accionEstado = null;
+        this.estadoDestino = null;
+        this.mensajeError = mensaje;
+        await this.cargarActividades();
+        return;
+      }
+
+      if (
+        [
+          TIPOS_ERROR_CAMBIO_ESTADO.TRANSICION,
+          TIPOS_ERROR_CAMBIO_ESTADO.SIN_AGENDA,
+          TIPOS_ERROR_CAMBIO_ESTADO.ESTADO_INMUTABLE,
+          TIPOS_ERROR_CAMBIO_ESTADO.PROYECTO_ESTADO,
+        ].includes(tipo)
+      ) {
+        this.modalEstadoVisible = false;
+        this.accionEstado = null;
+        this.estadoDestino = null;
+        await this.cargar();
+        if (!this.errorBloqueante) this.mensajeError = mensaje;
+        return;
+      }
+
+      this.mensajeError = mensaje;
+    },
+    esProtegido(requerimiento) {
+      return esRequerimientoProtegido(requerimiento);
+    },
+    esRequerimientoConVinculos(requerimiento) {
+      return (
+        this.idRequerimientoConVinculos != null &&
+        String(requerimiento?.idRequerimiento) ===
+          String(this.idRequerimientoConVinculos)
+      );
+    },
+    descartarCambiosRequerimiento(requerimiento) {
+      const id = requerimiento?.idRequerimiento;
+      if (id == null) return;
+
+      const original = this.requerimientosOriginales.find(
+        (item) => String(item.idRequerimiento) === String(id)
+      );
+      if (!original) return;
+
+      const indice = this.form.requerimientos.findIndex(
+        (item) => String(item.idRequerimiento) === String(id)
+      );
+      if (indice < 0) return;
+
+      this.form.requerimientos.splice(
+        indice,
+        1,
+        JSON.parse(JSON.stringify(original))
+      );
+      this.idRequerimientoConVinculos = null;
+      this.mensajeError = "";
+    },
+    async refrescarNotificaciones() {
+      const idPerfil = idPerfilActivo();
+      if (idPerfil != null) await cargarResumenPerfil(idPerfil);
     },
     async ejecutarGuardado() {
-      if (this.guardando) return;
+      if (this.guardando || this.cambiandoEstado) return;
 
       this.guardando = true;
       this.mensajeError = "";
+      this.bloqueosEstado = [];
+      this.idRequerimientoConVinculos = null;
 
       if (controladorGuardado) controladorGuardado.abort();
       controladorGuardado = new AbortController();
@@ -1192,21 +1847,32 @@ export default {
         );
 
         const actividad = response?.data;
+        const estadoCronograma = actividad?.estadoCronograma;
+        const conflicto =
+          estadoCronograma === ESTADOS_CRONOGRAMA.CONFLICTO;
         const alerta =
-          actividad?.estadoCronograma === ESTADOS_CRONOGRAMA.ALERTA_DESBORDE;
+          !conflicto &&
+          estadoCronograma === ESTADOS_CRONOGRAMA.ALERTA_DESBORDE;
 
-        this.modalEstadoVisible = false;
+        this.idRequerimientoConVinculos = null;
 
         this.toast.init({
-          title: alerta ? "Actividad modificada con alerta" : "Actividad modificada",
-          message: alerta
-            ? "Los cambios se guardaron, pero el cronograma supera la fecha de entrega del proyecto."
-            : "La actividad se actualizó y el cronograma fue recalculado.",
-          color: alerta ? "warning" : "success",
+          title: conflicto
+            ? "Actividad modificada con conflicto"
+            : alerta
+              ? "Actividad modificada con alerta"
+              : "Actividad modificada",
+          message: conflicto
+            ? "Los cambios se guardaron, pero el cronograma tiene conflictos estructurales. Revisá la planificación."
+            : alerta
+              ? "Los cambios se guardaron, pero el cronograma supera la fecha de entrega del proyecto."
+              : "La actividad se actualizó y el cronograma fue recalculado.",
+          color: conflicto ? "danger" : alerta ? "warning" : "success",
           position: "top-right",
-          duration: alerta ? 8000 : 5000,
+          duration: conflicto || alerta ? 8000 : 5000,
         });
 
+        await this.refrescarNotificaciones();
         this.$router.push({
           name: "dashboard-proyecto",
           params: { id: this.idProyecto },
@@ -1292,7 +1958,10 @@ export default {
 
       if (status === 400) {
         if (data.errores && typeof data.errores === "object") {
-          this.errores = mapearErroresActividad(data.errores);
+          this.errores = mapearErroresActividad(
+            data.errores,
+            this.form.requerimientos
+          );
           const tieneRequerimientos = Object.keys(this.errores).some((clave) =>
             clave.startsWith("requerimientos.")
           );
@@ -1394,6 +2063,25 @@ export default {
       }
 
       if (status === 409) {
+        if (esErrorRequerimientoConVinculos(error)) {
+          const idRequerimiento = idRequerimientoConVinculos(error);
+          this.idRequerimientoConVinculos = idRequerimiento;
+          this.bloqueosEstado = [];
+          this.mensajeError = mensajeErrorRequerimientoConVinculos(
+            idRequerimiento
+          );
+          this.modalEstadoVisible = false;
+          this.$nextTick(() => {
+            const elemento = document.getElementById(
+              `requerimiento-${idRequerimiento ?? ""}`
+            );
+            if (elemento) {
+              elemento.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          });
+          return;
+        }
+
         if (
           clasificacion?.tipo === "perfil-baja" ||
           /perfil.*(baja|inactiv|no se encuentra activo)/i.test(mensaje)
@@ -1414,14 +2102,6 @@ export default {
           return;
         }
 
-        if (/v[ií]nculo|postulaci|invitaci/i.test(mensaje)) {
-          this.errorBloqueante =
-            mensaje ||
-            "No se puede guardar la actividad porque uno de sus requerimientos tiene postulaciones o invitaciones asociadas. Resolvé esos vínculos antes de editar la actividad.";
-          this.modalEstadoVisible = false;
-          return;
-        }
-
         if (/ciclo/i.test(mensaje)) {
           this.mensajeError = `${mensaje} Revisá las predecesoras seleccionadas.`;
           this.modalEstadoVisible = false;
@@ -1429,11 +2109,20 @@ export default {
           return;
         }
 
-        if (/transici|estado destino|no puede pasar/i.test(mensaje)) {
-          this.errores = { ...this.errores, estado: mensaje };
-          this.mensajeError = "Revisá el estado seleccionado.";
+        if (/predecesor/i.test(mensaje)) {
+          this.mensajeError =
+            mensaje ||
+            "Primero deben finalizar las predecesoras de la actividad.";
+          this.bloqueosEstado = [];
           this.modalEstadoVisible = false;
-          this.enfocarPrimerError();
+          await this.cargarActividades();
+          return;
+        }
+
+        if (/transici|estado destino|no puede pasar/i.test(mensaje)) {
+          this.mensajeError =
+            mensaje || "El estado actual de la actividad no permite guardar.";
+          this.modalEstadoVisible = false;
           return;
         }
 
@@ -1484,10 +2173,6 @@ export default {
           this.$refs.duracionInput?.focus?.();
           return;
         }
-        if (claves.includes("estado")) {
-          this.$refs.estadoSelect?.focus?.();
-          return;
-        }
         if (claves.some((clave) => clave.startsWith("requerimientos."))) {
           this.$refs.requerimientosRef?.scrollIntoView({
             behavior: "smooth",
@@ -1506,9 +2191,7 @@ export default {
       this.$router.push({
         name: "dashboard-proyecto",
         params: { id: this.idProyecto },
-        query: {
-          tab: tab === "planificacion" ? "planificacion" : "informacion",
-        },
+        query: tab === "informacion" ? {} : { tab },
       });
     },
     irAModificarProyecto() {
@@ -1572,14 +2255,196 @@ export default {
   font-size: 0.86rem;
 }
 
-.modificar-actividad__estado-actual {
-  display: inline-block;
-  padding: 0.2rem 0.65rem;
-  border: 1px solid;
+.modificar-actividad__estado-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.modificar-actividad__estado-card-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modificar-actividad__estado-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modificar-actividad__estado-label {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.modificar-actividad__estado-valor {
+  color: var(--color-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.modificar-actividad__estado-card-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.modificar-actividad__estado-btn-principal {
   border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 600;
-  white-space: nowrap;
+  padding-inline: 1.3rem;
+}
+
+.modificar-actividad__estado-mas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.modificar-actividad__estado-mas:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.modificar-actividad__estado-mas:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.modificar-actividad__estado-menu-item--peligro {
+  color: var(--va-danger);
+}
+
+.modificar-actividad__stepper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.modificar-actividad__stepper-paso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.modificar-actividad__stepper-circulo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.modificar-actividad__stepper-paso--completado .modificar-actividad__stepper-circulo {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.modificar-actividad__stepper-paso--completado .modificar-actividad__stepper-circulo .material-symbols-outlined {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.modificar-actividad__stepper-paso--completado .modificar-actividad__stepper-etiqueta {
+  color: var(--color-text);
+}
+
+.modificar-actividad__stepper-paso--actual .modificar-actividad__stepper-circulo {
+  border-color: var(--color-primary);
+}
+
+.modificar-actividad__stepper-paso--actual .modificar-actividad__stepper-etiqueta {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.modificar-actividad__stepper-punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+.modificar-actividad__stepper-linea {
+  flex: 1 1 60px;
+  height: 2px;
+  min-width: 24px;
+  margin: 0 0.65rem;
+  background: var(--color-border-strong);
+}
+
+.modificar-actividad__stepper-linea--completada {
+  background: var(--color-primary);
+}
+
+.modificar-actividad__aviso-estado {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 10px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.modificar-actividad__aviso-estado .material-symbols-outlined {
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+}
+
+.modificar-actividad__aviso-estado-texto {
+  flex: 1;
+  margin: 0;
+}
+
+.modificar-actividad__aviso-estado-link {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modificar-actividad__aviso-estado-link:hover {
+  text-decoration: underline;
+}
+
+.modificar-actividad__estado-ayuda {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .modificar-actividad__layout {
@@ -1680,6 +2545,11 @@ export default {
   box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
 }
 
+.modificar-actividad__unidad-boton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .modificar-actividad__error {
   margin: -0.35rem 0 0;
   color: var(--color-danger-text);
@@ -1703,6 +2573,44 @@ export default {
   border: 1px solid var(--color-border-soft);
   border-radius: 8px;
   background: var(--color-surface-muted);
+}
+
+.modificar-actividad__requerimiento--protegido {
+  border-color: var(--color-warning-border);
+}
+
+.modificar-actividad__requerimiento--resaltado {
+  border-color: var(--color-danger-border);
+  box-shadow: 0 0 0 2px var(--color-danger-soft);
+}
+
+.modificar-actividad__badge-protegido {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.modificar-actividad__requerimiento-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 7px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+  font-size: 0.78rem;
+}
+
+.modificar-actividad__requerimiento-error p {
+  margin: 0;
 }
 
 .modificar-actividad__requerimiento-cabecera {
@@ -1802,6 +2710,45 @@ export default {
   font-size: 0.78rem;
   font-weight: 600;
   text-align: right;
+}
+
+.modificar-actividad__resumen-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.modificar-actividad__resumen-chip {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: 999px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.modificar-actividad__resumen-conflicto {
+  margin: 0.55rem 0 0;
+  color: var(--color-danger-text);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.modificar-actividad__resumen-aviso {
+  margin: 0.55rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 8px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.72rem;
+  line-height: 1.4;
 }
 
 .modificar-actividad__resumen-fechas {
@@ -1912,6 +2859,39 @@ export default {
 
   .modificar-actividad__resumen {
     position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .modificar-actividad__estado-card-cabecera {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modificar-actividad__estado-card-acciones {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .modificar-actividad__stepper {
+    flex-wrap: wrap;
+    row-gap: 0.6rem;
+  }
+
+  .modificar-actividad__stepper-linea {
+    flex-basis: 30px;
+  }
+
+  .modificar-actividad__aviso-estado {
+    flex-wrap: wrap;
+  }
+
+  .modificar-actividad__aviso-estado-texto {
+    flex-basis: calc(100% - 2rem);
+  }
+
+  .modificar-actividad__aviso-estado-link {
+    margin-left: 1.7rem;
   }
 }
 

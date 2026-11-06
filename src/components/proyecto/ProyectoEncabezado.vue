@@ -5,6 +5,12 @@
         <div class="proyecto-encabezado__titular">
           <h1 class="proyecto-encabezado__nombre">{{ proyecto.nombre }}</h1>
           <EstadoProyectoBadge :estado="proyecto.estado" />
+          <span
+            v-if="proyecto.finalizacionPrematura"
+            class="proyecto-encabezado__badge-prematura"
+          >
+            Finalizado anticipadamente
+          </span>
         </div>
 
         <p v-if="proyecto.descripcion" class="proyecto-encabezado__descripcion">
@@ -35,6 +41,15 @@
         @click="$emit('cambiar-tab', tab.id)"
       >
         {{ tab.label }}
+        <span v-if="tab.badge" class="proyecto-encabezado__badge">
+          {{ tab.badge }}
+        </span>
+        <span
+          v-if="tab.alerta"
+          class="proyecto-encabezado__alerta"
+          title="Hay procesos de reemplazo sin candidatos"
+          aria-label="Hay procesos de reemplazo sin candidatos"
+        ></span>
       </button>
     </nav>
   </section>
@@ -67,6 +82,36 @@ export default {
       type: Boolean,
       default: true,
     },
+    /** Pestaña de postulaciones: personal requerido o gestión según el rol. */
+    mostrarPostulaciones: {
+      type: Boolean,
+      default: true,
+    },
+    /** Pestaña Miembros (UC-38/UC-40). Sólo miembros activos. */
+    mostrarIntegrantes: {
+      type: Boolean,
+      default: false,
+    },
+    /** Pestaña Historial. Sólo para directores del proyecto. */
+    mostrarHistorial: {
+      type: Boolean,
+      default: false,
+    },
+    /** Pestaña Reemplazos. Sólo para el Director activo. */
+    mostrarReemplazos: {
+      type: Boolean,
+      default: false,
+    },
+    /** Procesos que requieren una acción del director. */
+    reemplazosPendientes: {
+      type: Number,
+      default: 0,
+    },
+    /** Procesos sin candidatos: aviso separado del badge de acciones. */
+    reemplazosSinCandidatos: {
+      type: Number,
+      default: 0,
+    },
     /** Texto opcional; si no llega, se compone con rol, privacidad, ubicación y entrega. */
     subtitulo: {
       type: String,
@@ -79,6 +124,27 @@ export default {
       const tabs = [{ id: "informacion", label: "Información general" }];
       if (this.mostrarPlanificacion) {
         tabs.push({ id: "planificacion", label: "Planificación" });
+      }
+      if (this.mostrarIntegrantes) {
+        tabs.push({ id: "integrantes", label: "Miembros" });
+      }
+      if (this.mostrarHistorial) {
+        tabs.push({ id: "historial", label: "Historial" });
+      }
+      if (this.mostrarReemplazos) {
+        tabs.push({
+          id: "reemplazos",
+          label: "Reemplazos",
+          badge: this.reemplazosPendientes || null,
+          alerta: this.reemplazosSinCandidatos > 0,
+        });
+      }
+      if (this.mostrarPostulaciones) {
+        tabs.push({
+          id: "postulaciones",
+          label: "Postulaciones",
+          badge: this.proyecto?.postulacionesPendientes,
+        });
       }
       return tabs;
     },
@@ -159,6 +225,17 @@ export default {
   color: var(--color-text);
 }
 
+.proyecto-encabezado__badge-prematura {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--color-warning-border, var(--color-border));
+  border-radius: 999px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .proyecto-encabezado__descripcion {
   margin: 0.6rem 0 0;
   font-size: 0.9rem;
@@ -190,6 +267,9 @@ export default {
 }
 
 .proyecto-encabezado__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.8rem 0.1rem 0.7rem;
   border: 0;
   border-bottom: 3px solid transparent;
@@ -200,6 +280,29 @@ export default {
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.proyecto-encabezado__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.32rem;
+  border-radius: 999px;
+  background: var(--color-danger-fill);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.proyecto-encabezado__alerta {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-warning-text);
+  box-shadow: 0 0 0 2px var(--color-warning-soft);
 }
 
 .proyecto-encabezado__tab:hover {

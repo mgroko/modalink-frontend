@@ -20,6 +20,13 @@ function aNumeroONull(valor) {
   return Number.isFinite(numero) ? numero : null;
 }
 
+function validarHorarioPreferencia(valor) {
+  if (!presente(valor)) return null;
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(valor))
+    ? null
+    : "El horario preferido debe tener formato HH:mm.";
+}
+
 export function normalizarNombreActividad(nombre) {
   return String(nombre || "").trim().toLocaleLowerCase();
 }
@@ -63,8 +70,11 @@ export function validarActividad(form, catalogosPorProfesion = {}, actividades =
   }
 
   if (!Object.values(UNIDADES_DURACION).includes(form?.unidadDuracion)) {
-    campos.unidadDuracion = "Seleccioná una unidad de duración válida.";
+    campos.unidadDuracion = "Seleccioná Horas o Minutos.";
   }
+
+  const errorHorario = validarHorarioPreferencia(form?.horarioPreferenciaInicio);
+  if (errorHorario) campos.horarioPreferenciaInicio = errorHorario;
 
   if (form?.ubicacion?.provinciaId && !form?.ubicacion?.localidadId) {
     campos.ubicacion = "Seleccioná una localidad para la provincia elegida.";
@@ -76,6 +86,10 @@ export function validarActividad(form, catalogosPorProfesion = {}, actividades =
 
   const mensajesRequerimiento = [];
   (form?.requerimientos || []).forEach((requerimiento, i) => {
+    // Un requerimiento protegido es inmutable: no debe bloquear el formulario
+    // ni generar errores que el usuario no puede corregir.
+    if (requerimiento?.protegido === true) return;
+
     const { campos: camposReq, seccion } = validarRequerimiento(
       requerimiento,
       catalogosPorProfesion[requerimiento.idProfesion]
@@ -149,7 +163,7 @@ export function validarActividadEdicion(
 }
 
 /**
- * Unicidad anticipada del nombre dentro de la planificación (409 backend).
+ * Unicidad anticipada del nombre dentro de la planificación (409 del sistema).
  * @param {string} nombre
  * @param {Array<{idActividad?:number,nombre:string}>} actividades
  * @param {number|string|null} [idExcluido] actividad que se está editando
@@ -217,15 +231,51 @@ export function validarPredecesoras(
 }
 
 /**
- * Normaliza las claves de `data.errores` de un 400 de UC-49.
+ * Índices de los requerimientos que realmente viajan en el PUT, en el orden
+ * del payload. Los protegidos se omiten y no deben desplazar los errores del
+ * backend sobre los requerimientos visibles.
+ * @param {object[]} requerimientos
+ * @returns {number[]}
+ */
+export function indicesRequerimientosEnviados(requerimientos = []) {
+  const indices = [];
+  (Array.isArray(requerimientos) ? requerimientos : []).forEach(
+    (requerimiento, indice) => {
+      if (requerimiento?.protegido !== true) indices.push(indice);
+    }
+  );
+  return indices;
+}
+
+/**
+ * Normaliza las claves de `data.errores` de un 400 de UC-49/UC-50.
+ * Si se pasan los requerimientos del formulario, remapea los índices del
+ * payload (sin protegidos) a los índices visibles.
  * @param {Record<string,string>} errores
+ * @param {object[]|null} [requerimientos]
  * @returns {Record<string,string>}
  */
-export function mapearErroresActividad(errores) {
+export function mapearErroresActividad(errores, requerimientos = null) {
   if (!errores || typeof errores !== "object") return {};
+  const indices = requerimientos
+    ? indicesRequerimientosEnviados(requerimientos)
+    : null;
   const mapeados = {};
   for (const [clave, mensaje] of Object.entries(errores)) {
-    if (mensaje) mapeados[normalizarClaveCampo(clave)] = mensaje;
+    if (!mensaje) continue;
+
+    let normalizada = normalizarClaveCampo(clave);
+    if (indices) {
+      const match = /^requerimientos\.(\d+)\.(.+)$/.exec(normalizada);
+      if (match) {
+        const indiceVisible = indices[Number(match[1])];
+        if (indiceVisible != null) {
+          normalizada = `requerimientos.${indiceVisible}.${match[2]}`;
+        }
+      }
+    }
+
+    mapeados[normalizada] = mensaje;
   }
   return mapeados;
 }
@@ -240,6 +290,9 @@ export function buildActividadRequest(form) {
     nombre: String(form?.nombre || "").trim(),
     duracion: Number(form?.duracion),
     unidadDuracion: form?.unidadDuracion,
+    horarioPreferenciaInicio: presente(form?.horarioPreferenciaInicio)
+      ? String(form.horarioPreferenciaInicio)
+      : null,
   };
 
   const descripcion = String(form?.descripcion || "").trim();
@@ -307,34 +360,41 @@ export function buildModificarActividadRequest(form) {
     .map((id) => Number(id))
     .filter((id) => Number.isFinite(id));
 
-  const requerimientos = (form?.requerimientos || []).map((requerimiento) => {
-    const item = {
-      cantidad: Number(requerimiento.cantidad),
-      idProfesion: requerimiento.idProfesion,
-      descripcion: String(requerimiento.descripcion || "").trim() || null,
-      caracteristicas: (requerimiento.caracteristicas || []).map((carac) => ({
-        idCaracteristica: carac.idCaracteristica,
-        valorMin: aNumeroONull(carac.valorMin),
-        valorMax: aNumeroONull(carac.valorMax),
-        valores: Array.isArray(carac.valores) ? carac.valores : [],
-      })),
-      habilidades: Array.isArray(requerimiento.habilidades)
-        ? requerimiento.habilidades
-        : [],
-    };
+  const requerimientos = (form?.requerimientos || [])
+    // Los protegidos se omiten: el backend los conserva. Un no protegido
+    // omitido sí se eliminaría, por eso el resto se envía completo.
+    .filter((requerimiento) => requerimiento?.protegido !== true)
+    .map((requerimiento) => {
+      const item = {
+        cantidad: Number(requerimiento.cantidad),
+        idProfesion: requerimiento.idProfesion,
+        descripcion: String(requerimiento.descripcion || "").trim() || null,
+        caracteristicas: (requerimiento.caracteristicas || []).map((carac) => ({
+          idCaracteristica: carac.idCaracteristica,
+          valorMin: aNumeroONull(carac.valorMin),
+          valorMax: aNumeroONull(carac.valorMax),
+          valores: Array.isArray(carac.valores) ? carac.valores : [],
+        })),
+        habilidades: Array.isArray(requerimiento.habilidades)
+          ? requerimiento.habilidades
+          : [],
+      };
 
-    if (requerimiento.idRequerimiento != null) {
-      item.idRequerimiento = requerimiento.idRequerimiento;
-    }
+      if (requerimiento.idRequerimiento != null) {
+        item.idRequerimiento = requerimiento.idRequerimiento;
+      }
 
-    return item;
-  });
+      return item;
+    });
 
   return {
     nombre: String(form?.nombre || "").trim(),
     descripcion: descripcion || null,
     duracion: Number(form?.duracion),
     unidadDuracion: form?.unidadDuracion,
+    horarioPreferenciaInicio: presente(form?.horarioPreferenciaInicio)
+      ? String(form.horarioPreferenciaInicio)
+      : null,
     ubicacion,
     predecesoras,
     requerimientos,

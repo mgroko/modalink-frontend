@@ -1,4 +1,4 @@
-import http from "./http";
+import http, { API_BASE_URL } from "./http";
 
 const authService = {
 
@@ -20,8 +20,19 @@ const authService = {
     return http.post("/auth/registro", datosUsuario);
   },
 
-  recuperarPassword(correo) {
-  return http.post('/auth/recuperar-password', { correo });
+  // Redirige al backend, que inicia el flujo OAuth2 con Google.
+  iniciarSesionGoogle() {
+    window.location.href = `${API_BASE_URL}/auth/google`;
+  },
+
+  // Datos de Google para prellenar el onboarding (ticket en cookie HttpOnly).
+  obtenerRegistroPendienteGoogle() {
+    return http.get("/auth/google/pendiente");
+  },
+
+  // Completa DNI, fecha de nacimiento y género; el backend emite el JWT.
+  completarRegistroGoogle(datos) {
+    return http.post("/auth/google/completar", datos);
   },
 
   cerrarSesion() {

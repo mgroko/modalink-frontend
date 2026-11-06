@@ -3,7 +3,7 @@
     <VaButton
       v-if="esPropio"
       block
-      icon="mso-calendar_month"
+      icon="mso-edit_calendar"
       @click="$emit('cambiar-seccion', 'calendario')"
     >
       Gestionar agenda
@@ -19,6 +19,9 @@
       >
         <span class="material-symbols-outlined">{{ item.icono }}</span>
         <span>{{ item.label }}</span>
+        <span v-if="item.contador > 0" class="perfil-nav__badge">
+          {{ item.contador }}
+        </span>
       </button>
 
       <button
@@ -52,7 +55,7 @@
     </div>
 
     <VaButton
-      v-if="!esPropio"
+      v-if="!esPropio && puedeReportar"
       color="danger"
       size="small"
       block
@@ -65,10 +68,17 @@
 </template>
 
 <script>
+import { state as invitacionState } from "../../services/invitacionState";
+
 export default {
   name: "PerfilSidebarNav",
   props: {
     esPropio: {
+      type: Boolean,
+      default: true,
+    },
+    /** Oculta la acción para administradores (UC-15). */
+    puedeReportar: {
       type: Boolean,
       default: true,
     },
@@ -77,21 +87,36 @@ export default {
       default: "publicaciones",
     },
   },
-  emits: ["cambiar-seccion", "navegar-ruta", "cerrar-sesion", "conectar", "mensaje", "reportar"],
+  emits: [
+    "cambiar-seccion",
+    "navegar-ruta",
+    "cerrar-sesion",
+    "conectar",
+    "mensaje",
+    "reportar",
+    "funcionalidad-no-disponible",
+  ],
   computed: {
     itemsVisibles() {
       const itemsPropio = [
-        { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
         { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "proyectos-inicio" },
+        {
+          key: "invitaciones",
+          label: "Invitaciones",
+          icono: "mail",
+          tipo: "ruta",
+          ruta: "invitaciones",
+          contador: invitacionState.pendientesRecibidas,
+        },
         { key: "resenas", label: "Reseñas", icono: "star", tipo: "seccion" },
-        { key: "mi-red", label: "Mi red", icono: "group", tipo: "ruta" },
-        { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "modificar-datos" },
-        { key: "panel", label: "Panel de usuario", icono: "person", tipo: "ruta", ruta: "dashboard-usuario" },
+        { key: "mi-red", label: "Mi red", icono: "group", tipo: "no-disponible" },
+        { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "ajustes-perfil-inicio" },
+        { key: "panel", label: "Panel de usuario", icono: "space_dashboard", tipo: "ruta", ruta: "dashboard-usuario" },
       ];
 
       const itemsAjeno = [
-        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "seccion" },
-        { key: "participaciones", label: "Participaciones", icono: "groups", tipo: "seccion" },
+        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "no-disponible" },
+        { key: "participaciones", label: "Participaciones", icono: "groups", tipo: "no-disponible" },
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
       ];
 
@@ -102,10 +127,10 @@ export default {
     navegar(item) {
       if (item.tipo === "seccion") {
         this.$emit("cambiar-seccion", item.key);
-      } else if (item.ruta) {
+      } else if (item.tipo === "ruta" && item.ruta) {
         this.$emit("navegar-ruta", item.ruta);
       } else {
-        this.$emit("navegar-ruta", null);
+        this.$emit("funcionalidad-no-disponible", item.label || "");
       }
     },
   },
@@ -160,6 +185,22 @@ export default {
 .perfil-nav__item .material-symbols-outlined {
   font-size: 1.15rem;
   color: var(--color-text-muted);
+}
+
+.perfil-nav__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--color-danger-fill);
+  color: var(--color-on-primary);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .perfil-nav__item--activo .material-symbols-outlined {

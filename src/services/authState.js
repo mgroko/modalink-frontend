@@ -26,6 +26,10 @@ function idPerfilActivo() {
   return state.usuario?.idPerfilActivo ?? null;
 }
 
+function idUsuarioActivo() {
+  return state.usuario?.idUsuario ?? null;
+}
+
 function esAdmin() {
   return state.usuario?.rolGlobal === "Administrador";
 }
@@ -37,6 +41,10 @@ const PERMISOS_ADMIN = [
   "CREAR_CARACTERISTICA",
   "MODIFICAR_CARACTERISTICA",
   "ELIMINAR_CARACTERISTICA",
+  "VER_HABILIDADES",
+  "CREAR_HABILIDAD",
+  "MODIFICAR_HABILIDAD",
+  "ELIMINAR_HABILIDAD",
   "ADMINISTRAR_CONFIGURACION",
   "VER_USUARIOS",
 ];
@@ -47,7 +55,7 @@ function permisosGlobales() {
   if (valor && typeof valor === "object") {
     return Object.values(valor).flat().filter(Boolean);
   }
-  // Si el backend no envía permisos (solo rol), se derivan del rol.
+  // Si el sistema no envía permisos (solo rol), se derivan del rol.
   if (esAdmin()) return PERMISOS_ADMIN;
   return [];
 }
@@ -100,7 +108,7 @@ function limpiarSesion() {
   restauracionEnCurso = null;
 }
 
-// Termina la sesión completa: invalida la cookie JWT en el backend
+// Termina la sesión completa: invalida la cookie JWT en el sistema
 // (POST /auth/logout) y limpia el estado local. El logout es best-effort:
 // si falla la red o no hay sesión, el estado local igual se limpia.
 async function finalizarSesion() {
@@ -145,4 +153,4 @@ function limpiarBajaCuenta() {
   }
 }
 
-export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion, finalizarSesion, guardarBajaCuenta, consumirAvisoBajaCuenta, limpiarBajaCuenta };
+export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, idUsuarioActivo, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion, finalizarSesion, guardarBajaCuenta, consumirAvisoBajaCuenta, limpiarBajaCuenta };

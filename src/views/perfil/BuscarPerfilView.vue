@@ -714,7 +714,7 @@ export default {
     /**
      * Filtros explícitos del panel (sin texto libre ni paginación).
      * Se aplican a la ruta simple y a cada variante del fan-out,
-     * de modo que el AND del backend sigue respetándose por request.
+     * de modo que el AND del sistema sigue respetándose por request.
      */
     buildParamsBase() {
       const params = {};
@@ -759,7 +759,7 @@ export default {
     /**
      * Filtros explícitos del tab de proyectos (sin texto libre ni paginación).
      * El estado se aplica a la ruta simple y a cada variante del fan-out,
-     * de modo que el AND del backend sigue respetándose por request.
+     * de modo que el AND del sistema sigue respetándose por request.
      */
     buildParamsProyectoBase() {
       const params = {};
@@ -830,7 +830,7 @@ export default {
       return resolucion;
     },
     /**
-     * El backend combina los filtros con AND, así que la unión OR del texto
+     * El sistema combina los filtros con AND, así que la unión OR del texto
      * libre se resuelve disparando una variante por campo (todas con
      * todos=true: la paginación se resuelve después sobre el merge).
      * Si el panel ya ocupó la clave (nombre/apellido), esa variante se
@@ -851,7 +851,7 @@ export default {
     },
     /**
      * Une las respuestas de la tanda: dedupe por idPerfil y orden por
-     * nombreArtistico asc (replica el orden fijo que trae el backend).
+     * nombreArtistico asc (replica el orden fijo que trae el sistema).
      */
     combinarResultados(respuestas) {
       const vistos = new Map();
@@ -980,7 +980,7 @@ export default {
         let listado;
         if (this.claveResultados === clave) {
           // Mismo texto y mismos filtros: se reutiliza el merge (cambio de página
-          // o de tamaño no vuelve a llamar al backend).
+          // o de tamaño no vuelve a llamar al sistema).
           listado = this.resultadosCombinados;
         } else {
           const respuestas = await Promise.all(

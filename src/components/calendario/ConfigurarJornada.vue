@@ -17,9 +17,9 @@
         <VaInput
           v-model="margen"
           :rules="[reglas.requerido, reglas.margenMinimo]"
-          label="Margen de actividad (minutos)"
+          label="Margen total entre actividades (min)"
           type="number"
-          hint="Buffer aplicado antes y después de cada actividad de proyecto."
+          hint="Separación total entre el fin de una actividad y el inicio de la siguiente."
         />
       </div>
 
@@ -115,7 +115,14 @@
     <template #footer>
       <div class="configurar-jornada__modal-footer">
         <VaButton preset="secondary" @click="$emit('update:modelValue', false)">Cancelar</VaButton>
-        <VaButton color="primary" :loading="guardando" @click="guardar">Guardar jornada</VaButton>
+        <VaButton
+          color="primary"
+          :loading="guardando"
+          :disabled="margenBloqueado"
+          @click="guardar"
+        >
+          {{ guardando ? "Guardando y reprogramando…" : "Guardar jornada" }}
+        </VaButton>
       </div>
     </template>
   </VaModal>
@@ -148,6 +155,7 @@ export default {
   data() {
     return {
       margen: 30,
+      margenBloqueado: false,
       dias: [],
       guardando: false,
       mensajeError: "",
@@ -174,7 +182,17 @@ export default {
         return acc;
       }, {});
 
-      this.margen = this.jornada?.margenActividadMinutos ?? 30;
+      const margenLeido = this.jornada?.margenActividadMinutos;
+      // El backend siempre entrega una jornada configurada. Si el margen crudo
+      // viene nulo no se conoce el valor efectivo: no se puede conservar ni
+      // reemplazar sin definición de backend. Nunca enviar 30 ni 0 por defecto.
+      this.margenBloqueado = margenLeido == null || margenLeido === "";
+      this.margen = this.margenBloqueado ? "" : margenLeido;
+
+      if (this.margenBloqueado) {
+        this.mensajeError =
+          "No se puede guardar la jornada: falta definir el margen efectivo. Contactá al administrador.";
+      }
 
       this.dias = NOMBRES_DIAS.map((nombre, i) => {
         const diaSemana = i + 1;
@@ -230,6 +248,7 @@ export default {
       return null;
     },
     async guardar() {
+      if (this.margenBloqueado) return;
       const validado = await this.$refs.form.validate();
       if (!validado) return;
 
@@ -263,11 +282,12 @@ export default {
       this.guardando = true;
       this.mensajeError = "";
       try {
-        await calendarioService.configurarJornada({
+        const response = await calendarioService.configurarJornada({
           margenActividadMinutos: parseInt(this.margen, 10),
           dias,
         });
-        this.$emit("guardada");
+        // El padre muestra el resumen de `reprogramacion` y recarga las vistas.
+        this.$emit("guardada", response?.data || null);
       } catch (error) {
         this.mensajeError = mensajeErrorApi(error, "No se pudo guardar la jornada.");
       } finally {

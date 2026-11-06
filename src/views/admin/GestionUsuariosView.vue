@@ -521,6 +521,11 @@ export default {
       return;
     }
     await this.cargarUsuarios();
+
+    const idUsuario = Number(this.$route.query.usuario);
+    if (Number.isInteger(idUsuario) && idUsuario > 0) {
+      await this.abrirDetalle({ idUsuario });
+    }
   },
   beforeUnmount() {
     clearTimeout(this.debounceHandle);

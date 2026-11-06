@@ -22,7 +22,7 @@
       @update:model-value="onCambio"
     />
     <p v-if="!loading && options.length === 0" class="multi-habilidades__aviso">
-      El catálogo de habilidades aún no está disponible.
+      No hay habilidades disponibles en el catálogo.
     </p>
   </div>
 </template>

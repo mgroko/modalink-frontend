@@ -34,6 +34,11 @@
           :proyecto="proyecto"
           :tab-activa="tabActiva"
           :mostrar-planificacion="esMiembro"
+          :mostrar-integrantes="esMiembro"
+          :mostrar-historial="esDirector"
+          :mostrar-reemplazos="esDirector"
+          :reemplazos-pendientes="reemplazosPendientes"
+          :reemplazos-sin-candidatos="reemplazosSinCandidatos"
           @cambiar-tab="cambiarTab"
         >
           <template #acciones>
@@ -50,19 +55,34 @@
               v-if="puedePublicar"
               preset="primary"
               class="btn-publicar"
-              :disabled="publicando"
+              :disabled="publicando || !tieneFechaEntrega"
               :loading="publicando"
+              :title="
+                tieneFechaEntrega
+                  ? 'Publicar proyecto'
+                  : 'Definí la fecha de entrega para publicar el proyecto'
+              "
               @click="abrirPublicacion"
             >
               Publicar
             </VaButton>
             <VaButton
-              v-if="puedePostularse"
+              v-if="puedeConfirmarProyecto"
               preset="primary"
-              disabled
-              title="Próximamente..."
+              :disabled="confirmandoProyecto"
+              :loading="confirmandoProyecto"
+              @click="abrirConfirmacion"
             >
-              Próximamente...
+              Confirmar proyecto
+            </VaButton>
+            <VaButton
+              v-if="puedeFinalizarProyecto"
+              preset="primary"
+              :disabled="cargandoPreviewFinalizacion || finalizandoProyecto"
+              :loading="cargandoPreviewFinalizacion || finalizandoProyecto"
+              @click="abrirFinalizacion"
+            >
+              Finalizar proyecto
             </VaButton>
           </template>
         </ProyectoEncabezado>
@@ -109,6 +129,22 @@
                 </span>
               </div>
 
+              <div
+                v-if="proyecto.fechaFinalizacion"
+                class="dashboard-proyecto__dato"
+              >
+                <span class="dashboard-proyecto__dato-label">Finalizado el</span>
+                <span class="dashboard-proyecto__dato-valor">
+                  {{ formatearFecha(proyecto.fechaFinalizacion) }}
+                </span>
+                <span
+                  v-if="proyecto.finalizacionPrematura"
+                  class="dashboard-proyecto__chip-prematura"
+                >
+                  Finalizado anticipadamente
+                </span>
+              </div>
+
               <div class="dashboard-proyecto__dato">
                 <span class="dashboard-proyecto__dato-label">Director</span>
                 <span class="dashboard-proyecto__dato-valor">
@@ -151,7 +187,7 @@
               v-if="(proyecto.requerimientosGral || []).length"
               class="dashboard-proyecto__requerimientos"
             >
-              <RequerimientoDetalle
+              <RequerimientoCard
                 v-for="requerimiento in proyecto.requerimientosGral"
                 :key="requerimiento.idRequerimientoGral"
                 :requerimiento="requerimiento"
@@ -183,21 +219,54 @@
           </section>
 
           <section
-            v-if="puedeCancelar"
+            v-if="puedeCancelar || puedeDarseDeBaja"
             class="dashboard-proyecto__panel dashboard-proyecto__peligro"
           >
             <h2 class="dashboard-proyecto__titulo">Zona de peligro</h2>
+
+            <template v-if="puedeCancelar">
+              <p class="dashboard-proyecto__parrafo">
+                Cancelar el proyecto es irreversible: se cancelarán las actividades
+                pendientes o en curso y se rechazarán las postulaciones e
+                invitaciones pendientes.
+              </p>
+              <VaButton
+                color="danger"
+                class="dashboard-proyecto__peligro-boton"
+                @click="abrirCancelacion"
+              >
+                Cancelar proyecto
+              </VaButton>
+            </template>
+
+            <template v-if="puedeDarseDeBaja">
+              <p class="dashboard-proyecto__parrafo">
+                Darte de baja te desvincula del proyecto. Tus asignaciones
+                quedarán como historial y las vacantes se reabrirán
+                automáticamente.
+              </p>
+              <VaButton
+                color="danger"
+                preset="secondary"
+                class="dashboard-proyecto__peligro-boton"
+                @click="abrirDarseDeBaja"
+              >
+                Darse de baja
+              </VaButton>
+            </template>
+          </section>
+
+          <section
+            v-if="esFinalizado && esMiembro"
+            class="dashboard-proyecto__panel"
+          >
+            <h2 class="dashboard-proyecto__titulo">Calificaciones del equipo</h2>
             <p class="dashboard-proyecto__parrafo">
-              Cancelar el proyecto es irreversible: se cancelarán las actividades
-              pendientes o en curso y se rechazarán las postulaciones e
-              invitaciones pendientes.
+              El proyecto finalizó. Si todavía te falta calificar a algún
+              integrante, podés hacerlo desde acá.
             </p>
-            <VaButton
-              color="danger"
-              class="dashboard-proyecto__peligro-boton"
-              @click="abrirCancelacion"
-            >
-              Cancelar proyecto
+            <VaButton preset="primary" @click="irACalificaciones">
+              Calificar equipo
             </VaButton>
           </section>
         </template>
@@ -212,14 +281,77 @@
           @ir-modificar-proyecto="irAModificar"
           @limpiar-resaltado="limpiarActividadResaltada"
           @eliminar-actividad="abrirModalEliminarActividad"
+          @asignar-actividad="abrirModalAsignar"
+          @desasignar-actividad="abrirModalDesasignar"
         />
+
+        <IntegrantesProyecto
+          v-else-if="tabActiva === 'integrantes' && esMiembro"
+          ref="integrantes"
+          :id-proyecto="idProyecto"
+          :token-refresco="tokenRefrescoIntegrantes"
+          :puede-invitar="puedeInvitarIntegrante"
+          :id-perfil-activo="idPerfilActivoSesion"
+          @eliminar="abrirEliminarIntegrante"
+          @invitar="irAInvitarProyecto"
+        />
+
+        <HistorialProyecto
+          v-else-if="tabActiva === 'historial' && esDirector"
+          :id-proyecto="idProyecto"
+        />
+
+        <ReemplazosProyecto
+          v-else-if="tabActiva === 'reemplazos' && esDirector"
+          :id-proyecto="idProyecto"
+          @resumen="actualizarResumenReemplazos"
+          @actualizado="refrescarTrasReemplazo"
+        />
+
+        <template v-else-if="tabActiva === 'postulaciones'">
+          <template v-if="puedeGestionarPostulaciones">
+            <h2 class="dashboard-proyecto__titulo">Postulaciones del proyecto</h2>
+            <GestionPostulaciones
+              :id-proyecto="idProyecto"
+              :nombre-proyecto="proyecto.nombre"
+              :sin-fecha-entrega="!tieneFechaEntrega"
+              @gestionada="cargar"
+            />
+          </template>
+
+          <PersonalRequerido
+            v-else
+            ref="personalRequerido"
+            :proyecto="proyecto"
+            :id-proyecto="idProyecto"
+            :habilidades="habilidades"
+            :catalogos-caracteristicas="catalogosCaracteristicas"
+            :postulaciones-enviadas="postulacionesEnviadas"
+            :requerimientos-sin-cupo="requerimientosSinCupo"
+            :enviando-clave="claveEnviando"
+            :puede-postular="tieneFechaEntrega"
+            @postular="abrirPostulacion"
+            @ver-actividad="irADetalleActividad"
+          />
+        </template>
 
         <ModalEliminarActividad
           :model-value="modalEliminarActividadVisible"
+          :id-proyecto="idProyecto"
           :actividad="actividadEliminar"
+          :nombre-proyecto="proyecto?.nombre || ''"
           :eliminando="eliminandoActividad"
           :error="errorEliminarActividad"
-          @update:modelValue="modalEliminarActividadVisible = $event"
+          :error-motivo="errorMotivoEliminarActividad"
+          :errores-por-miembro="erroresMiembroEliminarActividad"
+          :conflicto-en-curso="conflictoEliminarActividadEnCurso"
+          :puede-ir-actividad="puedeIrActividadEliminacion"
+          :token-refresco-exclusivos="tokenRefrescoExclusivos"
+          @update:modelValue="onCambioVisibilidadEliminar"
+          @limpiar-error="limpiarErroresEliminarActividad"
+          @limpiar-errores-filas="erroresMiembroEliminarActividad = {}"
+          @ir-actividad="irActividadDesdeEliminacion"
+          @recargar="refrescarTrasEliminar"
           @confirmar="confirmarEliminarActividad"
         />
 
@@ -239,6 +371,36 @@
           @confirmar="confirmarPublicacion"
         />
 
+        <ModalConfirmarProyecto
+          :model-value="modalConfirmacionVisible"
+          :preview="previewConfirmacion"
+          :cargando-preview="cargandoPreviewConfirmacion"
+          :actualizando-preview="actualizandoPreviewConfirmacion"
+          :error-preview="errorPreviewConfirmacion"
+          :puede-reintentar-preview="puedeReintentarPreviewConfirmacion"
+          :confirmando="confirmandoProyecto"
+          :error-confirmacion="errorConfirmacion"
+          @update:modelValue="onCambioVisibilidadConfirmacion"
+          @confirmar="confirmarProyecto"
+          @reintentar="reintentarPreviewConfirmacion"
+        />
+
+        <ModalFinalizarProyecto
+          :model-value="modalFinalizacionVisible"
+          :nombre-proyecto="proyecto.nombre"
+          :preview="previewFinalizacion"
+          :profesiones="profesionesFinalizacion"
+          :cargando-preview="cargandoPreviewFinalizacion"
+          :error-preview="errorPreviewFinalizacion"
+          :puede-reintentar-preview="puedeReintentarPreviewFinalizacion"
+          :finalizando="finalizandoProyecto"
+          :error-finalizacion="errorFinalizacion"
+          :faltantes="faltantesFinalizacion"
+          @update:modelValue="onCambioVisibilidadFinalizacion"
+          @confirmar="confirmarFinalizacion"
+          @reintentar="reintentarPreviewFinalizacion"
+        />
+
         <ModalCancelarProyecto
           :model-value="modalCancelarVisible"
           :nombre-proyecto="proyecto.nombre"
@@ -246,6 +408,74 @@
           :error="errorCancelacion"
           @update:modelValue="modalCancelarVisible = $event"
           @confirmar="confirmarCancelacion"
+        />
+
+        <ModalEliminarIntegrante
+          :model-value="modalEliminarIntegranteVisible"
+          :miembro="integranteEliminar"
+          :nombre-proyecto="proyecto.nombre"
+          :eliminando="eliminandoIntegrante"
+          :error="errorEliminarIntegrante"
+          :error-motivo="errorMotivoEliminarIntegrante"
+          @update:model-value="onCambioVisibilidadEliminarIntegrante"
+          @confirmar="confirmarEliminarIntegrante"
+        />
+
+        <ModalDarseDeBajaProyecto
+          :model-value="modalDarseDeBajaVisible"
+          :nombre-proyecto="proyecto.nombre"
+          :dando-de-baja="dandoDeBaja"
+          :error="errorDarseDeBaja"
+          :error-motivo="errorMotivoDarseDeBaja"
+          @update:model-value="onCambioVisibilidadDarseDeBaja"
+          @confirmar="confirmarDarseDeBaja"
+        />
+
+        <ModalAsignarActividad
+          :model-value="modalAsignarVisible"
+          :id-proyecto="idProyecto"
+          :actividad="actividadAsignar"
+          :nombre-proyecto="proyecto.nombre"
+          :id-perfiles-asignados="perfilesAsignadosActividad"
+          :id-usuarios-asignados="usuariosAsignadosActividad"
+          :tiene-fecha-entrega="tieneFechaEntrega"
+          :asignando="asignando"
+          :error="errorAsignar"
+          :bloqueos="bloqueosAsignar"
+          :miembros-bloqueantes="miembrosBloqueantesAsignar"
+          :es-borrador="esBorrador"
+          :token-refresco-miembros="tokenRefrescoMiembros"
+          :token-refresco-disponibilidad="tokenRefrescoDisponibilidad"
+          @update:model-value="onCambioVisibilidadAsignar"
+          @confirmar="confirmarAsignacion"
+        />
+
+        <ModalDesasignarActividad
+          :model-value="modalDesasignarVisible"
+          :actividad="actividadDesasignar"
+          :responsable="responsableDesasignar"
+          :nombre-proyecto="proyecto.nombre"
+          :proyecto-confirmado="proyectoConfirmado"
+          :desasignando="desasignando"
+          :error="errorDesasignar"
+          @update:model-value="onCambioVisibilidadDesasignar"
+          @confirmar="confirmarDesasignacion"
+        />
+
+        <ModalPostulacion
+          :model-value="modalPostulacion.visible"
+          :id-proyecto="idProyecto"
+          :tipo="modalPostulacion.tipo"
+          :nombre-proyecto="proyecto.nombre"
+          :requerimiento="modalPostulacion.requerimiento"
+          :actividad="modalPostulacion.actividad"
+          :sin-fecha-entrega="!tieneFechaEntrega"
+          :enviando="enviandoPostulacion"
+          :error="errorPostulacion"
+          :sugerir-calendario="errorPostulacionEsDisponibilidad"
+          @update:model-value="modalPostulacion.visible = $event"
+          @confirmar="confirmarPostulacion"
+          @revisar-calendario="irACalendario"
         />
       </template>
     </template>
@@ -256,36 +486,112 @@
 import proyectoService from "../../services/proyectoService";
 import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
-import { refrescarSesion } from "../../services/authState";
+import reemplazoService from "../../services/reemplazoService.js";
+import { idPerfilActivo, refrescarSesion } from "../../services/authState";
+import { cargarResumenPerfil } from "../../services/notificacionState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
-import RequerimientoDetalle from "../../components/proyecto/RequerimientoDetalle.vue";
+import IntegrantesProyecto from "../../components/proyecto/IntegrantesProyecto.vue";
+import HistorialProyecto from "../../components/proyecto/HistorialProyecto.vue";
+import ReemplazosProyecto from "../../components/proyecto/ReemplazosProyecto.vue";
+import PersonalRequerido from "../../components/proyecto/PersonalRequerido.vue";
+import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
+import GestionPostulaciones from "../../components/proyecto/GestionPostulaciones.vue";
 import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
 import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
+import ModalConfirmarProyecto from "../../components/proyecto/ModalConfirmarProyecto.vue";
+import ModalFinalizarProyecto from "../../components/proyecto/ModalFinalizarProyecto.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
+import ModalEliminarIntegrante from "../../components/proyecto/ModalEliminarIntegrante.vue";
+import ModalDarseDeBajaProyecto from "../../components/proyecto/ModalDarseDeBajaProyecto.vue";
 import ModalEliminarActividad from "../../components/proyecto/ModalEliminarActividad.vue";
+import ModalAsignarActividad from "../../components/proyecto/ModalAsignarActividad.vue";
+import ModalDesasignarActividad from "../../components/proyecto/ModalDesasignarActividad.vue";
+import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import actividadService from "../../services/actividadService.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  TIPOS_ERROR_ASIGNACION,
+  clasificarErrorAsignacion,
+  clasificarErrorDesasignacion,
+  mensajeExitoAsignacion,
+  mensajeExitoDesasignacion,
+  perfilesAsignadosDe,
+  usuariosAsignadosDe,
+  puedeAsignarActividad,
+  puedeDesasignarActividad,
+} from "../../utils/asignacionConstants.js";
+import {
+  MENSAJE_USUARIO_YA_ASIGNADO_POSTULACION,
+  esConflictoAsignacionUnica,
+} from "../../utils/asignacionUnicaConstants.js";
+import { puedeInvitarProyecto } from "../../utils/invitacionConstants.js";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
-import { formatearFechaCorta } from "../../utils/fechas.js";
+import {
+  LIMITE_MOTIVO_BAJA,
+  TIPOS_ERROR_ELIMINAR_INTEGRANTE,
+  clasificarErrorEliminarIntegrante,
+} from "../../utils/integranteConstants.js";
+import {
+  TIPOS_ERROR_DARSE_DE_BAJA,
+  clasificarErrorDarseDeBaja,
+} from "../../utils/bajaProyectoConstants.js";
+import {
+  TIPOS_ERROR_ELIMINAR_ACTIVIDAD,
+  clasificarErrorEliminarActividad,
+  idsEliminarSinMotivo,
+  mensajeExitoEliminarActividad,
+} from "../../utils/eliminacionActividadConstants.js";
+import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import {
+  CODIGOS_CONFIRMACION,
+  clasificarErrorConfirmacion,
+  normalizarPreview,
+} from "../../utils/confirmacionConstants.js";
+import {
+  clasificarErrorFinalizacion,
+  indexarProfesionesPorPerfil,
+  normalizarPreviewFinalizacion,
+} from "../../utils/finalizacionConstants.js";
+import {
+  AVISO_DISPONIBILIDAD_PROVISORIA,
+  TIPOS_POSTULACION,
+  clavePostulacion,
+  esErrorCupoCompleto,
+  esErrorDisponibilidad,
+  esErrorPostulacionDuplicada,
+  mensajeExitoPostulacion,
+  puedePostularActividad as esActividadPostulable,
+  puedePostularGeneral as esElegibleParaPostularGeneral,
+} from "../../utils/postulacionConstants.js";
 import {
   ETIQUETAS_PRIVACIDAD,
   ESTADOS_PROYECTO,
   MOODBOARD_IMAGENES,
   PRIVACIDADES,
+  ROLES_PROYECTO,
   normalizarEstadoProyecto,
 } from "../../utils/proyectoConstants.js";
+import { calcularResumenReemplazos } from "../../utils/reemplazoConstants.js";
 
 // Cancela la request en vuelo si cambia el id o se reintenta
 // (no reactivo a propósito: AbortController no debe pasar por reactive()).
 let controladorCarga = null;
 let controladorPublicacion = null;
 let controladorCancelacion = null;
+let controladorEliminarIntegrante = null;
+let controladorDarseDeBaja = null;
 let controladorEliminacion = null;
+let controladorAsignacion = null;
+let controladorDesasignacion = null;
+let controladorPostulacion = null;
+let controladorConfirmacion = null;
+let controladorFinalizacion = null;
+let controladorResumenReemplazos = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -293,12 +599,24 @@ export default {
     BaseAlert,
     ProyectoEncabezado,
     PlanificacionProyecto,
-    RequerimientoDetalle,
+    IntegrantesProyecto,
+    HistorialProyecto,
+    ReemplazosProyecto,
+    PersonalRequerido,
+    RequerimientoCard,
+    GestionPostulaciones,
     CollageMoodboard,
     ModalGaleriaMoodboard,
     ModalPublicarProyecto,
+    ModalConfirmarProyecto,
+    ModalFinalizarProyecto,
     ModalCancelarProyecto,
+    ModalEliminarIntegrante,
+    ModalDarseDeBajaProyecto,
     ModalEliminarActividad,
+    ModalAsignarActividad,
+    ModalDesasignarActividad,
+    ModalPostulacion,
   },
   setup() {
     return { toast: useToast() };
@@ -307,6 +625,7 @@ data() {
     return {
       ETIQUETAS_PRIVACIDAD,
       MOODBOARD_IMAGENES,
+      TIPOS_POSTULACION,
       proyecto: null,
       cargando: true,
       mensajeError: "",
@@ -322,6 +641,49 @@ data() {
       modalCancelarVisible: false,
       cancelando: false,
       errorCancelacion: "",
+      modalEliminarIntegranteVisible: false,
+      integranteEliminar: null,
+      eliminandoIntegrante: false,
+      errorEliminarIntegrante: "",
+      errorMotivoEliminarIntegrante: "",
+      tokenRefrescoIntegrantes: 0,
+      modalDarseDeBajaVisible: false,
+      dandoDeBaja: false,
+      errorDarseDeBaja: "",
+      errorMotivoDarseDeBaja: "",
+      modalConfirmacionVisible: false,
+      previewConfirmacion: null,
+      cargandoPreviewConfirmacion: false,
+      actualizandoPreviewConfirmacion: false,
+      errorPreviewConfirmacion: "",
+      puedeReintentarPreviewConfirmacion: false,
+      confirmandoProyecto: false,
+      errorConfirmacion: "",
+      fechaInicioConfirmacion: null,
+      idCargaPreviewConfirmacion: 0,
+      modalFinalizacionVisible: false,
+      previewFinalizacion: null,
+      profesionesFinalizacion: {},
+      cargandoPreviewFinalizacion: false,
+      errorPreviewFinalizacion: "",
+      puedeReintentarPreviewFinalizacion: false,
+      finalizandoProyecto: false,
+      errorFinalizacion: "",
+      faltantesFinalizacion: [],
+      idCargaPreviewFinalizacion: 0,
+      modalPostulacion: {
+        visible: false,
+        tipo: TIPOS_POSTULACION.GENERAL,
+        requerimiento: null,
+        actividad: null,
+      },
+      enviandoPostulacion: false,
+      claveEnviando: "",
+      errorPostulacion: "",
+      errorPostulacionEsDisponibilidad: false,
+      postulacionesEnviadas: {},
+      /** Requerimientos marcados sin cupo tras un 409 de cupo completo. */
+      requerimientosSinCupo: {},
       idCarga: 0,
       tabActiva: "informacion",
       idActividadResaltada: null,
@@ -329,7 +691,28 @@ data() {
       actividadEliminar: {},
       eliminandoActividad: false,
       errorEliminarActividad: "",
+      errorMotivoEliminarActividad: "",
+      erroresMiembroEliminarActividad: {},
+      conflictoEliminarActividadEnCurso: false,
+      tokenRefrescoExclusivos: 0,
+      modalAsignarVisible: false,
+      actividadAsignar: null,
+      perfilesAsignadosActividad: [],
+      usuariosAsignadosActividad: [],
+      asignando: false,
+      errorAsignar: "",
+      bloqueosAsignar: [],
+      miembrosBloqueantesAsignar: [],
+      tokenRefrescoMiembros: 0,
+      modalDesasignarVisible: false,
+      actividadDesasignar: null,
+      responsableDesasignar: null,
+      desasignando: false,
+      errorDesasignar: "",
+      tokenRefrescoDisponibilidad: 0,
       tokenRefrescoPlanificacion: 0,
+      reemplazosPendientes: 0,
+      reemplazosSinCandidatos: 0,
     };
   },
   computed: {
@@ -342,14 +725,30 @@ data() {
     esMiembro() {
       return !!this.proyecto?.esMiembro;
     },
+    /** La pestaña Historial es exclusiva del Director activo del proyecto. */
+    esDirector() {
+      return (
+        this.esMiembro &&
+        String(this.proyecto?.rolUsuario || "").toUpperCase() ===
+          ROLES_PROYECTO.DIRECTOR
+      );
+    },
     esBorrador() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.BORRADOR;
     },
     esPrivado() {
       return this.proyecto?.privacidad === PRIVACIDADES.PRIVADO;
     },
+    /** La fecha de entrega es obligatoria para publicar y calcular CPM. */
+    tieneFechaEntrega() {
+      return !!this.proyecto?.fechaEntregaEstipulada;
+    },
     puedeEditar() {
       return this.permisos.includes("MODIFICAR_PROYECTO");
+    },
+    /** CTA de UC-51: cancelar la actividad requiere poder modificarla. */
+    puedeIrActividadEliminacion() {
+      return this.permisos.includes("MODIFICAR_ACTIVIDAD");
     },
     estadoModificable() {
       const estado = normalizarEstadoProyecto(this.proyecto?.estado);
@@ -366,8 +765,40 @@ data() {
     puedePublicar() {
       return this.permisos.includes("PUBLICAR_PROYECTO") && this.esBorrador;
     },
+    /** UC-60 §5.2: el sistema valida permiso y director; acá se combina con estado. */
+    puedeConfirmarProyecto() {
+      return (
+        this.esMiembro &&
+        this.permisos.includes("CONFIRMAR_PROYECTO") &&
+        normalizarEstadoProyecto(this.proyecto?.estado) ===
+          ESTADOS_PROYECTO.PUBLICADO
+      );
+    },
+    /** UC-37: el preview de finalización decide los bloqueos reales. */
+    puedeFinalizarProyecto() {
+      return (
+        this.esMiembro &&
+        this.permisos.includes("FINALIZAR_PROYECTO") &&
+        this.esConfirmado
+      );
+    },
+    esFinalizado() {
+      return (
+        normalizarEstadoProyecto(this.proyecto?.estado) ===
+        ESTADOS_PROYECTO.FINALIZADO
+      );
+    },
     esCancelado() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.CANCELADO;
+    },
+    esConfirmado() {
+      return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.CONFIRMADO;
+    },
+    proyectoConfirmado() {
+      return (
+        normalizarEstadoProyecto(this.proyecto?.estado) ===
+        ESTADOS_PROYECTO.CONFIRMADO
+      );
     },
     /** UC-35 §8.1: combinar permiso con estado (los permisos son del rol). */
     puedeCancelar() {
@@ -383,12 +814,28 @@ data() {
         ? `Proyecto cancelado. Motivo: ${motivo}`
         : "Proyecto cancelado. Sin motivo registrado.";
     },
-    puedePostularse() {
+    /**
+     * UC-40: el backend es la fuente de verdad. Sólo se muestra la acción si
+     * `puedeDarseDeBaja` es exactamente true; no se recalcula estado,
+     * membresía ni regla del último Director en el frontend.
+     */
+    puedeDarseDeBaja() {
+      return this.proyecto?.puedeDarseDeBaja === true;
+    },
+    /** UC-34: sólo el director con GESTIONAR_POSTULACIONES gestiona postulaciones. */
+    puedeGestionarPostulaciones() {
       return (
-        !this.esMiembro &&
-        !!this.proyecto?.aceptaPostulacionGral &&
-        !!this.proyecto?.elegibleParaPostularse
+        this.proyecto?.rolUsuario === ROLES_PROYECTO.DIRECTOR &&
+        this.permisos.includes("GESTIONAR_POSTULACIONES")
       );
+    },
+    /** UC-31: Director con `INVITAR_MIEMBRO` en proyecto Publicado/Confirmado. */
+    puedeInvitarIntegrante() {
+      return puedeInvitarProyecto(this.proyecto);
+    },
+    /** Perfil activo de la sesión: habilita el chip "Vos" en el listado. */
+    idPerfilActivoSesion() {
+      return idPerfilActivo();
     },
     ubicacionTexto() {
       const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
@@ -410,6 +857,108 @@ data() {
     idProyecto(nuevo, anterior) {
       if (nuevo === anterior) return;
       this.proyecto = null;
+      this.postulacionesEnviadas = {};
+      this.requerimientosSinCupo = {};
+      this.modalPostulacion = {
+        visible: false,
+        tipo: TIPOS_POSTULACION.GENERAL,
+        requerimiento: null,
+        actividad: null,
+      };
+      this.enviandoPostulacion = false;
+      this.claveEnviando = "";
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+      if (controladorPostulacion) {
+        controladorPostulacion.abort();
+        controladorPostulacion = null;
+      }
+      this.modalAsignarVisible = false;
+      this.actividadAsignar = null;
+      this.perfilesAsignadosActividad = [];
+      this.usuariosAsignadosActividad = [];
+      this.asignando = false;
+      this.errorAsignar = "";
+      this.bloqueosAsignar = [];
+      this.miembrosBloqueantesAsignar = [];
+      this.modalDesasignarVisible = false;
+      this.actividadDesasignar = null;
+      this.responsableDesasignar = null;
+      this.desasignando = false;
+      this.errorDesasignar = "";
+      if (controladorDesasignacion) {
+        controladorDesasignacion.abort();
+        controladorDesasignacion = null;
+      }
+      this.modalEliminarIntegranteVisible = false;
+      this.integranteEliminar = null;
+      this.eliminandoIntegrante = false;
+      this.errorEliminarIntegrante = "";
+      this.errorMotivoEliminarIntegrante = "";
+      this.tokenRefrescoIntegrantes = 0;
+      if (controladorEliminarIntegrante) {
+        controladorEliminarIntegrante.abort();
+        controladorEliminarIntegrante = null;
+      }
+      this.modalDarseDeBajaVisible = false;
+      this.dandoDeBaja = false;
+      this.errorDarseDeBaja = "";
+      this.errorMotivoDarseDeBaja = "";
+      if (controladorDarseDeBaja) {
+        controladorDarseDeBaja.abort();
+        controladorDarseDeBaja = null;
+      }
+      this.reemplazosPendientes = 0;
+      this.reemplazosSinCandidatos = 0;
+      if (controladorResumenReemplazos) {
+        controladorResumenReemplazos.abort();
+        controladorResumenReemplazos = null;
+      }
+      this.modalEliminarActividadVisible = false;
+      this.actividadEliminar = {};
+      this.eliminandoActividad = false;
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
+      if (controladorEliminacion) {
+        controladorEliminacion.abort();
+        controladorEliminacion = null;
+      }
+      this.tokenRefrescoMiembros = 0;
+      this.tokenRefrescoDisponibilidad = 0;
+      if (controladorAsignacion) {
+        controladorAsignacion.abort();
+        controladorAsignacion = null;
+      }
+      this.modalConfirmacionVisible = false;
+      this.previewConfirmacion = null;
+      this.cargandoPreviewConfirmacion = false;
+      this.actualizandoPreviewConfirmacion = false;
+      this.errorPreviewConfirmacion = "";
+      this.puedeReintentarPreviewConfirmacion = false;
+      this.confirmandoProyecto = false;
+      this.errorConfirmacion = "";
+      this.fechaInicioConfirmacion = null;
+      this.idCargaPreviewConfirmacion++;
+      if (controladorConfirmacion) {
+        controladorConfirmacion.abort();
+        controladorConfirmacion = null;
+      }
+      this.modalFinalizacionVisible = false;
+      this.previewFinalizacion = null;
+      this.profesionesFinalizacion = {};
+      this.cargandoPreviewFinalizacion = false;
+      this.errorPreviewFinalizacion = "";
+      this.puedeReintentarPreviewFinalizacion = false;
+      this.finalizandoProyecto = false;
+      this.errorFinalizacion = "";
+      this.faltantesFinalizacion = [];
+      this.idCargaPreviewFinalizacion++;
+      if (controladorFinalizacion) {
+        controladorFinalizacion.abort();
+        controladorFinalizacion = null;
+      }
       this.cargar();
     },
     "$route.query.tab"() {
@@ -421,12 +970,34 @@ data() {
     "$route.query.editada"() {
       this.actualizarActividadResaltada();
     },
+    "$route.query.actividad"() {
+      this.actualizarActividadResaltada();
+    },
     esMiembro(valor) {
       if (!valor) {
-        if (this.tabActiva === "planificacion") this.tabActiva = "informacion";
+        this.limpiarResumenReemplazos();
+        if (
+          ["planificacion", "integrantes", "historial", "reemplazos"].includes(
+            this.tabActiva
+          )
+        ) {
+          this.tabActiva = "informacion";
+        }
+        this.aplicarTabDesdeQuery();
         return;
       }
       this.aplicarTabDesdeQuery();
+    },
+    esDirector(valor) {
+      if (!valor) {
+        this.limpiarResumenReemplazos();
+        if (["historial", "reemplazos"].includes(this.tabActiva)) {
+          this.tabActiva = "informacion";
+          this.aplicarTabDesdeQuery();
+        }
+        return;
+      }
+      this.cargarResumenReemplazos();
     },
   },
   created() {
@@ -469,6 +1040,11 @@ data() {
           this.mostrarVolver = true;
           return;
         }
+        // Reaplicar la tab de la URL una vez conocido el rol del proyecto:
+        // `?tab=historial` solo es válida para directores.
+        this.aplicarTabDesdeQuery();
+        if (this.esDirector) this.cargarResumenReemplazos(corrida);
+        else this.limpiarResumenReemplazos();
         await this.cargarCatalogos(this.proyecto, corrida);
       } catch (error) {
         if (
@@ -522,6 +1098,66 @@ data() {
       });
       this.catalogosCaracteristicas = catalogos;
     },
+    /**
+     * Badge de la pestaña Reemplazos. El backend no tiene endpoint de resumen:
+     * se cuenta sobre el listado (sin paginación) y se silencian los errores
+     * para no bloquear el dashboard del proyecto.
+     * @param {number} [corrida] id de carga del proyecto
+     */
+    async cargarResumenReemplazos(corrida = this.idCarga) {
+      if (!this.esDirector || this.idProyecto == null) {
+        this.limpiarResumenReemplazos();
+        return;
+      }
+
+      if (controladorResumenReemplazos) controladorResumenReemplazos.abort();
+      controladorResumenReemplazos = new AbortController();
+
+      try {
+        const response = await reemplazoService.listar(
+          this.idProyecto,
+          controladorResumenReemplazos.signal
+        );
+        if (corrida !== this.idCarga || !this.esDirector) return;
+
+        const data = response?.data;
+        const lista = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.contenido)
+            ? data.contenido
+            : [];
+        const resumen = calcularResumenReemplazos(lista);
+        this.reemplazosPendientes = resumen.totalAccionesPendientes;
+        this.reemplazosSinCandidatos = resumen.sinCandidatos;
+      } catch (error) {
+        if (
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError" ||
+          error?.name === "AbortError"
+        ) {
+          return;
+        }
+        if (corrida === this.idCarga) this.limpiarResumenReemplazos();
+      }
+    },
+    limpiarResumenReemplazos() {
+      this.reemplazosPendientes = 0;
+      this.reemplazosSinCandidatos = 0;
+    },
+    actualizarResumenReemplazos({ pendientes, sinCandidatos } = {}) {
+      this.reemplazosPendientes = Number(pendientes) || 0;
+      this.reemplazosSinCandidatos = Number(sinCandidatos) || 0;
+    },
+    /**
+     * Después de aprobar/rechazar/cancelar/regenerar, el proyecto cambia:
+     * requerimientos, miembros y planificación pueden haber cambiado.
+     */
+    async refrescarTrasReemplazo() {
+      await this.cargar();
+      this.tokenRefrescoIntegrantes += 1;
+      this.tokenRefrescoPlanificacion += 1;
+      this.refrescarNotificacionesPerfil();
+    },
     async manejarError(error) {
       const status = error?.response?.status;
       const mensaje = error?.response?.data?.message || "";
@@ -545,9 +1181,17 @@ data() {
       }
 
       if (status === 403) {
+        if (error?._esCuentaNoActiva) {
+          this.mensajeError = mensajeErrorApi(
+            error,
+            "Tu cuenta no se encuentra activa."
+          );
+          this.mostrarVolver = true;
+          return;
+        }
         this.mensajeError = /perfil/i.test(mensaje)
           ? "El perfil no se encuentra activo."
-          : "No tenés acceso a este proyecto: es privado o está en borrador y no sos miembro del equipo.";
+          : "No tenés acceso a este proyecto o ya no participás en él.";
         this.mostrarVolver = true;
         return;
       }
@@ -592,9 +1236,26 @@ data() {
       this.cargar();
     },
     aplicarTabDesdeQuery() {
-      const tab =
-        this.$route.query.tab === "planificacion" ? "planificacion" : "informacion";
-      if (tab === "planificacion" && !this.esMiembro) {
+      const solicitada = this.$route.query.tab;
+      const permitidas = [
+        "informacion",
+        "planificacion",
+        "integrantes",
+        "historial",
+        "reemplazos",
+        "postulaciones",
+      ];
+      const tab = permitidas.includes(solicitada) ? solicitada : "informacion";
+
+      if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) {
+        this.tabActiva = "informacion";
+        return;
+      }
+      if (tab === "historial" && !this.esDirector) {
+        this.tabActiva = "informacion";
+        return;
+      }
+      if (tab === "reemplazos" && !this.esDirector) {
         this.tabActiva = "informacion";
         return;
       }
@@ -602,7 +1263,9 @@ data() {
     },
     actualizarActividadResaltada() {
       const valor = Number(
-        this.$route.query.nueva ?? this.$route.query.editada
+        this.$route.query.nueva ??
+          this.$route.query.editada ??
+          this.$route.query.actividad
       );
       this.idActividadResaltada =
         Number.isFinite(valor) && valor > 0 ? valor : null;
@@ -617,26 +1280,30 @@ data() {
         .catch(() => {});
     },
     cambiarTab(tab) {
-      if (tab === "planificacion" && !this.esMiembro) return;
+      if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) return;
+      if (tab === "historial" && !this.esDirector) return;
+      if (tab === "reemplazos" && !this.esDirector) return;
       if (this.tabActiva === tab) return;
 
       this.tabActiva = tab;
       const query = { ...this.$route.query };
       if (tab === "informacion") delete query.tab;
       else query.tab = tab;
+      if (tab !== "planificacion") delete query.vista;
       this.reemplazarQuery(query);
     },
     limpiarActividadResaltada() {
       this.idActividadResaltada = null;
-      if (
-        this.$route.query.nueva === undefined &&
-        this.$route.query.editada === undefined
-      ) {
+
+      // Limpiar las tres claves, no solo nueva/editada: las notificaciones de
+      // actividad llegan con `?actividad=...` y también deben quedar limpias.
+      const claves = ["nueva", "editada", "actividad"];
+      if (!claves.some((clave) => this.$route.query[clave] !== undefined)) {
         return;
       }
+
       const query = { ...this.$route.query };
-      delete query.nueva;
-      delete query.editada;
+      claves.forEach((clave) => delete query[clave]);
       this.reemplazarQuery(query);
     },
     irACrearActividad() {
@@ -670,6 +1337,7 @@ data() {
       });
     },
     abrirPublicacion() {
+      if (!this.tieneFechaEntrega) return;
       this.errorPublicacion = "";
       this.modalPublicarVisible = true;
     },
@@ -687,8 +1355,18 @@ data() {
         );
         this.modalPublicarVisible = false;
         // Reemplaza los datos locales con la respuesta (§4.2): estado → Publicado
-        // y el botón Publicar desaparece.
-        this.proyecto = response?.data || this.proyecto;
+        // y el botón Publicar desaparece. Se conserva `puedeDarseDeBaja` por si
+        // el DTO del POST no lo incluye.
+        const publicado = response?.data || null;
+        this.proyecto = publicado
+          ? {
+              ...publicado,
+              puedeDarseDeBaja:
+                publicado.puedeDarseDeBaja ??
+                this.proyecto?.puedeDarseDeBaja ??
+                false,
+            }
+          : this.proyecto;
         this.toast.init({
           title: "Proyecto publicado",
           message: "El proyecto ya está visible según su privacidad.",
@@ -869,78 +1547,1234 @@ data() {
         "No se pudo cancelar el proyecto."
       );
     },
-    irAProyectos() {
-      this.$router.push({ name: "proyectos-inicio" });
+    /** UC-38: abre la confirmación de baja de un integrante. */
+    abrirEliminarIntegrante(miembro) {
+      if (this.eliminandoIntegrante) return;
+      if (miembro?.eliminable !== true) return;
+      if (miembro?.idMiembro == null) return;
+
+      this.integranteEliminar = { ...miembro };
+      this.errorEliminarIntegrante = "";
+      this.errorMotivoEliminarIntegrante = "";
+      this.modalEliminarIntegranteVisible = true;
     },
-    async abrirModalEliminarActividad(actividad) {
-      this.actividadEliminar = actividad;
-      // Cargar detalle de la actividad para mostrar profesionales asignados, etc.
-      try {
-        const detalle = await actividadService.obtener(
-          actividad.idProyecto,
-          actividad.idActividad,
-          null
-        );
-        this.actividadEliminar = { ...actividad, ...detalle };
-      } catch (e) {
-        // Si falla el detalle, conservamos los datos del listado (se mostrará lo disponible).
+    onCambioVisibilidadEliminarIntegrante(valor) {
+      if (this.eliminandoIntegrante && !valor) return;
+      if (valor) {
+        this.modalEliminarIntegranteVisible = true;
+        return;
       }
-      this.errorEliminarActividad = "";
-      this.modalEliminarActividadVisible = true;
+      this.cerrarModalEliminarIntegrante();
     },
-    async confirmarEliminarActividad({ idProyecto, idActividad, motivo }) {
-      if (this.eliminandoActividad) return;
-      this.eliminandoActividad = true;
-      this.errorEliminarActividad = "";
-      if (controladorEliminacion) controladorEliminacion.abort();
-      controladorEliminacion = new AbortController();
+    cerrarModalEliminarIntegrante(forzar = false) {
+      if (this.eliminandoIntegrante && !forzar) return;
+      this.modalEliminarIntegranteVisible = false;
+      this.integranteEliminar = null;
+      this.errorEliminarIntegrante = "";
+      this.errorMotivoEliminarIntegrante = "";
+      if (controladorEliminarIntegrante) {
+        controladorEliminarIntegrante.abort();
+        controladorEliminarIntegrante = null;
+      }
+    },
+    /** UC-38: ejecuta el DELETE y refresca miembros, proyecto y planificación. */
+    async confirmarEliminarIntegrante(motivo) {
+      if (this.eliminandoIntegrante) return;
+
+      const miembro = this.integranteEliminar;
+      const texto = String(motivo ?? "").trim();
+
+      if (!miembro?.idMiembro) {
+        this.errorEliminarIntegrante =
+          "No se pudo identificar al integrante. Recargá la página e intentá nuevamente.";
+        return;
+      }
+      if (!texto) {
+        this.errorMotivoEliminarIntegrante =
+          "El motivo de eliminación es obligatorio.";
+        return;
+      }
+      if (texto.length > LIMITE_MOTIVO_BAJA) {
+        this.errorMotivoEliminarIntegrante =
+          "El motivo de eliminación no puede superar los 100 caracteres.";
+        return;
+      }
+
+      this.eliminandoIntegrante = true;
+      this.errorEliminarIntegrante = "";
+      this.errorMotivoEliminarIntegrante = "";
+      if (controladorEliminarIntegrante) controladorEliminarIntegrante.abort();
+      controladorEliminarIntegrante = new AbortController();
+
       try {
-        await actividadService.eliminar(
-          idProyecto,
-          idActividad,
-          motivo,
-          controladorEliminacion.signal
+        await proyectoService.eliminarIntegrante(
+          this.idProyecto,
+          miembro.idMiembro,
+          texto,
+          controladorEliminarIntegrante.signal
         );
-        // Refrescar la planificación y el proyecto
-        await this.cargar();
-        await this.$nextTick(() => {
-          this.tokenRefrescoPlanificacion++;
-        });
-        this.modalEliminarActividadVisible = false;
+
+        this.modalEliminarIntegranteVisible = false;
+        this.integranteEliminar = null;
+        this.errorEliminarIntegrante = "";
+        this.errorMotivoEliminarIntegrante = "";
+
         this.toast.init({
-          title: "Actividad eliminada",
-          message: "La actividad fue eliminada correctamente y el cronograma se recalculó.",
+          title: "Miembro eliminado",
+          message: "El miembro fue desvinculado del proyecto.",
           color: "success",
           position: "top-right",
           duration: 5000,
         });
+
+        // El backend es la fuente de verdad: se recargan lista, proyecto y
+        // planificación en vez de modificar el estado local a mano.
+        this.tokenRefrescoIntegrantes += 1;
+        this.tokenRefrescoPlanificacion += 1;
+        await this.cargar();
       } catch (error) {
-        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
-        await this.manejarErrorEliminarActividad(error);
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorEliminarIntegrante(error);
       } finally {
-        this.eliminandoActividad = false;
+        this.eliminandoIntegrante = false;
       }
     },
-    async manejarErrorEliminarActividad(error) {
+    async manejarErrorEliminarIntegrante(error) {
       const status = error?.response?.status;
-      const data = error?.response?.data;
-      const mensaje = data?.message || "";
-      const clasificacion = clasificarErrorProyecto(error);
+      const clasificacion = clasificarErrorEliminarIntegrante(error);
+      const { tipo, mensaje } = clasificacion;
 
-      if (status === 400) {
-        this.errorEliminarActividad =
-          data?.motivo || mensaje || "El motivo de la eliminación es obligatorio.";
-        // El modal se mantiene abierto para que el usuario corrija el motivo.
+      const cerrarYRefrescar = async (refrescarProyecto = false) => {
+        this.cerrarModalEliminarIntegrante(true);
+        this.tokenRefrescoIntegrantes += 1;
+        if (refrescarProyecto) await this.cargar();
+      };
+
+      const mostrarToast = (title) => {
+        this.toast.init({
+          title,
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+      };
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.SESION) {
+        // El interceptor global ya limpió la sesión y redirigió a login.
+        this.cerrarModalEliminarIntegrante(true);
         return;
       }
 
-      if (status === 403) {
-        this.errorEliminarActividad =
-          "No tenés permiso para eliminar esta actividad o tu perfil no está activo.";
-        this.modalEliminarActividadVisible = false;
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.CUENTA) {
+        await cerrarYRefrescar();
+        mostrarToast("Cuenta no habilitada");
+        return;
+      }
+
+      // Error corregible: el modal sigue abierto y conserva el motivo.
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.MOTIVO) {
+        this.errorMotivoEliminarIntegrante = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.PERMISO) {
+        await cerrarYRefrescar(true);
+        mostrarToast("No se pudo eliminar");
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.PERFIL_ACTIVO) {
+        this.cerrarModalEliminarIntegrante(true);
+        this.mensajeError =
+          "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.PERFIL_NO_ENCONTRADO) {
+        this.cerrarModalEliminarIntegrante(true);
+        await refrescarSesion();
+        this.mensajeError =
+          "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ELIMINAR_INTEGRANTE.PROYECTO_NO_ENCONTRADO) {
+        this.cerrarModalEliminarIntegrante(true);
+        this.proyecto = null;
+        this.estadoNoEncontrado = true;
+        this.mensajeError = mensaje;
+        this.mostrarVolver = true;
+        return;
+      }
+
+      if (
+        [
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.MIEMBRO_NO_ENCONTRADO,
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.MIEMBRO_INACTIVO,
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.ESTADO_PROYECTO,
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.AUTOELIMINACION,
+          TIPOS_ERROR_ELIMINAR_INTEGRANTE.ULTIMO_DIRECTOR,
+        ].includes(tipo)
+      ) {
+        await cerrarYRefrescar(true);
+        mostrarToast("No se pudo eliminar");
+        return;
+      }
+
+      // La ficha manda cerrar ante 403/404/409 aunque el mensaje no coincida
+      // con ningún patrón conocido: el backend sigue siendo la fuente de
+      // verdad y la lista/proyecto se recargan.
+      if ([403, 404, 409].includes(status)) {
+        await cerrarYRefrescar(true);
+        mostrarToast("No se pudo eliminar");
+        return;
+      }
+
+      // 5xx o error no clasificado: el modal queda abierto para reintentar.
+      this.errorEliminarIntegrante = mensaje;
+    },
+    /** UC-40: abre la confirmación de baja voluntaria del perfil activo. */
+    abrirDarseDeBaja() {
+      if (!this.puedeDarseDeBaja || this.dandoDeBaja) return;
+      this.errorDarseDeBaja = "";
+      this.errorMotivoDarseDeBaja = "";
+      this.modalDarseDeBajaVisible = true;
+    },
+    onCambioVisibilidadDarseDeBaja(valor) {
+      if (this.dandoDeBaja && !valor) return;
+      if (valor) {
+        this.modalDarseDeBajaVisible = true;
+        return;
+      }
+      this.cerrarModalDarseDeBaja();
+    },
+    cerrarModalDarseDeBaja(forzar = false) {
+      if (this.dandoDeBaja && !forzar) return;
+      this.modalDarseDeBajaVisible = false;
+      this.errorDarseDeBaja = "";
+      this.errorMotivoDarseDeBaja = "";
+      if (controladorDarseDeBaja) {
+        controladorDarseDeBaja.abort();
+        controladorDarseDeBaja = null;
+      }
+    },
+    /** UC-40: ejecuta la baja y redirige fuera del detalle. */
+    async confirmarDarseDeBaja(motivo) {
+      if (this.dandoDeBaja) return;
+
+      const texto = String(motivo ?? "").trim();
+      if (!texto) {
+        this.errorMotivoDarseDeBaja = "El motivo de la baja es obligatorio.";
+        return;
+      }
+      if (texto.length > LIMITE_MOTIVO_BAJA) {
+        this.errorMotivoDarseDeBaja =
+          "El motivo de la baja no puede superar los 100 caracteres.";
+        return;
+      }
+
+      this.dandoDeBaja = true;
+      this.errorDarseDeBaja = "";
+      this.errorMotivoDarseDeBaja = "";
+      if (controladorDarseDeBaja) controladorDarseDeBaja.abort();
+      controladorDarseDeBaja = new AbortController();
+
+      try {
+        await proyectoService.darseDeBajaProyecto(
+          this.idProyecto,
+          texto,
+          controladorDarseDeBaja.signal
+        );
+
+        this.modalDarseDeBajaVisible = false;
+        this.errorDarseDeBaja = "";
+        this.errorMotivoDarseDeBaja = "";
+
         this.toast.init({
-          title: "No se pudo eliminar",
-          message: mensaje || "No tenés permiso para esta acción.",
+          title: "Te diste de baja",
+          message: "Ya no formás parte del proyecto.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        // Destino fresco: ProyectosInicioView ejecuta GET /proyectos/propios
+        // al montar, así que no hace falta invalidar una caché inexistente.
+        await this.$router.push({ name: "proyectos-inicio" });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorDarseDeBaja(error);
+      } finally {
+        this.dandoDeBaja = false;
+      }
+    },
+    async manejarErrorDarseDeBaja(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorDarseDeBaja(error);
+      const { tipo, mensaje } = clasificacion;
+
+      const mostrarToast = (title) => {
+        this.toast.init({
+          title,
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+      };
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.SESION) {
+        // El interceptor global ya limpió la sesión y redirigió a login.
+        this.cerrarModalDarseDeBaja(true);
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.CUENTA) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("Cuenta no habilitada");
+        return;
+      }
+
+      // Error corregible: el modal sigue abierto y conserva el motivo.
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.MOTIVO) {
+        this.errorMotivoDarseDeBaja = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.PERFIL_ACTIVO) {
+        this.cerrarModalDarseDeBaja(true);
+        this.mensajeError = mensaje;
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.PROYECTO_NO_ENCONTRADO) {
+        this.cerrarModalDarseDeBaja(true);
+        this.proyecto = null;
+        this.estadoNoEncontrado = true;
+        this.mensajeError = mensaje;
+        this.mostrarVolver = true;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.PERMISO) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("No se pudo dar de baja");
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_DARSE_DE_BAJA.ULTIMO_DIRECTOR) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("Último director");
+        return;
+      }
+
+      if (
+        [
+          TIPOS_ERROR_DARSE_DE_BAJA.ESTADO_PROYECTO,
+          TIPOS_ERROR_DARSE_DE_BAJA.MEMBRESIA_INACTIVA,
+        ].includes(tipo)
+      ) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("No se pudo dar de baja");
+        return;
+      }
+
+      // La ficha §8.3 manda cerrar ante 403/404/409 aunque el mensaje no
+      // coincida con ningún patrón conocido: el backend sigue siendo la
+      // fuente de verdad y el proyecto se recarga.
+      if ([403, 404, 409].includes(status)) {
+        this.cerrarModalDarseDeBaja(true);
+        await this.cargar();
+        mostrarToast("No se pudo dar de baja");
+        return;
+      }
+
+      // 5xx o error no clasificado: el modal queda abierto para reintentar.
+      this.errorDarseDeBaja = mensaje;
+    },
+    /** UC-60 §5.1: abre el diálogo y consulta el preview (solo lectura). */
+    abrirConfirmacion() {
+      if (!this.puedeConfirmarProyecto || this.confirmandoProyecto) return;
+      this.errorConfirmacion = "";
+      this.modalConfirmacionVisible = true;
+      this.cargarPreviewConfirmacion("inicial");
+    },
+    onCambioVisibilidadConfirmacion(valor) {
+      if (valor) {
+        this.modalConfirmacionVisible = true;
+        return;
+      }
+      if (this.confirmandoProyecto) return;
+
+      this.modalConfirmacionVisible = false;
+      this.idCargaPreviewConfirmacion++;
+      if (controladorConfirmacion) {
+        controladorConfirmacion.abort();
+        controladorConfirmacion = null;
+      }
+      this.previewConfirmacion = null;
+      this.cargandoPreviewConfirmacion = false;
+      this.actualizandoPreviewConfirmacion = false;
+      this.errorPreviewConfirmacion = "";
+      this.puedeReintentarPreviewConfirmacion = false;
+      this.errorConfirmacion = "";
+    },
+    reintentarPreviewConfirmacion() {
+      this.cargarPreviewConfirmacion("inicial");
+    },
+    /**
+     * GET /proyectos/{id}/confirmacion. Con `modo = "refresco"` reconsulta sin
+     * vaciar el contenido: se usa después de un 409 de bloqueo para que el
+     * modal siga mostrando los bloqueos mientras se actualiza.
+     */
+    async cargarPreviewConfirmacion(modo = "inicial") {
+      if (this.confirmandoProyecto) return;
+      const inicial = modo === "inicial";
+      const corrida = ++this.idCargaPreviewConfirmacion;
+
+      if (controladorConfirmacion) controladorConfirmacion.abort();
+      controladorConfirmacion = new AbortController();
+
+      if (inicial) {
+        this.previewConfirmacion = null;
+        this.cargandoPreviewConfirmacion = true;
+      } else {
+        this.actualizandoPreviewConfirmacion = true;
+      }
+      this.errorPreviewConfirmacion = "";
+      this.puedeReintentarPreviewConfirmacion = false;
+
+      try {
+        const response = await proyectoService.previsualizarConfirmacion(
+          this.idProyecto,
+          controladorConfirmacion.signal
+        );
+        if (corrida !== this.idCargaPreviewConfirmacion) return;
+        this.previewConfirmacion = normalizarPreview(response?.data);
+        // Tras un 409 de confirmación el refresco no debe borrar el mensaje:
+        // el preview puede volver a decir "puedeConfirmar" y hacer desaparecer
+        // el error real que devolvió el POST.
+        if (inicial) this.errorConfirmacion = "";
+      } catch (error) {
+        if (
+          corrida !== this.idCargaPreviewConfirmacion ||
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+        this.manejarErrorPreviewConfirmacion(error);
+      } finally {
+        if (corrida === this.idCargaPreviewConfirmacion) {
+          this.cargandoPreviewConfirmacion = false;
+          this.actualizandoPreviewConfirmacion = false;
+        }
+      }
+    },
+    manejarErrorPreviewConfirmacion(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorConfirmacion(error);
+      const mensaje = clasificacion.mensaje;
+
+      if (status === 403) {
+        this.modalConfirmacionVisible = false;
+        this.toast.init({
+          title: "No se pudo verificar",
+          message:
+            mensaje ||
+            "No tenés permiso para confirmar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalConfirmacionVisible = false;
+
+        if (
+          clasificacion.codigo ===
+            CODIGOS_CONFIRMACION.PERFIL_ACTIVO_NO_SELECCIONADO ||
+          /perfil\s*activo/i.test(mensaje)
+        ) {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (
+          clasificacion.codigo ===
+            CODIGOS_CONFIRMACION.PROYECTO_NO_ENCONTRADO ||
+          /proyecto/i.test(mensaje)
+        ) {
+          this.proyecto = null;
+          this.estadoNoEncontrado = true;
+          this.mensajeError = mensaje || "El proyecto no existe.";
+          this.mostrarVolver = true;
+          return;
+        }
+      }
+
+      // 500/red o 404 no contemplado: el modal queda abierto con reintento.
+      this.errorPreviewConfirmacion = mensajeErrorApi(
+        error,
+        "No se pudo verificar el proyecto. Inténtalo nuevamente."
+      );
+      this.puedeReintentarPreviewConfirmacion = true;
+    },
+    /** UC-60: confirma y reemplaza el proyecto con la respuesta completa. */
+    async confirmarProyecto() {
+      if (this.confirmandoProyecto) return;
+      if (this.previewConfirmacion?.puedeConfirmar !== true) return;
+
+      this.confirmandoProyecto = true;
+      this.errorConfirmacion = "";
+      if (controladorConfirmacion) controladorConfirmacion.abort();
+      controladorConfirmacion = new AbortController();
+
+      try {
+        const response = await proyectoService.confirmar(
+          this.idProyecto,
+          controladorConfirmacion.signal
+        );
+        const data = response?.data || {};
+        this.fechaInicioConfirmacion = data.fechaInicioConfirmada || null;
+
+        if (data.proyecto) {
+          // Q1: la ficha devuelve un ProyectoResponse completo. Se conserva el
+          // contexto del consultante por si el DTO del POST lo omite.
+          this.proyecto = {
+            ...data.proyecto,
+            esMiembro: data.proyecto.esMiembro ?? this.proyecto?.esMiembro ?? false,
+            rolUsuario: data.proyecto.rolUsuario ?? this.proyecto?.rolUsuario ?? null,
+            permisos: Array.isArray(data.proyecto.permisos)
+              ? data.proyecto.permisos
+              : this.proyecto?.permisos || [],
+            puedeDarseDeBaja:
+              data.proyecto.puedeDarseDeBaja ??
+              this.proyecto?.puedeDarseDeBaja ??
+              false,
+          };
+        } else {
+          await this.cargar();
+        }
+
+        this.modalConfirmacionVisible = false;
+        this.previewConfirmacion = null;
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion++;
+        });
+        this.refrescarNotificacionesPerfil();
+        this.refrescarPersonalRequerido();
+
+        const inicio = this.fechaInicioConfirmacion
+          ? formatearFecha(this.fechaInicioConfirmacion)
+          : "";
+        this.toast.init({
+          title: "Proyecto confirmado",
+          message: inicio
+            ? `El proyecto se confirmó y las actividades quedaron agendadas. Inicio: ${inicio}.`
+            : "El proyecto se confirmó y las actividades quedaron agendadas.",
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorConfirmacion(error);
+      } finally {
+        this.confirmandoProyecto = false;
+      }
+    },
+    async manejarErrorConfirmacion(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorConfirmacion(error);
+      const mensaje = clasificacion.mensaje;
+
+      if (status === 403) {
+        this.modalConfirmacionVisible = false;
+        this.toast.init({
+          title: "No se pudo confirmar",
+          message:
+            mensaje ||
+            "No tenés permiso para confirmar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalConfirmacionVisible = false;
+
+        if (
+          clasificacion.codigo ===
+            CODIGOS_CONFIRMACION.PERFIL_ACTIVO_NO_SELECCIONADO ||
+          /perfil\s*activo/i.test(mensaje)
+        ) {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (
+          clasificacion.codigo ===
+            CODIGOS_CONFIRMACION.PROYECTO_NO_ENCONTRADO ||
+          /proyecto/i.test(mensaje)
+        ) {
+          this.proyecto = null;
+          this.estadoNoEncontrado = true;
+          this.mensajeError = mensaje || "El proyecto no existe.";
+          this.mostrarVolver = true;
+          return;
+        }
+
+        this.errorConfirmacion = mensajeErrorApi(
+          error,
+          "No se pudo confirmar el proyecto."
+        );
+        return;
+      }
+
+      if (status === 409) {
+        // §5.3: cambio de estado → cerrar, avisar y refrescar proyecto/cronograma.
+        if (clasificacion.esEstado) {
+          this.modalConfirmacionVisible = false;
+          this.toast.init({
+            title: "No se pudo confirmar",
+            message:
+              mensaje ||
+              "El proyecto ya no se encuentra en un estado confirmable.",
+            color: "danger",
+            position: "top-right",
+            duration: 6000,
+          });
+          await this.cargar();
+          await this.$nextTick(() => {
+            this.tokenRefrescoPlanificacion++;
+          });
+          return;
+        }
+
+        // Bloqueo corregible: el modal sigue abierto y se reconsulta el preview.
+        this.errorConfirmacion =
+          mensaje || "El proyecto todavía no se puede confirmar.";
+        const base = this.previewConfirmacion || normalizarPreview({});
+        this.previewConfirmacion = {
+          ...base,
+          puedeConfirmar: false,
+          bloqueos: clasificacion.bloqueos.length
+            ? clasificacion.bloqueos
+            : base.bloqueos,
+        };
+        // El POST ya terminó: liberar el guard antes de reconsultar.
+        this.confirmandoProyecto = false;
+        await this.cargarPreviewConfirmacion("refresco");
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorConfirmacion =
+          "Ocurrió un error al confirmar el proyecto. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorConfirmacion = mensajeErrorApi(
+        error,
+        "No se pudo confirmar el proyecto."
+      );
+    },
+    /** UC-37: abre el diálogo y consulta el preview de finalización. */
+    abrirFinalizacion() {
+      if (!this.puedeFinalizarProyecto || this.finalizandoProyecto) return;
+      this.errorFinalizacion = "";
+      this.faltantesFinalizacion = [];
+      this.modalFinalizacionVisible = true;
+      this.cargarPreviewFinalizacion();
+    },
+    onCambioVisibilidadFinalizacion(valor) {
+      if (valor) {
+        this.modalFinalizacionVisible = true;
+        return;
+      }
+      if (this.finalizandoProyecto) return;
+
+      this.modalFinalizacionVisible = false;
+      this.idCargaPreviewFinalizacion++;
+      if (controladorFinalizacion) {
+        controladorFinalizacion.abort();
+        controladorFinalizacion = null;
+      }
+      this.previewFinalizacion = null;
+      this.profesionesFinalizacion = {};
+      this.cargandoPreviewFinalizacion = false;
+      this.errorPreviewFinalizacion = "";
+      this.puedeReintentarPreviewFinalizacion = false;
+      this.errorFinalizacion = "";
+      this.faltantesFinalizacion = [];
+    },
+    reintentarPreviewFinalizacion() {
+      this.cargarPreviewFinalizacion();
+    },
+    /**
+     * GET /proyectos/{id}/finalizacion + GET /proyectos/{id}/miembros.
+     * El listado de miembros solo enriquece la profesión; si falla, el modal
+     * sigue funcionando con nombre y rol.
+     */
+    async cargarPreviewFinalizacion() {
+      if (this.finalizandoProyecto) return;
+      const corrida = ++this.idCargaPreviewFinalizacion;
+
+      if (controladorFinalizacion) controladorFinalizacion.abort();
+      controladorFinalizacion = new AbortController();
+
+      this.previewFinalizacion = null;
+      this.profesionesFinalizacion = {};
+      this.cargandoPreviewFinalizacion = true;
+      this.errorPreviewFinalizacion = "";
+      this.puedeReintentarPreviewFinalizacion = false;
+
+      try {
+        const resultados = await Promise.allSettled([
+          proyectoService.previsualizarFinalizacion(
+            this.idProyecto,
+            controladorFinalizacion.signal
+          ),
+          proyectoService.listarMiembros(
+            this.idProyecto,
+            { todos: true },
+            controladorFinalizacion.signal
+          ),
+        ]);
+        if (corrida !== this.idCargaPreviewFinalizacion) return;
+
+        const [previewRes, miembrosRes] = resultados;
+        if (previewRes.status !== "fulfilled") {
+          await this.manejarErrorPreviewFinalizacion(previewRes.reason);
+          return;
+        }
+
+        this.previewFinalizacion = normalizarPreviewFinalizacion(
+          previewRes.value?.data
+        );
+        this.profesionesFinalizacion =
+          miembrosRes.status === "fulfilled"
+            ? indexarProfesionesPorPerfil(miembrosRes.value?.data)
+            : {};
+        this.errorFinalizacion = "";
+      } catch (error) {
+        if (
+          corrida === this.idCargaPreviewFinalizacion &&
+          error?.code !== "ERR_CANCELED" &&
+          error?.name !== "CanceledError"
+        ) {
+          await this.manejarErrorPreviewFinalizacion(error);
+        }
+      } finally {
+        if (corrida === this.idCargaPreviewFinalizacion) {
+          this.cargandoPreviewFinalizacion = false;
+        }
+      }
+    },
+    async manejarErrorPreviewFinalizacion(error) {
+      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+        return;
+      }
+
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorFinalizacion(error);
+      const clasificacionProyecto = clasificarErrorProyecto(error);
+      const mensaje = clasificacion.mensaje;
+
+      if (status === 403) {
+        this.modalFinalizacionVisible = false;
+        this.toast.init({
+          title: "No se pudo verificar",
+          message:
+            mensaje ||
+            "No tenés permiso para finalizar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalFinalizacionVisible = false;
+
+        if (
+          clasificacionProyecto?.tipo === "perfil-activo" ||
+          /perfil\s*activo/i.test(mensaje)
+        ) {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (
+          clasificacionProyecto?.tipo === "perfil-no-encontrado" ||
+          /perfil/i.test(mensaje)
+        ) {
+          await refrescarSesion();
+          this.mensajeError =
+            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        this.proyecto = null;
+        this.estadoNoEncontrado = true;
+        this.mensajeError = mensaje || "El proyecto no existe.";
+        this.mostrarVolver = true;
+        return;
+      }
+
+      this.errorPreviewFinalizacion = mensajeErrorApi(
+        error,
+        "No se pudo verificar el proyecto. Inténtalo nuevamente."
+      );
+      this.puedeReintentarPreviewFinalizacion = true;
+    },
+    /** UC-37: envía todas las calificaciones del director en un solo POST. */
+    async confirmarFinalizacion(
+      calificaciones,
+      confirmarFinalizacionPrematura = false
+    ) {
+      if (this.finalizandoProyecto) return;
+      if (!Array.isArray(calificaciones)) return;
+
+      this.finalizandoProyecto = true;
+      this.errorFinalizacion = "";
+      this.faltantesFinalizacion = [];
+      if (controladorFinalizacion) controladorFinalizacion.abort();
+      controladorFinalizacion = new AbortController();
+
+      try {
+        const response = await proyectoService.finalizar(
+          this.idProyecto,
+          calificaciones,
+          confirmarFinalizacionPrematura === true,
+          controladorFinalizacion.signal
+        );
+        const data = response?.data || {};
+
+        if (data.proyecto) {
+          this.proyecto = {
+            ...data.proyecto,
+            esMiembro:
+              data.proyecto.esMiembro ?? this.proyecto?.esMiembro ?? false,
+            rolUsuario:
+              data.proyecto.rolUsuario ?? this.proyecto?.rolUsuario ?? null,
+            permisos: Array.isArray(data.proyecto.permisos)
+              ? data.proyecto.permisos
+              : this.proyecto?.permisos || [],
+            puedeDarseDeBaja:
+              data.proyecto.puedeDarseDeBaja ??
+              this.proyecto?.puedeDarseDeBaja ??
+              false,
+            fechaFinalizacion:
+              data.proyecto.fechaFinalizacion ??
+              data.fechaFinalizacion ??
+              this.proyecto?.fechaFinalizacion ??
+              null,
+            finalizacionPrematura:
+              data.proyecto.finalizacionPrematura ??
+              data.finalizacionPrematura ??
+              this.proyecto?.finalizacionPrematura ??
+              false,
+          };
+        } else {
+          await this.cargar();
+          if (data.fechaFinalizacion && this.proyecto) {
+            this.proyecto = {
+              ...this.proyecto,
+              fechaFinalizacion: data.fechaFinalizacion,
+              finalizacionPrematura:
+                data.finalizacionPrematura ??
+                this.proyecto?.finalizacionPrematura ??
+                false,
+            };
+          }
+        }
+
+        const finalizacionPrematura =
+          data.proyecto?.finalizacionPrematura === true ||
+          this.proyecto?.finalizacionPrematura === true;
+
+        this.modalFinalizacionVisible = false;
+        this.previewFinalizacion = null;
+        this.profesionesFinalizacion = {};
+        this.errorFinalizacion = "";
+        this.faltantesFinalizacion = [];
+        this.refrescarNotificacionesPerfil();
+        this.refrescarPersonalRequerido();
+
+        const cantidad = Number(data.calificacionesRegistradas) || 0;
+        const cierre = finalizacionPrematura
+          ? "El proyecto quedó finalizado de forma anticipada"
+          : "El proyecto quedó finalizado";
+        this.toast.init({
+          title: finalizacionPrematura
+            ? "Proyecto finalizado anticipadamente"
+            : "Proyecto finalizado",
+          message: cantidad
+            ? `${cierre} y se registraron ${cantidad} calificaciones.`
+            : `${cierre} y se notificó a los integrantes.`,
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorFinalizacion(error);
+      } finally {
+        this.finalizandoProyecto = false;
+      }
+    },
+    async manejarErrorFinalizacion(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorFinalizacion(error);
+      const clasificacionProyecto = clasificarErrorProyecto(error);
+      const mensaje = clasificacion.mensaje;
+
+      if (status === 403) {
+        this.modalFinalizacionVisible = false;
+        this.toast.init({
+          title: "No se pudo finalizar",
+          message:
+            mensaje ||
+            "No tenés permiso para finalizar este proyecto o no sos miembro activo.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (status === 404) {
+        this.modalFinalizacionVisible = false;
+
+        if (
+          clasificacionProyecto?.tipo === "perfil-activo" ||
+          /perfil\s*activo/i.test(mensaje)
+        ) {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        if (
+          clasificacionProyecto?.tipo === "perfil-no-encontrado" ||
+          /perfil/i.test(mensaje)
+        ) {
+          await refrescarSesion();
+          this.mensajeError =
+            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+
+        this.proyecto = null;
+        this.estadoNoEncontrado = true;
+        this.mensajeError = mensaje || "El proyecto no existe.";
+        this.mostrarVolver = true;
+        return;
+      }
+
+      if (status === 409) {
+        if (clasificacion.esConfirmacionPrematuraRequerida) {
+          this.previewFinalizacion = {
+            ...(this.previewFinalizacion || {}),
+            requiereConfirmacionPrematura: true,
+            diasAnticipacion:
+              clasificacion.diasAnticipacion ||
+              this.previewFinalizacion?.diasAnticipacion ||
+              0,
+            advertencias:
+              this.previewFinalizacion?.advertencias?.length
+                ? this.previewFinalizacion.advertencias
+                : [
+                    {
+                      codigo: "FECHA_ENTREGA_FUTURA",
+                      mensaje:
+                        mensaje ||
+                        "La fecha de entrega estipulada todavía no se alcanzó.",
+                      entidadTipo: "PLANIFICACION",
+                      entidadId: null,
+                    },
+                  ],
+          };
+          this.errorFinalizacion =
+            mensaje ||
+            "Confirmá la finalización anticipada para continuar.";
+          return;
+        }
+
+        if (clasificacion.esCalificacionesIncompletas) {
+          this.faltantesFinalizacion = clasificacion.faltantes;
+          this.errorFinalizacion =
+            mensaje || "Faltan calificaciones obligatorias para finalizar.";
+          return;
+        }
+
+        if (clasificacion.esCalificacionInvalida) {
+          this.errorFinalizacion =
+            mensaje ||
+            "Revisá la valoración y la reseña de las calificaciones.";
+          return;
+        }
+
+        this.modalFinalizacionVisible = false;
+        this.toast.init({
+          title: "No se pudo finalizar",
+          message:
+            mensaje ||
+            "El proyecto ya no se encuentra en un estado finalizable.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (status === 400) {
+        this.errorFinalizacion =
+          mensaje ||
+          "Revisá la valoración y la reseña de las calificaciones.";
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorFinalizacion =
+          "Ocurrió un error al finalizar el proyecto. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorFinalizacion = mensajeErrorApi(
+        error,
+        "No se pudo finalizar el proyecto."
+      );
+    },
+    irACalificaciones() {
+      this.$router.push({
+        name: "calificaciones-proyecto",
+        params: { id: this.idProyecto },
+      });
+    },
+    refrescarNotificacionesPerfil() {
+      const idPerfil = idPerfilActivo();
+      if (idPerfil == null) return;
+      cargarResumenPerfil(idPerfil);
+    },
+    /** UC-26: despacha la postulación emitida por PersonalRequerido. */
+    abrirPostulacion({ tipo, requerimiento, actividad } = {}) {
+      if (tipo === TIPOS_POSTULACION.ACTIVIDAD) {
+        this.abrirPostulacionActividad({ actividad, requerimiento });
+        return;
+      }
+      this.abrirPostulacionGeneral(requerimiento);
+    },
+    /** UC-26: abre la confirmación de postulación a un requerimiento general. */
+    abrirPostulacionGeneral(requerimiento) {
+      if (!this.tieneFechaEntrega) return;
+      const idRequerimiento = requerimiento?.idRequerimientoGral;
+      if (idRequerimiento == null) return;
+      if (this.estaSinCupo(TIPOS_POSTULACION.GENERAL, idRequerimiento)) return;
+      if (!esElegibleParaPostularGeneral(this.proyecto, requerimiento)) return;
+
+      const clave = clavePostulacion(
+        TIPOS_POSTULACION.GENERAL,
+        idRequerimiento
+      );
+      if (this.postulacionesEnviadas[clave]) return;
+
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+      this.modalPostulacion = {
+        visible: true,
+        tipo: TIPOS_POSTULACION.GENERAL,
+        requerimiento,
+        actividad: null,
+      };
+    },
+    /** UC-26: abre la confirmación de postulación a un requerimiento de actividad. */
+    abrirPostulacionActividad({ actividad, requerimiento } = {}) {
+      if (!this.tieneFechaEntrega) return;
+      if (!esActividadPostulable(this.proyecto, actividad, requerimiento)) return;
+      if (!requerimiento?.idRequerimiento) return;
+      if (
+        this.estaSinCupo(
+          TIPOS_POSTULACION.ACTIVIDAD,
+          requerimiento.idRequerimiento
+        )
+      ) {
+        return;
+      }
+
+      const clave = clavePostulacion(
+        TIPOS_POSTULACION.ACTIVIDAD,
+        requerimiento.idRequerimiento
+      );
+      if (this.postulacionesEnviadas[clave]) return;
+
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+      this.modalPostulacion = {
+        visible: true,
+        tipo: TIPOS_POSTULACION.ACTIVIDAD,
+        requerimiento,
+        actividad,
+      };
+    },
+    /** Abre el detalle de la actividad desde el link "Ver actividad". */
+    irADetalleActividad({ actividad } = {}) {
+      if (!actividad?.idActividad) return;
+      this.$router.push({
+        name: "actividad-detalle",
+        params: {
+          id: this.idProyecto,
+          idActividad: actividad.idActividad,
+        },
+      });
+    },
+    estaSinCupo(tipo, idRequerimiento) {
+      const clave = clavePostulacion(tipo, idRequerimiento);
+      return !!clave && !!this.requerimientosSinCupo[clave];
+    },
+    registrarPostulacionEnviada(tipo, idRequerimiento) {
+      const clave = clavePostulacion(tipo, idRequerimiento);
+      if (!clave) return;
+      this.postulacionesEnviadas = {
+        ...this.postulacionesEnviadas,
+        [clave]: true,
+      };
+    },
+    /**
+     * Oculta la acción cuando el sistema respondió cupo completo aunque la
+     * respuesta recargada todavía no traiga `satisfecho` (actividades).
+     * La marca dura la sesión de la vista y se limpia al cambiar de proyecto.
+     */
+    registrarSinCupo(tipo, idRequerimiento) {
+      const clave = clavePostulacion(tipo, idRequerimiento);
+      if (!clave) return;
+      this.requerimientosSinCupo = {
+        ...this.requerimientosSinCupo,
+        [clave]: true,
+      };
+    },
+    /** UC-26: confirma la postulación del modal activo. */
+    async confirmarPostulacion() {
+      if (this.enviandoPostulacion) return;
+
+      const { tipo, requerimiento, actividad } = this.modalPostulacion || {};
+      if (!requerimiento) return;
+
+      const idRequerimiento =
+        tipo === TIPOS_POSTULACION.GENERAL
+          ? requerimiento.idRequerimientoGral
+          : requerimiento.idRequerimiento;
+      if (idRequerimiento == null) return;
+
+      this.enviandoPostulacion = true;
+      this.claveEnviando = clavePostulacion(tipo, idRequerimiento);
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+
+      if (controladorPostulacion) controladorPostulacion.abort();
+      controladorPostulacion = new AbortController();
+
+      try {
+        const response =
+          tipo === TIPOS_POSTULACION.GENERAL
+            ? await proyectoService.postularARequerimientoGeneral(
+                this.idProyecto,
+                idRequerimiento,
+                controladorPostulacion.signal
+              )
+            : await proyectoService.postularARequerimientoActividad(
+                this.idProyecto,
+                idRequerimiento,
+                controladorPostulacion.signal
+              );
+
+        const data = response?.data || {};
+        this.registrarPostulacionEnviada(tipo, idRequerimiento);
+        this.modalPostulacion.visible = false;
+
+        this.toast.init({
+          title: "Postulación enviada",
+          message: mensajeExitoPostulacion(tipo, actividad?.nombre),
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        if (data.tentativa === true) {
+          this.toast.init({
+            title: "Disponibilidad provisoria",
+            message: AVISO_DISPONIBILIDAD_PROVISORIA,
+            color: "primary",
+            position: "top-right",
+            duration: 8000,
+          });
+        }
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorPostulacion(error);
+      } finally {
+        this.enviandoPostulacion = false;
+        this.claveEnviando = "";
+      }
+    },
+    async manejarErrorPostulacion(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+      const clasificacion = clasificarErrorProyecto(error);
+
+      // 400: error de negocio (por ejemplo, proyecto sin fecha de entrega).
+      if (status === 400) {
+        this.errorPostulacion =
+          mensaje ||
+          "No se pudo enviar la postulación. Revisá los datos e intentá nuevamente.";
+        return;
+      }
+
+      // 401: el proyecto mantiene el comportamiento actual (cuenta no activa).
+      if (status === 401) {
+        this.modalPostulacion.visible = false;
+        this.toast.init({
+          title: "No se pudo postular",
+          message: mensajeErrorApi(error, "Tu cuenta no se encuentra activa."),
           color: "danger",
           position: "top-right",
           duration: 6000,
@@ -949,43 +2783,340 @@ data() {
       }
 
       if (status === 404) {
-        this.modalEliminarActividadVisible = false;
         if (clasificacion?.tipo === "perfil-activo") {
+          this.modalPostulacion.visible = false;
           this.mensajeError =
             "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
           this.$router.push({ name: "dashboard-usuario" });
           return;
         }
+
         if (clasificacion?.tipo === "perfil-no-encontrado") {
+          this.modalPostulacion.visible = false;
           await refrescarSesion();
           this.mensajeError =
             "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
           this.$router.push({ name: "dashboard-usuario" });
           return;
         }
-        if (/proyecto/i.test(mensaje)) {
-          this.proyecto = null;
-          this.estadoNoEncontrado = true;
-          this.mensajeError = mensaje;
-          this.mostrarVolver = true;
-          return;
-        }
-        this.errorEliminarActividad = mensajeErrorApi(
-          error,
-          "No se pudo eliminar la actividad."
-        );
+
+        // Requerimiento inexistente o de otro proyecto: refrescar sin reintentar.
+        this.modalPostulacion.visible = false;
+        this.toast.init({
+          title: "No se pudo postular",
+          message: mensaje || "El requerimiento ya no está disponible.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        this.refrescarPersonalRequerido();
         return;
       }
 
       if (status === 409) {
-        this.modalEliminarActividadVisible = false;
+        // Mismo usuario ya asignado a la actividad con otro perfil: no se
+        // genera la postulación y se refresca el listado de asignados.
+        if (esConflictoAsignacionUnica(error)) {
+          this.modalPostulacion.visible = false;
+          this.toast.init({
+            title: "Ya estás asignado",
+            message: mensaje || MENSAJE_USUARIO_YA_ASIGNADO_POSTULACION,
+            color: "danger",
+            position: "top-right",
+            duration: 6000,
+          });
+          await this.cargar();
+          this.refrescarPersonalRequerido();
+          return;
+        }
+
+        // Sin disponibilidad: el modal queda abierto para leer el mensaje.
+        if (esErrorDisponibilidad(error)) {
+          this.errorPostulacion = mensaje;
+          this.errorPostulacionEsDisponibilidad = true;
+          this.refrescarPersonalRequerido();
+          return;
+        }
+
+        if (esErrorPostulacionDuplicada(error)) {
+          const { tipo, requerimiento } = this.modalPostulacion || {};
+          const idRequerimiento =
+            tipo === TIPOS_POSTULACION.GENERAL
+              ? requerimiento?.idRequerimientoGral
+              : requerimiento?.idRequerimiento;
+          if (idRequerimiento != null) {
+            this.registrarPostulacionEnviada(tipo, idRequerimiento);
+          }
+        }
+
+        if (esErrorCupoCompleto(error)) {
+          const { tipo, requerimiento } = this.modalPostulacion || {};
+          const idRequerimiento =
+            tipo === TIPOS_POSTULACION.GENERAL
+              ? requerimiento?.idRequerimientoGral
+              : requerimiento?.idRequerimiento;
+          if (idRequerimiento != null) {
+            this.registrarSinCupo(tipo, idRequerimiento);
+          }
+        }
+
+        this.modalPostulacion.visible = false;
+        const esPerfilInactivo =
+          /perfil/i.test(mensaje) && /inactiv/i.test(mensaje);
         this.toast.init({
-          title: "No se pudo eliminar",
-          message:
-            mensaje ||
-            (clasificacion?.tipo === "estado-no-cancelable"
-              ? "La actividad no se puede eliminar (estado FINALIZADA o CANCELADA)."
-              : "El proyecto no admite la operación."),
+          title: esPerfilInactivo ? "Perfil inactivo" : "No se pudo postular",
+          message: mensaje || "La postulación no se pudo completar.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+
+        if (esPerfilInactivo) {
+          await refrescarSesion();
+        }
+
+        await this.cargar();
+        this.refrescarPersonalRequerido();
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorPostulacion =
+          "Ocurrió un error al enviar la postulación. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorPostulacion = mensajeErrorApi(
+        error,
+        "No se pudo enviar la postulación."
+      );
+    },
+    refrescarPersonalRequerido() {
+      const componente = this.$refs.personalRequerido;
+      if (componente?.refrescar) componente.refrescar();
+    },
+    irACalendario() {
+      this.modalPostulacion.visible = false;
+      this.$router.push({ name: "calendario" });
+    },
+    irAProyectos() {
+      this.$router.push({ name: "proyectos-inicio" });
+    },
+    irAInvitarProyecto() {
+      if (!this.puedeInvitarIntegrante) return;
+      this.$router.push({
+        name: "invitar-proyecto",
+        params: { id: this.idProyecto },
+      });
+    },
+    async abrirModalAsignar(actividad) {
+      if (!actividad?.idActividad || this.asignando) return;
+      if (
+        !puedeAsignarActividad({
+          proyecto: this.proyecto,
+          actividad,
+          tieneFechaEntrega: this.tieneFechaEntrega,
+        })
+      ) {
+        return;
+      }
+
+      this.actividadAsignar = { ...actividad };
+      this.perfilesAsignadosActividad = perfilesAsignadosDe(actividad);
+      this.usuariosAsignadosActividad = usuariosAsignadosDe(actividad);
+      this.errorAsignar = "";
+      this.bloqueosAsignar = [];
+      this.miembrosBloqueantesAsignar = [];
+      this.modalAsignarVisible = true;
+    },
+    onCambioVisibilidadAsignar(valor) {
+      if (this.asignando && !valor) return;
+      if (valor) {
+        this.modalAsignarVisible = true;
+        return;
+      }
+      this.cerrarModalAsignar();
+    },
+    cerrarModalAsignar() {
+      if (this.asignando) return;
+      this.modalAsignarVisible = false;
+      this.actividadAsignar = null;
+      this.perfilesAsignadosActividad = [];
+      this.usuariosAsignadosActividad = [];
+      this.errorAsignar = "";
+      this.bloqueosAsignar = [];
+      this.miembrosBloqueantesAsignar = [];
+      if (controladorAsignacion) {
+        controladorAsignacion.abort();
+        controladorAsignacion = null;
+      }
+    },
+    async confirmarAsignacion({ idPerfil, miembro } = {}) {
+      if (this.asignando) return;
+      const actividad = this.actividadAsignar;
+      if (!actividad?.idActividad || idPerfil == null || idPerfil === "") {
+        return;
+      }
+
+      this.asignando = true;
+      this.errorAsignar = "";
+      this.bloqueosAsignar = [];
+      if (controladorAsignacion) controladorAsignacion.abort();
+      controladorAsignacion = new AbortController();
+
+      try {
+        const response = await actividadService.asignar(
+          this.idProyecto,
+          actividad.idActividad,
+          idPerfil,
+          controladorAsignacion.signal
+        );
+        const data = response?.data || {};
+
+        this.modalAsignarVisible = false;
+        this.actividadAsignar = null;
+        this.perfilesAsignadosActividad = [];
+        this.usuariosAsignadosActividad = [];
+        this.bloqueosAsignar = [];
+        this.miembrosBloqueantesAsignar = [];
+
+        this.toast.init({
+          title: "Actividad asignada",
+          message: `${mensajeExitoAsignacion(data, miembro, actividad)}${
+            this.esConfirmado
+              ? " El cronograma se recalculó; revisá la planificación."
+              : ""
+          }`,
+          color: "success",
+          position: "top-right",
+          duration: 7000,
+        });
+
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        this.refrescarNotificacionesPerfil();
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorAsignacion(error);
+      } finally {
+        this.asignando = false;
+      }
+    },
+    abrirModalDesasignar({ actividad, responsable } = {}) {
+      if (this.desasignando) return;
+      if (
+        !actividad?.idActividad ||
+        !responsable?.idAsignacionActividad ||
+        !puedeDesasignarActividad({
+          proyecto: this.proyecto,
+          actividad,
+          responsable,
+        })
+      ) {
+        return;
+      }
+
+      this.actividadDesasignar = { ...actividad };
+      this.responsableDesasignar = responsable;
+      this.errorDesasignar = "";
+      this.modalDesasignarVisible = true;
+    },
+    onCambioVisibilidadDesasignar(valor) {
+      if (this.desasignando && !valor) return;
+      if (valor) {
+        this.modalDesasignarVisible = true;
+        return;
+      }
+      this.cerrarModalDesasignar();
+    },
+    cerrarModalDesasignar() {
+      if (this.desasignando) return;
+      this.modalDesasignarVisible = false;
+      this.actividadDesasignar = null;
+      this.responsableDesasignar = null;
+      this.errorDesasignar = "";
+      if (controladorDesasignacion) {
+        controladorDesasignacion.abort();
+        controladorDesasignacion = null;
+      }
+    },
+    async confirmarDesasignacion() {
+      if (this.desasignando) return;
+      const actividad = this.actividadDesasignar;
+      const responsable = this.responsableDesasignar;
+      if (!actividad?.idActividad || !responsable?.idAsignacionActividad) {
+        return;
+      }
+
+      this.desasignando = true;
+      this.errorDesasignar = "";
+      if (controladorDesasignacion) controladorDesasignacion.abort();
+      controladorDesasignacion = new AbortController();
+
+      try {
+        const response = await actividadService.desasignar(
+          this.idProyecto,
+          actividad.idActividad,
+          responsable.idAsignacionActividad,
+          controladorDesasignacion.signal
+        );
+        const data = response?.data || {};
+
+        this.modalDesasignarVisible = false;
+        this.actividadDesasignar = null;
+        this.responsableDesasignar = null;
+
+        this.toast.init({
+          title: "Miembro desasignado",
+          message: mensajeExitoDesasignacion(data, responsable, actividad),
+          color: "success",
+          position: "top-right",
+          duration: 7000,
+        });
+
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+          this.tokenRefrescoDisponibilidad += 1;
+        });
+        this.refrescarNotificacionesPerfil();
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+        await this.manejarErrorDesasignacion(error);
+      } finally {
+        this.desasignando = false;
+      }
+    },
+    async manejarErrorDesasignacion(error) {
+      const { tipo, mensaje } = clasificarErrorDesasignacion(error);
+
+      const cerrar = () => {
+        this.modalDesasignarVisible = false;
+        this.actividadDesasignar = null;
+        this.responsableDesasignar = null;
+        this.errorDesasignar = "";
+      };
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SESION) {
+        cerrar();
+        await refrescarSesion();
+        this.mensajeError = "Tu sesión expiró. Volvé a iniciar sesión.";
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SIN_PERMISO) {
+        cerrar();
+        this.toast.init({
+          title: "Sin permiso",
+          message: mensaje,
           color: "danger",
           position: "top-right",
           duration: 6000,
@@ -994,17 +3125,514 @@ data() {
         return;
       }
 
-      if (!status || status >= 500) {
-        this.errorEliminarActividad =
-          "Ocurrió un error al eliminar la actividad. Inténtalo nuevamente.";
-        // Mantener el modal abierto ante errores de red/servidor.
+      if (
+        tipo === TIPOS_ERROR_ASIGNACION.RECURSO_NO_ENCONTRADO ||
+        tipo === TIPOS_ERROR_ASIGNACION.ESTADO_INVALIDO ||
+        tipo === TIPOS_ERROR_ASIGNACION.MIEMBRO_INACTIVO ||
+        tipo === TIPOS_ERROR_ASIGNACION.CONFLICTO
+      ) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo desasignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
         return;
       }
 
-      this.errorEliminarActividad = mensajeErrorApi(
-        error,
-        "No se pudo eliminar la actividad."
-      );
+      this.errorDesasignar = mensaje;
+    },
+    /**
+     * Recarga el detalle de la actividad abierta en el modal para actualizar
+     * los perfiles y usuarios ya asignados después de un 409.
+     */
+    async refrescarAsignadosActividad() {
+      const idActividad = this.actividadAsignar?.idActividad;
+      if (idActividad == null) return;
+
+      try {
+        const response = await actividadService.obtener(
+          this.idProyecto,
+          idActividad
+        );
+        const detalle = response?.data;
+        if (!detalle) return;
+
+        // El modal pudo cerrarse o cambiar de actividad mientras cargaba.
+        if (
+          !this.modalAsignarVisible ||
+          String(this.actividadAsignar?.idActividad) !== String(idActividad)
+        ) {
+          return;
+        }
+
+        this.actividadAsignar = detalle;
+        this.perfilesAsignadosActividad = perfilesAsignadosDe(detalle);
+        this.usuariosAsignadosActividad = usuariosAsignadosDe(detalle);
+      } catch {
+        // El refresco del listado es best-effort; el error original manda.
+      }
+    },
+    async manejarErrorAsignacion(error) {
+      const clasificacion = clasificarErrorAsignacion(error);
+      const { tipo, mensaje, bloqueos = [] } = clasificacion;
+      this.bloqueosAsignar = Array.isArray(bloqueos) ? bloqueos : [];
+      this.miembrosBloqueantesAsignar = Array.isArray(clasificacion.miembrosBloqueantes)
+        ? clasificacion.miembrosBloqueantes
+        : [];
+
+      const cerrar = () => {
+        this.modalAsignarVisible = false;
+        this.actividadAsignar = null;
+        this.perfilesAsignadosActividad = [];
+        this.usuariosAsignadosActividad = [];
+        this.errorAsignar = "";
+      };
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SESION) {
+        cerrar();
+        await refrescarSesion();
+        this.mensajeError = "Tu sesión expiró. Volvé a iniciar sesión.";
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.CUENTA) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.CSRF) {
+        this.errorAsignar = mensaje;
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SIN_PERMISO) {
+        cerrar();
+        this.toast.init({
+          title: "Sin permiso",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.PERFIL_ACTIVO_NO_ENCONTRADO) {
+        cerrar();
+        await refrescarSesion();
+        this.mensajeError =
+          "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.PERFIL_NO_ENCONTRADO) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.PROYECTO_NO_ENCONTRADO) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.RECURSO_NO_ENCONTRADO) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (
+        tipo === TIPOS_ERROR_ASIGNACION.PERFIL_INVALIDO ||
+        tipo === TIPOS_ERROR_ASIGNACION.VALIDACION ||
+        tipo === TIPOS_ERROR_ASIGNACION.SIN_FECHA_ENTREGA ||
+        tipo === TIPOS_ERROR_ASIGNACION.SIN_AGENDA ||
+        tipo === TIPOS_ERROR_ASIGNACION.CONFLICTO ||
+        tipo === TIPOS_ERROR_ASIGNACION.DESCONOCIDO
+      ) {
+        this.errorAsignar = mensaje;
+        return;
+      }
+
+      if (
+        tipo === TIPOS_ERROR_ASIGNACION.MIEMBRO_INACTIVO ||
+        tipo === TIPOS_ERROR_ASIGNACION.PERFIL_INACTIVO
+      ) {
+        this.errorAsignar = mensaje;
+        this.tokenRefrescoMiembros += 1;
+        return;
+      }
+
+      if (
+        tipo === TIPOS_ERROR_ASIGNACION.USUARIO_YA_ASIGNADO ||
+        tipo === TIPOS_ERROR_ASIGNACION.DUPLICADO
+      ) {
+        this.errorAsignar = mensaje;
+        this.tokenRefrescoMiembros += 1;
+        await this.refrescarAsignadosActividad();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.ESTADO_INVALIDO) {
+        cerrar();
+        this.toast.init({
+          title: "No se pudo asignar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (tipo === TIPOS_ERROR_ASIGNACION.SIN_DISPONIBILIDAD) {
+        this.errorAsignar = mensaje;
+        this.tokenRefrescoDisponibilidad += 1;
+        return;
+      }
+
+      this.errorAsignar = mensaje || "No se pudo asignar la actividad.";
+    },
+    async abrirModalEliminarActividad(actividad) {
+      const idProyecto = this.idProyecto;
+      const idActividad = actividad?.idActividad;
+      if (!idProyecto || !idActividad) return;
+
+      // UC-51: el modal carga los integrantes exclusivos. No se pide el detalle
+      // de la actividad (dependía de MODIFICAR_ACTIVIDAD y ya no es necesario).
+      this.actividadEliminar = {
+        ...actividad,
+        idProyecto,
+      };
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
+      this.modalEliminarActividadVisible = true;
+    },
+    onCambioVisibilidadEliminar(valor) {
+      if (this.eliminandoActividad && !valor) return;
+      if (valor) {
+        this.modalEliminarActividadVisible = true;
+        return;
+      }
+      this.cerrarModalEliminarActividad();
+    },
+    cerrarModalEliminarActividad() {
+      const refrescar = this.conflictoEliminarActividadEnCurso;
+      this.modalEliminarActividadVisible = false;
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
+      this.actividadEliminar = {};
+      if (controladorEliminacion) {
+        controladorEliminacion.abort();
+        controladorEliminacion = null;
+      }
+      // El 409 de EN_CURSO no cambia datos, pero la ficha pide refrescar al
+      // salir para no dejar estado viejo en la planificación.
+      if (refrescar) this.refrescarTrasEliminar();
+    },
+    limpiarErroresEliminarActividad() {
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+    },
+    refrescarTrasEliminar() {
+      this.cargar();
+      this.$nextTick(() => {
+        this.tokenRefrescoPlanificacion += 1;
+      });
+      this.refrescarNotificacionesPerfil();
+    },
+    irActividadDesdeEliminacion() {
+      const idActividad = this.actividadEliminar?.idActividad;
+      this.cerrarModalEliminarActividad();
+      if (!idActividad) return;
+      this.$router.push({
+        name: "modificar-actividad",
+        params: { id: this.idProyecto, idActividad },
+      });
+    },
+    async confirmarEliminarActividad({ motivo, decisiones } = {}) {
+      if (this.eliminandoActividad) return;
+
+      const idProyecto = this.idProyecto;
+      const idActividadFinal = this.actividadEliminar?.idActividad;
+      const nombreActividad = this.actividadEliminar?.nombre || "";
+      const motivoFinal = String(motivo ?? "").trim();
+      const decisionesFinal = Array.isArray(decisiones) ? decisiones : [];
+
+      if (!idProyecto || !idActividadFinal) {
+        this.errorEliminarActividad =
+          "No se pudo identificar la actividad a eliminar. Recargá la página e intentá nuevamente.";
+        return;
+      }
+      if (!motivoFinal) {
+        this.errorMotivoEliminarActividad =
+          "El motivo de la eliminación es obligatorio.";
+        return;
+      }
+      if (motivoFinal.length > 200) {
+        this.errorMotivoEliminarActividad =
+          "El motivo de la eliminación no puede superar los 200 caracteres.";
+        return;
+      }
+
+      this.eliminandoActividad = true;
+      this.errorEliminarActividad = "";
+      this.errorMotivoEliminarActividad = "";
+      this.erroresMiembroEliminarActividad = {};
+      this.conflictoEliminarActividadEnCurso = false;
+      if (controladorEliminacion) controladorEliminacion.abort();
+      controladorEliminacion = new AbortController();
+
+      try {
+        await actividadService.eliminarConDecisiones(
+          idProyecto,
+          idActividadFinal,
+          { motivo: motivoFinal, decisiones: decisionesFinal },
+          controladorEliminacion.signal
+        );
+
+        const eliminados = decisionesFinal.filter(
+          (decision) => decision?.accion === "ELIMINAR"
+        ).length;
+
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        if (eliminados > 0) {
+          this.tokenRefrescoIntegrantes += 1;
+        }
+        this.refrescarNotificacionesPerfil();
+
+        this.cerrarModalEliminarActividad();
+        this.toast.init({
+          title: "Actividad eliminada",
+          message: mensajeExitoEliminarActividad({
+            nombreActividad,
+            eliminados,
+          }),
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+      } catch (error) {
+        if (
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+        await this.manejarErrorEliminarActividad(error, decisionesFinal);
+      } finally {
+        this.eliminandoActividad = false;
+      }
+    },
+    async manejarErrorEliminarActividad(error, decisiones = []) {
+      const resultado = clasificarErrorEliminarActividad(error, {
+        decisiones,
+      });
+
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.SESION ||
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.CUENTA
+      ) {
+        this.errorEliminarActividad = resultado.mensaje;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.MOTIVO) {
+        this.errorMotivoEliminarActividad = resultado.mensaje;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.DECISIONES) {
+        this.errorEliminarActividad = resultado.mensaje;
+        this.erroresMiembroEliminarActividad = {};
+        // El backend devuelve un único error: recargar la lista para que el
+        // usuario vuelva a decidir sobre el estado actual.
+        this.tokenRefrescoExclusivos += 1;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.MOTIVO_BAJA) {
+        this.erroresMiembroEliminarActividad = {
+          ...(resultado.erroresPorMiembro || {}),
+        };
+        if (resultado.mensajeCampo) {
+          this.errorMotivoEliminarActividad = resultado.mensajeCampo;
+        }
+        if (
+          Object.keys(this.erroresMiembroEliminarActividad).length === 0 &&
+          !resultado.mensajeCampo
+        ) {
+          this.errorEliminarActividad = resultado.mensaje;
+        }
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.FALLBACK_MOTIVO) {
+        const errores = {};
+        for (const id of idsEliminarSinMotivo(decisiones)) {
+          errores[String(id)] =
+            "Ingresá un motivo de baja de hasta 100 caracteres: el motivo de la actividad supera ese límite.";
+        }
+        this.erroresMiembroEliminarActividad = errores;
+        if (Object.keys(errores).length === 0) {
+          this.errorEliminarActividad = resultado.mensaje;
+        }
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERMISO) {
+        this.cerrarModalEliminarActividad();
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message:
+            resultado.mensaje ||
+            "No tenés permiso para eliminar esta actividad.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERFIL_ACTIVO) {
+        this.cerrarModalEliminarActividad();
+        this.mensajeError =
+          resultado.mensaje ||
+          "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.PERFIL_NO_ENCONTRADO
+      ) {
+        this.cerrarModalEliminarActividad();
+        await refrescarSesion();
+        this.mensajeError =
+          "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.NO_ENCONTRADO) {
+        if (/proyecto/i.test(resultado.mensaje || "")) {
+          this.cerrarModalEliminarActividad();
+          this.proyecto = null;
+          this.estadoNoEncontrado = true;
+          this.mensajeError = resultado.mensaje;
+          this.mostrarVolver = true;
+          return;
+        }
+        this.cerrarModalEliminarActividad();
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: resultado.mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.ESTADO) {
+        this.cerrarModalEliminarActividad();
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: resultado.mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        await this.$nextTick(() => {
+          this.tokenRefrescoPlanificacion += 1;
+        });
+        return;
+      }
+
+      if (
+        resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.EN_CURSO_CONFIRMADO
+      ) {
+        // Mantener el modal abierto: el CTA "Ir a la actividad" permite
+        // cancelarla primero desde Modificar actividad.
+        this.errorEliminarActividad = resultado.mensaje;
+        this.conflictoEliminarActividadEnCurso = true;
+        return;
+      }
+
+      if (resultado.tipo === TIPOS_ERROR_ELIMINAR_ACTIVIDAD.NO_ELIMINABLE) {
+        this.errorEliminarActividad = resultado.mensaje;
+        this.tokenRefrescoExclusivos += 1;
+        return;
+      }
+
+      this.errorEliminarActividad =
+        resultado.mensaje ||
+        "Ocurrió un error al eliminar la actividad. Inténtalo nuevamente.";
     },
   },
   beforeUnmount() {
@@ -1012,6 +3640,10 @@ data() {
     if (controladorPublicacion) controladorPublicacion.abort();
     if (controladorCancelacion) controladorCancelacion.abort();
     if (controladorEliminacion) controladorEliminacion.abort();
+    if (controladorAsignacion) controladorAsignacion.abort();
+    if (controladorDesasignacion) controladorDesasignacion.abort();
+    if (controladorPostulacion) controladorPostulacion.abort();
+    if (controladorConfirmacion) controladorConfirmacion.abort();
   },
 };
 </script>
@@ -1138,6 +3770,17 @@ data() {
   color: var(--color-primary);
   font-size: 0.78rem;
   font-weight: 500;
+}
+
+.dashboard-proyecto__chip-prematura {
+  align-self: flex-start;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--color-warning-border, var(--color-border));
+  border-radius: 999px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .dashboard-proyecto__objetivos {

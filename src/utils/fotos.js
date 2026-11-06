@@ -1,8 +1,8 @@
 import { API_BASE_URL } from "../services/http";
 
 /**
- * Resuelve una URL de foto devuelta por el backend para usarla en <img src>.
- * El backend devuelve rutas relativas (ej. "/uploads/perfiles/foto.jpg") que,
+ * Resuelve una URL de foto devuelta por el sistema para usarla en <img src>.
+ * El sistema devuelve rutas relativas (ej. "/uploads/perfiles/foto.jpg") que,
  * sin resolver, se pedirían al origin del frontend y responderían 404.
  * @param {string|null|undefined} url fotoUrl / urlFoto / fotoPerfil
  * @returns {string|null} URL absoluta; la original si ya es absoluta

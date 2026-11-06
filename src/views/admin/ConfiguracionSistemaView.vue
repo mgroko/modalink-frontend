@@ -37,6 +37,21 @@
         </span>
         <span class="configuracion-sistema__arrow material-symbols-outlined">chevron_right</span>
       </RouterLink>
+
+      <RouterLink
+        to="/admin/configuracion/cronograma"
+        class="configuracion-sistema__card"
+      >
+        <span class="configuracion-sistema__icon material-symbols-outlined">build</span>
+        <span class="configuracion-sistema__card-content">
+          <strong>Reparación de cronogramas</strong>
+          <span>
+            Detectá actividades con datos inconsistentes, simulá la reparación
+            y aplicá los cambios sobre las actividades pendientes.
+          </span>
+        </span>
+        <span class="configuracion-sistema__arrow material-symbols-outlined">chevron_right</span>
+      </RouterLink>
     </section>
   </div>
 </template>
