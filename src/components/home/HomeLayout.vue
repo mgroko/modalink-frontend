@@ -485,7 +485,11 @@ export default {
         return ruta.name === "invitaciones";
       }
       if (clave === "ajustes") {
-        return ["ajustes-perfil-inicio", "editar-perfil-ajustes"].includes(ruta.name);
+        return [
+          "ajustes-perfil-inicio",
+          "editar-perfil-ajustes",
+          "configurar-terminos-perfil",
+        ].includes(ruta.name);
       }
       if (clave === "panel") {
         return ruta.name === "dashboard-usuario";

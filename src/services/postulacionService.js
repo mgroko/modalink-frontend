@@ -86,6 +86,19 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {number|null} [desvioMinutos] negativo = antes del preferido;
  *           positivo = después; null sin preferencia
  * @property {AdvertenciaSobrecompromiso[]} [advertencias] no bloqueantes
+ * @property {number|null} [idTycAceptado]
+ */
+
+/**
+ * Aceptación de la versión vigente de T&C del postulante (UC-23 §5.2).
+ * @typedef {Object} AceptacionTerminosRequest
+ * @property {number|null} idTyc
+ * @property {boolean} aceptaTerminos
+ */
+
+/**
+ * @typedef {Object} AceptarPostulacionRequest
+ * @property {AceptacionTerminosRequest} [aceptacionTerminos]
  */
 
 /**
@@ -226,22 +239,26 @@ const postulacionService = {
 
   /**
    * POST /proyectos/{idProyecto}/postulaciones/general/{idPostulacion}/aceptar
-   * UC-34. Sin body. Crea la membresía del postulante, marca la postulación
-   * como ACEPTADA y, si completa el cupo, el sistema rechaza las demás
-   * postulaciones PENDIENTE del requerimiento.
+   * UC-34. Crea la membresía del postulante, marca la postulación como
+   * ACEPTADA y, si completa el cupo, el sistema rechaza las demás
+   * postulaciones PENDIENTE del requerimiento. Si el postulante tiene T&C
+   * vigentes, el director envía `aceptacionTerminos`.
    *
    * Errores esperables: 401, 403, 404, 409 (ya gestionada, proyecto no
    * habilitado, requerimiento satisfecho, postulante ya miembro, perfil
    * inactivo).
    * @param {number|string} idProyecto
    * @param {number|string} idPostulacion
+   * @param {AceptarPostulacionRequest} [request]
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: PostulacionGestionadaResponse}>} 200 OK
    */
-  aceptarGeneral(idProyecto, idPostulacion, signal) {
+  aceptarGeneral(idProyecto, idPostulacion, request = {}, signal) {
     return http.post(
       `/proyectos/${idProyecto}/postulaciones/general/${idPostulacion}/aceptar`,
-      null,
+      request?.aceptacionTerminos
+        ? { aceptacionTerminos: request.aceptacionTerminos }
+        : null,
       { signal }
     );
   },
@@ -268,10 +285,11 @@ const postulacionService = {
 
   /**
    * POST /proyectos/{idProyecto}/postulaciones/actividad/{idPostulacion}/aceptar
-   * UC-34. Sin body. Revalida disponibilidad del postulante **y de todos los
+   * UC-34. Revalida disponibilidad del postulante **y de todos los
    * profesionales ya asignados** a la actividad; crea la asignación (y la
    * membresía si el postulante no es miembro) y marca la postulación como
-   * ACEPTADA.
+   * ACEPTADA. Si el postulante tiene T&C vigentes, el director envía
+   * `aceptacionTerminos`.
    *
    * La respuesta 200 incluye `resultadoPreferencia`, `desvioMinutos` y
    * `advertencias` (ficha v2 §5). Las advertencias no bloquean.
@@ -283,13 +301,16 @@ const postulacionService = {
    * entrega).
    * @param {number|string} idProyecto
    * @param {number|string} idPostulacion
+   * @param {AceptarPostulacionRequest} [request]
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: PostulacionGestionadaResponse}>} 200 OK
    */
-  aceptarActividad(idProyecto, idPostulacion, signal) {
+  aceptarActividad(idProyecto, idPostulacion, request = {}, signal) {
     return http.post(
       `/proyectos/${idProyecto}/postulaciones/actividad/${idPostulacion}/aceptar`,
-      null,
+      request?.aceptacionTerminos
+        ? { aceptacionTerminos: request.aceptacionTerminos }
+        : null,
       { signal }
     );
   },

@@ -128,6 +128,20 @@
       />
     </template>
 
+    <AceptacionTerminosPerfil
+      v-if="esAceptar && modelValue && postulacion?.idPerfil"
+      :key="`tyc-${postulacion.idPerfil}`"
+      class="gestion-postulacion-modal__terminos"
+      :id-perfil="postulacion.idPerfil"
+      :nombre-perfil="postulacion.nombreArtistico || 'el postulante'"
+      :model-value="aceptacionTerminos"
+      :terminos-vigentes="terminosVigentes"
+      :token-refresco="tokenRefrescoTerminos"
+      :deshabilitado="enviando"
+      @update:model-value="aceptacionTerminos = $event"
+      @estado="estadoTerminos = $event"
+    />
+
     <p class="gestion-postulacion-modal__nota">{{ notaEfecto }}</p>
 
     <p v-if="avisoCupo" class="gestion-postulacion-modal__aviso">
@@ -164,6 +178,7 @@
 
 <script>
 import BaseAlert from "../AlertaBase.vue";
+import AceptacionTerminosPerfil from "../perfil/AceptacionTerminosPerfil.vue";
 import DisponibilidadActividad from "./DisponibilidadActividad.vue";
 import {
   formatearDuracionMinutos,
@@ -191,7 +206,11 @@ const ACCION_RECHAZAR = ACCIONES_GESTION.RECHAZAR;
  */
 export default {
   name: "ModalGestionPostulacion",
-  components: { BaseAlert, DisponibilidadActividad },
+  components: {
+    BaseAlert,
+    AceptacionTerminosPerfil,
+    DisponibilidadActividad,
+  },
   props: {
     modelValue: {
       type: Boolean,
@@ -243,16 +262,39 @@ export default {
       type: String,
       default: "",
     },
+    /** Versión vigente devuelta por un 409 de aceptación. */
+    terminosVigentes: {
+      type: Object,
+      default: null,
+    },
+    tokenRefrescoTerminos: {
+      type: Number,
+      default: 0,
+    },
   },
   emits: ["update:modelValue", "confirmar"],
   data() {
     return {
       disponibilidad: null,
+      aceptacionTerminos: null,
+      estadoTerminos: null,
     };
   },
   watch: {
     modelValue(valor) {
-      if (valor) this.disponibilidad = null;
+      if (valor) {
+        this.disponibilidad = null;
+        this.aceptacionTerminos = null;
+        this.estadoTerminos = null;
+      }
+    },
+    terminosVigentes() {
+      this.aceptacionTerminos = null;
+      this.estadoTerminos = null;
+    },
+    tokenRefrescoTerminos() {
+      this.aceptacionTerminos = null;
+      this.estadoTerminos = null;
     },
   },
   computed: {
@@ -342,6 +384,7 @@ export default {
     confirmarDeshabilitado() {
       return (
         this.enviando ||
+        (this.esAceptar && this.estadoTerminos?.listo !== true) ||
         (this.esAceptar && this.esActividad && this.sinFechaEntrega) ||
         (this.esActividad && this.cargandoActividad) ||
         (this.esAceptar &&
@@ -363,7 +406,11 @@ export default {
     },
     confirmar() {
       if (this.confirmarDeshabilitado) return;
-      this.$emit("confirmar");
+      this.$emit("confirmar", {
+        aceptacionTerminos: this.esAceptar
+          ? this.aceptacionTerminos
+          : null,
+      });
     },
   },
 };
@@ -455,6 +502,10 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.8rem;
   line-height: 1.5;
+}
+
+.gestion-postulacion-modal__terminos {
+  margin-top: 0.85rem;
 }
 
 .gestion-postulacion-modal__aviso {

@@ -56,6 +56,19 @@ import { normalizarTextoReemplazo } from "../utils/reemplazoConstants.js";
  * @property {string|null} fechaRespuesta
  * @property {string|null} fechaDecision
  * @property {string|null} motivoDecision
+ * @property {number|null} [idTycAceptado]
+ */
+
+/**
+ * Aceptación de la versión vigente de T&C del candidato (UC-23 §5.3).
+ * @typedef {Object} AceptacionTerminosRequest
+ * @property {number|null} idTyc
+ * @property {boolean} aceptaTerminos
+ */
+
+/**
+ * @typedef {Object} AprobarCandidatoRequest
+ * @property {AceptacionTerminosRequest} [aceptacionTerminos]
  */
 
 /**
@@ -183,16 +196,27 @@ const reemplazoService = {
 
   /**
    * POST /proyectos/{idProyecto}/reemplazos/{idReemplazo}/candidatos/{idCandidato}/aprobar
+   * Si el candidato tiene T&C vigentes, el director envía
+   * `aceptacionTerminos`.
    * @param {number|string} idProyecto
    * @param {number|string} idReemplazo
    * @param {number|string} idCandidato
+   * @param {AprobarCandidatoRequest} [request]
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: CandidatoReemplazoResponse}>}
    */
-  aprobarCandidato(idProyecto, idReemplazo, idCandidato, signal) {
+  aprobarCandidato(
+    idProyecto,
+    idReemplazo,
+    idCandidato,
+    request = {},
+    signal
+  ) {
     return http.post(
       `/proyectos/${idProyecto}/reemplazos/${idReemplazo}/candidatos/${idCandidato}/aprobar`,
-      null,
+      request?.aceptacionTerminos
+        ? { aceptacionTerminos: request.aceptacionTerminos }
+        : null,
       { signal }
     );
   },

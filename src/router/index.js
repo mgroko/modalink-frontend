@@ -14,6 +14,7 @@ import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
 import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
 import AjustesPerfilView from "../views/perfil/AjustesPerfilView.vue";
+import ConfigurarTerminosView from "../views/perfil/ConfigurarTerminosView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
@@ -96,6 +97,18 @@ const routes = [
     meta: {
       layout: HomeLayout,
       titulo: "Editar perfil",
+      requiresActiveProfile: true,
+      sinFondoBlanco: true,
+      navActiva: "ajustes",
+    },
+  },
+  {
+    path: "/inicio-perfil/ajustes/terminos-condiciones",
+    name: "configurar-terminos-perfil",
+    component: ConfigurarTerminosView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Términos y condiciones",
       requiresActiveProfile: true,
       sinFondoBlanco: true,
       navActiva: "ajustes",

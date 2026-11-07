@@ -48,6 +48,24 @@ import http from "./http";
  */
 
 /**
+ * Términos y condiciones vigentes de un perfil (UC-23).
+ * `GET /perfiles/{idPerfil}` incluye siempre este objeto; si el perfil no
+ * configuró una versión, llega la plantilla base con idTyc y fechas en null.
+ * @typedef {Object} TerminosCondicionesResponse
+ * @property {number} idPerfil
+ * @property {number|null} idTyc
+ * @property {string} descripcion
+ * @property {string|null} fechaInicio ISO-8601 local
+ * @property {string|null} fechaFin
+ * @property {boolean} esPlantilla
+ */
+
+/**
+ * @typedef {Object} ActualizarTerminosCondicionesRequest
+ * @property {string} descripcion obligatoria, no vacía, máximo 5000.
+ */
+
+/**
  * @typedef {Object} PerfilDetalleResponse
  * @property {number} idPerfil
  * @property {string} nombreArtistico
@@ -68,6 +86,8 @@ import http from "./http";
  *           no existen campos planos localidad/provincia
  * @property {string[]} habilidades
  * @property {CaracteristicaResponse[]} caracteristicas
+ * @property {TerminosCondicionesResponse} terminosCondiciones UC-23. Siempre
+ *           viene como objeto; nunca null.
  * @property {boolean} esPropietario true solo si el perfil pertenece al
  *           usuario autenticado (define los CTAs de la vista)
  */
@@ -88,10 +108,57 @@ const perfilService = {
    * Acceso (VerPerfilService): 401 si la sesión/cuenta no permite acceso;
    * 404 si el perfil no existe o el estado/propiedad no permite verlo.
    * @param {number} idPerfil
+   * @param {AbortSignal} [signal]
    * @returns {Promise<{data: PerfilDetalleResponse}>}
    */
-  obtener(idPerfil) {
-    return http.get(`/perfiles/${idPerfil}`);
+  obtener(idPerfil, signal) {
+    return http.get(`/perfiles/${idPerfil}`, { signal });
+  },
+
+  /**
+   * GET /perfiles/{idPerfil}/terminos-condiciones — UC-23.
+   * Devuelve la versión vigente o la plantilla base.
+   *
+   * Acceso: usuario autenticado con rol USUARIO sobre un perfil Activo (200).
+   * Perfil PendienteBaja/Baja o dueño inactivo: 404. Administrador: 403.
+   * @param {number|string} idPerfil
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: TerminosCondicionesResponse}>} 200 OK
+   */
+  obtenerTerminos(idPerfil, signal) {
+    return http.get(`/perfiles/${idPerfil}/terminos-condiciones`, { signal });
+  },
+
+  /**
+   * PUT /perfiles/{idPerfil}/terminos-condiciones — UC-23.
+   * Crea una versión nueva o persiste la plantilla por primera vez.
+   *
+   * Reglas:
+   * - `descripcion` obligatoria, no vacía, máximo 5000. El backend recorta
+   *   espacios al inicio/fin; conviene enviarla ya recortada.
+   * - Si ya hay versión vigente y el texto es igual (sin espacios al
+   *   inicio/fin), no se crea una versión nueva.
+   * - Sólo perfiles Activo: el resto responde 409 con un mensaje genérico,
+   *   sin código ni versión vigente.
+   * - Perfil ajeno o inexistente: 404.
+   *
+   * Errores:
+   * - 400 `{ message: "Validación fallida", errores: { descripcion } }`
+   * - 401 sesión vencida (lo maneja http.js)
+   * - 403 el perfil no pertenece al usuario
+   * - 404 perfil inexistente o no visible
+   * - 409 perfil no activo
+   * @param {number|string} idPerfil
+   * @param {ActualizarTerminosCondicionesRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: TerminosCondicionesResponse}>} 200 OK
+   */
+  actualizarTerminos(idPerfil, { descripcion }, signal) {
+    return http.put(
+      `/perfiles/${idPerfil}/terminos-condiciones`,
+      { descripcion },
+      { signal }
+    );
   },
 
   editar(idPerfil, request) {

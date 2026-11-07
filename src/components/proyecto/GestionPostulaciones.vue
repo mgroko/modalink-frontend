@@ -152,6 +152,8 @@
       :error-actividad="errorActividad"
       :enviando="enviando"
       :error="errorGestion"
+      :terminos-vigentes="modal.terminosVigentes"
+      :token-refresco-terminos="modal.tokenRefrescoTerminos"
       @update:model-value="onModalVisibility"
       @confirmar="confirmarGestion"
     />
@@ -169,6 +171,10 @@ import FiltrosPostulaciones from "./FiltrosPostulaciones.vue";
 import TablaPostulaciones from "./TablaPostulaciones.vue";
 import ModalGestionPostulacion from "./ModalGestionPostulacion.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  datosErrorTerminos,
+  esErrorTerminos,
+} from "../../utils/terminosCondiciones.js";
 import {
   MENSAJE_USUARIO_YA_ASIGNADO,
   esConflictoAsignacionUnica,
@@ -260,6 +266,8 @@ export default {
         visible: false,
         accion: ACCIONES_GESTION.ACEPTAR,
         postulacion: null,
+        terminosVigentes: null,
+        tokenRefrescoTerminos: 0,
       },
       enviando: false,
       errorGestion: "",
@@ -540,7 +548,13 @@ export default {
         return;
       }
 
-      this.modal = { visible: true, accion, postulacion };
+      this.modal = {
+        visible: true,
+        accion,
+        postulacion,
+        terminosVigentes: null,
+        tokenRefrescoTerminos: 0,
+      };
       this.errorGestion = "";
       this.resultadoGestion = null;
       this.actividadDetalle = null;
@@ -594,7 +608,7 @@ export default {
       this.actividadDetalle = null;
       this.errorGestion = "";
     },
-    async confirmarGestion() {
+    async confirmarGestion({ aceptacionTerminos = null } = {}) {
       if (this.enviando) return;
 
       const { accion, postulacion } = this.modal;
@@ -617,6 +631,7 @@ export default {
             respuesta = await postulacionService.aceptarActividad(
               this.idProyecto,
               postulacion.idPostulacion,
+              { aceptacionTerminos },
               signal
             );
           } else {
@@ -630,6 +645,7 @@ export default {
           respuesta = await postulacionService.aceptarGeneral(
             this.idProyecto,
             postulacion.idPostulacion,
+            { aceptacionTerminos },
             signal
           );
         } else {
@@ -778,6 +794,38 @@ export default {
       }
 
       if (status === 409) {
+        if (esErrorTerminos(error)) {
+          const datos = datosErrorTerminos(error);
+          this.errorGestion =
+            datos.mensaje ||
+            "Los términos y condiciones del postulante cambiaron. Revisá la versión vigente y volvé a aceptar.";
+
+          if (
+            datos.idTycVigente != null ||
+            datos.esPlantilla ||
+            datos.descripcionVigente
+          ) {
+            this.modal = {
+              ...this.modal,
+              terminosVigentes: {
+                idPerfil: datos.idPerfil,
+                idTyc: datos.idTycVigente,
+                descripcion: datos.descripcionVigente,
+                esPlantilla: datos.esPlantilla,
+                fechaInicio: null,
+                fechaFin: null,
+              },
+            };
+          } else {
+            this.modal = {
+              ...this.modal,
+              terminosVigentes: null,
+              tokenRefrescoTerminos: (this.modal.tokenRefrescoTerminos || 0) + 1,
+            };
+          }
+          return;
+        }
+
         // El usuario de la postulación ya está asignado a la actividad con
         // otro perfil. No se creó membresía ni asignación: refrescar listados.
         if (esConflictoAsignacionUnica(error)) {

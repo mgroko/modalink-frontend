@@ -139,6 +139,8 @@
       :descripcion="descripcionSeleccionada"
       :procesando="procesandoDecision"
       :error="errorDecision"
+      :terminos-vigentes="terminosVigentesDecision"
+      :token-refresco-terminos="tokenRefrescoTerminosDecision"
       @confirmar="confirmarDecision"
     />
   </section>
@@ -156,6 +158,10 @@ import ModalDecisionCandidato from "./ModalDecisionCandidato.vue";
 import reemplazoService from "../../services/reemplazoService.js";
 import { refrescarSesion } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  datosErrorTerminos,
+  esErrorTerminos,
+} from "../../utils/terminosCondiciones.js";
 import {
   ACCIONES_DECISION_REEMPLAZO,
   ESTADOS_CANDIDATO_REEMPLAZO,
@@ -222,6 +228,8 @@ export default {
       candidatoDecision: null,
       procesandoDecision: false,
       errorDecision: "",
+      terminosVigentesDecision: null,
+      tokenRefrescoTerminosDecision: 0,
       idCarga: 0,
       idCargaDetalle: 0,
     };
@@ -528,6 +536,8 @@ export default {
       this.accionDecision = accion;
       this.candidatoDecision = candidato;
       this.errorDecision = "";
+      this.terminosVigentesDecision = null;
+      this.tokenRefrescoTerminosDecision = 0;
       this.modalDecisionVisible = true;
     },
     async confirmarCandidatos({ idsCandidatos, mensaje } = {}) {
@@ -623,7 +633,10 @@ export default {
         this.cancelando = false;
       }
     },
-    async confirmarDecision(motivo) {
+    async confirmarDecision({
+      motivo = "",
+      aceptacionTerminos = null,
+    } = {}) {
       if (
         this.procesandoDecision ||
         !this.detalle?.reemplazo ||
@@ -646,6 +659,7 @@ export default {
             this.idProyecto,
             this.detalle.reemplazo.idReemplazo,
             this.candidatoDecision.idCandidato,
+            { aceptacionTerminos },
             this.controladorAccion.signal
           );
         } else {
@@ -682,6 +696,32 @@ export default {
       this.$emit("actualizado");
     },
     async manejarErrorAccion(error, contexto) {
+      if (contexto === "decision" && esErrorTerminos(error)) {
+        const datos = datosErrorTerminos(error);
+        this.errorDecision =
+          datos.mensaje ||
+          "Los términos y condiciones del candidato cambiaron. Revisá la versión vigente y volvé a aceptar.";
+
+        if (
+          datos.idTycVigente != null ||
+          datos.esPlantilla ||
+          datos.descripcionVigente
+        ) {
+          this.terminosVigentesDecision = {
+            idPerfil: datos.idPerfil,
+            idTyc: datos.idTycVigente,
+            descripcion: datos.descripcionVigente,
+            esPlantilla: datos.esPlantilla,
+            fechaInicio: null,
+            fechaFin: null,
+          };
+        } else {
+          this.terminosVigentesDecision = null;
+          this.tokenRefrescoTerminosDecision += 1;
+        }
+        return;
+      }
+
       const clasificacion = clasificarErrorReemplazo(error);
       const mensaje = clasificacion.mensaje;
       const campo = {
@@ -765,6 +805,7 @@ export default {
       this.errorCancelar = "";
       this.errorDecision = "";
       this.candidatoDecision = null;
+      this.terminosVigentesDecision = null;
     },
     abortar(controlador) {
       if (controlador) controlador.abort();

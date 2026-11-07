@@ -566,6 +566,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {"SIN_PERMISO"|"PROYECTO_NO_PERMITE_BAJA"|"AUTOELIMINACION"|
  *           "ULTIMO_DIRECTOR"|null} motivoNoEliminable motivo cuando
  *           `eliminable` es false.
+ * @property {number|null} [idTycAceptado] versión de T&C aceptada al
+ *           incorporarse; null en membresías históricas.
  */
 
 /**
