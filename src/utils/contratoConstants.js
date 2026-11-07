@@ -380,7 +380,8 @@ export function partesPrevistasContrato(emisor, miembrosSeleccionados) {
     partes.push({
       idMiembro: Number(emisor.idMiembro),
       idPerfil: emisor.idPerfil != null ? Number(emisor.idPerfil) : null,
-      nombre: nombreParteContrato(emisor),
+      nombre: nombreCortoContrato(emisor),
+      nombreCompleto: nombreParteContrato(emisor),
       rolParte: esDestinatario
         ? ROLES_PARTE_CONTRATO.DIRECTOR_DESTINATARIO
         : ROLES_PARTE_CONTRATO.DIRECTOR,
@@ -398,7 +399,8 @@ export function partesPrevistasContrato(emisor, miembrosSeleccionados) {
         idMiembro:
           miembro.idMiembro != null ? Number(miembro.idMiembro) : null,
         idPerfil: miembro.idPerfil != null ? Number(miembro.idPerfil) : null,
-        nombre: nombreParteContrato(miembro),
+        nombre: nombreCortoContrato(miembro),
+        nombreCompleto: nombreParteContrato(miembro),
         rolParte: ROLES_PARTE_CONTRATO.DESTINATARIO,
         estadoFirma: ESTADOS_FIRMA_CONTRATO.PENDIENTE,
       });

@@ -276,7 +276,12 @@
                   class="parte-fila"
                 >
                   <span class="parte-fila__datos">
-                    <span class="parte-fila__nombre">{{ parte.nombre }}</span>
+                    <span
+                      class="parte-fila__nombre"
+                      :title="parte.nombreCompleto || parte.nombre"
+                    >
+                      {{ parte.nombre }}
+                    </span>
                     <span class="parte-fila__rol">
                       {{ etiquetaRolParteContrato(parte.rolParte) }}
                     </span>

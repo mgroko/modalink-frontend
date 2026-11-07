@@ -1036,6 +1036,7 @@ data() {
     await this.cargar();
   },
   methods: {
+    formatearFecha,
     formatearFechaCorta,
     async cargar() {
       const corrida = ++this.idCarga;
