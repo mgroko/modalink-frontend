@@ -143,6 +143,13 @@ const routes = [
     redirect: { name: "buscar" },
   },
   {
+    path: "/buscar-requerimientos",
+    redirect: (to) => ({
+      name: "buscar",
+      query: { ...to.query, tab: "oportunidades" },
+    }),
+  },
+  {
     path: "/crear-proyecto",
     name: "crear-proyecto",
     component: CrearProyectoView,

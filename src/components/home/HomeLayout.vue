@@ -210,6 +210,13 @@
             Proyectos
           </button>
           <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('oportunidades') }"
+            @click="$router.push({ name: 'buscar', query: { tab: 'oportunidades' } })"
+          >
+            <span class="material-symbols-outlined">work</span>
+            Oportunidades
+          </button>
+          <button
             :class="{ 'home-layout__quick-link--active': esQuickActivo('invitaciones') }"
             @click="$router.push({ name: 'invitaciones' })"
           >
@@ -480,6 +487,9 @@ export default {
       }
       if (clave === "proyectos") {
         return ruta.meta.navActiva === "proyectos";
+      }
+      if (clave === "oportunidades") {
+        return ruta.name === "buscar" && ruta.query.tab === "oportunidades";
       }
       if (clave === "invitaciones") {
         return ruta.name === "invitaciones";

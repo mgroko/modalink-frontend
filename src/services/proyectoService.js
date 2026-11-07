@@ -519,6 +519,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {boolean} aceptaPostulacionGral
  * @property {number|null} idDirector null si no hay director activo
  * @property {string|null} nombreDirector null si no hay director activo
+ * @property {object|null} ciudad ciudad del proyecto (CiudadResponse) o null
  */
 
 /**
@@ -542,6 +543,10 @@ import { serializarParams } from "../utils/queryParams.js";
  *           (la visibilidad es un filtro AND aparte)
  * @property {string} [director] coincidencia parcial sobre nombre artístico
  *           o nombre/apellido del director activo del proyecto
+ * @property {number} [idProfesion] proyectos con algún requerimiento abierto
+ *           (general o de actividad Pendiente/En curso) de esa profesión
+ * @property {string} [provinciaId] id Georef de la provincia del proyecto
+ * @property {string} [localidadId] id Georef de la localidad/ciudad del proyecto
  * @property {number} [page] base 0, default 0
  * @property {number} [size] default 20
  * @property {boolean} [todos] true (o size ≤ 0) devuelve todo sin paginar

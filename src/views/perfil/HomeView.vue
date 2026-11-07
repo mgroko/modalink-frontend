@@ -20,6 +20,7 @@
       @postular="abrirPostulacion"
       @abrir-proyecto="irAProyecto"
       @ver-todos-proyectos="irAProyectos"
+      @ver-todas-oportunidades="irABuscarOportunidades"
     />
 
     <div v-else-if="!mensajeError" class="home-view__estado">
@@ -264,6 +265,30 @@ export default {
     },
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
+    },
+    /**
+     * UC-72/UC-73: "Ver todas" abre el buscador con la pestaña correspondiente
+     * y la profesión del perfil activo precargada (la vista la resuelve si no
+     * viaja en la query).
+     */
+    irABuscarOportunidades() {
+      const tipos = this.oportunidades.map((oportunidad) =>
+        String(oportunidad?.tipo || "").toUpperCase()
+      );
+      const todasActividades =
+        tipos.length > 0 && tipos.every((tipo) => tipo === "ACTIVIDAD");
+      const idProfesion = Number(this.perfilActivo?.idProfesion);
+
+      this.$router.push({
+        name: "buscar",
+        query: {
+          tab: "oportunidades",
+          ...(todasActividades ? { subtab: "actividades" } : {}),
+          ...(Number.isFinite(idProfesion) && idProfesion > 0
+            ? { idProfesion }
+            : {}),
+        },
+      });
     },
     abrirPostulacion(oportunidad) {
       if (!oportunidad) return;
