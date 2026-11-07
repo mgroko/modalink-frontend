@@ -5,11 +5,8 @@
         Términos y condiciones de {{ nombrePerfil || "este perfil" }}
       </span>
       <span
-        v-if="terminos && !cargando && !error"
+        v-if="terminos && !cargando && !error && !esPlantilla"
         class="aceptacion-tyc__badge"
-        :class="{
-          'aceptacion-tyc__badge--plantilla': esPlantilla,
-        }"
       >
         {{ vigencia }}
       </span>
@@ -39,8 +36,8 @@
       <div v-if="esPlantilla" class="aceptacion-tyc__sin-version" role="status">
         <span class="material-symbols-outlined" aria-hidden="true">info</span>
         <span>
-          Este perfil no configuró condiciones propias; se usa la plantilla base
-          del sistema. No se requiere aceptación.
+          Este perfil no tiene términos y condiciones configurados aún. No se
+          requiere aceptación.
         </span>
       </div>
 
@@ -321,12 +318,6 @@ export default {
   font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.35;
-}
-
-.aceptacion-tyc__badge--plantilla {
-  border-color: var(--color-warning-border);
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
 }
 
 .aceptacion-tyc__estado {

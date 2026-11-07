@@ -321,7 +321,12 @@ export default {
       return validas.includes(seccionRuta) ? seccionRuta : "publicaciones";
     },
     puedeConfigurarTerminos() {
-      return this.esPropio && this.perfil?.estado === "Activo";
+      return (
+        this.esPropio &&
+        this.perfil?.idPerfil != null &&
+        this.perfil.idPerfil === idPerfilActivo() &&
+        this.perfil?.estado === "Activo"
+      );
     },
     esPropio() {
       if (this.perfil?.esPropietario != null) return this.perfil.esPropietario === true;

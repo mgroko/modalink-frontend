@@ -6,12 +6,8 @@
       </h2>
 
       <span
-        v-if="!cargando && !error && terminos"
-        class="tyc-panel__badge"
-        :class="{
-          'tyc-panel__badge--plantilla': esPlantilla,
-          'tyc-panel__badge--vigente': !esPlantilla,
-        }"
+        v-if="!cargando && !error && terminos && !esPlantilla"
+        class="tyc-panel__badge tyc-panel__badge--vigente"
       >
         {{ vigencia }}
       </span>
@@ -36,20 +32,11 @@
       </VaButton>
     </div>
 
-    <template v-else-if="terminos">
-      <div
-        v-if="esPlantilla"
-        class="tyc-panel__aviso"
-        role="status"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-        <span>
-          Este perfil está usando la plantilla base del sistema. Las
-          condiciones mostradas no fueron configuradas por el perfil.
-        </span>
-      </div>
-
-      <p class="tyc-panel__texto">{{ terminos.descripcion }}</p>
+    <template v-else>
+      <p v-if="esPlantilla || !terminos" class="tyc-panel__vacio">
+        Este perfil no tiene términos y condiciones configurados aún.
+      </p>
+      <p v-else class="tyc-panel__texto">{{ terminos.descripcion }}</p>
 
       <div v-if="esPropio && puedeConfigurar" class="tyc-panel__acciones">
         <VaButton
@@ -61,10 +48,6 @@
         </VaButton>
       </div>
     </template>
-
-    <p v-else class="tyc-panel__vacio">
-      Este perfil no configuró términos y condiciones.
-    </p>
   </section>
 </template>
 
@@ -153,30 +136,6 @@ export default {
   border: 1px solid var(--color-success-border);
   background: var(--color-success-soft);
   color: var(--color-success-text);
-}
-
-.tyc-panel__badge--plantilla {
-  border: 1px solid var(--color-warning-border);
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
-}
-
-.tyc-panel__aviso {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.7rem 0.8rem;
-  border: 1px solid var(--color-warning-border);
-  border-radius: 8px;
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.tyc-panel__aviso .material-symbols-outlined {
-  flex-shrink: 0;
-  font-size: 1.05rem;
 }
 
 .tyc-panel__texto {
