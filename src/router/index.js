@@ -45,6 +45,7 @@ import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
 import ReportePerfilDetalleView from "../views/admin/ReportePerfilDetalleView.vue";
+import AuditoriaAdminView from "../views/admin/AuditoriaAdminView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
 
@@ -367,6 +368,16 @@ const routes = [
       requiereAdmin: true,
       titulo: "Detalle del reporte",
     },
+  },
+  {
+    path: "/admin/auditoria",
+    name: "auditoria-admin",
+    component: AuditoriaAdminView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Auditoría",
+    }
   },
   {
     path: "/admin/gestion-usuarios",
