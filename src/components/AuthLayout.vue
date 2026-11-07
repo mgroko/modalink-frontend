@@ -1,6 +1,6 @@
 <template>
   <div class="auth-layout">
-    <div class="auth-layout__brand">
+    <aside class="auth-layout__brand">
       <img
         v-for="(img, index) in imagenes"
         :key="img"
@@ -10,10 +10,54 @@
         :class="{ 'auth-layout__brand-slide--visible': index === imagenActiva }"
       />
 
-      <RouterLink to="/" class="auth-layout__brand-link" aria-label="Ir al inicio">
+      <div class="auth-layout__brand-overlay" aria-hidden="true"></div>
+
+      <RouterLink to="/" class="auth-layout__brand-link">
         <span class="auth-layout__brand-text">ModaLink</span>
       </RouterLink>
-    </div>
+
+      <div class="auth-layout__brand-bottom">
+        <p class="auth-layout__tagline">La red donde la moda se conecta.</p>
+
+        <div class="auth-layout__controls">
+          <div class="auth-layout__dots" role="tablist" aria-label="Imagenes del carrusel">
+            <button
+              v-for="(img, index) in imagenes"
+              :key="'dot-' + index"
+              type="button"
+              class="auth-layout__dot"
+              :class="{ 'auth-layout__dot--active': index === imagenActiva }"
+              :aria-label="`Ir a la imagen ${index + 1}`"
+              :aria-pressed="index === imagenActiva"
+              @click="irAImagen(index)"
+            ></button>
+          </div>
+
+          <div class="auth-layout__arrows">
+            <button
+              type="button"
+              class="auth-layout__arrow"
+              aria-label="Imagen anterior"
+              @click="imagenAnterior"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="14 6 8 12 14 18" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="auth-layout__arrow"
+              aria-label="Imagen siguiente"
+              @click="imagenSiguiente"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="10 6 16 12 10 18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
 
     <main class="auth-layout__content">
       <slot />
@@ -52,16 +96,38 @@ export default {
     };
   },
   mounted() {
-    if (this.imagenes.length > 1) {
-      this.intervalo = setInterval(this.avanzarImagen, INTERVALO_ROTACION);
-    }
+    this.iniciarRotacion();
   },
   beforeUnmount() {
-    if (this.intervalo) clearInterval(this.intervalo);
+    this.detenerRotacion();
   },
   methods: {
-    avanzarImagen() {
+    iniciarRotacion() {
+      if (this.imagenes.length <= 1) return;
+      this.detenerRotacion();
+      this.intervalo = setInterval(this.imagenSiguiente, INTERVALO_ROTACION);
+    },
+    detenerRotacion() {
+      if (this.intervalo) {
+        clearInterval(this.intervalo);
+        this.intervalo = null;
+      }
+    },
+    reiniciarRotacion() {
+      this.iniciarRotacion();
+    },
+    irAImagen(index) {
+      this.imagenActiva = index;
+      this.reiniciarRotacion();
+    },
+    imagenAnterior() {
+      this.imagenActiva =
+        (this.imagenActiva - 1 + this.imagenes.length) % this.imagenes.length;
+      this.reiniciarRotacion();
+    },
+    imagenSiguiente() {
       this.imagenActiva = (this.imagenActiva + 1) % this.imagenes.length;
+      this.reiniciarRotacion();
     },
   },
 };
@@ -82,14 +148,15 @@ export default {
   z-index: 5;
 }
 
+/* ---------- Panel izquierdo: carrusel ---------- */
 .auth-layout__brand {
   position: relative;
-  width: 40vw;
-  min-width: 280px;
-  background: var(--color-primary-fill);
+  width: 44vw;
+  min-width: 300px;
+  background: var(--color-primary-dark);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: space-between;
   overflow: hidden;
 }
 
@@ -108,32 +175,126 @@ export default {
   opacity: 1;
 }
 
+/* Gradiente para dar contraste a los textos sobre la foto */
+.auth-layout__brand-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(73, 71, 118, 0.5) 0%,
+    rgba(35, 33, 52, 0.15) 42%,
+    rgba(30, 26, 54, 0.88) 100%
+  );
+}
+
 .auth-layout__brand-link {
   position: relative;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
   z-index: 1;
+  align-self: flex-start;
+  margin: 2.25rem 0 0 3rem;
+  text-decoration: none;
 }
 
 .auth-layout__brand-text {
-  color: #ecfeff;
-  font-size: 3rem;
-  font-weight: 1000;
-  letter-spacing: 0.20em;
-  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  color: #ffffff;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
+.auth-layout__brand-bottom {
+  position: relative;
+  z-index: 1;
+  padding: 0 3rem 2.25rem;
+}
+
+.auth-layout__tagline {
+  margin: 0 0 2.5rem;
+  max-width: 15ch;
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  color: #ffffff;
+  font-size: clamp(1.75rem, 2.6vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.25;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* Dots + flechas */
+.auth-layout__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.auth-layout__dots {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auth-layout__dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+.auth-layout__dot--active {
+  width: 28px;
+  background: #ffffff;
+}
+
+.auth-layout__arrows {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.auth-layout__arrow {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.auth-layout__arrow svg {
+  width: 20px;
+  height: 20px;
+}
+
+.auth-layout__arrow:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.auth-layout__arrow:active {
+  transform: scale(0.94);
+}
+
+/* ---------- Panel derecho: contenido ---------- */
 .auth-layout__content {
   flex: 1;
   display: flex;
-  align-items: center;  
+  align-items: center;
   justify-content: center;
-  padding: 2.5rem 1.5rem;    
+  overflow-y: auto;
+  padding: 2.5rem 1.5rem;
+  max-height: 100vh;
 }
 
+/* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
   .auth-layout {
     flex-direction: column;
@@ -142,16 +303,27 @@ export default {
   .auth-layout__brand {
     width: 100%;
     min-width: 0;
-    padding: 1.5rem;
-    justify-content: flex-start;
+    min-height: 260px;
   }
 
   .auth-layout__brand-link {
-    justify-content: flex-start;
-    padding: 0;
+    margin: 1.5rem;
+  }
+
+  .auth-layout__brand-text {
+    font-size: 1.5rem;
+  }
+
+  .auth-layout__tagline {
+    display: none;
+  }
+
+  .auth-layout__brand-bottom {
+    padding: 0 1.5rem 1.25rem;
   }
 
   .auth-layout__content {
+    max-height: none;
     padding: 1.5rem;
   }
 }
