@@ -116,6 +116,18 @@ export function formatearFechaNotificacion(valor) {
   return `${p.dia} ${MESES_CORTOS[p.mes - 1]} ${p.anio}, ${pad(p.hora)}:${pad(p.minuto)}`;
 }
 
+/**
+ * Fecha de una reseña, sin hora: `12 oct 2026`.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearFechaResena(valor) {
+  if (valor == null || valor === "") return "—";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+  return `${p.dia} ${MESES_CORTOS[p.mes - 1]} ${p.anio}`;
+}
+
 function diasDesdeHoy(p) {
   const hoy = aPartes(new Date());
   return Math.round((soloFecha(p) - soloFecha(hoy)) / MS_POR_DIA);

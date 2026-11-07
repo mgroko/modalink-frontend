@@ -117,6 +117,12 @@ const routes = [
     },
   },
   {
+    path: "/inicio-perfil/resenas/:idCalificacion",
+    name: "inicioperfil-resena",
+    component: InicioPerfilView,
+    meta: { layout: HomeLayout, titulo: "Reseña", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
     path: "/inicio-perfil/:seccion",
     name: "inicioperfil-seccion",
     component: InicioPerfilView,
@@ -127,6 +133,12 @@ const routes = [
     name: "ver-perfil",
     component: InicioPerfilView,
     meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/perfiles/:id/resenas/:idCalificacion",
+    name: "ver-perfil-resena",
+    component: InicioPerfilView,
+    meta: { layout: HomeLayout, titulo: "Reseña", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
   },
   {
     path: "/perfiles/:id/:seccion",
