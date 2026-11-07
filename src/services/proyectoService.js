@@ -337,6 +337,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} nombreUsuario
  * @property {string} apellidoUsuario
  * @property {"DIRECTOR"|"MIEMBRO"|string} rol
+ * @property {string|null} [fotoUrl] foto del perfil si el backend la envía
  * @property {boolean} yaCalificado true si el perfil activo ya lo calificó.
  *           No incluye valoración ni reseña: esos datos se buscan en
  *           `calificacionesEmitidas` por `idPerfilReceptor`.
@@ -564,6 +565,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} apellidoUsuario
  * @property {number} idProfesion
  * @property {string} nombreProfesion
+ * @property {string|null} [fotoUrl] foto del perfil si el backend la envía
  * @property {"DIRECTOR"|"MIEMBRO"} rol
  * @property {"ACTIVO"|string} estadoParticipacion
  * @property {boolean} eliminable fuente de verdad para habilitar la baja
@@ -960,7 +962,10 @@ const proyectoService = {
    * @returns {Promise<{data: ProyectoResponse}>} 200 OK con el proyecto publicado
    */
   publicar(idProyecto, signal) {
-    return http.post(`/proyectos/${idProyecto}/publicar`, null, { signal });
+    // JSON vacío: axios 1.x envía un body `null` como
+    // application/x-www-form-urlencoded y Spring responde 415 cuando el
+    // endpoint declara @RequestBody. El backend ignora este body.
+    return http.post(`/proyectos/${idProyecto}/publicar`, {}, { signal });
   },
 
   /**
@@ -1067,7 +1072,7 @@ const proyectoService = {
    * @returns {Promise<{data: ConfirmarProyectoResponse}>} 200 OK
    */
   confirmar(idProyecto, signal) {
-    return http.post(`/proyectos/${idProyecto}/confirmar`, null, { signal });
+    return http.post(`/proyectos/${idProyecto}/confirmar`, {}, { signal });
   },
 
   /**
@@ -1206,7 +1211,7 @@ const proyectoService = {
    * @returns {Promise<{data: ProyectoReprogramadoResponse}>} 200 OK
    */
   reprogramar(idProyecto, signal) {
-    return http.post(`/proyectos/${idProyecto}/reprogramar`, null, { signal });
+    return http.post(`/proyectos/${idProyecto}/reprogramar`, {}, { signal });
   },
 
   /**

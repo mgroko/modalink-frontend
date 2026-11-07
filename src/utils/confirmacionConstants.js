@@ -10,7 +10,11 @@
  * llegan en `bloqueos`. Sólo 403/404 son errores HTTP.
  */
 
-import { formatearFecha, formatearFechaCorta } from "./fechas.js";
+import {
+  formatearFecha,
+  formatearFechaCorta,
+  formatearFechasEnTexto,
+} from "./fechas.js";
 
 export const CODIGOS_CONFIRMACION = {
   ACCESO_DENEGADO: "ACCESO_DENEGADO",
@@ -108,7 +112,9 @@ export function normalizarBloqueos(lista) {
     .filter((bloqueo) => bloqueo && typeof bloqueo === "object")
     .map((bloqueo) => ({
       codigo: bloqueo.codigo ? String(bloqueo.codigo) : "",
-      mensaje: bloqueo.mensaje || bloqueo.message || "",
+      mensaje: formatearFechasEnTexto(
+        bloqueo.mensaje || bloqueo.message || ""
+      ),
       entidadTipo: bloqueo.entidadTipo ?? bloqueo.entidad ?? null,
       entidadId: bloqueo.entidadId ?? bloqueo.idEntidad ?? null,
     }))
@@ -223,7 +229,9 @@ export function clasificarErrorConfirmacion(error) {
   return {
     status: error?.response?.status,
     codigo,
-    mensaje: data?.message || data?.mensaje || mensajeCodigoConfirmacion(codigo),
+    mensaje: formatearFechasEnTexto(
+      data?.message || data?.mensaje || mensajeCodigoConfirmacion(codigo)
+    ),
     bloqueos: normalizarBloqueos(data?.bloqueos),
     esEstado: esBloqueoDeEstado(codigo),
   };

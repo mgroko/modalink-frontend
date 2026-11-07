@@ -174,7 +174,7 @@ const reemplazoService = {
   regenerar(idProyecto, idReemplazo, signal) {
     return http.post(
       `/proyectos/${idProyecto}/reemplazos/${idReemplazo}/regenerar`,
-      null,
+      {},
       { signal }
     );
   },
@@ -216,9 +216,12 @@ const reemplazoService = {
   ) {
     return http.post(
       `/proyectos/${idProyecto}/reemplazos/${idReemplazo}/candidatos/${idCandidato}/aprobar`,
+      // Nunca `null`: axios 1.x lo envía como
+      // application/x-www-form-urlencoded, content-type que Spring no puede
+      // mapear al @RequestBody(required = false) del endpoint (415).
       request?.aceptacionTerminos
         ? { aceptacionTerminos: request.aceptacionTerminos }
-        : null,
+        : {},
       { signal }
     );
   },
@@ -277,7 +280,7 @@ const reemplazoService = {
   aceptarInvitacion(idCandidato, signal) {
     return http.post(
       `/reemplazos/invitaciones/${idCandidato}/aceptar`,
-      null,
+      {},
       { signal }
     );
   },

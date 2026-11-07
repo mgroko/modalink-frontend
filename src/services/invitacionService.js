@@ -287,7 +287,10 @@ const invitacionService = {
   aceptarGeneral(idInvitacion, signal) {
     return http.post(
       `/invitaciones/general/${idInvitacion}/aceptar`,
-      null,
+      // JSON vacío: axios 1.x envía un body `null` como
+      // application/x-www-form-urlencoded y Spring responde 415 cuando el
+      // endpoint declara @RequestBody. El backend ignora este body.
+      {},
       { signal }
     );
   },
@@ -305,7 +308,7 @@ const invitacionService = {
   aceptarActividad(idInvitacion, signal) {
     return http.post(
       `/invitaciones/actividad/${idInvitacion}/aceptar`,
-      null,
+      {},
       { signal }
     );
   },
@@ -321,7 +324,7 @@ const invitacionService = {
   rechazarGeneral(idInvitacion, signal) {
     return http.post(
       `/invitaciones/general/${idInvitacion}/rechazar`,
-      null,
+      {},
       { signal }
     );
   },
@@ -337,7 +340,7 @@ const invitacionService = {
   rechazarActividad(idInvitacion, signal) {
     return http.post(
       `/invitaciones/actividad/${idInvitacion}/rechazar`,
-      null,
+      {},
       { signal }
     );
   },

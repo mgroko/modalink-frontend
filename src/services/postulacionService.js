@@ -256,9 +256,12 @@ const postulacionService = {
   aceptarGeneral(idProyecto, idPostulacion, request = {}, signal) {
     return http.post(
       `/proyectos/${idProyecto}/postulaciones/general/${idPostulacion}/aceptar`,
+      // Nunca `null`: axios 1.x lo envía como
+      // application/x-www-form-urlencoded, content-type que Spring no puede
+      // mapear al @RequestBody(required = false) del endpoint (415).
       request?.aceptacionTerminos
         ? { aceptacionTerminos: request.aceptacionTerminos }
-        : null,
+        : {},
       { signal }
     );
   },
@@ -278,7 +281,7 @@ const postulacionService = {
   rechazarGeneral(idProyecto, idPostulacion, signal) {
     return http.post(
       `/proyectos/${idProyecto}/postulaciones/general/${idPostulacion}/rechazar`,
-      null,
+      {},
       { signal }
     );
   },
@@ -308,9 +311,12 @@ const postulacionService = {
   aceptarActividad(idProyecto, idPostulacion, request = {}, signal) {
     return http.post(
       `/proyectos/${idProyecto}/postulaciones/actividad/${idPostulacion}/aceptar`,
+      // Nunca `null`: axios 1.x lo envía como
+      // application/x-www-form-urlencoded, content-type que Spring no puede
+      // mapear al @RequestBody(required = false) del endpoint (415).
       request?.aceptacionTerminos
         ? { aceptacionTerminos: request.aceptacionTerminos }
-        : null,
+        : {},
       { signal }
     );
   },
@@ -329,7 +335,7 @@ const postulacionService = {
   rechazarActividad(idProyecto, idPostulacion, signal) {
     return http.post(
       `/proyectos/${idProyecto}/postulaciones/actividad/${idPostulacion}/rechazar`,
-      null,
+      {},
       { signal }
     );
   },
