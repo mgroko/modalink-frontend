@@ -86,7 +86,7 @@
           Limpiar selección
         </button>
         <span class="selector-tipos__contador">
-          {{ modelo.length }} seleccionados
+          {{ tiposSeleccionados.length }} seleccionados
         </span>
       </div>
     </div>
