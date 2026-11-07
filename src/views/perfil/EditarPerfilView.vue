@@ -265,11 +265,13 @@ Editarperfilview · VUE
           <div class="editar-perfil__campos">
             <VaInput
               v-model="form.biografia"
-              :rules="[reglas.requerido, reglas.max500]"
+              :rules="[reglas.requerido, reglas.max200]"
               type="textarea"
               label="Biografía"
               placeholder="Contá sobre tu trayectoria profesional..."
+              maxlength="200"
             />
+            <p class="editar-perfil__contador">{{ form.biografia.length }} / 200</p>
           </div>
 
           <section class="editar-perfil__habilidades">
@@ -1055,6 +1057,13 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+}
+
+.editar-perfil__contador {
+  margin: 0.35rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  text-align: right;
 }
 
 .editar-perfil__campo-caracteristica :deep(.va-input-wrapper__field) {

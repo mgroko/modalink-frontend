@@ -25,6 +25,7 @@ import ModificarActividadView from "../views/proyecto/ModificarActividadView.vue
 import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
 import ActividadDetalleView from "../views/proyecto/ActividadDetalleView.vue";
 import InvitarProyectoView from "../views/proyecto/InvitarProyectoView.vue";
+import GenerarContratoView from "../views/proyecto/GenerarContratoView.vue";
 import InvitacionesView from "../views/proyecto/InvitacionesView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
@@ -173,6 +174,12 @@ const routes = [
     name: "invitar-proyecto",
     component: InvitarProyectoView,
     meta: { layout: HomeLayout, titulo: "Invitar a proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id/contratos/nuevo",
+    name: "generar-contrato",
+    component: GenerarContratoView,
+    meta: { layout: HomeLayout, titulo: "Nuevo contrato", requiresActiveProfile: true, navActiva: "proyectos" },
   },
   {
     path: "/invitaciones",

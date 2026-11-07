@@ -371,14 +371,14 @@
           <VaInput
             class="crear-perfil__biografia"
             :model-value="form.biografia"
-            :rules="[reglas.requerido, reglas.max500]"
+            :rules="[reglas.requerido, reglas.max200]"
             type="textarea"
             label="Biografía"
             placeholder="Contá tu experiencia, tipo de trabajos y disponibilidad..."
-            maxlength="500"
+            maxlength="200"
             @update:model-value="actualizarBiografia"
           />
-          <p class="crear-perfil__contador">{{ form.biografia.length }} / 500</p>
+          <p class="crear-perfil__contador">{{ form.biografia.length }} / 200</p>
         </section>
 
         <section class="crear-perfil__card">
@@ -959,7 +959,7 @@ export default {
     },
 
     actualizarBiografia(valor) {
-      this.form.biografia = String(valor || "").slice(0, 500);
+      this.form.biografia = String(valor || "").slice(0, 200);
     },
 
     quitarHabilidad(habilidad) {

@@ -294,8 +294,8 @@ export default {
     },
 
     async cambiarTamano(nuevo) {
-      const cantidad = Number(nuevo) || TAMANO_AUDITORIA_POR_DEFECTO;
-      if (cantidad === this.tamano) return;
+      const cantidad = Number(nuevo);
+      if (!Number.isFinite(cantidad) || cantidad === this.tamano) return;
       this.tamano = cantidad;
       if (!this.aplicados) return;
       await this.cargarListado(0);

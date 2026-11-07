@@ -102,6 +102,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Pestaña Contratos (UC-39). Director activo en Publicado/Confirmado. */
+    mostrarContratos: {
+      type: Boolean,
+      default: false,
+    },
     /** Procesos que requieren una acción del director. */
     reemplazosPendientes: {
       type: Number,
@@ -145,6 +150,9 @@ export default {
           label: "Postulaciones",
           badge: this.proyecto?.postulacionesPendientes,
         });
+      }
+      if (this.mostrarContratos) {
+        tabs.push({ id: "contratos", label: "Contratos" });
       }
       return tabs;
     },

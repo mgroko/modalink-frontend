@@ -135,7 +135,7 @@
     </transition>
 
     <!-- Pie común: conteo, paginación y tamaño de página -->
-    <div v-if="eventos.length && !cargando" class="auditoria-tabla__pie">
+    <div v-if="eventos.length" class="auditoria-tabla__pie">
       <span class="auditoria-tabla__conteo">
         Mostrando {{ rangoMostrado }} de {{ formatearNumero(paginacion.totalElementos) }} eventos
       </span>
@@ -239,7 +239,7 @@ export default {
       if (!total) return "0";
       const desde = this.paginacion.paginaActual * this.tamano + 1;
       const hasta = Math.min(total, desde + this.eventos.length - 1);
-      return `${formatearNumero(desde)}–${formatearNumero(hasta)}`;
+      return `${this.formatearNumero(desde)}–${this.formatearNumero(hasta)}`;
     },
   },
   methods: {
