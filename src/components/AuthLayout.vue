@@ -196,11 +196,11 @@ export default {
 }
 
 .auth-layout__brand-text {
-  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-family: inherit;
   color: #ffffff;
   font-size: 1.9rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
@@ -213,11 +213,12 @@ export default {
 .auth-layout__tagline {
   margin: 0 0 2.5rem;
   max-width: 15ch;
-  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-family: inherit;
   color: #ffffff;
   font-size: clamp(1.75rem, 2.6vw, 2.5rem);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.25;
+  letter-spacing: -0.01em;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
 }
 

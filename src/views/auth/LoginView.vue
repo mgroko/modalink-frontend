@@ -40,7 +40,11 @@
       </VaInput>
     </VaValue>
 
-    <VaButton type="submit" size="large" block class="auth-submit">Iniciar sesión</VaButton>
+    <div class="auth-submit-row">
+      <VaButton type="submit" size="large" class="auth-submit">
+        Iniciar sesión
+      </VaButton>
+    </div>
 
     <p class="auth-footer">
       ¿Nuevo en ModaLink?

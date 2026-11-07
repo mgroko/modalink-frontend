@@ -62,7 +62,11 @@
       <p class="auth-hint">Al menos 8 caracteres.</p>
     </div>
 
-    <VaButton type="submit" size="large" block class="auth-submit">Registrarme</VaButton>
+    <div class="auth-submit-row">
+      <VaButton type="submit" size="large" class="auth-submit">
+        Registrarme
+      </VaButton>
+    </div>
 
     <p class="auth-footer">
       ¿Ya tenés una cuenta?
