@@ -55,6 +55,7 @@
 
     <div class="filtros-invitaciones__secundarios">
       <VaSelect
+        v-if="mostrarEstado"
         :model-value="filtros.estado"
         class="filtros-invitaciones__select"
         label="Estado"
@@ -101,6 +102,11 @@ export default {
     etiquetaPerfil: {
       type: String,
       default: "Perfil",
+    },
+    /** En la pestaña Rechazadas el estado ya está fijado por la pestaña. */
+    mostrarEstado: {
+      type: Boolean,
+      default: true,
     },
   },
   emits: ["cambio", "buscar", "limpiar"],

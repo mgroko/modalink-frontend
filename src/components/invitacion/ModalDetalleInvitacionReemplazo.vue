@@ -46,6 +46,10 @@
           <dt>Fecha de invitación</dt>
           <dd>{{ fechaInvitacion || "—" }}</dd>
         </div>
+        <div v-if="fechaRespuesta">
+          <dt>Fecha de respuesta</dt>
+          <dd>{{ fechaRespuesta }}</dd>
+        </div>
         <div v-if="inicioActividad">
           <dt>Actividad</dt>
           <dd>
@@ -67,6 +71,11 @@
         >
           {{ invitacion.mensaje || "Sin mensaje personalizado." }}
         </p>
+      </section>
+
+      <section v-if="motivoRespuesta" class="detalle-reemplazo__bloque">
+        <span class="detalle-reemplazo__label">Motivo del rechazo</span>
+        <p class="detalle-reemplazo__mensaje">{{ motivoRespuesta }}</p>
       </section>
 
       <p v-if="esAceptadaPendiente" class="detalle-reemplazo__aviso">
@@ -150,6 +159,14 @@ export default {
       return this.invitacion?.fechaInvitacion
         ? formatearFechaCorta(this.invitacion.fechaInvitacion)
         : "";
+    },
+    fechaRespuesta() {
+      return this.invitacion?.fechaRespuesta
+        ? formatearFechaCorta(this.invitacion.fechaRespuesta)
+        : "";
+    },
+    motivoRespuesta() {
+      return String(this.invitacion?.motivoRespuesta || "").trim();
     },
     inicioActividad() {
       return this.invitacion?.fechaHoraInicio

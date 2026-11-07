@@ -92,6 +92,8 @@ import { normalizarTextoReemplazo } from "../utils/reemplazoConstants.js";
  * @property {string|null} fechaHoraInicio
  * @property {number|null} duracionMinutos
  * @property {string|null} mensaje
+ * @property {string|null} fechaRespuesta
+ * @property {string|null} motivoRespuesta
  */
 
 /**
@@ -252,6 +254,18 @@ const reemplazoService = {
    */
   listarInvitaciones(signal) {
     return http.get("/reemplazos/invitaciones", { signal });
+  },
+
+  /**
+   * GET /reemplazos/invitaciones/rechazadas
+   * Devuelve sólo las invitaciones de reemplazo rechazadas por el
+   * profesional. Las eliminadas por el director y las canceladas con el
+   * proceso no se incluyen.
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionReemplazoResponse[]}>}
+   */
+  listarInvitacionesRechazadas(signal) {
+    return http.get("/reemplazos/invitaciones/rechazadas", { signal });
   },
 
   /**
