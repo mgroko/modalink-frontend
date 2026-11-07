@@ -104,7 +104,7 @@
           :class="`home-layout__profile-menu--${direccionMenu}`"
         >
           <button @click="verPerfil">Ver perfil</button>
-          <button @click="$router.push({ name: 'modificar-datos' })">Ajustes</button>
+          <button @click="irAAjustes">Ajustes</button>
           <div class="home-layout__switcher">
             <button @click="perfilesAbiertos = !perfilesAbiertos">
               <span>Cambiar perfil activo</span>
@@ -466,6 +466,8 @@ export default {
       });
     },
     irAAjustes() {
+      this.menuAbierto = false;
+      this.perfilesAbiertos = false;
       if (this.idActivo == null) return;
       this.$router.push({ name: "ajustes-perfil-inicio" });
     },
