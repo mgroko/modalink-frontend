@@ -58,6 +58,10 @@
           <span class="material-symbols-outlined">psychology</span>
           <span>Habilidades</span>
         </RouterLink>
+        <RouterLink to="/admin/tipos-contrato" class="admin-layout__link">
+          <span class="material-symbols-outlined">description</span>
+          <span>Tipos de contrato</span>
+        </RouterLink>
         <RouterLink to="/admin/unidades-medida" class="admin-layout__link">
           <span class="material-symbols-outlined">straighten</span>
           <span>Unidad de medidas</span>

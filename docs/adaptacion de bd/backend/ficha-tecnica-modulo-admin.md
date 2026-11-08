@@ -317,3 +317,26 @@ Considerar usar:
 /admin/unidades-medida/{id} → Detalle/edición de una unidad de medida
 /admin/caracteristicas    → Gestión de características técnicas
 ```
+
+### 2.10 Tipos de contrato (`/admin/tipos-contrato`)
+
+| Método | Endpoint | Descripción | Autorización |
+|--------|----------|-------------|--------------|
+| GET | `/admin/tipos-contrato` | Listar tipos activos e inactivos, con conteos y flags de acción | `VER_TIPOS_CONTRATO` |
+| GET | `/admin/tipos-contrato/{id}` | Obtener detalle con plantilla | `VER_TIPOS_CONTRATO` |
+| POST | `/admin/tipos-contrato` | Crear tipo; el código se genera automáticamente | `CREAR_TIPO_CONTRATO` |
+| PUT | `/admin/tipos-contrato/{id}` | Modificar nombre, descripción y plantilla | `MODIFICAR_TIPO_CONTRATO` |
+| PATCH | `/admin/tipos-contrato/{id}/estado` | Activar o desactivar | `MODIFICAR_TIPO_CONTRATO` |
+| DELETE | `/admin/tipos-contrato/{id}` | Eliminar solo si no tiene contratos | `ELIMINAR_TIPO_CONTRATO` |
+| POST | `/admin/tipos-contrato/validar-plantilla` | Validar placeholders y longitud | `CREAR_TIPO_CONTRATO` |
+
+**Reglas principales:**
+
+- El código es automático e inmutable.
+- Nombre y plantilla se bloquean si existen contratos `BORRADOR`, `PENDIENTE_FIRMA` o `ACTIVO`.
+- La descripción siempre puede modificarse.
+- Se puede desactivar con contratos `ACTIVO` o cerrados, pero no con `PENDIENTE_FIRMA` ni si es el último activo.
+- La baja física solo se permite sin contratos asociados.
+- Placeholders: `{{proyecto}}`, `{{director}}`, `{{partes}}`, `{{clausulas_adicionales}}` y `{{tipo}}`.
+
+La respuesta de listado incluye `contratosAsociados`, `contratosVivos`, `contratosPendientes`, `puedeEditar`, `puedeDesactivar`, `puedeEliminar` y los motivos de bloqueo para que la UI deshabilite acciones.

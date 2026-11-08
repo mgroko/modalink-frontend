@@ -41,6 +41,7 @@ import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
 import GestionHabilidadesView from "../views/admin/GestionHabilidadesView.vue";
+import GestionTiposContratoView from "../views/admin/GestionTiposContratoView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
@@ -469,6 +470,17 @@ const routes = [
     name: "gestion-unidades-medida",
     component: GestionUnidadesMedidaView,
     meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Unidades de medida" }
+  },
+  {
+    path: "/admin/tipos-contrato",
+    name: "gestion-tipos-contrato",
+    component: GestionTiposContratoView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "VER_TIPOS_CONTRATO",
+      titulo: "Tipos de contrato",
+    }
   },
   {
     path: "/admin/configuracion",
