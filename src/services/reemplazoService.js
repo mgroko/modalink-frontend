@@ -198,6 +198,9 @@ const reemplazoService = {
 
   /**
    * POST /proyectos/{idProyecto}/reemplazos/{idReemplazo}/candidatos/{idCandidato}/aprobar
+   * Puede haber varios candidatos ACEPTADO_PENDIENTE_APROBACION en el mismo
+   * proceso: el director elige a uno y, al aprobarlo, las demás invitaciones
+   * activas se cancelan.
    * Si el candidato tiene T&C vigentes, el director envía
    * `aceptacionTerminos`.
    * @param {number|string} idProyecto

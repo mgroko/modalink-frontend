@@ -309,11 +309,36 @@ export function destinoNotificacion(notificacion) {
       };
     }
 
+    case TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO: {
+      // La cancelación por vacante cubierta se envía al candidato con
+      // entidad REEMPLAZO_CANDIDATO; el director la recibe con entidad
+      // REEMPLAZO y debe ir al panel del proyecto.
+      if (notificacion.entidadTipo === "REEMPLAZO_CANDIDATO") {
+        return {
+          etiqueta: "Ver invitaciones",
+          ruta: {
+            name: RUTAS_NOTIFICACION.INVITACIONES,
+            query: { seccion: "reemplazos" },
+          },
+        };
+      }
+      const id = idValido(notificacion.idProyecto);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver reemplazos",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PROYECTO,
+              params: { id },
+              query: { tab: "reemplazos" },
+            },
+          };
+    }
+
     case TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATOS_DISPONIBLES:
     case TIPOS_NOTIFICACION.REEMPLAZO_SIN_CANDIDATOS:
     case TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATO_RECHAZO:
-    case TIPOS_NOTIFICACION.REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION:
-    case TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO: {
+    case TIPOS_NOTIFICACION.REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION: {
       const id = idValido(notificacion.idProyecto);
       return id == null
         ? null

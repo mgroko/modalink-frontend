@@ -38,11 +38,14 @@
       >
         <template v-if="esAprobar">
           Se creará la membresía y, si corresponde, la asignación a la
-          actividad. Las demás invitaciones de este proceso se eliminarán.
+          actividad. Las demás invitaciones activas de este proceso se
+          cancelarán y sus candidatos serán notificados.
         </template>
         <template v-else>
           El candidato será notificado del rechazo. Si quedan otras
-          invitaciones activas, el proceso volverá a esperar respuestas.
+          incorporaciones pendientes de aprobación, el proceso seguirá
+          pendiente; si sólo quedan invitaciones sin responder, volverá a
+          esperar respuestas.
         </template>
       </p>
 

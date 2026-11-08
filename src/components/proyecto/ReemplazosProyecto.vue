@@ -5,7 +5,8 @@
         <h2 class="reemplazos-proyecto__titulo">Reemplazos</h2>
         <p class="reemplazos-proyecto__subtitulo">
           Procesos generados por bajas o eliminaciones de integrantes. El
-          sistema propone candidatos y vos decidís a quién invitar.
+          sistema propone candidatos, envía invitaciones y vos elegís a quién
+          incorporar entre los que acepten.
         </p>
       </div>
       <VaButton
@@ -677,7 +678,7 @@ export default {
         this.toast.init({
           title: esAprobar ? "Incorporación aprobada" : "Incorporación rechazada",
           message: esAprobar
-            ? "Se incorporó al candidato y se cerraron las demás invitaciones."
+            ? "Se incorporó al candidato y se cancelaron las demás invitaciones activas."
             : "Se rechazó la incorporación del candidato.",
           color: "success",
           position: "top-right",

@@ -64,7 +64,8 @@
         v-if="esAceptadaPendiente"
         class="invitacion-reemplazo__aviso"
       >
-        Aceptaste esta invitación. Está pendiente de aprobación del director.
+        Aceptaste esta invitación. Está pendiente de aprobación del director;
+        si elige a otra persona, la invitación se cancelará.
       </p>
     </div>
 

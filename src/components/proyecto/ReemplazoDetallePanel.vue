@@ -101,8 +101,7 @@
           v-if="reemplazo.estado === ESTADOS_REEMPLAZO.PENDIENTE_APROBACION"
           class="reemplazo-detalle__aviso reemplazo-detalle__aviso--info"
         >
-          Hay un candidato que aceptó la invitación. Aprobá o rechazá su
-          incorporación para cerrar el proceso.
+          {{ textoAvisoAprobacion }}
         </div>
 
         <section
@@ -297,6 +296,13 @@ export default {
     },
     esSinCandidatos() {
       return this.estado === ESTADOS_REEMPLAZO.SIN_CANDIDATOS;
+    },
+    textoAvisoAprobacion() {
+      const cantidad = this.aceptados.length;
+      if (cantidad <= 1) {
+        return "Hay un candidato que aceptó la invitación. Aprobá o rechazá su incorporación para cerrar el proceso.";
+      }
+      return `Hay ${cantidad} candidatos que aceptaron la invitación. Elegí a cuál incorporar; al aprobarlo, las demás invitaciones se cancelan.`;
     },
     fechaCreacion() {
       return this.reemplazo?.fechaCreacion
