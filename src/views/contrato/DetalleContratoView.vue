@@ -65,6 +65,15 @@
             Modificar
           </VaButton>
 
+          <VaButton
+            v-if="puedeEliminar"
+            preset="secondary"
+            color="danger"
+            @click="abrirEliminar"
+          >
+            Eliminar
+          </VaButton>
+
           <VaButton preset="secondary" @click="volverAContratos">
             Volver
           </VaButton>
@@ -231,6 +240,14 @@
       @confirmar="confirmarRechazo"
       @limpiar-error="limpiarErrorRechazo"
     />
+
+    <ModalEliminarContrato
+      v-model="modalEliminarVisible"
+      :contrato="contrato"
+      :eliminando="eliminando"
+      :error="errorEliminar"
+      @confirmar="confirmarEliminar"
+    />
   </div>
 </template>
 
@@ -240,6 +257,7 @@ import EstadoContratoBadge from "../../components/contrato/EstadoContratoBadge.v
 import PartesContrato from "../../components/contrato/PartesContrato.vue";
 import ProgresoFirmasContrato from "../../components/contrato/ProgresoFirmasContrato.vue";
 import ModalRechazarContrato from "../../components/contrato/ModalRechazarContrato.vue";
+import ModalEliminarContrato from "../../components/contrato/ModalEliminarContrato.vue";
 import contratoService from "../../services/contratoService.js";
 import perfilService from "../../services/perfilService.js";
 import { refrescarSesion } from "../../services/authState";
@@ -273,6 +291,7 @@ export default {
     PartesContrato,
     ProgresoFirmasContrato,
     ModalRechazarContrato,
+    ModalEliminarContrato,
   },
   setup() {
     return { toast: useToast() };
@@ -287,6 +306,9 @@ export default {
       puedeReintentar: false,
       idCarga: 0,
       modalRechazarVisible: false,
+      modalEliminarVisible: false,
+      eliminando: false,
+      errorEliminar: "",
       firmando: false,
       rechazando: false,
       aceptaContrato: false,
@@ -314,6 +336,13 @@ export default {
       return {
         name: "contratos-pendientes",
         query: this.idProyecto ? { idProyecto: this.idProyecto } : {},
+      };
+    },
+    rutaProyectoContratos() {
+      return {
+        name: "dashboard-proyecto",
+        params: { id: this.idProyecto },
+        query: { tab: "contratos" },
       };
     },
     estaActivo() {
@@ -354,6 +383,9 @@ export default {
     },
     puedeModificar() {
       return puedeModificarContrato(this.contrato);
+    },
+    puedeEliminar() {
+      return this.contrato?.puedeEliminar === true;
     },
     nombreEmisor() {
       return nombreEmisorContrato(this.contrato?.emisor);
@@ -681,6 +713,99 @@ export default {
       }
 
       return mensaje;
+    },
+    abrirEliminar() {
+      if (!this.puedeEliminar || this.eliminando) return;
+      this.errorEliminar = "";
+      this.modalEliminarVisible = true;
+    },
+    async confirmarEliminar() {
+      if (!this.puedeEliminar || this.eliminando) return;
+      this.eliminando = true;
+      this.errorEliminar = "";
+
+      try {
+        await contratoService.eliminar(this.idProyecto, this.idContrato);
+        this.modalEliminarVisible = false;
+        this.toast.init({
+          title: "Contrato eliminado",
+          message: "El contrato quedó en estado Eliminado.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+        this.$router.push(this.rutaProyectoContratos);
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        await this.manejarErrorEliminar(error);
+      } finally {
+        this.eliminando = false;
+      }
+    },
+    async manejarErrorEliminar(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorContrato(error);
+      const mensaje =
+        clasificacion.mensaje ||
+        mensajeErrorApi(
+          error,
+          "No se pudo eliminar el contrato. Inténtalo nuevamente."
+        );
+
+      if (error?._esSesionExpirada) {
+        await refrescarSesion();
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (esPerfilEnBaja(clasificacion.codigo)) {
+        this.modalEliminarVisible = false;
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (
+        clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_YA_ELIMINADO
+      ) {
+        this.modalEliminarVisible = false;
+        this.toast.init({
+          title: "Contrato eliminado",
+          message: "El contrato ya estaba eliminado.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+        this.$router.push(this.rutaProyectoContratos);
+        return;
+      }
+
+      if (
+        status === 403 ||
+        status === 404 ||
+        clasificacion.codigo ===
+          CODIGOS_CONTRATO.PROYECTO_NO_APTO_PARA_ELIMINACION
+      ) {
+        this.modalEliminarVisible = false;
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        if (
+          clasificacion.codigo ===
+          CODIGOS_CONTRATO.PROYECTO_NO_APTO_PARA_ELIMINACION
+        ) {
+          await this.cargar();
+        } else {
+          this.$router.push(this.rutaProyectoContratos);
+        }
+        return;
+      }
+
+      this.errorEliminar = mensaje;
     },
     esCancelacion(error) {
       return (

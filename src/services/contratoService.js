@@ -162,6 +162,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} miEstadoFirma
  * @property {string|null} miFechaFirma
  * @property {boolean} puedeModificar
+ * @property {boolean} puedeEliminar
  * @property {boolean} puedeFirmar
  * @property {boolean} puedeRechazar
  * @property {number} firmados
@@ -208,6 +209,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} miFechaFirma
  * @property {boolean} puedeModificarse
  * @property {string|null} motivoNoModificable
+ * @property {boolean} puedeEliminar
+ * @property {string|null} motivoNoEliminable
  * @property {boolean} puedeFirmar
  * @property {boolean} puedeRechazar
  * @property {number} firmados
@@ -397,6 +400,27 @@ const contratoService = {
     return http.put(
       `/proyectos/${idProyecto}/contratos/${idContrato}`,
       request,
+      { signal }
+    );
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/contratos/{idContrato} — UC-54.
+   * Baja lógica: el contrato pasa a ELIMINADO y conserva su historial.
+   * La operación es idempotente: si ya está eliminado responde 204.
+   *
+   * Errores:
+   * - 403 el perfil no es Director activo
+   * - 404 CONTRATO_NO_ENCONTRADO / PERFIL_ACTIVO_NO_SELECCIONADO
+   * - 409 PROYECTO_NO_APTO_PARA_ELIMINACION
+   * @param {number|string} idProyecto
+   * @param {number|string} idContrato
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{status: number, data: null}>} 204 No Content
+   */
+  eliminar(idProyecto, idContrato, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/contratos/${idContrato}`,
       { signal }
     );
   },

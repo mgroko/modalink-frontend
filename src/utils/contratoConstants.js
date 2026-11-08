@@ -39,6 +39,8 @@ export const CODIGOS_CONTRATO = {
   CONTRATO_YA_RECHAZADO: "CONTRATO_YA_RECHAZADO",
   FIRMA_NO_PENDIENTE: "FIRMA_NO_PENDIENTE",
   MOTIVO_RECHAZO_OBLIGATORIO: "MOTIVO_RECHAZO_OBLIGATORIO",
+  PROYECTO_NO_APTO_PARA_ELIMINACION: "PROYECTO_NO_APTO_PARA_ELIMINACION",
+  CONTRATO_YA_ELIMINADO: "CONTRATO_YA_ELIMINADO",
 };
 
 /** Texto de respaldo cuando el sistema no envía `message`. */
@@ -81,6 +83,10 @@ export const MENSAJES_CODIGO_CONTRATO = {
     "Tu firma ya no está pendiente para este contrato.",
   [CODIGOS_CONTRATO.MOTIVO_RECHAZO_OBLIGATORIO]:
     "Indicá un motivo para rechazar el contrato.",
+  [CODIGOS_CONTRATO.PROYECTO_NO_APTO_PARA_ELIMINACION]:
+    "El proyecto no permite eliminar contratos en su estado actual.",
+  [CODIGOS_CONTRATO.CONTRATO_YA_ELIMINADO]:
+    "El contrato ya está eliminado.",
 };
 
 /** Estados de contrato documentados en las fichas. */
@@ -483,6 +489,40 @@ export function etiquetaMotivoNoModificable(motivo) {
   return ETIQUETAS_MOTIVO_NO_MODIFICABLE[motivo] || String(motivo);
 }
 
+/** Motivos de bloqueo de UC-54 y su texto para la UI. */
+export const MOTIVOS_NO_ELIMINABLE = {
+  SIN_PERMISO: "SIN_PERMISO",
+  PROYECTO_NO_APTO_PARA_ELIMINACION: "PROYECTO_NO_APTO_PARA_ELIMINACION",
+  CONTRATO_YA_ELIMINADO: "CONTRATO_YA_ELIMINADO",
+};
+
+export const ETIQUETAS_MOTIVO_NO_ELIMINABLE = {
+  [MOTIVOS_NO_ELIMINABLE.SIN_PERMISO]:
+    "Solo el Director activo del proyecto puede eliminar este contrato.",
+  [MOTIVOS_NO_ELIMINABLE.PROYECTO_NO_APTO_PARA_ELIMINACION]:
+    "El proyecto está Finalizado o Cancelado y no admite eliminaciones.",
+  [MOTIVOS_NO_ELIMINABLE.CONTRATO_YA_ELIMINADO]:
+    "El contrato ya está eliminado.",
+};
+
+/**
+ * @param {string|null|undefined} motivo
+ * @returns {string}
+ */
+export function etiquetaMotivoNoEliminable(motivo) {
+  if (!motivo) return "";
+  return ETIQUETAS_MOTIVO_NO_ELIMINABLE[motivo] || String(motivo);
+}
+
+/**
+ * El backend es la fuente de verdad de `puedeEliminar`.
+ * @param {object|null|undefined} contrato
+ * @returns {boolean}
+ */
+export function puedeEliminarContrato(contrato) {
+  return contrato?.puedeEliminar === true;
+}
+
 /**
  * @param {unknown} valor
  * @returns {number|null}
@@ -551,6 +591,8 @@ export function normalizarDetalleContrato(data) {
         ? contrato.puedeModificarse
         : contrato.puedeModificar === true,
     motivoNoModificable: textoONull(contrato.motivoNoModificable),
+    puedeEliminar: contrato.puedeEliminar === true,
+    motivoNoEliminable: textoONull(contrato.motivoNoEliminable),
     puedeFirmar: contrato.puedeFirmar === true,
     puedeRechazar: contrato.puedeRechazar === true,
     firmados: numeroONull(contrato.firmados) || 0,

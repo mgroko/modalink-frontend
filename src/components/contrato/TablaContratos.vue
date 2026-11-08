@@ -89,6 +89,17 @@
               >
                 Modificar
               </VaButton>
+
+              <VaButton
+                v-if="contrato.puedeEliminar"
+                preset="secondary"
+                color="danger"
+                size="small"
+                icon="mso-delete"
+                @click="$emit('eliminar', contrato)"
+              >
+                Eliminar
+              </VaButton>
             </div>
           </td>
         </tr>
@@ -107,8 +118,8 @@ import {
 
 /*
  * Tabla de contratos. Presentacional: los flags vienen del backend
- * (`puedeModificar`, `miEstadoFirma`, `puedeFirmar`) y no se recalculan acá.
- * Firmar y rechazar se realizan únicamente desde el detalle.
+ * (`puedeModificar`, `puedeEliminar`, `miEstadoFirma`, `puedeFirmar`) y no se
+ * recalculan acá. Firmar y rechazar se realizan únicamente desde el detalle.
  */
 export default {
   name: "TablaContratos",
@@ -119,7 +130,7 @@ export default {
       default: () => [],
     },
   },
-  emits: ["ver", "modificar"],
+  emits: ["ver", "modificar", "eliminar"],
   methods: {
     formatearFecha,
     etiquetaEstadoFirmaContrato,

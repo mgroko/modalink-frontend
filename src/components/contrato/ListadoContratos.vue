@@ -80,6 +80,7 @@
         :contratos="contratos"
         @ver="irADetalle"
         @modificar="irAModificar"
+        @eliminar="abrirEliminar"
       />
 
       <div v-else class="listado-contratos__vacio">
@@ -102,6 +103,14 @@
         @cambiar="irAPagina"
       />
     </template>
+
+    <ModalEliminarContrato
+      v-model="modalEliminarVisible"
+      :contrato="contratoAEliminar"
+      :eliminando="eliminando"
+      :error="errorEliminar"
+      @confirmar="confirmarEliminar"
+    />
   </section>
 </template>
 
@@ -111,8 +120,10 @@ import BaseAlert from "../AlertaBase.vue";
 import PaginacionResultados from "../busqueda/PaginacionResultados.vue";
 import FiltrosContratos from "./FiltrosContratos.vue";
 import TablaContratos from "./TablaContratos.vue";
+import ModalEliminarContrato from "./ModalEliminarContrato.vue";
 import contratoService from "../../services/contratoService.js";
 import { refrescarSesion } from "../../services/authState";
+import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
   CODIGOS_CONTRATO,
@@ -176,6 +187,7 @@ export default {
     PaginacionResultados,
     FiltrosContratos,
     TablaContratos,
+    ModalEliminarContrato,
   },
   props: {
     idProyecto: {
@@ -213,6 +225,9 @@ export default {
     },
   },
   emits: ["nuevo-contrato"],
+  setup() {
+    return { toast: useToast() };
+  },
   data() {
     return {
       textos: TEXTOS,
@@ -238,6 +253,10 @@ export default {
       idCarga: 0,
       controladorBusqueda: null,
       timerBusqueda: null,
+      modalEliminarVisible: false,
+      contratoAEliminar: null,
+      eliminando: false,
+      errorEliminar: "",
     };
   },
   computed: {
@@ -601,6 +620,106 @@ export default {
           idContrato: contrato.idContrato,
         },
       });
+    },
+    abrirEliminar(contrato) {
+      if (!contrato?.puedeEliminar || this.eliminando) return;
+      this.contratoAEliminar = contrato;
+      this.errorEliminar = "";
+      this.modalEliminarVisible = true;
+    },
+    async confirmarEliminar() {
+      if (!this.contratoAEliminar || this.eliminando) return;
+      const contrato = this.contratoAEliminar;
+      this.eliminando = true;
+      this.errorEliminar = "";
+
+      try {
+        await contratoService.eliminar(
+          this.idProyectoDe(contrato),
+          contrato.idContrato
+        );
+        this.modalEliminarVisible = false;
+        this.toast.init({
+          title: "Contrato eliminado",
+          message: "El contrato quedó en estado Eliminado.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        const eraUltimoDeLaPagina = this.contratos.length === 1;
+        this.contratos = this.contratos.filter(
+          (item) => String(item.idContrato) !== String(contrato.idContrato)
+        );
+        if (eraUltimoDeLaPagina && this.paginacion.paginaActual > 0) {
+          this.filtros = {
+            ...this.filtros,
+            page: this.paginacion.paginaActual - 1,
+          };
+        }
+        await this.cargar();
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        await this.manejarErrorEliminar(error);
+      } finally {
+        this.eliminando = false;
+      }
+    },
+    async manejarErrorEliminar(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorContrato(error);
+      const mensaje =
+        clasificacion.mensaje ||
+        mensajeErrorApi(
+          error,
+          "No se pudo eliminar el contrato. Inténtalo nuevamente."
+        );
+
+      if (error?._esSesionExpirada) {
+        await refrescarSesion();
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (clasificacion.codigo === CODIGOS_CONTRATO.PERFIL_EN_BAJA) {
+        this.modalEliminarVisible = false;
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return;
+      }
+
+      if (clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_YA_ELIMINADO) {
+        this.modalEliminarVisible = false;
+        this.toast.init({
+          title: "Contrato eliminado",
+          message: "El contrato ya estaba eliminado.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      if (
+        status === 403 ||
+        status === 404 ||
+        clasificacion.codigo ===
+          CODIGOS_CONTRATO.PROYECTO_NO_APTO_PARA_ELIMINACION
+      ) {
+        this.modalEliminarVisible = false;
+        this.toast.init({
+          title: "No se pudo eliminar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return;
+      }
+
+      this.errorEliminar = mensaje;
     },
     esCancelacion(error) {
       return (
