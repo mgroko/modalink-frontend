@@ -312,7 +312,7 @@
         <ContratosProyecto
           v-else-if="tabActiva === 'contratos' && puedeVerContratos"
           :id-proyecto="idProyecto"
-          :puede-generar="puedeVerContratos"
+          :puede-generar="puedeCrearContrato"
           @nuevo-contrato="irANuevoContrato"
         />
 
@@ -844,8 +844,17 @@ data() {
     puedeInvitarIntegrante() {
       return puedeInvitarProyecto(this.proyecto);
     },
-    /** UC-39: pestaña Contratos sólo para el Director activo en Publicado/Confirmado. */
+    /**
+     * UC-68: la pestaña Contratos se muestra a cualquier miembro activo. El
+     * backend filtra qué contratos ve cada perfil (Director: todos; firmante:
+     * los suyos; sin contratos: página vacía). También queda visible en
+     * proyectos Finalizados/Cancelados.
+     */
     puedeVerContratos() {
+      return this.esMiembro;
+    },
+    /** UC-39: sólo el Director activo en Publicado/Confirmado puede generar. */
+    puedeCrearContrato() {
       return puedeGenerarContrato(this.proyecto);
     },
     /** Perfil activo de la sesión: habilita el chip "Vos" en el listado. */

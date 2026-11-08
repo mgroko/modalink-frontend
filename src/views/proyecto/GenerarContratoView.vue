@@ -146,9 +146,24 @@
           </section>
 
           <section class="generar-contrato__panel">
-            <h2 class="generar-contrato__seccion-titulo">
-              Destinatarios (miembros activos)
-            </h2>
+            <div class="generar-contrato__seccion-cabecera">
+              <h2 class="generar-contrato__seccion-titulo">
+                Destinatarios (miembros activos)
+              </h2>
+
+              <button
+                type="button"
+                class="generar-contrato__toggle-todos"
+                :disabled="emitiendo || !miembrosSeleccionables.length"
+                @click="alternarTodosMiembros"
+              >
+                {{
+                  todosMiembrosSeleccionados
+                    ? "Deseleccionar todos"
+                    : "Seleccionar todos"
+                }}
+              </button>
+            </div>
 
             <div class="generar-contrato__miembros">
               <label
@@ -572,6 +587,20 @@ export default {
         this.estaSeleccionado(miembro)
       );
     },
+    /** Miembros que no están bloqueados por un contrato activo del tipo. */
+    miembrosSeleccionables() {
+      return this.miembros.filter(
+        (miembro) => !this.miembroConflicto(miembro)
+      );
+    },
+    todosMiembrosSeleccionados() {
+      return (
+        this.miembrosSeleccionables.length > 0 &&
+        this.miembrosSeleccionables.every((miembro) =>
+          this.estaSeleccionado(miembro)
+        )
+      );
+    },
     /**
      * Combinación miembro → conflicto para el tipo elegido. Une los contratos
      * activos del GET /opciones con los conflictos que devolvió el 409 al
@@ -896,6 +925,21 @@ export default {
     miembroConflicto(miembro) {
       if (miembro?.idMiembro == null) return null;
       return this.conflictosPorMiembro[String(miembro.idMiembro)] || null;
+    },
+    alternarTodosMiembros() {
+      if (this.emitiendo || !this.miembrosSeleccionables.length) return;
+
+      if (this.todosMiembrosSeleccionados) {
+        this.idsSeleccionados = [];
+      } else {
+        const ids = this.miembrosSeleccionables
+          .map((miembro) => Number(miembro?.idMiembro))
+          .filter((id) => Number.isFinite(id));
+        this.idsSeleccionados = [...new Set(ids)];
+      }
+
+      this.errorEmision = "";
+      this.errorPreview = "";
     },
     onCambioMiembro(miembro, evento) {
       if (this.emitiendo || this.miembroConflicto(miembro)) return;
@@ -1415,11 +1459,38 @@ export default {
   min-height: 480px;
 }
 
+.generar-contrato__seccion-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .generar-contrato__seccion-titulo {
   margin: 0;
   color: var(--color-text);
   font-size: 1rem;
   font-weight: 700;
+}
+
+.generar-contrato__toggle-todos {
+  padding: 0.1rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.generar-contrato__toggle-todos:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.generar-contrato__toggle-todos:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .generar-contrato__lateral {

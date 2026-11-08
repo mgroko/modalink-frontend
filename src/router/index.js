@@ -26,6 +26,10 @@ import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
 import ActividadDetalleView from "../views/proyecto/ActividadDetalleView.vue";
 import InvitarProyectoView from "../views/proyecto/InvitarProyectoView.vue";
 import GenerarContratoView from "../views/proyecto/GenerarContratoView.vue";
+import BuscarContratosView from "../views/contrato/BuscarContratosView.vue";
+import ContratosPendientesView from "../views/contrato/ContratosPendientesView.vue";
+import DetalleContratoView from "../views/contrato/DetalleContratoView.vue";
+import ModificarContratoView from "../views/contrato/ModificarContratoView.vue";
 import InvitacionesView from "../views/proyecto/InvitacionesView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
@@ -192,6 +196,34 @@ const routes = [
     name: "generar-contrato",
     component: GenerarContratoView,
     meta: { layout: HomeLayout, titulo: "Nuevo contrato", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/contratos",
+    name: "buscar-contratos",
+    component: BuscarContratosView,
+    meta: { layout: HomeLayout, titulo: "Contratos", requiresActiveProfile: true, navActiva: "contratos" },
+  },
+  {
+    path: "/contratos/buscar",
+    redirect: (to) => ({ name: "buscar-contratos", query: to.query }),
+  },
+  {
+    path: "/contratos/pendientes",
+    name: "contratos-pendientes",
+    component: ContratosPendientesView,
+    meta: { layout: HomeLayout, titulo: "Pendientes de mi firma", requiresActiveProfile: true, navActiva: "contratos" },
+  },
+  {
+    path: "/proyectos/:idProyecto/contratos/:idContrato/modificar",
+    name: "modificar-contrato",
+    component: ModificarContratoView,
+    meta: { layout: HomeLayout, titulo: "Modificar contrato", requiresActiveProfile: true, navActiva: "contratos" },
+  },
+  {
+    path: "/proyectos/:idProyecto/contratos/:idContrato",
+    name: "detalle-contrato",
+    component: DetalleContratoView,
+    meta: { layout: HomeLayout, titulo: "Detalle del contrato", requiresActiveProfile: true, navActiva: "contratos" },
   },
   {
     path: "/invitaciones",

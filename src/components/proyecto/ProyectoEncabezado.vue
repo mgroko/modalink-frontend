@@ -102,7 +102,7 @@ export default {
       type: Boolean,
       default: false,
     },
-    /** Pestaña Contratos (UC-39). Director activo en Publicado/Confirmado. */
+    /** Pestaña Contratos (UC-68). Visible para miembros; el backend filtra. */
     mostrarContratos: {
       type: Boolean,
       default: false,

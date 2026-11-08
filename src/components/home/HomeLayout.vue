@@ -35,6 +35,20 @@
         </button>
         <button
           class="home-layout__nav-item"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'contratos' }"
+          @click.stop="$router.push({ name: 'buscar-contratos' })"
+        >
+          <span class="material-symbols-outlined">description</span>
+          <span>Contratos</span>
+          <span
+            v-if="contratosPendientes > 0"
+            class="home-layout__nav-badge"
+          >
+            {{ contratosPendientes }}
+          </span>
+        </button>
+        <button
+          class="home-layout__nav-item"
           @click.stop="noDisponible('Mi red')"
         >
           <span class="material-symbols-outlined">group</span>
@@ -154,7 +168,9 @@
       class="home-layout__body"
       :class="{
         'home-layout__body--full': $route.meta.sinSidebarPerfil,
-        'home-layout__body--ancho-proyecto': $route.meta.navActiva === 'proyectos',
+        'home-layout__body--ancho-proyecto': ['proyectos', 'contratos'].includes(
+          $route.meta.navActiva
+        ),
       }"
     >
       <aside v-if="!$route.meta.sinSidebarPerfil" class="home-layout__sidebar">
@@ -278,6 +294,10 @@ import {
   state as reemplazoState,
   cargarResumenReemplazos,
 } from "../../services/reemplazoState";
+import {
+  state as contratoState,
+  cargarContratosPendientes,
+} from "../../services/contratoState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
@@ -349,6 +369,9 @@ export default {
         invitacionState.pendientesRecibidas + reemplazoState.pendientes
       );
     },
+    contratosPendientes() {
+      return contratoState.pendientesFirma;
+    },
   },
   watch: {
     fotoPerfilActiva() {
@@ -357,6 +380,14 @@ export default {
     idActivo(nuevo) {
       cargarResumenInvitaciones(nuevo);
       cargarResumenReemplazos(nuevo);
+      cargarContratosPendientes(nuevo);
+    },
+    "$route.fullPath"(nuevo) {
+      // Refresca el contador al entrar/salir de las pantallas de contratos,
+      // por ejemplo después de firmar, rechazar o generar uno nuevo.
+      if (/\/contratos(\/|$)/.test(nuevo || "")) {
+        cargarContratosPendientes(this.idActivo);
+      }
     },
   },
   mounted() {
@@ -364,6 +395,7 @@ export default {
     cargarResumenPerfil(this.idActivo);
     cargarResumenInvitaciones(this.idActivo);
     cargarResumenReemplazos(this.idActivo);
+    cargarContratosPendientes(this.idActivo);
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {

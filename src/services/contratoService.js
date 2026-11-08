@@ -1,4 +1,5 @@
 import http from "./http";
+import { serializarParams } from "../utils/queryParams.js";
 
 /*
  * Contrato UC-39 — Generar contrato
@@ -102,7 +103,9 @@ import http from "./http";
  * @typedef {Object} ParteContratoResponse
  * @property {number} idMiembro
  * @property {number} idPerfil
- * @property {string} nombre
+ * @property {string} nombre nombre y apellido del usuario
+ * @property {string|null} [nombreArtistico] nombre artístico del perfil, si el
+ *           backend lo incluye en la respuesta
  * @property {"DIRECTOR"|"DIRECTOR_DESTINATARIO"|"DESTINATARIO"} rolParte
  * @property {"PENDIENTE"} estadoFirma
  */
@@ -122,6 +125,110 @@ import http from "./http";
  * @property {ParteContratoResponse[]} partes firma del director +
  *           firmas PENDIENTES de los destinatarios
  */
+
+/**
+ * @typedef {Object} BuscarContratosParams
+ * @property {number} [idProyecto]
+ * @property {string[]} [estados] lista blanca; si se omite, el backend aplica
+ *           PENDIENTE_FIRMA, ACTIVO, RECHAZADO_POR_PARTES y CANCELADO
+ * @property {string} [parte] nombre artístico, nombre o apellido
+ * @property {string} [fechaEmisionDesde] YYYY-MM-DD
+ * @property {string} [fechaEmisionHasta] YYYY-MM-DD
+ * @property {string} [fechaFirmaDesde] YYYY-MM-DD
+ * @property {string} [fechaFirmaHasta] YYYY-MM-DD
+ * @property {number} [idTipoAcuerdo]
+ * @property {string} [nombreContrato]
+ * @property {boolean} [miFirmaPendiente]
+ * @property {number} [page] base 0
+ * @property {number} [size] máximo 50
+ */
+
+/**
+ * @typedef {Object} ContratoResumenResponse
+ * @property {number} idContrato
+ * @property {string} nombre
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {number} idTipoAcuerdo
+ * @property {string} codigoTipoAcuerdo
+ * @property {string} nombreTipoAcuerdo
+ * @property {string} estado
+ * @property {string} fechaCreacion
+ * @property {string|null} fechaEmision
+ * @property {string|null} fechaModificacion
+ * @property {number} versionActual
+ * @property {Object|null} emisor
+ * @property {ParteContratoResponse[]} partes
+ * @property {string|null} miEstadoFirma
+ * @property {string|null} miFechaFirma
+ * @property {boolean} puedeModificar
+ * @property {boolean} puedeFirmar
+ * @property {boolean} puedeRechazar
+ * @property {number} firmados
+ * @property {number} totalPartes
+ */
+
+/**
+ * @typedef {Object} PaginaContratosResponse
+ * @property {ContratoResumenResponse[]} contenido
+ * @property {number} paginaActual
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} ProyectoFiltroContratoResponse
+ * @property {number} idProyecto
+ * @property {string} nombre
+ */
+
+/**
+ * @typedef {Object} ContratoDetalleResponse
+ * @property {number} idContrato
+ * @property {number} idProyecto
+ * @property {string} nombreProyecto
+ * @property {string} estadoProyecto
+ * @property {number} idTipoAcuerdo
+ * @property {string} codigoTipoAcuerdo
+ * @property {string} nombreTipoAcuerdo
+ * @property {string} nombre
+ * @property {string} descripcion
+ * @property {string} estado
+ * @property {number} versionActual
+ * @property {string} fechaCreacion
+ * @property {string|null} fechaEmision
+ * @property {string|null} fechaModificacion
+ * @property {string} texto
+ * @property {Object|null} emisor
+ * @property {ParteContratoResponse[]} partes
+ * @property {string|null} miEstadoFirma
+ * @property {string|null} miFechaFirma
+ * @property {boolean} puedeModificarse
+ * @property {string|null} motivoNoModificable
+ * @property {boolean} puedeFirmar
+ * @property {boolean} puedeRechazar
+ * @property {number} firmados
+ * @property {number} totalPartes
+ */
+
+/**
+ * @typedef {Object} ModificarContratoRequest
+ * @property {number} idTipoAcuerdo
+ * @property {number[]} idsMiembro
+ * @property {string|null} texto si viene no vacío se usa tal cual; si es
+ *           null se regenera con la plantilla y las cláusulas
+ * @property {string[]} [clausulasAdicionales]
+ * @property {string|null} [nombre]
+ * @property {string|null} [descripcion]
+ */
+
+function urlBusqueda(ruta, params) {
+  const query = serializarParams(params);
+  return query ? `${ruta}?${query}` : ruta;
+}
 
 const contratoService = {
   /**
@@ -192,6 +299,149 @@ const contratoService = {
     return http.post(`/proyectos/${idProyecto}/contratos`, request, {
       signal,
     });
+  },
+
+  /**
+   * GET /contratos/proyectos — UC-68.
+   * Opciones del filtro "Proyecto": solo proyectos con contratos visibles
+   * para el perfil activo, incluidos los históricos donde fue parte firmante.
+   *
+   * Errores:
+   * - 404 PERFIL_ACTIVO_NO_SELECCIONADO
+   * - 409 PERFIL_EN_BAJA
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ProyectoFiltroContratoResponse[]}>} 200 OK
+   */
+  listarProyectos(signal) {
+    return http.get("/contratos/proyectos", { signal });
+  },
+
+  /**
+   * GET /contratos/buscar — UC-68.
+   * Búsqueda global y paginada. La visibilidad la resuelve el backend:
+   * Director ve todo el proyecto; firmante ve sus contratos; ajeno no ve nada.
+   *
+   * Errores:
+   * - 400 RANGO_FECHAS_CONTRATO_INVALIDO
+   * - 403 ACCESO_DENEGADO_PROYECTO
+   * - 404 PERFIL_ACTIVO_NO_SELECCIONADO / CONTRATO_NO_ENCONTRADO
+   * - 409 PERFIL_EN_BAJA
+   * @param {BuscarContratosParams} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PaginaContratosResponse}>} 200 OK
+   */
+  buscar(params = {}, signal) {
+    return http.get(urlBusqueda("/contratos/buscar", params), { signal });
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/contratos/{idContrato} — UC-53/UC-55/UC-68.
+   * Detalle común con texto legal, partes, firmas y flags.
+   *
+   * Errores:
+   * - 403 ACCESO_DENEGADO_PROYECTO
+   * - 404 CONTRATO_NO_ENCONTRADO / PERFIL_ACTIVO_NO_SELECCIONADO
+   * - 409 PERFIL_EN_BAJA
+   * @param {number|string} idProyecto
+   * @param {number|string} idContrato
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ContratoDetalleResponse}>} 200 OK
+   */
+  obtenerDetalle(idProyecto, idContrato, signal) {
+    return http.get(
+      `/proyectos/${idProyecto}/contratos/${idContrato}`,
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/contratos/{idContrato}/previsualizar — UC-53.
+   * Genera el borrador sin persistir. Responde 200 aunque haya conflictos:
+   * `puedeModificarse` y `conflictos[]` permiten corregir antes del PUT.
+   *
+   * Errores:
+   * - 400 TIPO_ACUERDO_INVALIDO
+   * - 403 ACCESO_DENEGADO_PROYECTO
+   * - 404 CONTRATO_NO_ENCONTRADO
+   * - 409 CONTRATO_NO_PENDIENTE_FIRMA / PROYECTO_NO_APTO_PARA_CONTRATO /
+   *   CONTRATO_CON_FIRMAS_REGISTRADAS / CONTRATO_SIN_DESTINATARIOS /
+   *   DESTINATARIO_INVALIDO / CONTRATO_TEXTO_INVALIDO
+   * @param {number|string} idProyecto
+   * @param {number|string} idContrato
+   * @param {ModificarContratoRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: {texto: string, puedeModificarse: boolean, conflictos: ConflictoContratoResponse[]}}>} 200 OK
+   */
+  previsualizarModificacion(idProyecto, idContrato, request, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/contratos/${idContrato}/previsualizar`,
+      request,
+      { signal }
+    );
+  },
+
+  /**
+   * PUT /proyectos/{idProyecto}/contratos/{idContrato} — UC-53.
+   * Reconcilia firmas y actualiza el contrato. El backend registra la nueva
+   * versión, el evento MODIFICADO y las notificaciones; el frontend no debe
+   * duplicar esos efectos.
+   *
+   * Errores: mismos códigos que `previsualizarModificacion`.
+   * @param {number|string} idProyecto
+   * @param {number|string} idContrato
+   * @param {ModificarContratoRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ContratoDetalleResponse}>} 200 OK
+   */
+  modificar(idProyecto, idContrato, request, signal) {
+    return http.put(
+      `/proyectos/${idProyecto}/contratos/${idContrato}`,
+      request,
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/contratos/{idContrato}/firmar — UC-55.
+   * Sin body. El backend actualiza la firma y devuelve el detalle.
+   *
+   * Errores:
+   * - 409 CONTRATO_YA_FIRMADO / CONTRATO_YA_RECHAZADO / FIRMA_NO_PENDIENTE /
+   *   CONTRATO_NO_PENDIENTE_FIRMA / PROYECTO_NO_APTO_PARA_CONTRATO
+   * @param {number|string} idProyecto
+   * @param {number|string} idContrato
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ContratoDetalleResponse}>} 200 OK
+   */
+  firmar(idProyecto, idContrato, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/contratos/${idContrato}/firmar`,
+      undefined,
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/contratos/{idContrato}/rechazar — UC-55.
+   * `motivo` obligatorio, máximo 200 caracteres.
+   *
+   * Errores:
+   * - 400 motivo vacío o demasiado largo
+   * - 409 CONTRATO_YA_FIRMADO / CONTRATO_YA_RECHAZADO / FIRMA_NO_PENDIENTE /
+   *   CONTRATO_NO_PENDIENTE_FIRMA / PROYECTO_NO_APTO_PARA_CONTRATO /
+   *   MOTIVO_RECHAZO_OBLIGATORIO
+   * @param {number|string} idProyecto
+   * @param {number|string} idContrato
+   * @param {string} motivo
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: ContratoDetalleResponse}>} 200 OK
+   */
+  rechazar(idProyecto, idContrato, motivo, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/contratos/${idContrato}/rechazar`,
+      { motivo },
+      { signal }
+    );
   },
 };
 

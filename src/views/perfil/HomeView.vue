@@ -61,6 +61,7 @@ import { setPerfilActivo, refrescarSesion } from "../../services/authState.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
+import { ordenarProyectosInicio } from "../../utils/proyectoConstants.js";
 import {
   AVISO_DISPONIBILIDAD_PROVISORIA,
   TIPOS_POSTULACION,
@@ -167,7 +168,8 @@ export default {
     procesarProyectos(resultado) {
       if (resultado.status === "fulfilled") {
         const data = resultado.value?.data || {};
-        this.proyectos = Array.isArray(data.contenido) ? data.contenido : [];
+        const proyectos = Array.isArray(data.contenido) ? data.contenido : [];
+        this.proyectos = ordenarProyectosInicio(proyectos);
         this.totalProyectos =
           Number(data.totalElementos) || this.proyectos.length;
         return;
