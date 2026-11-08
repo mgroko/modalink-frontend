@@ -110,20 +110,19 @@ export const ETIQUETAS_ESTADO_CONTRATO = {
 
 /**
  * Conjunto que aplica el backend cuando no se envía `estados` (UC-68).
- * `BORRADOR` y `ELIMINADO` quedan fuera por defecto.
+ * Los contratos eliminados se incluyen por defecto para que sigan visibles;
+ * el chip "Eliminado" permite ocultarlos. `BORRADOR` queda fuera por defecto.
  */
 export const ESTADOS_CONTRATO_POR_DEFECTO = [
   ESTADOS_CONTRATO.PENDIENTE_FIRMA,
   ESTADOS_CONTRATO.ACTIVO,
   ESTADOS_CONTRATO.RECHAZADO_POR_PARTES,
   ESTADOS_CONTRATO.CANCELADO,
+  ESTADOS_CONTRATO.ELIMINADO,
 ];
 
 /** Estados que la UI muestra sólo en filtros avanzados. */
-export const ESTADOS_CONTRATO_AVANZADOS = [
-  ESTADOS_CONTRATO.BORRADOR,
-  ESTADOS_CONTRATO.ELIMINADO,
-];
+export const ESTADOS_CONTRATO_AVANZADOS = [ESTADOS_CONTRATO.BORRADOR];
 
 /** Opciones de los chips principales de búsqueda. */
 export const OPCIONES_ESTADO_CONTRATO = [
@@ -143,16 +142,16 @@ export const OPCIONES_ESTADO_CONTRATO = [
     value: ESTADOS_CONTRATO.CANCELADO,
     text: ETIQUETAS_ESTADO_CONTRATO[ESTADOS_CONTRATO.CANCELADO],
   },
+  {
+    value: ESTADOS_CONTRATO.ELIMINADO,
+    text: ETIQUETAS_ESTADO_CONTRATO[ESTADOS_CONTRATO.ELIMINADO],
+  },
 ];
 
 export const OPCIONES_ESTADO_CONTRATO_AVANZADO = [
   {
     value: ESTADOS_CONTRATO.BORRADOR,
     text: ETIQUETAS_ESTADO_CONTRATO[ESTADOS_CONTRATO.BORRADOR],
-  },
-  {
-    value: ESTADOS_CONTRATO.ELIMINADO,
-    text: ETIQUETAS_ESTADO_CONTRATO[ESTADOS_CONTRATO.ELIMINADO],
   },
 ];
 
@@ -577,6 +576,7 @@ export function normalizarDetalleContrato(data) {
     fechaCreacion: contrato.fechaCreacion || null,
     fechaEmision: contrato.fechaEmision || null,
     fechaModificacion: contrato.fechaModificacion || null,
+    fechaBaja: contrato.fechaBaja || null,
     texto: textoONull(contrato.texto),
     emisor: contrato.emisor && typeof contrato.emisor === "object"
       ? contrato.emisor

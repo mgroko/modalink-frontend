@@ -35,7 +35,7 @@
           :tab-activa="tabActiva"
           :mostrar-planificacion="esMiembro"
           :mostrar-integrantes="esMiembro"
-          :mostrar-historial="esDirector"
+          :mostrar-historial="puedeVerHistorial"
           :mostrar-reemplazos="esDirector"
           :mostrar-contratos="puedeVerContratos"
           :reemplazos-pendientes="reemplazosPendientes"
@@ -298,8 +298,9 @@
         />
 
         <HistorialProyecto
-          v-else-if="tabActiva === 'historial' && esDirector"
+          v-else-if="tabActiva === 'historial' && puedeVerHistorial"
           :id-proyecto="idProyecto"
+          :es-director="esDirector"
         />
 
         <ReemplazosProyecto
@@ -736,13 +737,17 @@ data() {
     esMiembro() {
       return !!this.proyecto?.esMiembro;
     },
-    /** La pestaña Historial es exclusiva del Director activo del proyecto. */
+    /** El rol Director habilita la seccion de miembros y la vista global. */
     esDirector() {
       return (
         this.esMiembro &&
         String(this.proyecto?.rolUsuario || "").toUpperCase() ===
           ROLES_PROYECTO.DIRECTOR
       );
+    },
+    /** Historial visible para cualquier miembro activo. */
+    puedeVerHistorial() {
+      return this.esMiembro;
     },
     esBorrador() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.BORRADOR;
@@ -1015,7 +1020,7 @@ data() {
     esDirector(valor) {
       if (!valor) {
         this.limpiarResumenReemplazos();
-        if (["historial", "reemplazos", "contratos"].includes(this.tabActiva)) {
+        if (["reemplazos", "contratos"].includes(this.tabActiva)) {
           this.tabActiva = "informacion";
           this.aplicarTabDesdeQuery();
         }
@@ -1072,7 +1077,8 @@ data() {
           return;
         }
         // Reaplicar la tab de la URL una vez conocido el rol del proyecto:
-        // `?tab=historial` solo es válida para directores.
+        // `?tab=historial` es válida para miembros activos; la sección de
+        // miembros dentro del historial sigue reservada al Director.
         this.aplicarTabDesdeQuery();
         if (this.esDirector) this.cargarResumenReemplazos(corrida);
         else this.limpiarResumenReemplazos();
@@ -1283,7 +1289,7 @@ data() {
         this.tabActiva = "informacion";
         return;
       }
-      if (tab === "historial" && !this.esDirector) {
+      if (tab === "historial" && !this.puedeVerHistorial) {
         this.tabActiva = "informacion";
         return;
       }
@@ -1317,7 +1323,7 @@ data() {
     },
     cambiarTab(tab) {
       if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) return;
-      if (tab === "historial" && !this.esDirector) return;
+      if (tab === "historial" && !this.puedeVerHistorial) return;
       if (tab === "reemplazos" && !this.esDirector) return;
       if (tab === "contratos" && !this.puedeVerContratos) return;
       if (this.tabActiva === tab) return;

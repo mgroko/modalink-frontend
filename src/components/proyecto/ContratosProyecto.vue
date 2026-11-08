@@ -3,6 +3,8 @@
     :id-proyecto="idProyecto"
     :mostrar-filtro-proyecto="false"
     :puede-crear="puedeGenerar"
+    :query-base="queryBase"
+    sincronizar-query
     titulo="Contratos"
     subtitulo="Contratos visibles para tu perfil en este proyecto. El Director ve todos; cada firmante ve los suyos."
     @nuevo-contrato="$emit('nuevo-contrato')"
@@ -32,6 +34,13 @@ export default {
       type: Boolean,
       default: false,
     },
+  },
+  data() {
+    return {
+      // La pestaña del proyecto vive en la URL; el listado debe conservarla
+      // al sincronizar sus filtros y su página.
+      queryBase: { tab: "contratos" },
+    };
   },
   emits: ["nuevo-contrato"],
 };

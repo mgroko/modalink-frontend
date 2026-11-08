@@ -791,6 +791,40 @@ const proyectoService = {
   },
 
   /**
+   * GET /proyectos/{idProyecto}/historial/contratos — historial de contratos.
+   *
+   * El Director ve todos los eventos de contratos del proyecto. Un miembro ve
+   * únicamente los eventos de los contratos donde su perfil es o fue parte
+   * firmante. Incluye contratos eliminados y proyectos finalizados.
+   *
+   * Errores:
+   * - 400 page, size o tipo inválidos
+   * - 401 sesión ausente/vencida
+   * - 403 sin membresía activa ni rol Director
+   * - 404 proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {{tipo?: string, nombre?: string, page?: number, size?: number}} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: Object}>} 200 OK
+   */
+  listarHistorialContratos(idProyecto, params = {}, signal) {
+    const page = Number(params.page ?? 0);
+    const size = Number(params.size ?? 20);
+    const query = serializarParams({
+      tipo: params.tipo || "",
+      nombre: String(params.nombre || "").trim(),
+      page: Number.isFinite(page) && page >= 0 ? Math.floor(page) : 0,
+      size: Number.isFinite(size)
+        ? Math.min(Math.max(Math.floor(size), 1), 100)
+        : 20,
+    });
+    return http.get(
+      `/proyectos/${idProyecto}/historial/contratos${query ? `?${query}` : ""}`,
+      { signal }
+    );
+  },
+
+  /**
    * DELETE /proyectos/{idProyecto}/miembros/{idMiembro} — UC-38.
    * Da de baja a un integrante activo del proyecto. El backend es la fuente de
    * verdad: el frontend sólo debe enviar el motivo y refrescar después del 204.

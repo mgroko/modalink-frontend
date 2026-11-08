@@ -106,7 +106,7 @@
       class="filtros-contratos__nota"
     >
       Sin estados seleccionados se aplican los estados predeterminados
-      (pendiente de firma, activo, rechazado y cancelado).
+      (pendiente de firma, activo, rechazado, cancelado y eliminado).
     </p>
 
     <p v-if="errorFechas" class="filtros-contratos__error" role="alert">
@@ -190,7 +190,7 @@ import {
 /*
  * Barra de filtros de UC-68. Es presentacional: el contenedor mantiene el
  * estado, el debounce y la paginación. Los chips principales muestran los
- * estados por defecto; BORRADOR y ELIMINADO viven en filtros avanzados.
+ * estados por defecto, incluido ELIMINADO; BORRADOR vive en filtros avanzados.
  */
 export default {
   name: "FiltrosContratos",

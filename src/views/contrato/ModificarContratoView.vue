@@ -469,6 +469,11 @@ import {
   puedeModificarContrato,
 } from "../../utils/contratoConstants.js";
 import { ROLES_PROYECTO } from "../../utils/proyectoConstants.js";
+import {
+  conVolver,
+  leerVolver,
+  resolverVolver,
+} from "../../utils/navegacionContratos.js";
 
 let controladorCarga = null;
 let controladorPreview = null;
@@ -542,19 +547,27 @@ export default {
       return this.$route.params.idContrato;
     },
     rutaContratos() {
-      return {
-        name: "buscar-contratos",
-        query: this.idProyecto ? { idProyecto: this.idProyecto } : {},
-      };
+      return resolverVolver({
+        route: this.$route,
+        router: this.$router,
+        idProyecto: this.idProyecto,
+        fallback: {
+          name: "buscar-contratos",
+          query: this.idProyecto ? { idProyecto: this.idProyecto } : {},
+        },
+      });
     },
     rutaDetalle() {
-      return {
-        name: "detalle-contrato",
-        params: {
-          idProyecto: this.idProyecto,
-          idContrato: this.idContrato,
+      return conVolver(
+        {
+          name: "detalle-contrato",
+          params: {
+            idProyecto: this.idProyecto,
+            idContrato: this.idContrato,
+          },
         },
-      };
+        leerVolver(this.$route)
+      );
     },
     tiposAcuerdo() {
       return this.opciones?.tiposAcuerdo || [];
@@ -1168,13 +1181,7 @@ export default {
           position: "top-right",
           duration: 5000,
         });
-        this.$router.push({
-          name: "detalle-contrato",
-          params: {
-            idProyecto: this.idProyecto,
-            idContrato: this.idContrato,
-          },
-        });
+        this.$router.push(this.rutaDetalle);
       } catch (error) {
         if (this.esCancelacion(error)) return;
         await this.manejarErrorGuardado(error);

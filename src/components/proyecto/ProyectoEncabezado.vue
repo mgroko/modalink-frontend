@@ -92,7 +92,7 @@ export default {
       type: Boolean,
       default: false,
     },
-    /** Pestaña Historial. Sólo para directores del proyecto. */
+    /** Pestaña Historial. Visible para miembros activos del proyecto. */
     mostrarHistorial: {
       type: Boolean,
       default: false,

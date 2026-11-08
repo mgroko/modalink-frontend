@@ -141,6 +141,10 @@ import {
   normalizarTamanoContrato,
   validarRangosBusquedaContrato,
 } from "../../utils/parametrosContratos.js";
+import {
+  conVolver,
+  crearRutaVolver,
+} from "../../utils/navegacionContratos.js";
 
 const TEXTOS = {
   VACIO_BUSQUEDA:
@@ -152,6 +156,21 @@ const TEXTOS = {
   VACIO_PENDIENTES_FILTROS:
     "No encontramos contratos pendientes con los filtros seleccionados.",
 };
+
+/** Claves de la query que administra este listado. */
+const CLAVES_QUERY_LISTADO = [
+  "idProyecto",
+  "estados",
+  "parte",
+  "fechaEmisionDesde",
+  "fechaEmisionHasta",
+  "fechaFirmaDesde",
+  "fechaFirmaHasta",
+  "nombreContrato",
+  "miFirmaPendiente",
+  "page",
+  "size",
+];
 
 function filtrosIniciales(idProyecto, miFirmaPendienteFijo = false) {
   return {
@@ -210,6 +229,15 @@ export default {
     sincronizarQuery: {
       type: Boolean,
       default: false,
+    },
+    /**
+     * Query que se conserva al sincronizar los filtros. Se usa cuando el
+     * listado se embebe en otra pantalla: por ejemplo, la pestaña Contratos
+     * del proyecto necesita mantener `tab=contratos` en la URL.
+     */
+    queryBase: {
+      type: Object,
+      default: null,
     },
     puedeCrear: {
       type: Boolean,
@@ -313,12 +341,18 @@ export default {
       const query = this.$route?.query || {};
       const estados = normalizarListaEstados(query.estados);
       const idProyectoQuery = Number(primerValor(query.idProyecto));
+      // En un listado embebido con `idProyecto` fijo (pestaña del proyecto),
+      // el prop manda: la query no debe poder apuntar a otro proyecto.
+      const idProyecto =
+        this.idProyecto != null
+          ? this.idProyecto
+          : Number.isFinite(idProyectoQuery)
+            ? idProyectoQuery
+            : null;
 
       this.filtros = {
         ...this.filtros,
-        idProyecto: Number.isFinite(idProyectoQuery)
-          ? idProyectoQuery
-          : this.idProyecto ?? null,
+        idProyecto,
         estados: estados.length ? estados : estadosContratoPorDefecto(),
         parte: String(primerValor(query.parte) || ""),
         fechaEmisionDesde: String(primerValor(query.fechaEmisionDesde) || ""),
@@ -337,8 +371,15 @@ export default {
     actualizarQuery() {
       if (!this.sincronizarQuery) return;
 
-      const query = {};
+      let query = {};
+      if (this.queryBase) {
+        // Listado embebido: conservar la query de la pantalla anfitriona
+        // (`tab`, `seccion`, etc.) y reconstruir sólo las claves del listado.
+        query = { ...this.queryBase, ...this.$route.query };
+        CLAVES_QUERY_LISTADO.forEach((clave) => delete query[clave]);
+      }
       if (
+        this.idProyecto == null &&
         this.filtros.idProyecto !== null &&
         this.filtros.idProyecto !== undefined &&
         this.filtros.idProyecto !== "" &&
@@ -598,28 +639,39 @@ export default {
     },
     irADetalle(contrato) {
       if (contrato?.idContrato == null) return;
-      this.$router.push({
-        name: "detalle-contrato",
-        params: {
-          idProyecto: this.idProyectoDe(contrato),
-          idContrato: contrato.idContrato,
-        },
-        query: this.sincronizarQuery
-          ? { idProyecto: this.filtros.idProyecto ?? undefined }
-          : undefined,
-      });
+      const query = this.sincronizarQuery
+        ? { idProyecto: this.filtros.idProyecto ?? undefined }
+        : {};
+      this.$router.push(
+        conVolver(
+          {
+            name: "detalle-contrato",
+            params: {
+              idProyecto: this.idProyectoDe(contrato),
+              idContrato: contrato.idContrato,
+            },
+            query,
+          },
+          crearRutaVolver(this.$route)
+        )
+      );
     },
     irAModificar(contrato) {
       if (!puedeModificarContrato(contrato) || contrato?.idContrato == null) {
         return;
       }
-      this.$router.push({
-        name: "modificar-contrato",
-        params: {
-          idProyecto: this.idProyectoDe(contrato),
-          idContrato: contrato.idContrato,
-        },
-      });
+      this.$router.push(
+        conVolver(
+          {
+            name: "modificar-contrato",
+            params: {
+              idProyecto: this.idProyectoDe(contrato),
+              idContrato: contrato.idContrato,
+            },
+          },
+          crearRutaVolver(this.$route)
+        )
+      );
     },
     abrirEliminar(contrato) {
       if (!contrato?.puedeEliminar || this.eliminando) return;
@@ -641,23 +693,31 @@ export default {
         this.modalEliminarVisible = false;
         this.toast.init({
           title: "Contrato eliminado",
-          message: "El contrato quedó en estado Eliminado.",
+          message: "El contrato quedó en estado Eliminado y sigue visible en la búsqueda.",
           color: "success",
           position: "top-right",
           duration: 5000,
         });
 
-        const eraUltimoDeLaPagina = this.contratos.length === 1;
-        this.contratos = this.contratos.filter(
-          (item) => String(item.idContrato) !== String(contrato.idContrato)
-        );
-        if (eraUltimoDeLaPagina && this.paginacion.paginaActual > 0) {
-          this.filtros = {
-            ...this.filtros,
-            page: this.paginacion.paginaActual - 1,
-          };
+        // El eliminado debe seguir apareciendo: se recarga con los mismos
+        // filtros y el backend lo devuelve en estado ELIMINADO. La bandeja
+        // "Pendientes de mi firma" no puede mostrarlo porque sus firmas
+        // pendientes fueron canceladas.
+        if (this.miFirmaPendienteFijo) {
+          this.$router.push({ name: "buscar-contratos" });
+          return;
         }
         await this.cargar();
+
+        // Si el usuario tenía oculto ELIMINADO y la baja dejó vacía la página
+        // actual, retrocede una página para no mostrar un listado en blanco.
+        if (!this.contratos.length && this.filtros.page > 0) {
+          this.filtros = {
+            ...this.filtros,
+            page: Math.max(0, this.filtros.page - 1),
+          };
+          await this.cargar();
+        }
       } catch (error) {
         if (this.esCancelacion(error)) return;
         await this.manejarErrorEliminar(error);

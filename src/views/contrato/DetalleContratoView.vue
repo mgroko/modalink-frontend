@@ -5,7 +5,7 @@
         Proyectos
       </router-link>
       <span aria-hidden="true">›</span>
-      <router-link :to="rutaContratos" class="detalle-contrato__miga">
+      <router-link :to="rutaVolver" class="detalle-contrato__miga">
         Contratos
       </router-link>
       <span aria-hidden="true">›</span>
@@ -81,7 +81,19 @@
       </header>
 
       <BaseAlert
-        v-if="estaActivo"
+        v-if="estaEliminado"
+        class="detalle-contrato__alerta-estado"
+        :message="mensajeEliminado"
+        type="warning"
+      />
+      <BaseAlert
+        v-else-if="proyectoFinalizado"
+        class="detalle-contrato__alerta-estado"
+        message="El proyecto está finalizado o cancelado: el contrato se conserva como registro histórico y no admite acciones."
+        type="warning"
+      />
+      <BaseAlert
+        v-else-if="estaActivo"
         class="detalle-contrato__alerta-estado"
         message="El contrato está activo: todas las partes completaron su firma."
         type="success"
@@ -118,6 +130,10 @@
           <div>
             <dt>Emisión</dt>
             <dd>{{ formatearFecha(contrato.fechaEmision) || "—" }}</dd>
+          </div>
+          <div v-if="contrato.fechaBaja">
+            <dt>Baja</dt>
+            <dd>{{ formatearFecha(contrato.fechaBaja) }}</dd>
           </div>
         </dl>
 
@@ -275,6 +291,11 @@ import {
   normalizarDetalleContrato,
   puedeModificarContrato,
 } from "../../utils/contratoConstants.js";
+import {
+  conVolver,
+  leerVolver,
+  resolverVolver,
+} from "../../utils/navegacionContratos.js";
 
 let controladorDetalle = null;
 
@@ -332,24 +353,32 @@ export default {
         query: this.idProyecto ? { idProyecto: this.idProyecto } : {},
       };
     },
-    rutaPendientes() {
-      return {
-        name: "contratos-pendientes",
-        query: this.idProyecto ? { idProyecto: this.idProyecto } : {},
-      };
-    },
-    rutaProyectoContratos() {
-      return {
-        name: "dashboard-proyecto",
-        params: { id: this.idProyecto },
-        query: { tab: "contratos" },
-      };
+    rutaVolver() {
+      return resolverVolver({
+        route: this.$route,
+        router: this.$router,
+        idProyecto: this.idProyecto,
+        fallback: this.rutaContratos,
+      });
     },
     estaActivo() {
       return this.contrato?.estado === ESTADOS_CONTRATO.ACTIVO;
     },
     estaRechazado() {
       return this.contrato?.estado === ESTADOS_CONTRATO.RECHAZADO_POR_PARTES;
+    },
+    estaEliminado() {
+      return this.contrato?.estado === ESTADOS_CONTRATO.ELIMINADO;
+    },
+    proyectoFinalizado() {
+      const estado = String(this.contrato?.estadoProyecto || "").toUpperCase();
+      return estado === "FINALIZADO" || estado === "CANCELADO";
+    },
+    mensajeEliminado() {
+      const fecha = this.contrato?.fechaBaja
+        ? ` el ${formatearFecha(this.contrato.fechaBaja)}`
+        : "";
+      return `Este contrato fue eliminado${fecha}. Se conserva como registro histórico.`;
     },
     miFirmaRegistrada() {
       return this.contrato?.miEstadoFirma === "FIRMADO";
@@ -543,16 +572,21 @@ export default {
     },
     irAModificar() {
       if (!this.puedeModificar || this.contrato?.idContrato == null) return;
-      this.$router.push({
-        name: "modificar-contrato",
-        params: {
-          idProyecto: this.idProyecto,
-          idContrato: this.contrato.idContrato,
-        },
-      });
+      this.$router.push(
+        conVolver(
+          {
+            name: "modificar-contrato",
+            params: {
+              idProyecto: this.idProyecto,
+              idContrato: this.contrato.idContrato,
+            },
+          },
+          leerVolver(this.$route)
+        )
+      );
     },
     volverAContratos() {
-      this.$router.push(this.rutaContratos);
+      this.$router.push(this.rutaVolver);
     },
     abrirRechazar() {
       this.errorRechazo = "";
@@ -563,8 +597,8 @@ export default {
       this.errorRechazo = "";
       this.errorMotivoRechazo = "";
     },
-    redirigirABandeja() {
-      this.$router.push(this.rutaPendientes);
+    volverAlOrigen() {
+      this.$router.push(this.rutaVolver);
     },
     async confirmarFirma() {
       if (
@@ -597,7 +631,7 @@ export default {
           position: "top-right",
           duration: 5000,
         });
-        this.redirigirABandeja();
+        this.volverAlOrigen();
       } catch (error) {
         if (this.esCancelacion(error)) return;
         this.errorFirma = await this.manejarErrorAccion(error, true);
@@ -631,7 +665,7 @@ export default {
           position: "top-right",
           duration: 5000,
         });
-        this.redirigirABandeja();
+        this.volverAlOrigen();
       } catch (error) {
         if (this.esCancelacion(error)) return;
         this.errorRechazo = await this.manejarErrorAccion(error, false);
@@ -673,7 +707,7 @@ export default {
           position: "top-right",
           duration: 6000,
         });
-        this.redirigirABandeja();
+        this.volverAlOrigen();
         return "";
       }
 
@@ -686,7 +720,7 @@ export default {
           position: "top-right",
           duration: 6000,
         });
-        this.redirigirABandeja();
+        this.volverAlOrigen();
         return "";
       }
 
@@ -699,7 +733,7 @@ export default {
           position: "top-right",
           duration: 6000,
         });
-        this.redirigirABandeja();
+        this.volverAlOrigen();
         return "";
       }
 
@@ -734,7 +768,7 @@ export default {
           position: "top-right",
           duration: 5000,
         });
-        this.$router.push(this.rutaProyectoContratos);
+        this.$router.push(this.rutaVolver);
       } catch (error) {
         if (this.esCancelacion(error)) return;
         await this.manejarErrorEliminar(error);
@@ -776,7 +810,7 @@ export default {
           position: "top-right",
           duration: 5000,
         });
-        this.$router.push(this.rutaProyectoContratos);
+        this.$router.push(this.rutaVolver);
         return;
       }
 
@@ -800,7 +834,7 @@ export default {
         ) {
           await this.cargar();
         } else {
-          this.$router.push(this.rutaProyectoContratos);
+          this.$router.push(this.rutaVolver);
         }
         return;
       }

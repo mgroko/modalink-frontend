@@ -37,10 +37,22 @@
 
           <td data-label="Estado">
             <EstadoContratoBadge :estado="contrato.estado" />
+            <span
+              v-if="esProyectoFinalizado(contrato)"
+              class="tabla-contratos__secundario tabla-contratos__historico"
+            >
+              Proyecto finalizado
+            </span>
           </td>
 
           <td data-label="Emisión">
             {{ formatearFecha(contrato.fechaEmision) || "—" }}
+            <span
+              v-if="contrato.fechaBaja"
+              class="tabla-contratos__secundario"
+            >
+              Baja: {{ formatearFecha(contrato.fechaBaja) }}
+            </span>
           </td>
 
           <td data-label="Firmas">
@@ -135,6 +147,10 @@ export default {
     formatearFecha,
     etiquetaEstadoFirmaContrato,
     puedeModificarContrato,
+    esProyectoFinalizado(contrato) {
+      const estado = String(contrato?.estadoProyecto || "").toUpperCase();
+      return estado === "FINALIZADO" || estado === "CANCELADO";
+    },
     varianteMiFirma(contrato) {
       if (contrato?.miEstadoFirma === "FIRMADO") return "firmado";
       if (contrato?.miEstadoFirma === "RECHAZADO") return "rechazado";
@@ -211,6 +227,11 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.73rem;
   line-height: 1.35;
+}
+
+.tabla-contratos__historico {
+  color: var(--color-warning-text);
+  font-weight: 600;
 }
 
 .tabla-contratos__firmas {

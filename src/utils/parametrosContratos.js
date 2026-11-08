@@ -4,7 +4,8 @@
  * El backend recibe `estados` como lista repetida
  * (`estados=PENDIENTE_FIRMA&estados=ACTIVO`); `serializarParams` se encarga
  * de ese formato. Si no se envía `estados`, el backend aplica el conjunto por
- * defecto. `BORRADOR` y `ELIMINADO` sólo se piden desde filtros avanzados.
+ * defecto, que incluye `ELIMINADO`. `BORRADOR` sólo se pide desde filtros
+ * avanzados.
  */
 
 import { serializarParams } from "./queryParams.js";
