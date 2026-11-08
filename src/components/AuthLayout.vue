@@ -71,15 +71,17 @@
 
 <script>
 import ThemeToggle from "./ThemeToggle.vue";
-import foto1 from "../assets/auth/DSC_0162.jpg";
-import foto2 from "../assets/auth/DSC_0102-2.jpg";
-import foto3 from "../assets/auth/DSC_0120.jpg";
-import foto4 from "../assets/auth/DSC_0115.jpg";
-import foto5 from "../assets/auth/DSC_0275.jpg";
-import foto6 from "../assets/auth/DSC_0244.jpg";
-import foto7 from "../assets/auth/DSC_0178.jpg";
-import foto8 from "../assets/auth/DSC_0308.jpg";
-import foto9 from "../assets/auth/DSC_0325.jpg";
+import foto1 from "../assets/auth/DSC_0275.jpg";
+import foto2 from "../assets/auth/DSC_0162.jpg";
+import foto3 from "../assets/auth/DSC_0244.jpg";
+import foto4 from "../assets/auth/DSC_0212.jpg";
+import foto5 from "../assets/auth/DSC_0245.jpg";
+import foto6 from "../assets/auth/DSC_0026.jpg";
+import foto7 from "../assets/auth/DSC_0120.jpg";
+import foto8 from "../assets/auth/DSC_0115.jpg";
+import foto9 from "../assets/auth/DSC_0102-2.jpg";
+import foto10 from "../assets/auth/ro1.jpeg";
+import foto11 from "../assets/auth/ro2.jpeg";
 
 const INTERVALO_ROTACION = 5000;
 
@@ -90,7 +92,19 @@ export default {
   },
   data() {
     return {
-      imagenes: [foto1, foto2, foto3, foto4, foto5, foto6, foto7, foto8, foto9],
+      imagenes: [
+        foto1,
+        foto2,
+        foto3,
+        foto4,
+        foto5,
+        foto6,
+        foto7,
+        foto8,
+        foto9,
+        foto10,
+        foto11
+      ],
       imagenActiva: 0,
       intervalo: null,
     };
