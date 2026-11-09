@@ -41,6 +41,7 @@ import http from "./http";
  * @property {number} idProfesion
  * @property {string} nombreProfesion
  * @property {string|null} fotoUrl
+ * @property {boolean} [enLinea]
  */
 
 /**
@@ -57,6 +58,7 @@ import http from "./http";
  * @property {boolean} puedeAceptar
  * @property {boolean} puedeRechazar
  * @property {boolean} puedeCancelar
+ * @property {boolean} [enLinea]
  */
 
 /**
@@ -121,6 +123,44 @@ const solicitudConexionService = {
    */
   cancelar(idSolicitudConexion) {
     return http.delete(`/solicitudes-conexion/${idSolicitudConexion}`);
+  },
+
+  /**
+   * POST /solicitudes-conexion/{idSolicitudConexion}/aceptar — UC-45.
+   *
+   * Errores:
+   * - 403 SOLICITUD_CONEXION_NO_PERMITIDA (la solicitud pertenece a otro perfil)
+   * - 404 la solicitud no existe o no hay perfil activo
+   * - 409 SOLICITUD_CONEXION_NO_PENDIENTE (ya fue gestionada)
+   * - 409 CONEXION_YA_EXISTENTE
+   * - 409 SOLICITUD_CONEXION_INVALIDA (algún perfil no está activo)
+   *
+   * @param {number|string} idSolicitudConexion
+   * @returns {Promise<{data: object}>} 200 OK, con idConexion creado
+   */
+  aceptar(idSolicitudConexion) {
+    return http.post(
+      `/solicitudes-conexion/${idSolicitudConexion}/aceptar`
+    );
+  },
+
+  /**
+   * POST /solicitudes-conexion/{idSolicitudConexion}/rechazar — UC-45.
+   *
+   * Errores:
+   * - 403 SOLICITUD_CONEXION_NO_PERMITIDA (la solicitud pertenece a otro perfil)
+   * - 404 la solicitud no existe o no hay perfil activo
+   * - 409 SOLICITUD_CONEXION_NO_PENDIENTE (ya fue gestionada)
+   * - 409 CONEXION_YA_EXISTENTE
+   * - 409 SOLICITUD_CONEXION_INVALIDA (algún perfil no está activo)
+   *
+   * @param {number|string} idSolicitudConexion
+   * @returns {Promise<{data: object}>} 200 OK, sin idConexion
+   */
+  rechazar(idSolicitudConexion) {
+    return http.post(
+      `/solicitudes-conexion/${idSolicitudConexion}/rechazar`
+    );
   },
 };
 

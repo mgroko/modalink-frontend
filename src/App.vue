@@ -8,6 +8,10 @@
 import { watch } from "vue";
 import { useColors } from "vuestic-ui";
 import { restaurarSesion, state } from "./services/authState";
+import {
+  detenerPresencia,
+  iniciarPresencia,
+} from "./services/presenciaState";
 import { applyDomTheme, resolvedTheme } from "./services/themeState";
 
 export default {
@@ -20,6 +24,15 @@ export default {
       (theme) => {
         applyPreset(theme);
         applyDomTheme();
+      },
+      { immediate: true }
+    );
+
+    watch(
+      () => state.usuario?.idPerfilActivo,
+      (idPerfil) => {
+        detenerPresencia();
+        if (idPerfil != null) iniciarPresencia();
       },
       { immediate: true }
     );
@@ -39,6 +52,9 @@ export default {
     // Precalienta la cookie CSRF y, de paso, restaura la sesión si ya
     // existe una cookie "jwt" válida (por ejemplo, tras refrescar la página).
     await restaurarSesion();
+  },
+  beforeUnmount() {
+    detenerPresencia();
   },
 };
 </script>

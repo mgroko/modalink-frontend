@@ -161,6 +161,13 @@ export default {
         registro_expirado: "El proceso de registro con Google expiró. Volvé a intentarlo.",
       };
       this.errorMessage = mensajes[codigo] || "No se pudo iniciar sesión con Google.";
+
+      // Quita el código de la URL para que el mensaje no reaparezca al
+      // refrescar o volver a abrir la pestaña. Conserva el resto del query
+      // (por ejemplo, `redirect`).
+      const query = { ...this.$route.query };
+      delete query.googleError;
+      this.$router.replace({ query }).catch(() => {});
     },
     async iniciarSesion() {
       const isValid = this.$refs.form.validate();

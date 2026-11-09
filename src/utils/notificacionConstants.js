@@ -10,6 +10,9 @@
 export const TIPOS_NOTIFICACION = {
   POSTULACION_RECIBIDA: "POSTULACION_RECIBIDA",
   SOLICITUD_CONEXION_RECIBIDA: "SOLICITUD_CONEXION_RECIBIDA",
+  SOLICITUD_CONEXION_ACEPTADA: "SOLICITUD_CONEXION_ACEPTADA",
+  SOLICITUD_CONEXION_RECHAZADA: "SOLICITUD_CONEXION_RECHAZADA",
+  CONEXION_ELIMINADA: "CONEXION_ELIMINADA",
   POSTULACION_ACEPTADA: "POSTULACION_ACEPTADA",
   POSTULACION_RECHAZADA: "POSTULACION_RECHAZADA",
   PROYECTO_CANCELADO: "PROYECTO_CANCELADO",
@@ -59,6 +62,11 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "Postulación recibida",
   [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECIBIDA]:
     "Solicitud de conexión recibida",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_ACEPTADA]:
+    "Solicitud de conexión aceptada",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECHAZADA]:
+    "Solicitud de conexión rechazada",
+  [TIPOS_NOTIFICACION.CONEXION_ELIMINADA]: "Conexión eliminada",
   [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "Postulación aceptada",
   [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "Postulación rechazada",
   [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "Proyecto cancelado",
@@ -102,6 +110,9 @@ const ETIQUETAS_TIPO = {
 const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "person_add",
   [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECIBIDA]: "person_add",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_ACEPTADA]: "how_to_reg",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECHAZADA]: "person_remove",
+  [TIPOS_NOTIFICACION.CONEXION_ELIMINADA]: "link_off",
   [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "how_to_reg",
   [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "person_remove",
   [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "cancel",
@@ -233,11 +244,49 @@ export function destinoNotificacion(notificacion) {
         etiqueta: "Ver solicitudes",
         ruta: {
           name: RUTAS_NOTIFICACION.MI_RED,
+          query: { tab: "recibidas" },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.SOLICITUD_CONEXION_ACEPTADA: {
+      const idConexion =
+        idValido(notificacion.idConexion) ??
+        (notificacion.entidadTipo === "CONEXION"
+          ? idValido(notificacion.entidadId)
+          : null);
+
+      return {
+        etiqueta: "Ver conexión",
+        ruta: {
+          name: RUTAS_NOTIFICACION.MI_RED,
           query: {
-            tab: "solicitudes",
-            direccion: "RECIBIDA",
-            estado: "PENDIENTE",
+            tab: "conexiones",
+            ...(idConexion != null ? { idConexion } : {}),
           },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECHAZADA: {
+      return {
+        etiqueta: "Ver solicitudes",
+        ruta: {
+          name: RUTAS_NOTIFICACION.MI_RED,
+          query: {
+            tab: "enviadas",
+            estado: "RECHAZADA",
+          },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.CONEXION_ELIMINADA: {
+      return {
+        etiqueta: "Ver conexiones",
+        ruta: {
+          name: RUTAS_NOTIFICACION.MI_RED,
+          query: { tab: "conexiones" },
         },
       };
     }

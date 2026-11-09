@@ -1,5 +1,6 @@
 <template>
   <article
+    v-if="perfil"
     class="perfil-busqueda"
     role="button"
     tabindex="0"
@@ -16,6 +17,11 @@
       <span v-else class="perfil-busqueda__inicial">
         {{ inicialDe(perfil.nombreArtistico) }}
       </span>
+      <span
+        class="perfil-busqueda__punto"
+        :class="{ 'perfil-busqueda__punto--online': enLinea }"
+        aria-hidden="true"
+      ></span>
     </div>
 
     <div class="perfil-busqueda__cuerpo">
@@ -27,6 +33,11 @@
         color="secondary"
         outline
         class="perfil-busqueda__profesion"
+      />
+
+      <IndicadorPresencia
+        :en-linea="enLinea"
+        class="perfil-busqueda__presencia"
       />
 
       <p v-if="perfil.nombreUsuario" class="perfil-busqueda__nombre-real">
@@ -102,7 +113,7 @@
         Conectar · Próximamente
       </VaButton>
       <VaButton
-        v-else-if="estadoNormalizado === ESTADOS_CONEXION.NINGUNA"
+        v-else-if="esConectar"
         color="#5CA4A9"
         size="small"
         :disabled="conectando"
@@ -138,6 +149,7 @@ import {
   UNIDADES_POR_CODIGO,
   normCodigo,
 } from "../../utils/perfilConstants.js";
+import IndicadorPresencia from "../conexion/IndicadorPresencia.vue";
 
 const LIMITE_CARACTERISTICAS_CARD = 3;
 
@@ -147,6 +159,9 @@ const LIMITE_CARACTERISTICAS_CARD = 3;
  */
 export default {
   name: "PerfilBusquedaCard",
+  components: {
+    IndicadorPresencia,
+  },
   props: {
     perfil: {
       type: Object,
@@ -176,6 +191,12 @@ export default {
     },
     etiquetaConexion() {
       return etiquetaAccionConexion(this.estadoNormalizado);
+    },
+    esConectar() {
+      return this.estadoNormalizado === ESTADOS_CONEXION.NINGUNA;
+    },
+    enLinea() {
+      return this.perfil?.enLinea === true;
     },
   },
   methods: {
@@ -307,10 +328,11 @@ export default {
 }
 
 .perfil-busqueda__foto {
+  position: relative;
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  overflow: hidden;
+  overflow: visible;
   background: var(--color-surface-muted);
   display: flex;
   align-items: center;
@@ -318,9 +340,30 @@ export default {
   flex-shrink: 0;
 }
 
+.perfil-busqueda__punto {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #9ca3af;
+  border: 2px solid var(--color-surface);
+}
+
+.perfil-busqueda__punto--online {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+}
+
+.perfil-busqueda__presencia {
+  margin-top: -0.1rem;
+}
+
 .perfil-busqueda__foto img {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
 }
 

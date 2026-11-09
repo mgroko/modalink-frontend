@@ -40,7 +40,12 @@
         :estado-conexion="estadoConexion"
         :mostrar="mostrarConexion"
         :cargando="cargandoConexion"
+        :procesando="procesandoConexion"
+        :accion-procesando="accionProcesandoConexion"
         @conectar="$emit('conectar')"
+        @aceptar="$emit('aceptar')"
+        @rechazar="$emit('rechazar')"
+        @eliminar="$emit('eliminar')"
       />
       <VaButton
         class="perfil-nav__accion"
@@ -83,6 +88,7 @@
 
 <script>
 import { state as invitacionState } from "../../services/invitacionState";
+import { state as solicitudConexionState } from "../../services/solicitudConexionState";
 import PerfilAccionesConexion from "./PerfilAccionesConexion.vue";
 
 export default {
@@ -127,12 +133,23 @@ export default {
       type: Boolean,
       default: false,
     },
+    procesandoConexion: {
+      type: Boolean,
+      default: false,
+    },
+    accionProcesandoConexion: {
+      type: String,
+      default: "",
+    },
   },
   emits: [
     "cambiar-seccion",
     "navegar-ruta",
     "cerrar-sesion",
     "conectar",
+    "aceptar",
+    "rechazar",
+    "eliminar",
     "cancelar",
     "mensaje",
     "reportar",
@@ -157,7 +174,14 @@ export default {
           icono: "description",
           tipo: "seccion",
         },
-        { key: "mi-red", label: "Mi red", icono: "group", tipo: "ruta", ruta: "mi-red" },
+        {
+          key: "mi-red",
+          label: "Mi red",
+          icono: "group",
+          tipo: "ruta",
+          ruta: "mi-red",
+          contador: solicitudConexionState.pendientesRecibidas,
+        },
         { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "ajustes-perfil-inicio" },
         { key: "panel", label: "Panel de usuario", icono: "space_dashboard", tipo: "ruta", ruta: "dashboard-usuario" },
       ];

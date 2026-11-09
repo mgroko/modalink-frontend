@@ -99,6 +99,8 @@ import http from "./http";
  *           cuando corresponde.
  * @property {number|null} idConexion ID de la conexión vigente, cuando
  *           corresponde.
+ * @property {boolean} enLinea presencia del perfil consultado (extensión
+ *           de Mi red).
  * @property {boolean} esPropietario true solo si el perfil pertenece al
  *           usuario autenticado (define los CTAs de la vista)
  */

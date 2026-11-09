@@ -164,6 +164,26 @@ const routes = [
     },
   },
   {
+    path: "/solicitudes-conexion",
+    redirect: (to) => ({
+      name: "mi-red",
+      query: {
+        ...to.query,
+        tab: to.query.direccion === "ENVIADA" ? "enviadas" : "recibidas",
+      },
+    }),
+  },
+  {
+    path: "/red-contactos",
+    redirect: (to) => ({
+      name: "mi-red",
+      query: {
+        ...to.query,
+        tab: "conexiones",
+      },
+    }),
+  },
+  {
     path: "/buscar",
     name: "buscar",
     component: BuscarPerfilView,

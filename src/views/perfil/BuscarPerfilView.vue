@@ -189,15 +189,6 @@
 
     <div v-if="!cargando" class="buscar-perfil__toolbar">
       <p class="buscar-perfil__resumen">{{ textoResumen }}</p>
-      <VaSelect
-        v-model="orden"
-        class="buscar-perfil__campo--orden"
-        :options="opcionesOrden"
-        value-by="value"
-        text-by="text"
-        disabled
-        title="El orden por relevancia estará disponible próximamente"
-      />
     </div>
 
     <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
@@ -239,7 +230,11 @@
             v-for="perfil in todo.perfiles"
             :key="perfil.idPerfil"
             :perfil="perfil"
+            :permitir-conexion="true"
+            :estado-conexion="estadoConexionDe(perfil)"
+            :conectando="estaConectandoConexion(perfil)"
             @abrir="irAPerfil"
+            @conectar="abrirConexion"
           />
         </BuscadorSeccion>
 
@@ -285,7 +280,11 @@
             v-for="perfil in perfiles"
             :key="perfil.idPerfil"
             :perfil="perfil"
+            :permitir-conexion="true"
+            :estado-conexion="estadoConexionDe(perfil)"
+            :conectando="estaConectandoConexion(perfil)"
             @abrir="irAPerfil"
+            @conectar="abrirConexion"
           />
         </div>
         <PaginacionResultados
@@ -374,6 +373,16 @@
       @confirmar="confirmarPostulacion"
       @revisar-calendario="irACalendario"
     />
+
+    <ModalEnviarSolicitudConexion
+      :model-value="modalConexion"
+      :perfil="perfilConexion"
+      :nombre-remitente="nombreRemitenteConexion"
+      :enviando="enviandoConexion"
+      :error="errorConexion"
+      @update:model-value="alCambiarModalConexion"
+      @confirmar="enviarSolicitudConexion"
+    />
   </div>
 </template>
 
@@ -383,6 +392,7 @@ import proyectoService from "../../services/proyectoService";
 import usuarioService from "../../services/usuarioService";
 import requerimientoService from "../../services/requerimientoService";
 import habilidadService from "../../services/habilidadService";
+import solicitudConexionService from "../../services/solicitudConexionService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import BuscadorSeccion from "../../components/busqueda/BuscadorSeccion.vue";
 import PerfilBusquedaCard from "../../components/busqueda/PerfilBusquedaCard.vue";
@@ -390,9 +400,20 @@ import ProyectoBusquedaCard from "../../components/busqueda/ProyectoBusquedaCard
 import OportunidadBusquedaCard from "../../components/proyecto/OportunidadBusquedaCard.vue";
 import FiltroUbicacion from "../../components/ubicacion/FiltroUbicacion.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
+import ModalEnviarSolicitudConexion from "../../components/perfil/ModalEnviarSolicitudConexion.vue";
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
 import { useToast } from "vuestic-ui";
-import { idPerfilActivo, refrescarSesion } from "../../services/authState.js";
+import {
+  idPerfilActivo,
+  refrescarSesion,
+  state as authState,
+} from "../../services/authState.js";
+import {
+  CODIGOS_ERROR_CONEXION,
+  ESTADOS_CONEXION,
+  mensajeErrorConexion,
+  normalizarEstadoConexion,
+} from "../../utils/conexionConstants.js";
 import { resolverUbicacionTexto } from "../../utils/ubicacion.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { OPCIONES_ESTADO_FILTRO } from "../../utils/proyectoConstants.js";
@@ -480,6 +501,7 @@ export default {
     OportunidadBusquedaCard,
     FiltroUbicacion,
     ModalPostulacion,
+    ModalEnviarSolicitudConexion,
     PaginacionResultados,
   },
   setup() {
@@ -511,8 +533,6 @@ export default {
         { text: "Ver todos", value: 0 },
       ],
       opcionesEstadoProyecto: OPCIONES_ESTADO_FILTRO,
-      opcionesOrden: [{ text: "Más relevantes", value: "relevancia" }],
-      orden: "relevancia",
       profesiones: [],
       cargandoProfesiones: false,
       habilidades: [],
@@ -543,6 +563,7 @@ export default {
       },
       recientes: [],
       claveContadoresCargada: null,
+      profesionPorDefecto: false,
       cargando: true,
       mensajeError: "",
       puedeReintentar: false,
@@ -553,6 +574,12 @@ export default {
       enviandoPostulacion: false,
       errorPostulacion: "",
       errorPostulacionEsDisponibilidad: false,
+      modalConexion: false,
+      perfilConexion: null,
+      enviandoConexion: false,
+      errorConexion: "",
+      estadosConexion: {},
+      verificandoConexionId: null,
     };
   },
   computed: {
@@ -691,11 +718,15 @@ export default {
         !this.modalPostulacion.fechaEntrega
       );
     },
+    nombreRemitenteConexion() {
+      return authState.usuario?.nombreArtisticoActivo || "tu perfil activo";
+    },
   },
   watch: {
-    "$route.query"(nuevo, anterior) {
+    async "$route.query"(nuevo, anterior) {
       if (JSON.stringify(nuevo) === JSON.stringify(anterior)) return;
 
+      const tabAnterior = this.tab;
       const tab = normalizarTab(nuevo?.tab);
       const subtab = normalizarSubtab(nuevo?.subtab);
       const q = typeof nuevo?.q === "string" ? nuevo.q : "";
@@ -728,6 +759,20 @@ export default {
       this.filtros.q = q;
       this.filtros.idProfesion = idProfesion;
       this.filtros.ubicacion = { provinciaId, localidadId };
+
+      if (
+        tabAnterior === "oportunidades" &&
+        tab !== "oportunidades" &&
+        this.profesionPorDefecto
+      ) {
+        this.filtros.idProfesion = null;
+        this.profesionPorDefecto = false;
+      }
+
+      if (tab === "oportunidades") {
+        await this.cargarProfesionPorDefecto();
+      }
+
       this.buscar(0);
     },
   },
@@ -737,7 +782,7 @@ export default {
     await Promise.all([
       this.cargarProfesiones(),
       this.cargarHabilidades(),
-      this.cargarPerfilActivo(),
+      this.cargarProfesionPorDefecto(),
     ]);
     await this.cargarCaracteristicas();
     await this.buscar();
@@ -833,19 +878,25 @@ export default {
         this.cargandoHabilidades = false;
       }
     },
-    async cargarPerfilActivo() {
+    async cargarProfesionPorDefecto() {
+      if (this.tab !== "oportunidades") return;
       if (this.filtros.idProfesion != null) return;
+
       const id = idPerfilActivo();
       if (id == null) return;
+
       try {
         const response = await perfilService.obtener(id);
         const idProfesion = Number(response?.data?.idProfesion);
+
         if (
+          this.tab === "oportunidades" &&
           this.filtros.idProfesion == null &&
           Number.isFinite(idProfesion) &&
           idProfesion > 0
         ) {
           this.filtros.idProfesion = idProfesion;
+          this.profesionPorDefecto = true;
           this.sincronizarRuta();
         }
       } catch {
@@ -896,6 +947,7 @@ export default {
       this.buscarAhora();
     },
     cambiarProfesion() {
+      this.profesionPorDefecto = false;
       this.filtros.soloMiProfesion = false;
       this.limpiarRamaCaracteristica();
       this.sincronizarRuta();
@@ -908,6 +960,7 @@ export default {
       this.buscarAhora();
     },
     cambiarSoloMiProfesion() {
+      this.profesionPorDefecto = false;
       if (this.filtros.soloMiProfesion) {
         this.filtros.idProfesion = null;
         this.limpiarRamaCaracteristica();
@@ -962,11 +1015,29 @@ export default {
       this.filtros.q = texto;
       this.buscarDesdeCabecera();
     },
-    cambiarTab(tab) {
+    async cambiarTab(tab) {
       if (tab === this.tab) return;
+
+      const tabAnterior = this.tab;
       this.tab = tab;
       this.mensajeError = "";
       this.puedeReintentar = false;
+
+      if (
+        tabAnterior === "oportunidades" &&
+        tab !== "oportunidades" &&
+        this.profesionPorDefecto
+      ) {
+        this.filtros.idProfesion = null;
+        this.profesionPorDefecto = false;
+        this.limpiarRamaCaracteristica();
+        this.caracteristicas = [];
+      }
+
+      if (tab === "oportunidades") {
+        await this.cargarProfesionPorDefecto();
+      }
+
       this.sincronizarRuta();
       this.buscar(0);
     },
@@ -988,6 +1059,7 @@ export default {
       this.filtros.nombre = "";
       this.filtros.apellido = "";
       this.filtros.idProfesion = null;
+      this.profesionPorDefecto = false;
       this.filtros.idCaracteristica = null;
       this.filtros.valorCaracteristica = "";
       this.filtros.idValorCaracteristica = null;
@@ -1290,16 +1362,16 @@ export default {
     async cargarTodo(signal, corrida) {
       const [perfilesRes, proyectosRes, generalesRes, actividadesRes] =
         await Promise.allSettled([
-          this.consultarPerfiles({ page: 0, size: 3 }, signal),
-          this.consultarProyectos({ page: 0, size: 3 }, signal),
+          this.consultarPerfiles({ page: 0, size: 4 }, signal),
+          this.consultarProyectos({ page: 0, size: 4 }, signal),
           this.consultarOportunidadesPorTipo(
             TIPOS_POSTULACION.GENERAL,
-            { page: 0, size: 3 },
+            { page: 0, size: 4 },
             signal
           ),
           this.consultarOportunidadesPorTipo(
             TIPOS_POSTULACION.ACTIVIDAD,
-            { page: 0, size: 3 },
+            { page: 0, size: 4 },
             signal
           ),
         ]);
@@ -1328,12 +1400,14 @@ export default {
         errores
       );
 
-      this.todo.perfiles = perfiles.items;
+      this.todo.perfiles = perfiles.items.filter(
+        (perfil) => perfil?.idPerfil != null
+      );
       this.todo.proyectos = proyectos.items;
       this.todo.oportunidades = [
         ...generales.items,
         ...actividades.items,
-      ].slice(0, 3);
+      ].slice(0, 4);
 
       this.contadores.perfiles = perfiles.paginacion.totalElementos;
       this.contadores.proyectos = proyectos.paginacion.totalElementos;
@@ -1491,7 +1565,9 @@ export default {
           signal
         );
         if (corrida !== this.idBusqueda) return;
-        this.perfiles = resultado.items;
+        this.perfiles = resultado.items.filter(
+          (perfil) => perfil?.idPerfil != null
+        );
         this.paginacionPerfiles = resultado.paginacion;
         this.contadores.perfiles = resultado.paginacion.totalElementos;
         this.actualizarContadorTodo();
@@ -1561,6 +1637,135 @@ export default {
     },
     reintentar() {
       this.buscar(this.paginacion.paginaActual);
+    },
+    estadoConexionDe(perfil) {
+      const local = this.estadosConexion[perfil?.idPerfil];
+      return normalizarEstadoConexion(
+        local ?? perfil?.estadoConexion ?? ESTADOS_CONEXION.NINGUNA
+      );
+    },
+    estaConectandoConexion(perfil) {
+      if (!perfil?.idPerfil) return false;
+      return (
+        this.verificandoConexionId === perfil.idPerfil ||
+        (this.enviandoConexion &&
+          this.perfilConexion?.idPerfil === perfil.idPerfil)
+      );
+    },
+    guardarEstadoConexion(perfil, estado) {
+      if (!perfil?.idPerfil) return;
+      this.estadosConexion = {
+        ...this.estadosConexion,
+        [perfil.idPerfil]: normalizarEstadoConexion(estado),
+      };
+    },
+    async consultarEstadoConexion(perfil) {
+      try {
+        const response = await perfilService.obtener(perfil.idPerfil);
+        return normalizarEstadoConexion(response?.data?.estadoConexion);
+      } catch {
+        return null;
+      }
+    },
+    mensajeEstadoConexion(estado) {
+      if (estado === ESTADOS_CONEXION.CONECTADO) {
+        return "Ya tenés una conexión con este perfil.";
+      }
+      if (estado === ESTADOS_CONEXION.SOLICITUD_RECIBIDA) {
+        return "Este perfil ya te envió una solicitud de conexión.";
+      }
+      return "Ya enviaste una solicitud a este perfil.";
+    },
+    async abrirConexion(perfil) {
+      if (!perfil?.idPerfil || this.verificandoConexionId != null) return;
+      if (this.estadoConexionDe(perfil) !== ESTADOS_CONEXION.NINGUNA) return;
+
+      this.perfilConexion = perfil;
+      this.errorConexion = "";
+      this.verificandoConexionId = perfil.idPerfil;
+      try {
+        const estado = await this.consultarEstadoConexion(perfil);
+        if (estado && estado !== ESTADOS_CONEXION.NINGUNA) {
+          this.guardarEstadoConexion(perfil, estado);
+          this.toast.init({
+            title: "Estado de la conexión",
+            message: this.mensajeEstadoConexion(estado),
+            color: "info",
+            position: "top-right",
+            duration: 5000,
+          });
+          this.perfilConexion = null;
+          return;
+        }
+        this.modalConexion = true;
+      } finally {
+        this.verificandoConexionId = null;
+      }
+    },
+    alCambiarModalConexion(valor) {
+      if (this.enviandoConexion && !valor) return;
+      this.modalConexion = valor;
+      if (!valor) {
+        this.errorConexion = "";
+        this.perfilConexion = null;
+      }
+    },
+    async enviarSolicitudConexion() {
+      if (this.enviandoConexion) return;
+      const perfil = this.perfilConexion;
+      if (!perfil?.idPerfil) return;
+
+      this.enviandoConexion = true;
+      this.errorConexion = "";
+      try {
+        await solicitudConexionService.enviar(perfil.idPerfil);
+        this.guardarEstadoConexion(perfil, ESTADOS_CONEXION.SOLICITUD_ENVIADA);
+        this.modalConexion = false;
+        this.perfilConexion = null;
+        this.toast.init({
+          title: "Solicitud enviada",
+          message: `Le enviaste una solicitud de conexión a ${
+            perfil.nombreArtistico || "este perfil"
+          }.`,
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        const codigo = error?.response?.data?.codigo;
+        const esConflicto =
+          codigo === CODIGOS_ERROR_CONEXION.SOLICITUD_CONEXION_PENDIENTE ||
+          codigo === CODIGOS_ERROR_CONEXION.CONEXION_YA_EXISTENTE;
+
+        if (esConflicto) {
+          this.modalConexion = false;
+          const estado = await this.consultarEstadoConexion(perfil);
+          if (
+            codigo === CODIGOS_ERROR_CONEXION.CONEXION_YA_EXISTENTE &&
+            !estado
+          ) {
+            this.guardarEstadoConexion(perfil, ESTADOS_CONEXION.CONECTADO);
+          } else if (estado) {
+            this.guardarEstadoConexion(perfil, estado);
+          }
+          this.toast.init({
+            title: "Conexión",
+            message:
+              codigo === CODIGOS_ERROR_CONEXION.CONEXION_YA_EXISTENTE
+                ? "Ya tenés una conexión con este perfil."
+                : "Ya existe una solicitud de conexión pendiente con este perfil.",
+            color: "info",
+            position: "top-right",
+            duration: 5000,
+          });
+          this.perfilConexion = null;
+          return;
+        }
+
+        this.errorConexion = mensajeErrorConexion(error);
+      } finally {
+        this.enviandoConexion = false;
+      }
     },
     irAPerfil(perfil) {
       if (perfil?.idPerfil) {
@@ -1967,10 +2172,6 @@ export default {
   min-width: 150px;
 }
 
-.buscar-perfil__campo--orden {
-  min-width: 170px;
-}
-
 .buscar-perfil__icono-campo {
   font-size: 1.1rem;
   color: var(--color-text-muted);
@@ -2081,8 +2282,7 @@ export default {
 
   .buscar-perfil__campo,
   .buscar-perfil__campo--texto,
-  .buscar-perfil__campo--tamano,
-  .buscar-perfil__campo--orden {
+  .buscar-perfil__campo--tamano {
     width: 100%;
     min-width: 0;
   }

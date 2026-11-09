@@ -18,6 +18,7 @@ function limpiarTexto(valor) {
  * @typedef {Object} FiltrosSolicitudesConexion
  * @property {string} [direccion] RECIBIDA | ENVIADA | "" (ambas)
  * @property {string} [estado] PENDIENTE | ACEPTADA | RECHAZADA
+ * @property {boolean} [todosLosEstados] si es true, ignora `estado`
  * @property {string} [nombre]
  * @property {string} [apellido]
  * @property {string} [nombreArtistico]
@@ -38,6 +39,7 @@ export function construirParamsSolicitudesConexion(filtros = {}) {
   const {
     direccion,
     estado,
+    todosLosEstados = false,
     nombre,
     apellido,
     nombreArtistico,
@@ -51,7 +53,11 @@ export function construirParamsSolicitudesConexion(filtros = {}) {
   const params = {};
 
   if (direccion) params.direccion = direccion;
-  if (estado) params.estado = estado;
+  if (todosLosEstados) {
+    params.todosLosEstados = true;
+  } else if (estado) {
+    params.estado = estado;
+  }
 
   const textoNombre = limpiarTexto(nombre);
   const textoApellido = limpiarTexto(apellido);

@@ -2,15 +2,24 @@
   <div class="solicitudes-conexion">
     <FiltrosSolicitudesConexion
       :filtros="filtros"
-      :profesiones="profesiones"
-      :cargando-profesiones="cargandoProfesiones"
-      :error-fechas="errorFechas"
-      :mostrar-avanzado="mostrarAvanzado"
+      :conteos="conteos"
       @cambio="cambiar"
       @buscar-ahora="buscarAhora"
       @limpiar="limpiarFiltros"
-      @toggle-avanzado="mostrarAvanzado = !mostrarAvanzado"
     />
+
+    <div v-if="mensajeExito" class="solicitudes-conexion__exito">
+      <BaseAlert :message="mensajeExito" type="success" />
+      <VaButton
+        v-if="idConexionCreada"
+        preset="secondary"
+        size="small"
+        icon="mso-open_in_new"
+        @click="irAConexion"
+      >
+        Ver conexión
+      </VaButton>
+    </div>
 
     <div v-if="error" class="solicitudes-conexion__error">
       <BaseAlert :message="error" type="error" />
@@ -51,12 +60,21 @@
             v-for="solicitud in solicitudes"
             :key="solicitud.idSolicitudConexion"
             :solicitud="solicitud"
+            :en-linea="enLineaDe(solicitud)"
             :cancelando="
               cancelando &&
               solicitudCancelar?.idSolicitudConexion ===
                 solicitud.idSolicitudConexion
             "
+            :procesando="
+              procesandoGestion &&
+              solicitudGestion?.idSolicitudConexion ===
+                solicitud.idSolicitudConexion
+            "
+            :accion-procesando="modoGestion"
             @cancelar="abrirCancelar"
+            @aceptar="abrirGestion($event, 'aceptar')"
+            @rechazar="abrirGestion($event, 'rechazar')"
             @ver-perfil="verPerfil"
           />
         </div>
@@ -76,6 +94,16 @@
       @update:model-value="alCambiarModalCancelar"
       @confirmar="cancelarSolicitud"
     />
+
+    <ModalGestionSolicitudConexion
+      :model-value="modalGestion"
+      :perfil="solicitudGestion?.perfil || null"
+      :modo="modoGestion"
+      :procesando="procesandoGestion"
+      :error="errorGestion"
+      @update:model-value="alCambiarModalGestion"
+      @confirmar="confirmarGestion"
+    />
   </div>
 </template>
 
@@ -85,8 +113,19 @@ import FiltrosSolicitudesConexion from "./FiltrosSolicitudesConexion.vue";
 import SolicitudConexionCard from "./SolicitudConexionCard.vue";
 import PaginacionResultados from "../busqueda/PaginacionResultados.vue";
 import ModalCancelarSolicitudConexion from "../perfil/ModalCancelarSolicitudConexion.vue";
-import perfilService from "../../services/perfilService";
+import ModalGestionSolicitudConexion from "./ModalGestionSolicitudConexion.vue";
 import solicitudConexionService from "../../services/solicitudConexionService";
+import {
+  state as solicitudConexionState,
+  cargarConteosSolicitudesConexion,
+} from "../../services/solicitudConexionState";
+import {
+  enLineaDe,
+  desuscribirPerfiles,
+  reconciliarSuscripciones,
+} from "../../services/presenciaState";
+import { idPerfilActivo } from "../../services/authState";
+import { cargarResumenPerfil } from "../../services/notificacionState";
 import {
   DIRECCIONES_SOLICITUD,
   ESTADOS_SOLICITUD_CONEXION,
@@ -94,12 +133,12 @@ import {
 } from "../../utils/solicitudesConexionConstants.js";
 import {
   construirParamsSolicitudesConexion,
-  validarRangoFechas,
   TAMANO_POR_DEFECTO,
 } from "../../utils/parametrosSolicitudesConexion.js";
 import {
   CODIGOS_ERROR_CONEXION,
   mensajeErrorCancelacionConexion,
+  mensajeErrorGestionSolicitudConexion,
 } from "../../utils/conexionConstants.js";
 import { useToast } from "vuestic-ui";
 
@@ -135,6 +174,18 @@ export default {
     SolicitudConexionCard,
     PaginacionResultados,
     ModalCancelarSolicitudConexion,
+    ModalGestionSolicitudConexion,
+  },
+  props: {
+    direccion: {
+      type: String,
+      required: true,
+      validator: (valor) =>
+        [
+          DIRECCIONES_SOLICITUD.RECIBIDA,
+          DIRECCIONES_SOLICITUD.ENVIADA,
+        ].includes(valor),
+    },
   },
   setup() {
     return { toast: useToast() };
@@ -142,121 +193,88 @@ export default {
   data() {
     return {
       filtros: {
-        direccion: DIRECCIONES_SOLICITUD.RECIBIDA,
-        estado: ESTADOS_SOLICITUD_CONEXION.PENDIENTE,
-        nombre: "",
-        apellido: "",
+        estado: "",
         nombreArtistico: "",
-        idProfesion: null,
-        fechaDesde: "",
-        fechaHasta: "",
         tamano: TAMANO_POR_DEFECTO,
       },
       solicitudes: [],
       paginacion: paginacionInicial(),
       cargando: true,
       error: "",
-      errorFechas: "",
-      profesiones: [],
-      cargandoProfesiones: false,
-      mostrarAvanzado: false,
       controlador: null,
       idBusqueda: 0,
       debounceHandle: null,
+      idsPresencia: [],
       modalCancelar: false,
       solicitudCancelar: null,
       cancelando: false,
       errorCancelar: "",
+      modalGestion: false,
+      solicitudGestion: null,
+      modoGestion: "aceptar",
+      procesandoGestion: false,
+      errorGestion: "",
+      mensajeExito: "",
+      idConexionCreada: null,
     };
   },
   computed: {
-    hayBusquedaActiva() {
-      return Boolean(
-        String(this.filtros.nombre || "").trim() ||
-          String(this.filtros.apellido || "").trim() ||
-          String(this.filtros.nombreArtistico || "").trim()
-      );
+    conteos() {
+      return this.direccion === DIRECCIONES_SOLICITUD.RECIBIDA
+        ? solicitudConexionState.conteosRecibidas
+        : solicitudConexionState.conteosEnviadas;
     },
     hayFiltrosActivos() {
-      return (
-        this.hayBusquedaActiva ||
-        this.filtros.idProfesion != null ||
-        Boolean(this.filtros.fechaDesde) ||
-        Boolean(this.filtros.fechaHasta)
+      return Boolean(
+        String(this.filtros.nombreArtistico || "").trim() ||
+          this.filtros.estado ||
+          Number(this.filtros.tamano) !== TAMANO_POR_DEFECTO
       );
     },
     textoVacio() {
-      if (this.hayFiltrosActivos) {
+      const direccion =
+        this.direccion === DIRECCIONES_SOLICITUD.RECIBIDA
+          ? "recibidas"
+          : "enviadas";
+
+      if (String(this.filtros.nombreArtistico || "").trim()) {
         return "No encontramos solicitudes que coincidan con tu búsqueda.";
       }
+      if (this.filtros.estado === ESTADOS_SOLICITUD_CONEXION.PENDIENTE) {
+        return `No hay solicitudes ${direccion} pendientes.`;
+      }
       if (this.filtros.estado === ESTADOS_SOLICITUD_CONEXION.ACEPTADA) {
-        return "No hay solicitudes aceptadas.";
+        return `No hay solicitudes ${direccion} aceptadas.`;
       }
       if (this.filtros.estado === ESTADOS_SOLICITUD_CONEXION.RECHAZADA) {
-        return "No hay solicitudes rechazadas.";
+        return `No hay solicitudes ${direccion} rechazadas.`;
       }
-      if (this.filtros.direccion === DIRECCIONES_SOLICITUD.ENVIADA) {
-        return "No tenés solicitudes enviadas pendientes.";
-      }
-      if (this.filtros.direccion === DIRECCIONES_SOLICITUD.RECIBIDA) {
-        return "No tenés solicitudes recibidas pendientes.";
-      }
-      return "No tenés solicitudes pendientes.";
+      return `No hay solicitudes ${direccion}.`;
     },
   },
   watch: {
-    "$route.query.direccion"(nuevo) {
-      const direccion =
-        nuevo === DIRECCIONES_SOLICITUD.RECIBIDA
-          ? DIRECCIONES_SOLICITUD.RECIBIDA
-          : nuevo === DIRECCIONES_SOLICITUD.ENVIADA
-            ? DIRECCIONES_SOLICITUD.ENVIADA
-            : null;
-      if (direccion == null || direccion === this.filtros.direccion) return;
-      this.filtros.direccion = direccion;
-      this.buscarAhora();
-    },
     "$route.query.estado"(nuevo) {
       const estados = Object.values(ESTADOS_SOLICITUD_CONEXION);
-      if (!estados.includes(nuevo) || nuevo === this.filtros.estado) return;
-      this.filtros.estado = nuevo;
+      const estado = estados.includes(nuevo) ? nuevo : "";
+      if (estado === this.filtros.estado) return;
+      this.filtros.estado = estado;
       this.buscarAhora();
     },
   },
   mounted() {
     this.aplicarQueryInicial();
-    this.cargarProfesiones();
     this.buscar(0);
   },
   beforeUnmount() {
     clearTimeout(this.debounceHandle);
     this.abortarBusqueda();
+    this.desuscribirPresencia();
   },
   methods: {
     aplicarQueryInicial() {
-      const query = this.$route.query;
-      if (
-        query.direccion === DIRECCIONES_SOLICITUD.RECIBIDA ||
-        query.direccion === DIRECCIONES_SOLICITUD.ENVIADA
-      ) {
-        this.filtros.direccion = query.direccion;
-      }
-      if (Object.values(ESTADOS_SOLICITUD_CONEXION).includes(query.estado)) {
-        this.filtros.estado = query.estado;
-      }
-    },
-    async cargarProfesiones() {
-      this.cargandoProfesiones = true;
-      try {
-        const response = await perfilService.listarProfesiones();
-        const datos = response?.data;
-        this.profesiones = Array.isArray(datos)
-          ? datos
-          : datos?.profesiones || [];
-      } catch {
-        this.profesiones = [];
-      } finally {
-        this.cargandoProfesiones = false;
+      const estado = this.$route.query.estado;
+      if (Object.values(ESTADOS_SOLICITUD_CONEXION).includes(estado)) {
+        this.filtros.estado = estado;
       }
     },
     abortarBusqueda() {
@@ -269,18 +287,6 @@ export default {
       clearTimeout(this.debounceHandle);
       this.abortarBusqueda();
 
-      const errorFecha = validarRangoFechas(
-        this.filtros.fechaDesde,
-        this.filtros.fechaHasta
-      );
-      if (errorFecha) {
-        this.errorFechas = errorFecha;
-        this.cargando = false;
-        return;
-      }
-
-      this.errorFechas = "";
-
       const controlador = new AbortController();
       this.controlador = controlador;
       const corrida = ++this.idBusqueda;
@@ -289,8 +295,12 @@ export default {
 
       try {
         const params = construirParamsSolicitudesConexion({
-          ...this.filtros,
+          direccion: this.direccion,
+          estado: this.filtros.estado || undefined,
+          todosLosEstados: this.filtros.estado === "",
+          nombreArtistico: this.filtros.nombreArtistico,
           pagina,
+          tamano: this.filtros.tamano,
         });
         const response = await solicitudConexionService.buscar(
           params,
@@ -302,6 +312,7 @@ export default {
         const data = response?.data || {};
         this.solicitudes = Array.isArray(data.contenido) ? data.contenido : [];
         this.paginacion = normalizarPagina(data);
+        this.actualizarSuscripcionPresencia();
       } catch (error) {
         if (
           corrida !== this.idBusqueda ||
@@ -312,6 +323,7 @@ export default {
         }
         this.solicitudes = [];
         this.paginacion = paginacionInicial();
+        this.desuscribirPresencia();
         this.error = mensajeErrorSolicitudesConexion(error);
       } finally {
         if (corrida === this.idBusqueda) {
@@ -330,28 +342,18 @@ export default {
     },
     cambiar(campo, valor) {
       this.filtros[campo] = valor;
-      if (["nombre", "apellido", "nombreArtistico"].includes(campo)) {
+      if (campo === "nombreArtistico") {
         this.programarBusqueda();
         return;
-      }
-      if (["fechaDesde", "fechaHasta"].includes(campo)) {
-        this.errorFechas = "";
       }
       this.buscar(0);
     },
     limpiarFiltros() {
       this.filtros = {
-        direccion: DIRECCIONES_SOLICITUD.RECIBIDA,
-        estado: ESTADOS_SOLICITUD_CONEXION.PENDIENTE,
-        nombre: "",
-        apellido: "",
+        estado: "",
         nombreArtistico: "",
-        idProfesion: null,
-        fechaDesde: "",
-        fechaHasta: "",
         tamano: TAMANO_POR_DEFECTO,
       };
-      this.errorFechas = "";
       this.buscarAhora();
     },
     cambiarPagina(delta) {
@@ -370,11 +372,49 @@ export default {
         await this.buscar(pagina - 1);
       }
     },
+    actualizarSuscripcionPresencia() {
+      const nuevos = this.solicitudes
+        .map((solicitud) => solicitud?.perfil?.idPerfil)
+        .filter((id) => id != null);
+      const previos = this.idsPresencia;
+      this.idsPresencia = nuevos;
+      reconciliarSuscripciones(previos, nuevos);
+    },
+    desuscribirPresencia() {
+      if (this.idsPresencia.length) {
+        desuscribirPerfiles(this.idsPresencia);
+        this.idsPresencia = [];
+      }
+    },
+    enLineaDe(solicitud) {
+      return enLineaDe(
+        solicitud?.perfil?.idPerfil,
+        solicitud?.enLinea ?? solicitud?.perfil?.enLinea
+      );
+    },
     verPerfil(perfil) {
       if (!perfil?.idPerfil) return;
       this.$router.push({
         name: "ver-perfil",
         params: { id: perfil.idPerfil },
+      });
+    },
+    async cargarConteos() {
+      await cargarConteosSolicitudesConexion(this.direccion);
+      try {
+        await cargarResumenPerfil(idPerfilActivo());
+      } catch {
+        // El contador de notificaciones no debe romper la acción.
+      }
+    },
+    irAConexion() {
+      if (this.idConexionCreada == null) return;
+      this.$router.push({
+        name: "mi-red",
+        query: {
+          tab: "conexiones",
+          idConexion: this.idConexionCreada,
+        },
       });
     },
     abrirCancelar(solicitud) {
@@ -402,9 +442,9 @@ export default {
         await solicitudConexionService.cancelar(idSolicitud);
         this.modalCancelar = false;
         this.solicitudCancelar = null;
-
         await this.refrescarListado();
-
+        await this.cargarConteos();
+        this.$emit("actualizado", { conexionCreada: false });
         this.toast.init({
           title: "Solicitud cancelada",
           message: "La solicitud de conexión se canceló correctamente.",
@@ -427,6 +467,7 @@ export default {
           this.modalCancelar = false;
           this.solicitudCancelar = null;
           await this.refrescarListado();
+          await this.cargarConteos();
           this.toast.init({
             title: esConflicto
               ? "Solicitud de conexión"
@@ -446,6 +487,94 @@ export default {
         this.cancelando = false;
       }
     },
+    abrirGestion(solicitud, modo) {
+      if (
+        this.procesandoGestion ||
+        !["aceptar", "rechazar"].includes(modo)
+      ) {
+        return;
+      }
+      this.solicitudGestion = solicitud;
+      this.modoGestion = modo;
+      this.errorGestion = "";
+      this.modalGestion = true;
+    },
+    alCambiarModalGestion(valor) {
+      if (this.procesandoGestion && !valor) return;
+      this.modalGestion = valor;
+      if (!valor) {
+        this.solicitudGestion = null;
+        this.errorGestion = "";
+      }
+    },
+    async confirmarGestion() {
+      if (this.procesandoGestion) return;
+      const solicitud = this.solicitudGestion;
+      const idSolicitud = solicitud?.idSolicitudConexion;
+      if (idSolicitud == null) return;
+
+      const modo = this.modoGestion;
+      this.procesandoGestion = true;
+      this.errorGestion = "";
+      try {
+        const response =
+          modo === "aceptar"
+            ? await solicitudConexionService.aceptar(idSolicitud)
+            : await solicitudConexionService.rechazar(idSolicitud);
+        const data = response?.data || {};
+
+        this.modalGestion = false;
+        this.solicitudGestion = null;
+        this.mensajeExito =
+          modo === "aceptar"
+            ? "Solicitud aceptada. La conexión ya está activa."
+            : "Solicitud rechazada.";
+        this.idConexionCreada =
+          modo === "aceptar" ? data.idConexion ?? null : null;
+
+        await this.refrescarListado();
+        await this.cargarConteos();
+        this.$emit("actualizado", { conexionCreada: modo === "aceptar" });
+      } catch (error) {
+        const status = error?.response?.status;
+        const codigo = error?.response?.data?.codigo;
+        const esConflicto =
+          codigo ===
+            CODIGOS_ERROR_CONEXION.SOLICITUD_CONEXION_NO_PENDIENTE ||
+          codigo === CODIGOS_ERROR_CONEXION.CONEXION_YA_EXISTENTE;
+        const esNoPermitida =
+          codigo ===
+            CODIGOS_ERROR_CONEXION.SOLICITUD_CONEXION_NO_PERMITIDA ||
+          status === 403;
+        const esNoEncontrada = status === 404;
+
+        if (esConflicto || esNoPermitida || esNoEncontrada) {
+          this.modalGestion = false;
+          this.solicitudGestion = null;
+          await this.refrescarListado();
+          await this.cargarConteos();
+          this.$emit("actualizado", {
+            conexionCreada: esConflicto,
+          });
+          this.toast.init({
+            title: esConflicto
+              ? "Solicitud de conexión"
+              : "No se pudo gestionar",
+            message: esConflicto
+              ? "La solicitud ya fue gestionada."
+              : mensajeErrorGestionSolicitudConexion(error),
+            color: esConflicto ? "info" : "danger",
+            position: "top-right",
+            duration: 5000,
+          });
+          return;
+        }
+
+        this.errorGestion = mensajeErrorGestionSolicitudConexion(error);
+      } finally {
+        this.procesandoGestion = false;
+      }
+    },
   },
 };
 </script>
@@ -454,13 +583,14 @@ export default {
 .solicitudes-conexion {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.1rem;
 }
 
-.solicitudes-conexion__lista {
+.solicitudes-conexion__exito {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 .solicitudes-conexion__error {
@@ -468,6 +598,12 @@ export default {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.5rem;
+}
+
+.solicitudes-conexion__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
 }
 
 .solicitudes-conexion__estado,

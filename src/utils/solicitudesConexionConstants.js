@@ -27,6 +27,13 @@ export const OPCIONES_ESTADO = Object.freeze([
   { value: ESTADOS_SOLICITUD_CONEXION.RECHAZADA, text: "Rechazadas" },
 ]);
 
+export const OPCIONES_ESTADO_FILTRO = Object.freeze([
+  { value: "", text: "Todas", clave: "TODAS" },
+  { value: ESTADOS_SOLICITUD_CONEXION.PENDIENTE, text: "Pendientes", clave: "PENDIENTE" },
+  { value: ESTADOS_SOLICITUD_CONEXION.ACEPTADA, text: "Aceptadas", clave: "ACEPTADA" },
+  { value: ESTADOS_SOLICITUD_CONEXION.RECHAZADA, text: "Rechazadas", clave: "RECHAZADA" },
+]);
+
 export const OPCIONES_TAMANO = Object.freeze([
   { value: 20, text: "20 por página" },
   { value: 50, text: "50 por página" },

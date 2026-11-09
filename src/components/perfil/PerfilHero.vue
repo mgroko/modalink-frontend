@@ -18,6 +18,11 @@
         </span>
       </div>
       <p class="perfil-hero__profesion">{{ profesionTexto }}</p>
+      <IndicadorPresencia
+        v-if="perfil?.idPerfil"
+        :en-linea="enLinea"
+        class="perfil-hero__presencia"
+      />
       <p v-if="ubicacionTexto" class="perfil-hero__ubicacion">{{ ubicacionTexto }}</p>
       <p v-if="perfil?.biografia" class="perfil-hero__descripcion">{{ perfil.biografia }}</p>
     </div>
@@ -36,9 +41,18 @@
 <script>
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import IndicadorPresencia from "../conexion/IndicadorPresencia.vue";
+import {
+  enLineaDe,
+  desuscribirPerfiles,
+  suscribirPerfiles,
+} from "../../services/presenciaState";
 
 export default {
   name: "PerfilHero",
+  components: {
+    IndicadorPresencia,
+  },
   props: {
     perfil: {
       type: Object,
@@ -54,7 +68,15 @@ export default {
     },
   },
   emits: ["editar"],
+  data() {
+    return {
+      idPresencia: null,
+    };
+  },
   computed: {
+    enLinea() {
+      return enLineaDe(this.perfil?.idPerfil, this.perfil?.enLinea);
+    },
     fotoUrl() {
       return resolverFotoUrl(
         this.perfil?.fotoUrl || this.perfil?.urlFoto || this.perfil?.fotoPerfil
@@ -74,6 +96,33 @@ export default {
     },
     ubicacionTexto() {
       return formatUbicacion(this.perfil) || "";
+    },
+  },
+  watch: {
+    "perfil.idPerfil"() {
+      this.actualizarSuscripcion();
+    },
+  },
+  mounted() {
+    this.actualizarSuscripcion();
+  },
+  beforeUnmount() {
+    this.quitarSuscripcion();
+  },
+  methods: {
+    actualizarSuscripcion() {
+      const id = this.perfil?.idPerfil ?? null;
+      if (this.idPresencia != null && this.idPresencia !== id) {
+        desuscribirPerfiles([this.idPresencia]);
+      }
+      this.idPresencia = id;
+      if (id != null) suscribirPerfiles([id]);
+    },
+    quitarSuscripcion() {
+      if (this.idPresencia != null) {
+        desuscribirPerfiles([this.idPresencia]);
+        this.idPresencia = null;
+      }
     },
   },
 };
@@ -166,6 +215,10 @@ export default {
   margin: 0;
   font-size: 0.9rem;
   color: var(--color-text-muted);
+}
+
+.perfil-hero__presencia {
+  margin-top: 0.1rem;
 }
 
 .perfil-hero__ubicacion {

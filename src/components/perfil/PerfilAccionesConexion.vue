@@ -1,15 +1,68 @@
 <template>
   <span v-show="mostrar" class="perfil-acciones-conexion">
     <VaButton
+      v-if="esConectar"
       class="perfil-acciones-conexion__boton"
-      :color="esConectar ? '#5CA4A9' : undefined"
-      :preset="esConectar ? 'primary' : 'secondary'"
-      :icon="icono"
-      :loading="esConectar && cargando"
-      :disabled="!esConectar || cargando"
+      color="#5CA4A9"
+      preset="primary"
+      icon="mso-person_add"
+      :loading="cargando"
+      :disabled="cargando"
       @click="alConectar"
     >
-      {{ etiqueta }}
+      Conectar
+    </VaButton>
+
+    <div
+      v-else-if="esSolicitudRecibida"
+      class="perfil-acciones-conexion__grupo"
+    >
+      <VaButton
+        class="perfil-acciones-conexion__mitad"
+        preset="secondary"
+        color="danger"
+        size="small"
+        icon="mso-close"
+        :loading="procesando && accionProcesando === 'rechazar'"
+        :disabled="procesando"
+        @click="$emit('rechazar')"
+      >
+        Rechazar
+      </VaButton>
+      <VaButton
+        class="perfil-acciones-conexion__mitad"
+        color="#5CA4A9"
+        size="small"
+        icon="mso-check"
+        :loading="procesando && accionProcesando === 'aceptar'"
+        :disabled="procesando"
+        @click="$emit('aceptar')"
+      >
+        Aceptar
+      </VaButton>
+    </div>
+
+    <VaButton
+      v-else-if="esConectado"
+      class="perfil-acciones-conexion__boton"
+      preset="secondary"
+      color="danger"
+      icon="mso-person_remove"
+      :loading="procesando && accionProcesando === 'eliminar'"
+      :disabled="procesando"
+      @click="$emit('eliminar')"
+    >
+      Eliminar conexión
+    </VaButton>
+
+    <VaButton
+      v-else
+      class="perfil-acciones-conexion__boton"
+      preset="secondary"
+      icon="mso-check"
+      disabled
+    >
+      Solicitud enviada
     </VaButton>
   </span>
 </template>
@@ -17,7 +70,6 @@
 <script>
 import {
   ESTADOS_CONEXION,
-  etiquetaAccionConexion,
   normalizarEstadoConexion,
 } from "../../utils/conexionConstants.js";
 
@@ -36,8 +88,16 @@ export default {
       type: Boolean,
       default: false,
     },
+    procesando: {
+      type: Boolean,
+      default: false,
+    },
+    accionProcesando: {
+      type: String,
+      default: "",
+    },
   },
-  emits: ["conectar"],
+  emits: ["conectar", "aceptar", "rechazar", "eliminar"],
   computed: {
     estado() {
       return normalizarEstadoConexion(this.estadoConexion);
@@ -45,21 +105,11 @@ export default {
     esConectar() {
       return this.estado === ESTADOS_CONEXION.NINGUNA;
     },
-    etiqueta() {
-      return etiquetaAccionConexion(this.estado);
+    esSolicitudRecibida() {
+      return this.estado === ESTADOS_CONEXION.SOLICITUD_RECIBIDA;
     },
-    icono() {
-      switch (this.estado) {
-        case ESTADOS_CONEXION.SOLICITUD_ENVIADA:
-          return "mso-check";
-        case ESTADOS_CONEXION.SOLICITUD_RECIBIDA:
-          return "mso-mail";
-        case ESTADOS_CONEXION.CONECTADO:
-          return "mso-people";
-        case ESTADOS_CONEXION.NINGUNA:
-        default:
-          return "mso-person_add";
-      }
+    esConectado() {
+      return this.estado === ESTADOS_CONEXION.CONECTADO;
     },
   },
   methods: {
@@ -79,5 +129,16 @@ export default {
 
 .perfil-acciones-conexion__boton {
   width: 100%;
+}
+
+.perfil-acciones-conexion__grupo {
+  display: flex;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.perfil-acciones-conexion__mitad {
+  flex: 1;
+  min-width: 0;
 }
 </style>

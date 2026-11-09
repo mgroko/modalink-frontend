@@ -94,6 +94,50 @@ export function mensajeErrorConexion(error) {
 }
 
 /**
+ * Mensaje de error para aceptar o rechazar una solicitud recibida.
+ * @param {unknown} error
+ * @returns {string}
+ */
+export function mensajeErrorGestionSolicitudConexion(error) {
+  const status = error?.response?.status;
+  const data = error?.response?.data || {};
+  const codigo = data.codigo;
+  const mensaje = data.message;
+
+  if (codigo === CODIGOS_ERROR_CONEXION.SOLICITUD_CONEXION_NO_PERMITIDA) {
+    return mensaje || "No podés gestionar esta solicitud de conexión.";
+  }
+
+  if (codigo === CODIGOS_ERROR_CONEXION.SOLICITUD_CONEXION_NO_PENDIENTE) {
+    return mensaje || "La solicitud ya fue aceptada o rechazada.";
+  }
+
+  if (codigo === CODIGOS_ERROR_CONEXION.CONEXION_YA_EXISTENTE) {
+    return mensaje || "Ya existe una conexión activa entre ambos perfiles.";
+  }
+
+  if (status === 404) {
+    return mensaje || "La solicitud no existe o fue cancelada.";
+  }
+
+  if (status === 403) {
+    return mensaje || "No podés gestionar esta solicitud de conexión.";
+  }
+
+  if (status === 409) {
+    return (
+      mensaje ||
+      "No se pudo gestionar la solicitud porque uno de los perfiles no está activo."
+    );
+  }
+
+  return mensajeErrorApi(
+    error,
+    "No se pudo gestionar la solicitud de conexión. Intentá nuevamente."
+  );
+}
+
+/**
  * Mensaje de error para la cancelación de una solicitud enviada.
  * @param {unknown} error
  * @returns {string}

@@ -54,6 +54,12 @@
         >
           <span class="material-symbols-outlined">group</span>
           <span>Mi red</span>
+          <span
+            v-if="solicitudesPendientes > 0"
+            class="home-layout__nav-badge"
+          >
+            {{ solicitudesPendientes }}
+          </span>
         </button>
         <button
           class="home-layout__nav-item"
@@ -169,9 +175,9 @@
       class="home-layout__body"
       :class="{
         'home-layout__body--full': $route.meta.sinSidebarPerfil,
-        'home-layout__body--ancho-proyecto': ['proyectos', 'contratos'].includes(
-          $route.meta.navActiva
-        ),
+        'home-layout__body--ancho-proyecto':
+          ['home', 'mi-red', 'buscar'].includes($route.name) ||
+          ['proyectos', 'contratos'].includes($route.meta.navActiva),
       }"
     >
       <aside v-if="!$route.meta.sinSidebarPerfil" class="home-layout__sidebar">
@@ -299,6 +305,10 @@ import {
   state as contratoState,
   cargarContratosPendientes,
 } from "../../services/contratoState";
+import {
+  state as solicitudConexionState,
+  cargarPendientesRecibidas,
+} from "../../services/solicitudConexionState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
@@ -373,6 +383,9 @@ export default {
     contratosPendientes() {
       return contratoState.pendientesFirma;
     },
+    solicitudesPendientes() {
+      return solicitudConexionState.pendientesRecibidas;
+    },
   },
   watch: {
     fotoPerfilActiva() {
@@ -382,6 +395,7 @@ export default {
       cargarResumenInvitaciones(nuevo);
       cargarResumenReemplazos(nuevo);
       cargarContratosPendientes(nuevo);
+      cargarPendientesRecibidas(nuevo);
     },
     "$route.fullPath"(nuevo) {
       // Refresca el contador al entrar/salir de las pantallas de contratos,
@@ -397,6 +411,7 @@ export default {
     cargarResumenInvitaciones(this.idActivo);
     cargarResumenReemplazos(this.idActivo);
     cargarContratosPendientes(this.idActivo);
+    cargarPendientesRecibidas(this.idActivo);
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {

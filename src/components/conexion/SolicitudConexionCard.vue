@@ -1,9 +1,11 @@
 <template>
   <article class="solicitud-conexion-card">
-    <div class="solicitud-conexion-card__avatar" aria-hidden="true">
-      <img v-if="foto" :src="foto" :alt="nombreArtistico" />
-      <span v-else>{{ iniciales }}</span>
-    </div>
+    <AvatarPresencia
+      :nombre="nombreArtistico"
+      :foto-url="perfil?.fotoUrl"
+      :en-linea="enLinea"
+      :tamano="56"
+    />
 
     <div class="solicitud-conexion-card__contenido">
       <div class="solicitud-conexion-card__encabezado">
@@ -29,20 +31,20 @@
       <p v-if="nombreReal" class="solicitud-conexion-card__nombre-real">
         {{ nombreReal }}
       </p>
+      <div class="solicitud-conexion-card__presencia">
+        <IndicadorPresencia :en-linea="enLinea" />
+      </div>
       <p class="solicitud-conexion-card__fecha">
         <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
         {{ fecha }}
       </p>
+      <p v-if="fechaRespuesta" class="solicitud-conexion-card__fecha">
+        <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+        Respondida el {{ fechaRespuesta }}
+      </p>
     </div>
 
     <div class="solicitud-conexion-card__acciones">
-      <span
-        v-if="solicitud?.puedeAceptar || solicitud?.puedeRechazar"
-        class="solicitud-conexion-card__proximamente"
-      >
-        Próximamente
-      </span>
-
       <VaButton
         v-if="solicitud?.puedeCancelar"
         preset="secondary"
@@ -59,10 +61,12 @@
       <VaButton
         v-if="solicitud?.puedeRechazar"
         preset="secondary"
+        color="danger"
         size="small"
         icon="mso-close"
-        disabled
-        title="Próximamente"
+        :loading="procesando && accionProcesando === 'rechazar'"
+        :disabled="procesando"
+        @click="$emit('rechazar', solicitud)"
       >
         Rechazar
       </VaButton>
@@ -72,8 +76,9 @@
         color="#5CA4A9"
         size="small"
         icon="mso-check"
-        disabled
-        title="Próximamente"
+        :loading="procesando && accionProcesando === 'aceptar'"
+        :disabled="procesando"
+        @click="$emit('aceptar', solicitud)"
       >
         Aceptar
       </VaButton>
@@ -82,27 +87,44 @@
 </template>
 
 <script>
+import AvatarPresencia from "./AvatarPresencia.vue";
+import IndicadorPresencia from "./IndicadorPresencia.vue";
 import {
   claseEstadoSolicitud,
   etiquetaDireccion,
   etiquetaEstado,
 } from "../../utils/solicitudesConexionConstants.js";
-import { resolverFotoUrl } from "../../utils/fotos.js";
-import { formatearFecha } from "../../utils/fechas.js";
+import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 
 export default {
   name: "SolicitudConexionCard",
+  components: {
+    AvatarPresencia,
+    IndicadorPresencia,
+  },
   props: {
     solicitud: {
       type: Object,
       required: true,
     },
+    enLinea: {
+      type: Boolean,
+      default: false,
+    },
     cancelando: {
       type: Boolean,
       default: false,
     },
+    procesando: {
+      type: Boolean,
+      default: false,
+    },
+    accionProcesando: {
+      type: String,
+      default: "",
+    },
   },
-  emits: ["cancelar", "ver-perfil"],
+  emits: ["cancelar", "aceptar", "rechazar", "ver-perfil"],
   computed: {
     perfil() {
       return this.solicitud?.perfil || null;
@@ -118,18 +140,6 @@ export default {
     profesion() {
       return this.perfil?.nombreProfesion || "Profesión";
     },
-    foto() {
-      return resolverFotoUrl(this.perfil?.fotoUrl);
-    },
-    iniciales() {
-      const nombre = this.nombreArtistico;
-      return nombre
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((parte) => parte.charAt(0).toUpperCase())
-        .join("");
-    },
     direccion() {
       return etiquetaDireccion(this.solicitud?.direccion);
     },
@@ -141,6 +151,11 @@ export default {
     },
     fecha() {
       return formatearFecha(this.solicitud?.fechaEnvio);
+    },
+    fechaRespuesta() {
+      return this.solicitud?.fechaRespuesta
+        ? formatearFechaCorta(this.solicitud.fechaRespuesta)
+        : "";
     },
   },
 };
@@ -156,27 +171,6 @@ export default {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
-}
-
-.solicitud-conexion-card__avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-secondary);
-  color: var(--color-on-primary);
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.solicitud-conexion-card__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .solicitud-conexion-card__contenido {
@@ -250,8 +244,15 @@ export default {
   font-size: 0.78rem;
 }
 
+.solicitud-conexion-card__presencia {
+  display: flex;
+  width: fit-content;
+  margin-top: 0.3rem;
+}
+
 .solicitud-conexion-card__fecha {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
   align-items: center;
   gap: 0.25rem;
   margin-top: 0.35rem;
@@ -269,12 +270,6 @@ export default {
   justify-content: flex-end;
   gap: 0.5rem;
   margin-left: auto;
-}
-
-.solicitud-conexion-card__proximamente {
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
 }
 
 @media (max-width: 640px) {
