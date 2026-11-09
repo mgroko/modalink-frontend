@@ -347,6 +347,14 @@ const routes = [
     },
   },
   {
+    path: "/proyectos/:id/chat",
+    redirect: (to) => ({
+      name: "dashboard-proyecto",
+      params: { id: to.params.id },
+      query: { ...to.query, tab: "chat" },
+    }),
+  },
+  {
     path: "/proyectos/:id",
     name: "dashboard-proyecto",
     component: DashboardProyectoView,

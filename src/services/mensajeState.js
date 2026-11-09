@@ -218,6 +218,19 @@ function abrirStream() {
       emitirEvento("escribiendo", data);
     });
 
+    stream.addEventListener("mensaje_grupal", (evento) => {
+      const data = parsearEvento(evento);
+      if (!data) return;
+
+      const idActivo = Number(idPerfilActivo());
+      const idEmisor = Number(data.idPerfilEmisor);
+      const esEntrante = Number.isFinite(idEmisor) && idEmisor !== idActivo;
+
+      emitirEvento("mensaje_grupal", data);
+      // El chat grupal no tiene contador propio: solo actualiza la campanita.
+      if (esEntrante) programarRefrescoNotificaciones();
+    });
+
     stream.addEventListener("error", () => {
       cerrarStream();
       programarReconexion();

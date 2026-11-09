@@ -14,6 +14,7 @@ export const TIPOS_NOTIFICACION = {
   SOLICITUD_CONEXION_RECHAZADA: "SOLICITUD_CONEXION_RECHAZADA",
   CONEXION_ELIMINADA: "CONEXION_ELIMINADA",
   MENSAJE_PRIVADO_RECIBIDO: "MENSAJE_PRIVADO_RECIBIDO",
+  MENSAJE_GRUPAL_RECIBIDO: "MENSAJE_GRUPAL_RECIBIDO",
   POSTULACION_ACEPTADA: "POSTULACION_ACEPTADA",
   POSTULACION_RECHAZADA: "POSTULACION_RECHAZADA",
   PROYECTO_CANCELADO: "PROYECTO_CANCELADO",
@@ -71,6 +72,8 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.CONEXION_ELIMINADA]: "Conexión eliminada",
   [TIPOS_NOTIFICACION.MENSAJE_PRIVADO_RECIBIDO]:
     "Mensaje privado recibido",
+  [TIPOS_NOTIFICACION.MENSAJE_GRUPAL_RECIBIDO]:
+    "Mensaje en el chat del proyecto",
   [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "Postulación aceptada",
   [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "Postulación rechazada",
   [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "Proyecto cancelado",
@@ -118,6 +121,7 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECHAZADA]: "person_remove",
   [TIPOS_NOTIFICACION.CONEXION_ELIMINADA]: "link_off",
   [TIPOS_NOTIFICACION.MENSAJE_PRIVADO_RECIBIDO]: "chat",
+  [TIPOS_NOTIFICACION.MENSAJE_GRUPAL_RECIBIDO]: "chat",
   [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "how_to_reg",
   [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "person_remove",
   [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "cancel",
@@ -310,6 +314,25 @@ export function destinoNotificacion(notificacion) {
             ruta: {
               name: RUTAS_NOTIFICACION.MENSAJES,
               query: { conversacion: id },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.MENSAJE_GRUPAL_RECIBIDO: {
+      // El backend usa entidad_tipo = PROYECTO y entidad_id = idProyecto.
+      const id =
+        idValido(notificacion.idProyecto) ??
+        (notificacion.entidadTipo === "PROYECTO"
+          ? idValido(notificacion.entidadId)
+          : null);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ir al chat del proyecto",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PROYECTO,
+              params: { id },
+              query: { tab: "chat" },
             },
           };
     }

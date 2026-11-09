@@ -92,6 +92,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Pestaña Chat grupal (UC-41). Sólo miembros activos. */
+    mostrarChat: {
+      type: Boolean,
+      default: false,
+    },
     /** Pestaña Historial. Visible para miembros activos del proyecto. */
     mostrarHistorial: {
       type: Boolean,
@@ -132,6 +137,9 @@ export default {
       }
       if (this.mostrarIntegrantes) {
         tabs.push({ id: "integrantes", label: "Miembros" });
+      }
+      if (this.mostrarChat) {
+        tabs.push({ id: "chat", label: "Chat grupal" });
       }
       if (this.mostrarHistorial) {
         tabs.push({ id: "historial", label: "Historial" });
