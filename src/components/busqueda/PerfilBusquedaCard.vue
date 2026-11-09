@@ -91,6 +91,7 @@
         Ver perfil
       </VaButton>
       <VaButton
+        v-if="!permitirConexion"
         preset="secondary"
         size="small"
         disabled
@@ -100,6 +101,25 @@
       >
         Conectar · Próximamente
       </VaButton>
+      <VaButton
+        v-else-if="estadoNormalizado === ESTADOS_CONEXION.NINGUNA"
+        color="#5CA4A9"
+        size="small"
+        :disabled="conectando"
+        :loading="conectando"
+        @click.stop="$emit('conectar', perfil)"
+      >
+        {{ etiquetaConexion }}
+      </VaButton>
+      <VaButton
+        v-else
+        preset="secondary"
+        size="small"
+        disabled
+        :title="etiquetaConexion"
+      >
+        {{ etiquetaConexion }}
+      </VaButton>
     </div>
   </article>
 </template>
@@ -107,6 +127,11 @@
 <script>
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import {
+  ESTADOS_CONEXION,
+  etiquetaAccionConexion,
+  normalizarEstadoConexion,
+} from "../../utils/conexionConstants.js";
 import {
   ETIQUETAS_CARAC,
   ETIQUETAS_VALORES,
@@ -127,8 +152,32 @@ export default {
       type: Object,
       required: true,
     },
+    /**
+     * Habilita la acción real de conexión. Por defecto se mantiene el botón
+     * deshabilitado de la búsqueda global.
+     */
+    permitirConexion: {
+      type: Boolean,
+      default: false,
+    },
+    estadoConexion: {
+      type: String,
+      default: ESTADOS_CONEXION.NINGUNA,
+    },
+    conectando: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ["abrir"],
+  emits: ["abrir", "conectar"],
+  computed: {
+    estadoNormalizado() {
+      return normalizarEstadoConexion(this.estadoConexion);
+    },
+    etiquetaConexion() {
+      return etiquetaAccionConexion(this.estadoNormalizado);
+    },
+  },
   methods: {
     inicialDe(valor) {
       return String(valor || "?").charAt(0).toUpperCase();

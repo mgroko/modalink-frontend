@@ -233,10 +233,16 @@
               :es-propio="false"
               :puede-reportar="!esAdministrador"
               :seccion-activa="seccion"
+              :estado-conexion="estadoConexion"
+              :mostrar-conexion="mostrarConexion"
+              :cargando-conexion="enviandoConexion"
+              :mostrar-cancelar="mostrarCancelarConexion"
+              :cancelando-conexion="cancelandoConexion"
               @cambiar-seccion="cambiarSeccion"
               @navegar-ruta="navegarRuta"
               @funcionalidad-no-disponible="noDisponible($event)"
-              @conectar="noDisponible('Conectar')"
+              @conectar="abrirModalConexion"
+              @cancelar="abrirModalCancelarConexion"
               @mensaje="noDisponible('Mensaje')"
               @reportar="modalReporte = true"
             />
@@ -259,6 +265,25 @@
         :perfil="perfil"
         @reportado="alReportar"
       />
+
+      <ModalEnviarSolicitudConexion
+        :model-value="modalConexion"
+        :perfil="perfil"
+        :nombre-remitente="nombreRemitente"
+        :enviando="enviandoConexion"
+        :error="errorConexion"
+        @update:model-value="alCambiarModalConexion"
+        @confirmar="enviarSolicitudConexion"
+      />
+
+      <ModalCancelarSolicitudConexion
+        :model-value="modalCancelarConexion"
+        :perfil="perfil"
+        :cancelando="cancelandoConexion"
+        :error="errorCancelarConexion"
+        @update:model-value="alCambiarModalCancelarConexion"
+        @confirmar="cancelarSolicitudConexion"
+      />
     </template>
   </div>
 </template>
@@ -268,7 +293,13 @@ import perfilService from "../../services/perfilService";
 import homeService from "../../services/homeService";
 import authService from "../../services/authService";
 import calificacionPerfilService from "../../services/calificacionPerfilService";
-import { esAdmin, idPerfilActivo, limpiarSesion } from "../../services/authState";
+import solicitudConexionService from "../../services/solicitudConexionService";
+import {
+  esAdmin,
+  idPerfilActivo,
+  limpiarSesion,
+  state as authState,
+} from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
@@ -278,6 +309,8 @@ import ResenaDetallePanel from "../../components/perfil/ResenaDetallePanel.vue";
 import ResenasCard from "../../components/perfil/ResenasCard.vue";
 import ResenasListaPanel from "../../components/perfil/ResenasListaPanel.vue";
 import ReportarPerfilModal from "../../components/perfil/ReportarPerfilModal.vue";
+import ModalEnviarSolicitudConexion from "../../components/perfil/ModalEnviarSolicitudConexion.vue";
+import ModalCancelarSolicitudConexion from "../../components/perfil/ModalCancelarSolicitudConexion.vue";
 import SkeletonPerfil from "../../components/perfil/SkeletonPerfil.vue";
 import TerminosCondicionesPanel from "../../components/perfil/TerminosCondicionesPanel.vue";
 import {
@@ -294,6 +327,13 @@ import {
 } from "../../utils/perfilConstants.js";
 import { diasRestantes, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  CODIGOS_ERROR_CONEXION,
+  ESTADOS_CONEXION,
+  mensajeErrorCancelacionConexion,
+  mensajeErrorConexion,
+  normalizarEstadoConexion,
+} from "../../utils/conexionConstants.js";
 import { normalizarResena, normalizarResumen } from "../../utils/resenasConstants";
 import { normalizarTerminos } from "../../utils/terminosCondiciones.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
@@ -313,6 +353,8 @@ export default {
     PerfilSidebarNav,
     ProximosEventos,
     ReportarPerfilModal,
+    ModalEnviarSolicitudConexion,
+    ModalCancelarSolicitudConexion,
     ResenaDetallePanel,
     ResenasCard,
     ResenasListaPanel,
@@ -337,6 +379,12 @@ export default {
       errorCarga: false,
       mensajeExito: "",
       modalReporte: false,
+      modalConexion: false,
+      enviandoConexion: false,
+      errorConexion: "",
+      modalCancelarConexion: false,
+      cancelandoConexion: false,
+      errorCancelarConexion: "",
       reactivando: false,
       mensajeError: "",
       contadorBaja: { expiracion: null, restante: null },
@@ -375,6 +423,26 @@ export default {
     },
     esAdministrador() {
       return esAdmin();
+    },
+    estadoConexion() {
+      return normalizarEstadoConexion(this.perfil?.estadoConexion);
+    },
+    mostrarConexion() {
+      return (
+        !this.esPropio &&
+        (this.estadoConexion !== ESTADOS_CONEXION.NINGUNA ||
+          this.perfil?.estado === "Activo")
+      );
+    },
+    mostrarCancelarConexion() {
+      return (
+        !this.esPropio &&
+        this.estadoConexion === ESTADOS_CONEXION.SOLICITUD_ENVIADA &&
+        this.perfil?.idSolicitudConexion != null
+      );
+    },
+    nombreRemitente() {
+      return authState.usuario?.nombreArtisticoActivo || "tu perfil activo";
     },
     mensajeBaja() {
       const { expiracion, restante } = this.contadorBaja;
@@ -444,6 +512,10 @@ export default {
       this.cargando = true;
       this.mensajeError = "";
       this.mensajeExito = "";
+      this.modalConexion = false;
+      this.errorConexion = "";
+      this.modalCancelarConexion = false;
+      this.errorCancelarConexion = "";
       this.noEncontrado = false;
       this.mensajeNoEncontrado = "";
       this.errorCarga = false;
@@ -753,9 +825,7 @@ export default {
       }
       if (ruta) {
         this.$router.push({ name: ruta });
-        return;
       }
-      this.noDisponible("Mi red");
     },
     avisarSeccionNoDisponible() {
       const seccion = this.$route.params.seccion;
@@ -776,6 +846,169 @@ export default {
     },
     alReportar() {
       this.mensajeExito = "Reporte enviado. Gracias por ayudarnos a mantener la comunidad.";
+    },
+    abrirModalConexion() {
+      if (
+        this.esPropio ||
+        !this.mostrarConexion ||
+        this.estadoConexion !== ESTADOS_CONEXION.NINGUNA ||
+        this.enviandoConexion
+      ) {
+        return;
+      }
+      this.errorConexion = "";
+      this.modalConexion = true;
+    },
+    alCambiarModalConexion(valor) {
+      if (this.enviandoConexion && !valor) return;
+      this.modalConexion = valor;
+      if (!valor) this.errorConexion = "";
+    },
+    async enviarSolicitudConexion() {
+      if (this.enviandoConexion) return;
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
+
+      this.enviandoConexion = true;
+      this.errorConexion = "";
+      try {
+        const response = await solicitudConexionService.enviar(idPerfil);
+        const data = response?.data || {};
+        this.modalConexion = false;
+        this.perfil = {
+          ...this.perfil,
+          estadoConexion: ESTADOS_CONEXION.SOLICITUD_ENVIADA,
+          idSolicitudConexion:
+            data.idSolicitudConexion ?? this.perfil.idSolicitudConexion ?? null,
+          idConexion: null,
+        };
+        this.mensajeExito = `Solicitud de conexión enviada a ${
+          this.perfil.nombreArtistico || "este perfil"
+        }.`;
+      } catch (error) {
+        const codigo = error?.response?.data?.codigo;
+        const esConflictoDeEstado =
+          codigo === CODIGOS_ERROR_CONEXION.SOLICITUD_CONEXION_PENDIENTE ||
+          codigo === CODIGOS_ERROR_CONEXION.CONEXION_YA_EXISTENTE;
+
+        if (esConflictoDeEstado) {
+          this.modalConexion = false;
+          const actualizado = await this.refrescarPerfilConexion();
+          if (actualizado) {
+            this.toast.init({
+              title: "Conexión",
+              message:
+                codigo === CODIGOS_ERROR_CONEXION.CONEXION_YA_EXISTENTE
+                  ? "Ya tenés una conexión activa con este perfil."
+                  : "Ya existe una solicitud de conexión pendiente con este perfil.",
+              color: "info",
+              position: "top-right",
+              duration: 5000,
+            });
+          }
+          return;
+        }
+
+        this.errorConexion = mensajeErrorConexion(error);
+      } finally {
+        this.enviandoConexion = false;
+      }
+    },
+    abrirModalCancelarConexion() {
+      if (!this.mostrarCancelarConexion || this.cancelandoConexion) return;
+      this.errorCancelarConexion = "";
+      this.modalCancelarConexion = true;
+    },
+    alCambiarModalCancelarConexion(valor) {
+      if (this.cancelandoConexion && !valor) return;
+      this.modalCancelarConexion = valor;
+      if (!valor) this.errorCancelarConexion = "";
+    },
+    async cancelarSolicitudConexion() {
+      if (this.cancelandoConexion) return;
+      const idSolicitud = this.perfil?.idSolicitudConexion;
+      if (idSolicitud == null) return;
+
+      this.cancelandoConexion = true;
+      this.errorCancelarConexion = "";
+      try {
+        await solicitudConexionService.cancelar(idSolicitud);
+        this.modalCancelarConexion = false;
+        this.perfil = {
+          ...this.perfil,
+          estadoConexion: ESTADOS_CONEXION.NINGUNA,
+          idSolicitudConexion: null,
+          idConexion: null,
+        };
+        this.mensajeExito = "Solicitud de conexión cancelada.";
+        await this.refrescarPerfilConexion({ silencioso: true });
+      } catch (error) {
+        const status = error?.response?.status;
+        const codigo = error?.response?.data?.codigo;
+        const esConflicto =
+          codigo === CODIGOS_ERROR_CONEXION.SOLICITUD_CONEXION_NO_PENDIENTE;
+        const esNoPermitida =
+          codigo === CODIGOS_ERROR_CONEXION.SOLICITUD_CONEXION_NO_PERMITIDA ||
+          status === 403;
+        const esNoEncontrada = status === 404;
+
+        if (esConflicto || esNoPermitida || esNoEncontrada) {
+          this.modalCancelarConexion = false;
+          const actualizado = await this.refrescarPerfilConexion({
+            silencioso: true,
+          });
+
+          if (!actualizado || esNoPermitida || esNoEncontrada) {
+            this.perfil = {
+              ...this.perfil,
+              idSolicitudConexion: null,
+            };
+          }
+
+          this.toast.init({
+            title: esConflicto
+              ? "Solicitud de conexión"
+              : "No se pudo cancelar",
+            message: esConflicto
+              ? "La solicitud ya fue gestionada por el destinatario."
+              : mensajeErrorCancelacionConexion(error),
+            color: esConflicto ? "info" : "danger",
+            position: "top-right",
+            duration: 5000,
+          });
+          return;
+        }
+
+        this.errorCancelarConexion = mensajeErrorCancelacionConexion(error);
+      } finally {
+        this.cancelandoConexion = false;
+      }
+    },
+    async refrescarPerfilConexion({ silencioso = false } = {}) {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return false;
+
+      try {
+        const response = await perfilService.obtener(idPerfil);
+        if (response?.data) {
+          this.perfil = response.data;
+          return true;
+        }
+      } catch (error) {
+        if (!silencioso) {
+          this.toast.init({
+            title: "No se pudo actualizar el perfil",
+            message: mensajeErrorApi(
+              error,
+              "Recargá la página para ver el estado actualizado de la conexión."
+            ),
+            color: "danger",
+            position: "top-right",
+            duration: 5000,
+          });
+        }
+      }
+      return false;
     },
     nuevaPublicacion() {
       this.noDisponible("Nueva publicación");

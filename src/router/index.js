@@ -17,6 +17,7 @@ import AjustesPerfilView from "../views/perfil/AjustesPerfilView.vue";
 import ConfigurarTerminosView from "../views/perfil/ConfigurarTerminosView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
+import MiRedView from "../views/conexion/MiRedView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
 import ProyectosInicioView from "../views/proyecto/ProyectosInicioView.vue";
 import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
@@ -150,6 +151,17 @@ const routes = [
     name: "ver-perfil-seccion",
     component: InicioPerfilView,
     meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/mi-red",
+    name: "mi-red",
+    component: MiRedView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Mi red",
+      requiresActiveProfile: true,
+      navActiva: "mi-red",
+    },
   },
   {
     path: "/buscar",

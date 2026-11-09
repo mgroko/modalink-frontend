@@ -49,7 +49,8 @@
         </button>
         <button
           class="home-layout__nav-item"
-          @click.stop="noDisponible('Mi red')"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'mi-red' }"
+          @click.stop="$router.push({ name: 'mi-red' })"
         >
           <span class="material-symbols-outlined">group</span>
           <span>Mi red</span>

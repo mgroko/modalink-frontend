@@ -9,6 +9,7 @@
 
 export const TIPOS_NOTIFICACION = {
   POSTULACION_RECIBIDA: "POSTULACION_RECIBIDA",
+  SOLICITUD_CONEXION_RECIBIDA: "SOLICITUD_CONEXION_RECIBIDA",
   POSTULACION_ACEPTADA: "POSTULACION_ACEPTADA",
   POSTULACION_RECHAZADA: "POSTULACION_RECHAZADA",
   PROYECTO_CANCELADO: "PROYECTO_CANCELADO",
@@ -51,10 +52,13 @@ export const RUTAS_NOTIFICACION = {
   CALIFICACIONES: "calificaciones-proyecto",
   INVITACIONES: "invitaciones",
   CONTRATO: "detalle-contrato",
+  MI_RED: "mi-red",
 };
 
 const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "Postulación recibida",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECIBIDA]:
+    "Solicitud de conexión recibida",
   [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "Postulación aceptada",
   [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "Postulación rechazada",
   [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "Proyecto cancelado",
@@ -97,6 +101,7 @@ const ETIQUETAS_TIPO = {
 
 const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "person_add",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECIBIDA]: "person_add",
   [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "how_to_reg",
   [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "person_remove",
   [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "cancel",
@@ -221,6 +226,20 @@ export function destinoNotificacion(notificacion) {
             etiqueta: "Ver postulaciones",
             ruta: { name: RUTAS_NOTIFICACION.POSTULACIONES, params: { id } },
           };
+    }
+
+    case TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECIBIDA: {
+      return {
+        etiqueta: "Ver solicitudes",
+        ruta: {
+          name: RUTAS_NOTIFICACION.MI_RED,
+          query: {
+            tab: "solicitudes",
+            direccion: "RECIBIDA",
+            estado: "PENDIENTE",
+          },
+        },
+      };
     }
 
     case TIPOS_NOTIFICACION.PROYECTO_CANCELADO: {

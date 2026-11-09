@@ -35,14 +35,13 @@
     </nav>
 
     <div v-if="!esPropio" class="perfil-nav__acciones">
-      <VaButton
+      <PerfilAccionesConexion
         class="perfil-nav__accion"
-        color="#5CA4A9"
-        icon="mso-person_add"
-        @click="$emit('conectar')"
-      >
-        Conectar
-      </VaButton>
+        :estado-conexion="estadoConexion"
+        :mostrar="mostrarConexion"
+        :cargando="cargandoConexion"
+        @conectar="$emit('conectar')"
+      />
       <VaButton
         class="perfil-nav__accion"
         preset="secondary"
@@ -53,6 +52,21 @@
         Mensaje
       </VaButton>
     </div>
+
+    <VaButton
+      v-if="!esPropio && mostrarCancelar"
+      preset="secondary"
+      color="danger"
+      size="small"
+      block
+      icon="mso-close"
+      :loading="cancelandoConexion"
+      :disabled="cancelandoConexion"
+      :aria-busy="cancelandoConexion ? 'true' : 'false'"
+      @click="$emit('cancelar')"
+    >
+      Cancelar solicitud
+    </VaButton>
 
     <VaButton
       v-if="!esPropio && puedeReportar"
@@ -69,9 +83,13 @@
 
 <script>
 import { state as invitacionState } from "../../services/invitacionState";
+import PerfilAccionesConexion from "./PerfilAccionesConexion.vue";
 
 export default {
   name: "PerfilSidebarNav",
+  components: {
+    PerfilAccionesConexion,
+  },
   props: {
     esPropio: {
       type: Boolean,
@@ -86,12 +104,36 @@ export default {
       type: String,
       default: "publicaciones",
     },
+    /** Estado de la relación entre el perfil activo y el perfil consultado. */
+    estadoConexion: {
+      type: String,
+      default: "NINGUNA",
+    },
+    /** El perfil consultado permite mostrar la acción de conexión. */
+    mostrarConexion: {
+      type: Boolean,
+      default: true,
+    },
+    cargandoConexion: {
+      type: Boolean,
+      default: false,
+    },
+    /** Muestra la acción para cancelar una solicitud enviada y pendiente. */
+    mostrarCancelar: {
+      type: Boolean,
+      default: false,
+    },
+    cancelandoConexion: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: [
     "cambiar-seccion",
     "navegar-ruta",
     "cerrar-sesion",
     "conectar",
+    "cancelar",
     "mensaje",
     "reportar",
     "funcionalidad-no-disponible",
@@ -115,7 +157,7 @@ export default {
           icono: "description",
           tipo: "seccion",
         },
-        { key: "mi-red", label: "Mi red", icono: "group", tipo: "no-disponible" },
+        { key: "mi-red", label: "Mi red", icono: "group", tipo: "ruta", ruta: "mi-red" },
         { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "ajustes-perfil-inicio" },
         { key: "panel", label: "Panel de usuario", icono: "space_dashboard", tipo: "ruta", ruta: "dashboard-usuario" },
       ];
