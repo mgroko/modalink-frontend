@@ -9,6 +9,7 @@
     <img v-if="foto" :src="foto" :alt="nombre" />
     <span v-else class="avatar-presencia__iniciales">{{ iniciales }}</span>
     <span
+      v-if="mostrarPunto"
       class="avatar-presencia__punto"
       :class="{ 'avatar-presencia__punto--online': enLinea }"
       aria-hidden="true"
@@ -33,6 +34,10 @@ export default {
     enLinea: {
       type: Boolean,
       default: false,
+    },
+    mostrarPunto: {
+      type: Boolean,
+      default: true,
     },
     tamano: {
       type: Number,

@@ -63,10 +63,17 @@
         </button>
         <button
           class="home-layout__nav-item"
-          @click.stop="noDisponible('Mensajes')"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'mensajes' }"
+          @click.stop="$router.push({ name: 'mensajes' })"
         >
           <span class="material-symbols-outlined">chat_bubble</span>
           <span>Mensajes</span>
+          <span
+            v-if="mensajesNoLeidos > 0"
+            class="home-layout__nav-badge"
+          >
+            {{ mensajesNoLeidos }}
+          </span>
         </button>
         <div class="home-layout__notificaciones-wrapper" @click.stop>
           <button
@@ -176,7 +183,7 @@
       :class="{
         'home-layout__body--full': $route.meta.sinSidebarPerfil,
         'home-layout__body--ancho-proyecto':
-          ['home', 'mi-red', 'buscar'].includes($route.name) ||
+          ['home', 'mi-red', 'buscar', 'mensajes'].includes($route.name) ||
           ['proyectos', 'contratos'].includes($route.meta.navActiva),
       }"
     >
@@ -294,6 +301,10 @@ import {
   cargarResumenPerfil,
 } from "../../services/notificacionState";
 import {
+  state as mensajeState,
+  cargarResumen as cargarResumenMensajes,
+} from "../../services/mensajeState";
+import {
   state as invitacionState,
   cargarResumenInvitaciones,
 } from "../../services/invitacionState";
@@ -311,9 +322,7 @@ import {
 } from "../../services/solicitudConexionState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
-import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import { nextTick } from "vue";
-import { useToast } from "vuestic-ui";
 import ThemeToggle from "../ThemeToggle.vue";
 import NotificacionesPopover from "../notificaciones/NotificacionesPopover.vue";
 
@@ -322,9 +331,6 @@ export default {
   components: {
     ThemeToggle,
     NotificacionesPopover,
-  },
-  setup() {
-    return { toast: useToast() };
   },
   data() {
     return {
@@ -386,6 +392,9 @@ export default {
     solicitudesPendientes() {
       return solicitudConexionState.pendientesRecibidas;
     },
+    mensajesNoLeidos() {
+      return mensajeState.resumen.conversacionesNoLeidas;
+    },
   },
   watch: {
     fotoPerfilActiva() {
@@ -396,6 +405,7 @@ export default {
       cargarResumenReemplazos(nuevo);
       cargarContratosPendientes(nuevo);
       cargarPendientesRecibidas(nuevo);
+      cargarResumenMensajes();
     },
     "$route.fullPath"(nuevo) {
       // Refresca el contador al entrar/salir de las pantallas de contratos,
@@ -412,6 +422,7 @@ export default {
     cargarResumenReemplazos(this.idActivo);
     cargarContratosPendientes(this.idActivo);
     cargarPendientesRecibidas(this.idActivo);
+    cargarResumenMensajes();
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {
@@ -496,9 +507,6 @@ export default {
       this.menuAbierto = false;
       this.perfilesAbiertos = false;
       this.$router.push({ name: "inicioperfil" });
-    },
-    noDisponible(nombre) {
-      mostrarNoDisponible(this.toast, nombre);
     },
     irABuscar() {
       const texto = this.busqueda.trim();

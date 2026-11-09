@@ -71,6 +71,17 @@ export function formatearHora(valor) {
   return `${pad(p.hora)}:${pad(p.minuto)}`;
 }
 
+/**
+ * Hora visible en la burbuja de un mensaje. Mantiene el mismo formato que
+ * `formatearHora` y evita que un mensaje sin fecha muestre un guion.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearHoraMensaje(valor) {
+  if (valor == null || valor === "") return "";
+  return formatearHora(valor);
+}
+
 export function formatearFechaCorta(valor) {
   if (valor == null || valor === "") return "—";
   const p = aPartes(valor);
@@ -202,4 +213,56 @@ export function diasRestantes(fecha) {
   const restante = aFecha(p).getTime() - Date.now();
   if (restante <= 0) return null;
   return Math.ceil(restante / MS_POR_DIA);
+}
+
+/**
+ * Fecha y hora local en formato ISO sin zona (`YYYY-MM-DDTHH:mm:ss`).
+ * Se usa para mensajes optimistas sin desplazar la hora por UTC.
+ * @param {Date} [fecha]
+ * @returns {string}
+ */
+export function fechaHoraLocalIso(fecha = new Date()) {
+  const valor = fecha instanceof Date ? fecha : new Date(fecha);
+  if (Number.isNaN(valor.getTime())) return "";
+  return `${valor.getFullYear()}-${pad(valor.getMonth() + 1)}-${pad(
+    valor.getDate()
+  )}T${pad(valor.getHours())}:${pad(valor.getMinutes())}:${pad(
+    valor.getSeconds()
+  )}`;
+}
+
+/**
+ * Día visible en el separador del chat: `Hoy`, `Ayer`, día corto de la semana
+ * o fecha completa. No interpreta la fecha como UTC.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearDiaMensaje(valor) {
+  if (valor == null || valor === "") return "";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+
+  const dias = diasDesdeHoy(p);
+  if (dias === 0) return "Hoy";
+  if (dias === -1) return "Ayer";
+  if (dias < 0 && dias > -7) return DIAS_CORTOS[aFecha(p).getDay()];
+  return `${pad(p.dia)}/${pad(p.mes)}/${p.anio}`;
+}
+
+/**
+ * Fecha compacta para la lista de conversaciones:
+ * hoy → HH:mm, ayer → Ayer, esta semana → día corto, anterior → dd/mm/aaaa.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearFechaListaConversacion(valor) {
+  if (valor == null || valor === "") return "";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+
+  const dias = diasDesdeHoy(p);
+  if (dias === 0) return `${pad(p.hora)}:${pad(p.minuto)}`;
+  if (dias === -1) return "Ayer";
+  if (dias < 0 && dias > -7) return DIAS_CORTOS[aFecha(p).getDay()];
+  return `${pad(p.dia)}/${pad(p.mes)}/${p.anio}`;
 }

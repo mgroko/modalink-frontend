@@ -99,7 +99,6 @@ import {
   construirParamsConexiones,
   TAMANO_POR_DEFECTO,
 } from "../../utils/parametrosConexiones.js";
-import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import { useToast } from "vuestic-ui";
 
 const DEBOUNCE_MS = 350;
@@ -340,8 +339,13 @@ export default {
         params: { id: idPerfil },
       });
     },
-    mensaje() {
-      mostrarNoDisponible(this.toast, "Mensaje");
+    mensaje(conexion) {
+      const idPerfil = conexion?.perfil?.idPerfil;
+      if (idPerfil == null) return;
+      this.$router.push({
+        name: "mensajes",
+        query: { perfil: idPerfil },
+      });
     },
     abrirEliminar(conexion) {
       if (this.eliminando || conexion?.idConexion == null) return;

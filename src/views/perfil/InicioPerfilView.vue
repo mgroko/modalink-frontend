@@ -259,7 +259,7 @@
               @aceptar="abrirGestionConexion('aceptar')"
               @rechazar="abrirGestionConexion('rechazar')"
               @eliminar="abrirEliminarConexion"
-              @mensaje="noDisponible('Mensaje')"
+              @mensaje="abrirMensaje"
               @reportar="modalReporte = true"
             />
             <ResenasCard
@@ -904,6 +904,26 @@ export default {
     },
     noDisponible(nombre) {
       mostrarNoDisponible(this.toast, nombre);
+    },
+    abrirMensaje() {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
+
+      if (this.estadoConexion !== ESTADOS_CONEXION.CONECTADO) {
+        this.toast.init({
+          title: "Mensajes",
+          message: "Necesitás una conexión activa para enviar mensajes.",
+          color: "warning",
+          position: "top-right",
+          duration: 5000,
+        });
+        return;
+      }
+
+      this.$router.push({
+        name: "mensajes",
+        query: { perfil: idPerfil },
+      });
     },
     alReportar() {
       this.mensajeExito = "Reporte enviado. Gracias por ayudarnos a mantener la comunidad.";

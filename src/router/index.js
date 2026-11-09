@@ -18,6 +18,7 @@ import ConfigurarTerminosView from "../views/perfil/ConfigurarTerminosView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
 import MiRedView from "../views/conexion/MiRedView.vue";
+import MensajesView from "../views/mensajes/MensajesView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
 import ProyectosInicioView from "../views/proyecto/ProyectosInicioView.vue";
 import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
@@ -161,6 +162,18 @@ const routes = [
       titulo: "Mi red",
       requiresActiveProfile: true,
       navActiva: "mi-red",
+    },
+  },
+  {
+    path: "/mensajes",
+    name: "mensajes",
+    component: MensajesView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Mensajes",
+      requiresActiveProfile: true,
+      navActiva: "mensajes",
+      sinFondoBlanco: true,
     },
   },
   {

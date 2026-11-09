@@ -12,6 +12,10 @@ import {
   detenerPresencia,
   iniciarPresencia,
 } from "./services/presenciaState";
+import {
+  detenerMensajeria,
+  iniciarMensajeria,
+} from "./services/mensajeState";
 import { applyDomTheme, resolvedTheme } from "./services/themeState";
 
 export default {
@@ -32,7 +36,11 @@ export default {
       () => state.usuario?.idPerfilActivo,
       (idPerfil) => {
         detenerPresencia();
-        if (idPerfil != null) iniciarPresencia();
+        detenerMensajeria();
+        if (idPerfil != null) {
+          iniciarPresencia();
+          iniciarMensajeria();
+        }
       },
       { immediate: true }
     );
@@ -55,6 +63,7 @@ export default {
   },
   beforeUnmount() {
     detenerPresencia();
+    detenerMensajeria();
   },
 };
 </script>
