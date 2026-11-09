@@ -105,8 +105,10 @@
         <button
           type="button"
           class="chat__emoji"
-          aria-label="Insertar emoji"
-          @click="insertarEmoji"
+          :class="{ 'chat__emoji--activo': emojiAbierto }"
+          aria-label="Abrir selector de emojis"
+          :aria-expanded="emojiAbierto ? 'true' : 'false'"
+          @click="alternarEmoji"
         >
           🙂
         </button>
@@ -129,6 +131,13 @@
         >
           Enviar
         </button>
+
+        <EmojiPicker
+          v-if="emojiAbierto"
+          ref="emojiPicker"
+          @seleccionar="insertarEmoji"
+          @cerrar="cerrarEmoji"
+        />
       </div>
 
       <div v-else class="chat__solo-lectura">
@@ -149,6 +158,7 @@
 import AvatarPresencia from "../conexion/AvatarPresencia.vue";
 import IndicadorPresencia from "../conexion/IndicadorPresencia.vue";
 import MensajeItem from "./MensajeItem.vue";
+import EmojiPicker from "./EmojiPicker.vue";
 import {
   formatearDiaMensaje,
 } from "../../utils/fechas.js";
@@ -160,6 +170,7 @@ export default {
     AvatarPresencia,
     IndicadorPresencia,
     MensajeItem,
+    EmojiPicker,
   },
   props: {
     conversacion: {
@@ -228,7 +239,18 @@ export default {
   data() {
     return {
       largoMaximo: LARGO_MAXIMO_MENSAJE,
+      emojiAbierto: false,
+      seleccionInicio: null,
+      seleccionFin: null,
     };
+  },
+  watch: {
+    conversacion() {
+      this.emojiAbierto = false;
+    },
+    soloLectura(nuevo) {
+      if (nuevo) this.emojiAbierto = false;
+    },
   },
   computed: {
     perfil() {
@@ -292,16 +314,50 @@ export default {
     },
     enviar() {
       if (!this.puedeEnviar) return;
+      this.emojiAbierto = false;
       this.$emit("enviar", String(this.borrador || "").trim());
     },
-    insertarEmoji() {
-      const valor = `${this.borrador || ""}🙂`;
-      this.$emit("update:borrador", valor);
+    alternarEmoji() {
+      if (this.emojiAbierto) {
+        this.cerrarEmoji();
+        return;
+      }
+
+      const input = this.$refs.input;
+      const largo = String(this.borrador || "").length;
+      this.seleccionInicio = input?.selectionStart ?? largo;
+      this.seleccionFin = input?.selectionEnd ?? this.seleccionInicio;
+      this.emojiAbierto = true;
+      this.$nextTick(() => this.$refs.emojiPicker?.enfocarBusqueda());
+    },
+    cerrarEmoji() {
+      this.emojiAbierto = false;
+      this.$nextTick(() => {
+        const input = this.$refs.input;
+        if (!input) return;
+        const posicion = this.seleccionInicio ?? input.value.length;
+        input.focus();
+        input.setSelectionRange(posicion, posicion);
+      });
+    },
+    insertarEmoji(emoji) {
+      if (!emoji) return;
+
+      const valor = String(this.borrador || "");
+      const inicio = this.seleccionInicio ?? valor.length;
+      const fin = this.seleccionFin ?? inicio;
+      const nuevo = `${valor.slice(0, inicio)}${emoji}${valor.slice(fin)}`;
+      const posicion = inicio + emoji.length;
+
+      this.seleccionInicio = posicion;
+      this.seleccionFin = posicion;
+      this.$emit("update:borrador", nuevo);
+
       this.$nextTick(() => {
         const input = this.$refs.input;
         if (!input) return;
         input.focus();
-        input.setSelectionRange(valor.length, valor.length);
+        input.setSelectionRange(posicion, posicion);
       });
     },
     scrollAlFinal() {
@@ -554,6 +610,7 @@ export default {
 }
 
 .chat__compositor {
+  position: relative;
   display: flex;
   flex: none;
   align-items: center;
@@ -578,6 +635,10 @@ export default {
 
 .chat__emoji:hover {
   background: var(--color-surface-muted);
+}
+
+.chat__emoji--activo {
+  background: var(--color-chip);
 }
 
 .chat__input {
