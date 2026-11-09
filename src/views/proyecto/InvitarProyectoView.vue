@@ -303,6 +303,31 @@
                 />
               </div>
 
+              <div class="invitar-proyecto__terminos">
+                <h3 class="invitar-proyecto__terminos-titulo">
+                  Términos y condiciones
+                </h3>
+                <p class="invitar-proyecto__terminos-ayuda">
+                  Si el perfil tiene condiciones vigentes, revisalas y aceptalas
+                  antes de enviar la invitación.
+                </p>
+
+                <div class="invitar-proyecto__terminos-lista">
+                  <AceptacionTerminosPerfil
+                    v-for="perfil in perfilesSeleccionados"
+                    :key="`tyc-${perfil.idPerfil}`"
+                    :id-perfil="perfil.idPerfil"
+                    :nombre-perfil="perfil.nombreArtistico || 'Perfil'"
+                    :model-value="aceptacionesTerminos[perfil.idPerfil] || null"
+                    :terminos-vigentes="terminosVigentes[perfil.idPerfil] || null"
+                    :token-refresco="tokenRefrescoTerminos"
+                    :deshabilitado="enviando"
+                    @update:model-value="onAceptacionTerminos(perfil, $event)"
+                    @estado="onEstadoTerminos(perfil, $event)"
+                  />
+                </div>
+              </div>
+
               <p class="invitar-proyecto__nota">
                 Al enviar, cada perfil seleccionado recibe una notificación con
                 la invitación.
@@ -389,9 +414,14 @@ import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.v
 import BuscadorPerfilInvitacion from "../../components/proyecto/BuscadorPerfilInvitacion.vue";
 import BuscadorRequerimientoActividad from "../../components/proyecto/BuscadorRequerimientoActividad.vue";
 import ModalResultadoInvitaciones from "../../components/invitacion/ModalResultadoInvitaciones.vue";
+import AceptacionTerminosPerfil from "../../components/perfil/AceptacionTerminosPerfil.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 import { formatUbicacion } from "../../utils/ubicacion.js";
+import {
+  datosErrorTerminos,
+  esErrorTerminos,
+} from "../../utils/terminosCondiciones.js";
 import {
   ETIQUETAS_TIPO_INVITACION,
   LIMITE_MENSAJE_INVITACION,
@@ -434,6 +464,7 @@ export default {
     BuscadorPerfilInvitacion,
     BuscadorRequerimientoActividad,
     ModalResultadoInvitaciones,
+    AceptacionTerminosPerfil,
   },
   setup() {
     return { toast: useToast() };
@@ -462,6 +493,10 @@ export default {
       miembrosActivos: [],
       tokenRefrescoPerfiles: 0,
       tokenRefrescoRequerimientos: 0,
+      tokenRefrescoTerminos: 0,
+      aceptacionesTerminos: {},
+      estadosTerminos: {},
+      terminosVigentes: {},
       idCarga: 0,
       TIPOS_INVITACION,
       LIMITE_MENSAJE_INVITACION,
@@ -524,11 +559,19 @@ export default {
       if (this.paso === 2) return this.puedeContinuarPaso2;
       return false;
     },
+    terminosListos() {
+      if (!this.perfilesSeleccionados.length) return false;
+      return this.perfilesSeleccionados.every(
+        (perfil) =>
+          this.estadosTerminos[String(perfil.idPerfil)]?.listo === true
+      );
+    },
     puedeEnviar() {
       return (
         !this.enviando &&
         this.puedeContinuarPaso1 &&
-        this.puedeContinuarPaso2
+        this.puedeContinuarPaso2 &&
+        this.terminosListos
       );
     },
     textoAccionIzquierda() {
@@ -578,6 +621,23 @@ export default {
       this.reiniciar();
       this.cargar();
     },
+    perfilesSeleccionados(nuevos) {
+      const vigentes = new Set(
+        (nuevos || []).map((perfil) => String(perfil.idPerfil))
+      );
+      this.aceptacionesTerminos = this.filtrarPorClaves(
+        this.aceptacionesTerminos,
+        vigentes
+      );
+      this.estadosTerminos = this.filtrarPorClaves(
+        this.estadosTerminos,
+        vigentes
+      );
+      this.terminosVigentes = this.filtrarPorClaves(
+        this.terminosVigentes,
+        vigentes
+      );
+    },
   },
   mounted() {
     this.cargar();
@@ -605,6 +665,85 @@ export default {
       this.erroresEnvio = {};
       this.resultadoBatch = { visible: false, creadas: [], errores: [] };
       this.miembrosActivos = [];
+      this.aceptacionesTerminos = {};
+      this.estadosTerminos = {};
+      this.terminosVigentes = {};
+      this.tokenRefrescoTerminos = 0;
+    },
+    filtrarPorClaves(mapa, claves) {
+      return Object.fromEntries(
+        Object.entries(mapa || {}).filter(([clave]) => claves.has(clave))
+      );
+    },
+    onAceptacionTerminos(perfil, valor) {
+      if (!perfil?.idPerfil) return;
+      this.aceptacionesTerminos = {
+        ...this.aceptacionesTerminos,
+        [String(perfil.idPerfil)]: valor,
+      };
+    },
+    onEstadoTerminos(perfil, estado) {
+      if (!perfil?.idPerfil) return;
+      this.estadosTerminos = {
+        ...this.estadosTerminos,
+        [String(perfil.idPerfil)]: estado,
+      };
+    },
+    construirAceptacionesTerminos() {
+      return this.perfilesSeleccionados.map((perfil) => {
+        const aceptacion =
+          this.aceptacionesTerminos[String(perfil.idPerfil)] || null;
+        const idTyc = Number(aceptacion?.idTyc);
+        const tieneVersion = Number.isFinite(idTyc) && idTyc > 0;
+        return {
+          idPerfil: Number(perfil.idPerfil),
+          idTyc: tieneVersion ? idTyc : null,
+          aceptaTerminos: tieneVersion && aceptacion?.aceptaTerminos === true,
+        };
+      });
+    },
+    manejarTerminosDesactualizados(error) {
+      const datos = datosErrorTerminos(error);
+      this.errorEnvio =
+        datos.mensaje ||
+        "Los términos y condiciones del perfil cambiaron. Revisá la versión vigente antes de continuar.";
+
+      const clave =
+        datos.idPerfil != null ? String(datos.idPerfil) : null;
+
+      if (
+        clave &&
+        (datos.idTycVigente != null || datos.esPlantilla) &&
+        (datos.descripcionVigente || datos.esPlantilla)
+      ) {
+        this.aceptacionesTerminos = {
+          ...this.aceptacionesTerminos,
+          [clave]: null,
+        };
+        this.estadosTerminos = {
+          ...this.estadosTerminos,
+          [clave]: { ...this.estadosTerminos[clave], listo: false },
+        };
+        this.terminosVigentes = {
+          ...this.terminosVigentes,
+          [clave]: {
+            idPerfil: datos.idPerfil,
+            idTyc: datos.idTycVigente,
+            descripcion: datos.descripcionVigente,
+            esPlantilla: datos.esPlantilla,
+            fechaInicio: null,
+            fechaFin: null,
+          },
+        };
+        return;
+      }
+
+      // Si el 409 no trae la versión (p. ej. TERMINOS_NO_ACEPTADOS) o no
+      // identifica un perfil, se recargan todas las tarjetas.
+      this.aceptacionesTerminos = {};
+      this.estadosTerminos = {};
+      this.terminosVigentes = {};
+      this.tokenRefrescoTerminos += 1;
     },
     async cargar() {
       const corrida = ++this.idCarga;
@@ -801,6 +940,7 @@ export default {
 
       try {
         const mensaje = this.mensaje.trim().slice(0, LIMITE_MENSAJE_INVITACION);
+        const aceptacionesTerminos = this.construirAceptacionesTerminos();
         const response = esActividad
           ? await invitacionService.invitarActividadBatch(
               this.idProyecto,
@@ -808,12 +948,13 @@ export default {
                 idRequerimientoActividad,
                 idsPerfilDestinatario,
                 mensaje,
+                aceptacionesTerminos,
               },
               controladorEnvio.signal
             )
           : await invitacionService.invitarGeneralBatch(
               this.idProyecto,
-              { idsPerfilDestinatario, mensaje },
+              { idsPerfilDestinatario, mensaje, aceptacionesTerminos },
               controladorEnvio.signal
             );
 
@@ -843,6 +984,11 @@ export default {
       this.volverAlProyecto();
     },
     async manejarErrorEnvio(error) {
+      if (esErrorTerminos(error)) {
+        this.manejarTerminosDesactualizados(error);
+        return;
+      }
+
       const clasificacion = clasificarErrorInvitacion(error);
       const { tipo, mensaje, campo, errores } = clasificacion;
 
@@ -1367,6 +1513,33 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.8rem;
   line-height: 1.45;
+}
+
+.invitar-proyecto__terminos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.25rem;
+}
+
+.invitar-proyecto__terminos-titulo {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.invitar-proyecto__terminos-ayuda {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.invitar-proyecto__terminos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .invitar-proyecto__acciones {

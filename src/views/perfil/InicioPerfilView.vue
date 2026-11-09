@@ -65,7 +65,7 @@
       <div class="inicio-perfil__layout">
         <div class="inicio-perfil__contenido">
           <PerfilHero
-            v-if="seccion !== 'calendario'"
+            v-if="seccion !== 'calendario' && seccion !== 'resenas'"
             :perfil="perfil"
             :es-propio="esPropio"
             @editar="irAEditar"
@@ -89,10 +89,36 @@
           </template>
 
           <!-- Sección: Reseñas -->
-          <section v-else-if="seccion === 'resenas'" class="inicio-perfil__panel">
-            <h2 class="inicio-perfil__panel-titulo">Reseñas</h2>
-            <p class="inicio-perfil__vacio">Aún no hay reseñas para mostrar.</p>
-          </section>
+          <template v-else-if="seccion === 'resenas'">
+            <ResenaDetallePanel
+              v-if="idResena != null"
+              :id-perfil="perfil.idPerfil"
+              :id-calificacion="idResena"
+              @volver-listado="volverAlListadoResenas"
+              @ver-perfil-autor="irAlPerfilAutor"
+            />
+            <ResenasListaPanel
+              v-else
+              :id-perfil="perfil.idPerfil"
+              :nombre-perfil="perfil.nombreArtistico"
+              :es-propio="esPropio"
+              @ver-resena="abrirResena"
+              @ver-perfil-autor="irAlPerfilAutor"
+              @volver-perfil="volverAlPerfil"
+            />
+          </template>
+
+          <!-- Sección: Términos y condiciones -->
+          <TerminosCondicionesPanel
+            v-else-if="seccion === 'terminos'"
+            :terminos="terminos"
+            :cargando="cargandoTerminos"
+            :error="errorTerminos"
+            :es-propio="esPropio"
+            :puede-configurar="puedeConfigurarTerminos"
+            @reintentar="cargarTerminos"
+            @configurar="irAConfigurarTerminos"
+          />
 
           <!-- Sección: Publicaciones (default) -->
           <template v-else>
@@ -214,7 +240,16 @@
               @mensaje="noDisponible('Mensaje')"
               @reportar="modalReporte = true"
             />
-            <ResenasCard :resenas="resenas" />
+            <ResenasCard
+              :resumen="resenasResumen"
+              :resenas="resenasDestacadas"
+              :cargando="cargandoResenas"
+              :error="errorResenas"
+              @ver-todas="verTodasLasResenas"
+              @ver-resena="abrirResena"
+              @ver-perfil-autor="irAlPerfilAutor"
+              @reintentar="cargarResenasDestacadas"
+            />
           </template>
         </aside>
       </div>
@@ -232,15 +267,19 @@
 import perfilService from "../../services/perfilService";
 import homeService from "../../services/homeService";
 import authService from "../../services/authService";
+import calificacionPerfilService from "../../services/calificacionPerfilService";
 import { esAdmin, idPerfilActivo, limpiarSesion } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
+import ResenaDetallePanel from "../../components/perfil/ResenaDetallePanel.vue";
 import ResenasCard from "../../components/perfil/ResenasCard.vue";
+import ResenasListaPanel from "../../components/perfil/ResenasListaPanel.vue";
 import ReportarPerfilModal from "../../components/perfil/ReportarPerfilModal.vue";
 import SkeletonPerfil from "../../components/perfil/SkeletonPerfil.vue";
+import TerminosCondicionesPanel from "../../components/perfil/TerminosCondicionesPanel.vue";
 import {
   ETIQUETAS_CARAC,
   ORDEN_CARAC,
@@ -255,6 +294,8 @@ import {
 } from "../../utils/perfilConstants.js";
 import { diasRestantes, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { normalizarResena, normalizarResumen } from "../../utils/resenasConstants";
+import { normalizarTerminos } from "../../utils/terminosCondiciones.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import { useToast } from "vuestic-ui";
 
@@ -272,8 +313,11 @@ export default {
     PerfilSidebarNav,
     ProximosEventos,
     ReportarPerfilModal,
+    ResenaDetallePanel,
     ResenasCard,
+    ResenasListaPanel,
     SkeletonPerfil,
+    TerminosCondicionesPanel,
   },
   setup() {
     return { toast: useToast() };
@@ -282,7 +326,11 @@ export default {
     return {
       perfil: null,
       publicaciones: [],
-      resenas: [],
+      resenasResumen: null,
+      resenasDestacadas: [],
+      cargandoResenas: false,
+      errorResenas: "",
+      controladorResenas: null,
       cargando: true,
       noEncontrado: false,
       mensajeNoEncontrado: "",
@@ -293,13 +341,33 @@ export default {
       mensajeError: "",
       contadorBaja: { expiracion: null, restante: null },
       intervaloContador: null,
+      terminos: null,
+      terminosCargados: false,
+      cargandoTerminos: false,
+      errorTerminos: "",
     };
   },
   computed: {
+    idResena() {
+      const id = this.$route.params.idCalificacion;
+      if (id == null || id === "") return null;
+      const numero = Number(id);
+      return Number.isFinite(numero) ? numero : null;
+    },
     seccion() {
+      if (this.idResena != null) return "resenas";
+
       const seccionRuta = this.$route.params.seccion;
-      const validas = ["calendario", "resenas"];
+      const validas = ["calendario", "resenas", "terminos"];
       return validas.includes(seccionRuta) ? seccionRuta : "publicaciones";
+    },
+    puedeConfigurarTerminos() {
+      return (
+        this.esPropio &&
+        this.perfil?.idPerfil != null &&
+        this.perfil.idPerfil === idPerfilActivo() &&
+        this.perfil?.estado === "Activo"
+      );
     },
     esPropio() {
       if (this.perfil?.esPropietario != null) return this.perfil.esPropietario === true;
@@ -354,14 +422,21 @@ export default {
   },
   beforeUnmount() {
     if (this.intervaloContador) clearInterval(this.intervaloContador);
+    this.abortarTerminos();
+    this.abortarResenasDestacadas();
   },
   watch: {
     "$route.params.id"() {
+      this.resetearTerminos();
       this.cargarDatos();
     },
     "$route.params.seccion"() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       this.avisarSeccionNoDisponible();
+      if (this.seccion === "terminos") this.cargarTerminos();
+    },
+    "$route.params.idCalificacion"() {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     },
   },
   methods: {
@@ -372,6 +447,12 @@ export default {
       this.noEncontrado = false;
       this.mensajeNoEncontrado = "";
       this.errorCarga = false;
+      this.resetearTerminos();
+      this.abortarResenasDestacadas();
+      this.resenasResumen = null;
+      this.resenasDestacadas = [];
+      this.cargandoResenas = false;
+      this.errorResenas = "";
 
       const idDeRuta = this.$route.params.id;
       const id = idDeRuta != null ? Number(idDeRuta) : idPerfilActivo();
@@ -405,6 +486,20 @@ export default {
           return;
         }
         this.actualizarContadorBaja();
+        this.aplicarTerminosPerfil();
+
+        // La tarjeta lateral de reseñas solo se muestra en perfiles ajenos.
+        // Es best-effort: un fallo no debe romper la carga del perfil.
+        if (!this.esPropio) {
+          this.cargarResenasDestacadas();
+        }
+
+        // Contrato UC-23: GET /perfiles/{id} siempre incluye
+        // terminosCondiciones. El endpoint dedicado queda como respaldo
+        // defensivo si la propiedad no viniera en la respuesta.
+        if (this.seccion === "terminos" && !this.terminosCargados) {
+          await this.cargarTerminos();
+        }
 
         // Caso raro: el sistema marca esPropietario pero el id no coincidía
         // con el perfil activo al disparar las peticiones → traer el resumen
@@ -441,6 +536,166 @@ export default {
       } finally {
         this.cargando = false;
       }
+    },
+    resetearTerminos() {
+      this.abortarTerminos();
+      this.terminos = null;
+      this.terminosCargados = false;
+      this.cargandoTerminos = false;
+      this.errorTerminos = "";
+    },
+    abortarTerminos() {
+      if (this.controladorTerminos) {
+        this.controladorTerminos.abort();
+        this.controladorTerminos = null;
+      }
+    },
+    async cargarResenasDestacadas() {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
+
+      this.abortarResenasDestacadas();
+      this.cargandoResenas = true;
+      this.errorResenas = "";
+
+      const controller = new AbortController();
+      this.controladorResenas = controller;
+
+      try {
+        const response = await calificacionPerfilService.listar(idPerfil, {
+          page: 0,
+          size: 2,
+          signal: controller.signal,
+        });
+
+        if (this.controladorResenas !== controller) return;
+
+        const data = response?.data || {};
+        this.resenasResumen = normalizarResumen(data.resumen);
+        const contenido = Array.isArray(data.calificaciones?.contenido)
+          ? data.calificaciones.contenido
+          : [];
+        this.resenasDestacadas = contenido.map(normalizarResena);
+      } catch (error) {
+        if (this.controladorResenas !== controller) return;
+        if (
+          error?.name === "CanceledError" ||
+          error?.code === "ERR_CANCELED"
+        ) {
+          return;
+        }
+        this.errorResenas = mensajeErrorApi(
+          error,
+          "No se pudieron cargar las reseñas."
+        );
+      } finally {
+        if (this.controladorResenas === controller) {
+          this.cargandoResenas = false;
+        }
+      }
+    },
+    abortarResenasDestacadas() {
+      if (this.controladorResenas) {
+        this.controladorResenas.abort();
+        this.controladorResenas = null;
+      }
+    },
+    verTodasLasResenas() {
+      const idDeRuta = this.$route.params.id;
+      if (idDeRuta) {
+        this.$router.push({
+          name: "ver-perfil-seccion",
+          params: { id: idDeRuta, seccion: "resenas" },
+        });
+        return;
+      }
+      this.$router.push({
+        name: "inicioperfil-seccion",
+        params: { seccion: "resenas" },
+      });
+    },
+    abrirResena(idCalificacion) {
+      if (idCalificacion == null) return;
+
+      const idDeRuta = this.$route.params.id;
+      if (idDeRuta) {
+        this.$router.push({
+          name: "ver-perfil-resena",
+          params: { id: idDeRuta, idCalificacion },
+        });
+        return;
+      }
+      this.$router.push({
+        name: "inicioperfil-resena",
+        params: { idCalificacion },
+      });
+    },
+    volverAlListadoResenas() {
+      this.verTodasLasResenas();
+    },
+    volverAlPerfil() {
+      const idDeRuta = this.$route.params.id;
+      if (idDeRuta) {
+        this.$router.push({ name: "ver-perfil", params: { id: idDeRuta } });
+        return;
+      }
+      this.$router.push({ name: "inicioperfil" });
+    },
+    irAlPerfilAutor(idPerfil) {
+      if (idPerfil == null) return;
+
+      if (Number(idPerfil) === Number(idPerfilActivo())) {
+        this.$router.push({ name: "inicioperfil" });
+        return;
+      }
+      this.$router.push({ name: "ver-perfil", params: { id: idPerfil } });
+    },
+    aplicarTerminosPerfil() {
+      if (!this.perfil || !this.perfil.terminosCondiciones) return;
+      this.terminos = normalizarTerminos(this.perfil.terminosCondiciones);
+      this.terminosCargados = true;
+      this.errorTerminos = "";
+    },
+    async cargarTerminos() {
+      if (this.cargandoTerminos || this.terminosCargados) return;
+
+      const id = this.perfil?.idPerfil;
+      if (id == null) return;
+
+      this.abortarTerminos();
+      this.controladorTerminos = new AbortController();
+      this.cargandoTerminos = true;
+      this.errorTerminos = "";
+
+      try {
+        const response = await perfilService.obtenerTerminos(
+          id,
+          this.controladorTerminos.signal
+        );
+        this.terminos = normalizarTerminos(response?.data);
+        this.terminosCargados = true;
+      } catch (error) {
+        if (error?.name === "CanceledError" || error?.code === "ERR_CANCELED") {
+          return;
+        }
+        const status = error?.response?.status;
+        if (status === 401) {
+          this.$router.push({
+            name: "login",
+            query: { redirect: this.$route.fullPath },
+          });
+          return;
+        }
+        this.errorTerminos = mensajeErrorApi(
+          error,
+          "No se pudieron cargar los términos y condiciones."
+        );
+      } finally {
+        this.cargandoTerminos = false;
+      }
+    },
+    irAConfigurarTerminos() {
+      this.$router.push({ name: "configurar-terminos-perfil" });
     },
     actualizarContadorBaja() {
       // Prioriza la fecha exacta del sistema (fechaLimite) si el endpoint la

@@ -42,8 +42,8 @@
       </dl>
 
       <p class="eliminar-invitacion__aviso">
-        La invitación se eliminará definitivamente y el destinatario no recibirá
-        ninguna notificación.
+        La invitación se eliminará definitivamente. También se eliminará la
+        notificación que el destinatario recibió al ser invitado.
       </p>
 
       <BaseAlert v-if="error" :message="error" type="error" />

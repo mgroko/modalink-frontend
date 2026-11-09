@@ -92,13 +92,18 @@ export default {
       type: Boolean,
       default: false,
     },
-    /** Pestaña Historial. Sólo para directores del proyecto. */
+    /** Pestaña Historial. Visible para miembros activos del proyecto. */
     mostrarHistorial: {
       type: Boolean,
       default: false,
     },
     /** Pestaña Reemplazos. Sólo para el Director activo. */
     mostrarReemplazos: {
+      type: Boolean,
+      default: false,
+    },
+    /** Pestaña Contratos (UC-68). Visible para miembros; el backend filtra. */
+    mostrarContratos: {
       type: Boolean,
       default: false,
     },
@@ -145,6 +150,9 @@ export default {
           label: "Postulaciones",
           badge: this.proyecto?.postulacionesPendientes,
         });
+      }
+      if (this.mostrarContratos) {
+        tabs.push({ id: "contratos", label: "Contratos" });
       }
       return tabs;
     },

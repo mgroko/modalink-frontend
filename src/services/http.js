@@ -66,8 +66,40 @@ http.interceptors.response.use(
     const { config, response } = error;
     const status = response?.status;
     const url = config?.url || "";
+    const esAuth = esRutaAuth(url);
 
-    if (esRutaAuth(url)) {
+    const mensaje403 = String(response?.data?.message || "");
+    const codigo403 = response?.data?.codigo;
+    // Distinguir permiso de CSRF usando el mensaje/código del backend.
+    const parecePermiso403 =
+      codigo403 === "ACCESO_DENEGADO" ||
+      /permiso|no ten[eé]s|acceso denegado|prohibido|no (?:sos|eres) miembro|director activo|membres[ií]a/i.test(
+        mensaje403
+      );
+
+    // 403 en métodos mutantes: reintento con el token CSRF vigente.
+    // Se evalúa antes del atajo de /auth para que el logout (y el resto de
+    // las rutas de autenticación) también puedan recuperarse de un token
+    // CSRF desactualizado. Antes el atajo impedía el reintento y el error se
+    // ocultaba, dejando la cookie JWT viva.
+    if (
+      status === 403 &&
+      codigo403 !== "CUENTA_PENDIENTE_BAJA" &&
+      !parecePermiso403 &&
+      isMutatingMethod(config.method) &&
+      !config._csrfRetried
+    ) {
+      config._csrfRetried = true;
+      const freshToken = getCookieValue("XSRF-TOKEN");
+      if (freshToken) {
+        config.headers["X-XSRF-TOKEN"] = freshToken;
+        return http(config);
+      }
+    }
+
+    // Las rutas de autenticación no deben disparar la redirección global de
+    // sesión expirada: cada vista maneja su error.
+    if (esAuth) {
       return Promise.reject(error);
     }
 
@@ -82,34 +114,9 @@ http.interceptors.response.use(
 
     // 403 de cuenta pendiente de baja: no es un problema de CSRF ni de
     // permisos del proyecto, así que no se reintenta ni se redirige.
-    if (status === 403 && response?.data?.codigo === "CUENTA_PENDIENTE_BAJA") {
+    if (status === 403 && codigo403 === "CUENTA_PENDIENTE_BAJA") {
       error._esCuentaNoActiva = true;
       return Promise.reject(error);
-    }
-
-    const mensaje403 = String(response?.data?.message || "");
-    const codigo403 = response?.data?.codigo;
-    // Distinguir permiso de CSRF usando el mensaje/código del backend.
-    const parecePermiso403 =
-      codigo403 === "ACCESO_DENEGADO" ||
-      /permiso|no ten[eé]s|acceso denegado|prohibido|no (?:sos|eres) miembro|director activo|membres[ií]a/i.test(
-        mensaje403
-      );
-
-    // 403 en métodos mutantes: primero, reintento con el token CSRF vigente.
-    // Un 403 de permiso no se reintenta: el backend ya respondió.
-    if (
-      status === 403 &&
-      !parecePermiso403 &&
-      isMutatingMethod(config.method) &&
-      !config._csrfRetried
-    ) {
-      config._csrfRetried = true;
-      const freshToken = getCookieValue("XSRF-TOKEN");
-      if (freshToken) {
-        config.headers["X-XSRF-TOKEN"] = freshToken;
-        return http(config);
-      }
     }
 
     // 403: sin sesión (o con sesión pero sin permiso / con CSRF inválido).

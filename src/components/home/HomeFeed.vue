@@ -65,9 +65,9 @@
           titulo="Postulaciones disponibles"
           :hay-items="oportunidadesVisibles.length > 0"
           texto-vacio="No hay oportunidades abiertas para tu perfil por ahora."
-          :ver-todo="tabActiva === 'todo'"
-          texto-ver-todo="Ver todo"
-          @ver-todo="$emit('cambiar-tab', 'postulaciones')"
+          :ver-todo="true"
+          texto-ver-todo="Ver todas"
+          @ver-todo="$emit('ver-todas-oportunidades')"
         >
           <OportunidadCard
             v-for="oportunidad in oportunidadesVisibles"
@@ -144,6 +144,7 @@ export default {
     "postular",
     "abrir-proyecto",
     "ver-todos-proyectos",
+    "ver-todas-oportunidades",
   ],
   computed: {
     tabs() {

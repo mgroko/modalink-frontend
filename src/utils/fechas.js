@@ -75,7 +75,30 @@ export function formatearFechaCorta(valor) {
   if (valor == null || valor === "") return "—";
   const p = aPartes(valor);
   if (!p) return String(valor);
-  return `${pad(p.dia)}/${pad(p.mes)}/${p.anio}`;
+  return `${pad(p.dia)}/${pad(p.mes)}/${pad(p.anio)}`;
+}
+
+const FECHA_ISO_EN_TEXTO =
+  /\b(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?)?(Z|[+-]\d{2}:?\d{2})?/g;
+
+/**
+ * Reemplaza fechas ISO (`YYYY-MM-DD` o `YYYY-MM-DDTHH:mm...`) dentro de un
+ * mensaje por el formato visible `DD/MM/AAAA`. Se usa para textos que llegan
+ * redactados desde el backend.
+ * @param {unknown} texto
+ * @returns {string}
+ */
+export function formatearFechasEnTexto(texto) {
+  if (texto == null) return "";
+  return String(texto).replace(
+    FECHA_ISO_EN_TEXTO,
+    (_, anio, mes, dia, hora, minuto) => {
+      const fecha = `${dia}/${mes}/${anio}`;
+      return hora != null && minuto != null
+        ? `${fecha} ${hora}:${minuto}`
+        : fecha;
+    }
+  );
 }
 
 /**
@@ -114,6 +137,18 @@ export function formatearFechaNotificacion(valor) {
   const p = aPartes(valor);
   if (!p) return String(valor);
   return `${p.dia} ${MESES_CORTOS[p.mes - 1]} ${p.anio}, ${pad(p.hora)}:${pad(p.minuto)}`;
+}
+
+/**
+ * Fecha de una reseña, sin hora: `12 oct 2026`.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearFechaResena(valor) {
+  if (valor == null || valor === "") return "—";
+  const p = aPartes(valor);
+  if (!p) return String(valor);
+  return `${p.dia} ${MESES_CORTOS[p.mes - 1]} ${p.anio}`;
 }
 
 function diasDesdeHoy(p) {

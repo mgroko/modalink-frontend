@@ -35,8 +35,9 @@
           :tab-activa="tabActiva"
           :mostrar-planificacion="esMiembro"
           :mostrar-integrantes="esMiembro"
-          :mostrar-historial="esDirector"
+          :mostrar-historial="puedeVerHistorial"
           :mostrar-reemplazos="esDirector"
+          :mostrar-contratos="puedeVerContratos"
           :reemplazos-pendientes="reemplazosPendientes"
           :reemplazos-sin-candidatos="reemplazosSinCandidatos"
           @cambiar-tab="cambiarTab"
@@ -297,8 +298,9 @@
         />
 
         <HistorialProyecto
-          v-else-if="tabActiva === 'historial' && esDirector"
+          v-else-if="tabActiva === 'historial' && puedeVerHistorial"
           :id-proyecto="idProyecto"
+          :es-director="esDirector"
         />
 
         <ReemplazosProyecto
@@ -306,6 +308,13 @@
           :id-proyecto="idProyecto"
           @resumen="actualizarResumenReemplazos"
           @actualizado="refrescarTrasReemplazo"
+        />
+
+        <ContratosProyecto
+          v-else-if="tabActiva === 'contratos' && puedeVerContratos"
+          :id-proyecto="idProyecto"
+          :puede-generar="puedeCrearContrato"
+          @nuevo-contrato="irANuevoContrato"
         />
 
         <template v-else-if="tabActiva === 'postulaciones'">
@@ -495,6 +504,7 @@ import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyec
 import IntegrantesProyecto from "../../components/proyecto/IntegrantesProyecto.vue";
 import HistorialProyecto from "../../components/proyecto/HistorialProyecto.vue";
 import ReemplazosProyecto from "../../components/proyecto/ReemplazosProyecto.vue";
+import ContratosProyecto from "../../components/proyecto/ContratosProyecto.vue";
 import PersonalRequerido from "../../components/proyecto/PersonalRequerido.vue";
 import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
 import GestionPostulaciones from "../../components/proyecto/GestionPostulaciones.vue";
@@ -552,6 +562,7 @@ import {
   clasificarErrorConfirmacion,
   normalizarPreview,
 } from "../../utils/confirmacionConstants.js";
+import { puedeGenerarContrato } from "../../utils/contratoConstants.js";
 import {
   clasificarErrorFinalizacion,
   indexarProfesionesPorPerfil,
@@ -602,6 +613,7 @@ export default {
     IntegrantesProyecto,
     HistorialProyecto,
     ReemplazosProyecto,
+    ContratosProyecto,
     PersonalRequerido,
     RequerimientoCard,
     GestionPostulaciones,
@@ -725,13 +737,17 @@ data() {
     esMiembro() {
       return !!this.proyecto?.esMiembro;
     },
-    /** La pestaña Historial es exclusiva del Director activo del proyecto. */
+    /** El rol Director habilita la seccion de miembros y la vista global. */
     esDirector() {
       return (
         this.esMiembro &&
         String(this.proyecto?.rolUsuario || "").toUpperCase() ===
           ROLES_PROYECTO.DIRECTOR
       );
+    },
+    /** Historial visible para cualquier miembro activo. */
+    puedeVerHistorial() {
+      return this.esMiembro;
     },
     esBorrador() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.BORRADOR;
@@ -832,6 +848,19 @@ data() {
     /** UC-31: Director con `INVITAR_MIEMBRO` en proyecto Publicado/Confirmado. */
     puedeInvitarIntegrante() {
       return puedeInvitarProyecto(this.proyecto);
+    },
+    /**
+     * UC-68: la pestaña Contratos se muestra a cualquier miembro activo. El
+     * backend filtra qué contratos ve cada perfil (Director: todos; firmante:
+     * los suyos; sin contratos: página vacía). También queda visible en
+     * proyectos Finalizados/Cancelados.
+     */
+    puedeVerContratos() {
+      return this.esMiembro;
+    },
+    /** UC-39: sólo el Director activo en Publicado/Confirmado puede generar. */
+    puedeCrearContrato() {
+      return puedeGenerarContrato(this.proyecto);
     },
     /** Perfil activo de la sesión: habilita el chip "Vos" en el listado. */
     idPerfilActivoSesion() {
@@ -977,7 +1006,7 @@ data() {
       if (!valor) {
         this.limpiarResumenReemplazos();
         if (
-          ["planificacion", "integrantes", "historial", "reemplazos"].includes(
+          ["planificacion", "integrantes", "historial", "reemplazos", "contratos"].includes(
             this.tabActiva
           )
         ) {
@@ -991,13 +1020,19 @@ data() {
     esDirector(valor) {
       if (!valor) {
         this.limpiarResumenReemplazos();
-        if (["historial", "reemplazos"].includes(this.tabActiva)) {
+        if (["reemplazos", "contratos"].includes(this.tabActiva)) {
           this.tabActiva = "informacion";
           this.aplicarTabDesdeQuery();
         }
         return;
       }
       this.cargarResumenReemplazos();
+    },
+    puedeVerContratos(valor) {
+      if (!valor && this.tabActiva === "contratos") {
+        this.tabActiva = "informacion";
+        this.aplicarTabDesdeQuery();
+      }
     },
   },
   created() {
@@ -1015,6 +1050,7 @@ data() {
     await this.cargar();
   },
   methods: {
+    formatearFecha,
     formatearFechaCorta,
     async cargar() {
       const corrida = ++this.idCarga;
@@ -1041,7 +1077,8 @@ data() {
           return;
         }
         // Reaplicar la tab de la URL una vez conocido el rol del proyecto:
-        // `?tab=historial` solo es válida para directores.
+        // `?tab=historial` es válida para miembros activos; la sección de
+        // miembros dentro del historial sigue reservada al Director.
         this.aplicarTabDesdeQuery();
         if (this.esDirector) this.cargarResumenReemplazos(corrida);
         else this.limpiarResumenReemplazos();
@@ -1244,6 +1281,7 @@ data() {
         "historial",
         "reemplazos",
         "postulaciones",
+        "contratos",
       ];
       const tab = permitidas.includes(solicitada) ? solicitada : "informacion";
 
@@ -1251,11 +1289,15 @@ data() {
         this.tabActiva = "informacion";
         return;
       }
-      if (tab === "historial" && !this.esDirector) {
+      if (tab === "historial" && !this.puedeVerHistorial) {
         this.tabActiva = "informacion";
         return;
       }
       if (tab === "reemplazos" && !this.esDirector) {
+        this.tabActiva = "informacion";
+        return;
+      }
+      if (tab === "contratos" && !this.puedeVerContratos) {
         this.tabActiva = "informacion";
         return;
       }
@@ -1281,8 +1323,9 @@ data() {
     },
     cambiarTab(tab) {
       if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) return;
-      if (tab === "historial" && !this.esDirector) return;
+      if (tab === "historial" && !this.puedeVerHistorial) return;
       if (tab === "reemplazos" && !this.esDirector) return;
+      if (tab === "contratos" && !this.puedeVerContratos) return;
       if (this.tabActiva === tab) return;
 
       this.tabActiva = tab;
@@ -2907,6 +2950,13 @@ data() {
       if (!this.puedeInvitarIntegrante) return;
       this.$router.push({
         name: "invitar-proyecto",
+        params: { id: this.idProyecto },
+      });
+    },
+    irANuevoContrato() {
+      if (!this.puedeVerContratos) return;
+      this.$router.push({
+        name: "generar-contrato",
         params: { id: this.idProyecto },
       });
     },

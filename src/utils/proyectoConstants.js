@@ -118,6 +118,33 @@ export function normalizarEstadoProyecto(estado) {
   return clave || String(estado);
 }
 
+/*
+ * Orden de los proyectos en la pantalla de inicio: primero los que siguen
+ * abiertos (Publicado, Confirmado) y después los Finalizados. Cualquier otro
+ * estado queda al final para no alterar el orden relativo que devuelve el
+ * backend.
+ */
+export const ORDEN_ESTADOS_INICIO = {
+  [ESTADOS_PROYECTO.PUBLICADO]: 0,
+  [ESTADOS_PROYECTO.CONFIRMADO]: 1,
+  [ESTADOS_PROYECTO.FINALIZADO]: 2,
+};
+
+/**
+ * Ordena una copia de los proyectos del inicio sin mutar el array original.
+ * @param {object[]} proyectos
+ * @returns {object[]}
+ */
+export function ordenarProyectosInicio(proyectos = []) {
+  return [...proyectos].sort((a, b) => {
+    const ordenA =
+      ORDEN_ESTADOS_INICIO[normalizarEstadoProyecto(a?.estado)] ?? 3;
+    const ordenB =
+      ORDEN_ESTADOS_INICIO[normalizarEstadoProyecto(b?.estado)] ?? 3;
+    return ordenA - ordenB;
+  });
+}
+
 export const LIMITES_PROYECTO = {
   NOMBRE: 50,
   DESCRIPCION: 200,

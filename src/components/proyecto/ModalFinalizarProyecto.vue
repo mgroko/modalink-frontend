@@ -37,7 +37,11 @@
       </div>
 
       <template v-else>
-        <BaseAlert v-if="errorPreview" :message="errorPreview" type="error" />
+        <BaseAlert
+          v-if="errorPreview"
+          :message="formatearFechasEnTexto(errorPreview)"
+          type="error"
+        />
 
         <div
           v-if="errorPreview && puedeReintentarPreview"
@@ -79,11 +83,7 @@
                 error
               </span>
               <span class="finalizar-proyecto-modal__bloqueo-texto">
-                {{
-                  bloqueo.mensaje ||
-                  mensajeCodigo(bloqueo.codigo) ||
-                  bloqueo.codigo
-                }}
+                {{ textoBloqueo(bloqueo) }}
               </span>
             </li>
           </ul>
@@ -100,6 +100,7 @@
           >
             <VaCheckbox
               v-model="confirmoPrematura"
+              color="warning"
               :disabled="finalizando || preview.puedeFinalizar !== true"
             />
             <span>
@@ -178,7 +179,10 @@
       </template>
     </div>
 
-    <BaseAlert :message="errorFinalizacion" type="error" />
+    <BaseAlert
+      :message="formatearFechasEnTexto(errorFinalizacion)"
+      type="error"
+    />
 
     <template #footer>
       <div class="finalizar-proyecto-modal__acciones">
@@ -205,7 +209,10 @@
 <script>
 import BaseAlert from "../AlertaBase.vue";
 import CalificacionMiembroCard from "./CalificacionMiembroCard.vue";
-import { formatearFechaCorta } from "../../utils/fechas.js";
+import {
+  formatearFechaCorta,
+  formatearFechasEnTexto,
+} from "../../utils/fechas.js";
 import {
   contarCalificacionesCompletas,
   mensajeCodigoFinalizacion,
@@ -300,7 +307,9 @@ export default {
     },
     mensajeAdvertencias() {
       const mensajes = this.advertencias
-        .map((advertencia) => advertencia?.mensaje)
+        .map((advertencia) =>
+          formatearFechasEnTexto(advertencia?.mensaje)
+        )
         .filter(Boolean);
       return mensajes.length
         ? mensajes.join(" ")
@@ -372,8 +381,17 @@ export default {
     },
   },
   methods: {
+    formatearFechasEnTexto,
     mensajeCodigo(codigo) {
       return mensajeCodigoFinalizacion(codigo);
+    },
+    textoBloqueo(bloqueo) {
+      const texto =
+        bloqueo?.mensaje ||
+        this.mensajeCodigo(bloqueo?.codigo) ||
+        bloqueo?.codigo ||
+        "";
+      return formatearFechasEnTexto(texto);
     },
     sincronizarFormulario() {
       const siguiente = {};
@@ -676,6 +694,11 @@ export default {
   font-weight: 600;
   line-height: 1.45;
   cursor: pointer;
+}
+
+.finalizar-proyecto-modal__confirmacion-prematura
+  :deep(.va-checkbox__square) {
+  border-color: var(--color-warning-text);
 }
 
 .finalizar-proyecto-modal__acciones {

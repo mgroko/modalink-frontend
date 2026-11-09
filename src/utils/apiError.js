@@ -1,3 +1,5 @@
+import { formatearFechasEnTexto } from "./fechas.js";
+
 export function esSesionExpirada(error) {
   if (error?._esCuentaNoActiva) return false;
   // El interceptor marca `_esSesionExpirada` cuando un 403 implica que no hay
@@ -12,7 +14,9 @@ export function esCuentaNoActiva(error) {
 
 export function mensajeErrorApi(error, fallback = "Ocurrió un error inesperado.") {
   const status = error?.response?.status;
-  const mensajeBackend = error?.response?.data?.message;
+  const mensajeBackend = formatearFechasEnTexto(
+    error?.response?.data?.message
+  );
 
   if (esSesionExpirada(error)) {
     return "Tu sesión expiró. Volvé a iniciar sesión.";

@@ -35,6 +35,22 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {PerfilInvitacionResponse} destinatario
  * @property {string|null} mensaje
  * @property {boolean} puedeEliminar
+ * @property {number|null} [idTycAceptado]
+ */
+
+/**
+ * Aceptación de la versión vigente de T&C de un perfil (UC-23 §5).
+ * `idTyc` puede ser null si el perfil no tiene T&C configurados.
+ * @typedef {Object} AceptacionTerminosRequest
+ * @property {number|null} idTyc
+ * @property {boolean} aceptaTerminos
+ */
+
+/**
+ * @typedef {Object} AceptacionTerminosPorPerfilRequest
+ * @property {number} idPerfil
+ * @property {number|null} idTyc
+ * @property {boolean} aceptaTerminos
  */
 
 /**
@@ -64,12 +80,14 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {number} idPerfilRemitente
  * @property {number} idPerfilDestinatario
  * @property {string|null} mensaje
+ * @property {number|null} [idTycAceptado]
  */
 
 /**
  * @typedef {Object} InvitacionGeneralRequest
  * @property {number} idPerfilDestinatario
  * @property {string|null} [mensaje]
+ * @property {AceptacionTerminosRequest} [aceptacionTerminos]
  */
 
 /**
@@ -77,12 +95,14 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {number} idRequerimientoActividad
  * @property {number} idPerfilDestinatario
  * @property {string|null} [mensaje]
+ * @property {AceptacionTerminosRequest} [aceptacionTerminos]
  */
 
 /**
  * @typedef {Object} InvitacionGeneralBatchRequest
  * @property {number[]} idsPerfilDestinatario
  * @property {string|null} [mensaje]
+ * @property {AceptacionTerminosPorPerfilRequest[]} [aceptacionesTerminos]
  */
 
 /**
@@ -90,6 +110,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {number} idRequerimientoActividad
  * @property {number[]} idsPerfilDestinatario
  * @property {string|null} [mensaje]
+ * @property {AceptacionTerminosPorPerfilRequest[]} [aceptacionesTerminos]
  */
 
 /**
@@ -202,12 +223,17 @@ const invitacionService = {
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: InvitacionResponse}>} 201 Created
    */
-  invitarGeneral(idProyecto, { idPerfilDestinatario, mensaje } = {}, signal) {
+  invitarGeneral(
+    idProyecto,
+    { idPerfilDestinatario, mensaje, aceptacionTerminos } = {},
+    signal
+  ) {
     return http.post(
       `/proyectos/${idProyecto}/invitaciones/general`,
       {
         idPerfilDestinatario,
         mensaje: normalizarMensaje(mensaje),
+        ...(aceptacionTerminos ? { aceptacionTerminos } : {}),
       },
       { signal }
     );
@@ -225,7 +251,12 @@ const invitacionService = {
    */
   invitarActividad(
     idProyecto,
-    { idRequerimientoActividad, idPerfilDestinatario, mensaje } = {},
+    {
+      idRequerimientoActividad,
+      idPerfilDestinatario,
+      mensaje,
+      aceptacionTerminos,
+    } = {},
     signal
   ) {
     return http.post(
@@ -234,6 +265,7 @@ const invitacionService = {
         idRequerimientoActividad,
         idPerfilDestinatario,
         mensaje: normalizarMensaje(mensaje),
+        ...(aceptacionTerminos ? { aceptacionTerminos } : {}),
       },
       { signal }
     );
@@ -255,7 +287,10 @@ const invitacionService = {
   aceptarGeneral(idInvitacion, signal) {
     return http.post(
       `/invitaciones/general/${idInvitacion}/aceptar`,
-      null,
+      // JSON vacío: axios 1.x envía un body `null` como
+      // application/x-www-form-urlencoded y Spring responde 415 cuando el
+      // endpoint declara @RequestBody. El backend ignora este body.
+      {},
       { signal }
     );
   },
@@ -273,7 +308,7 @@ const invitacionService = {
   aceptarActividad(idInvitacion, signal) {
     return http.post(
       `/invitaciones/actividad/${idInvitacion}/aceptar`,
-      null,
+      {},
       { signal }
     );
   },
@@ -289,7 +324,7 @@ const invitacionService = {
   rechazarGeneral(idInvitacion, signal) {
     return http.post(
       `/invitaciones/general/${idInvitacion}/rechazar`,
-      null,
+      {},
       { signal }
     );
   },
@@ -305,7 +340,7 @@ const invitacionService = {
   rechazarActividad(idInvitacion, signal) {
     return http.post(
       `/invitaciones/actividad/${idInvitacion}/rechazar`,
-      null,
+      {},
       { signal }
     );
   },
@@ -359,7 +394,7 @@ const invitacionService = {
    */
   invitarGeneralBatch(
     idProyecto,
-    { idsPerfilDestinatario, mensaje } = {},
+    { idsPerfilDestinatario, mensaje, aceptacionesTerminos } = {},
     signal
   ) {
     return http.post(
@@ -369,6 +404,9 @@ const invitacionService = {
           ? idsPerfilDestinatario
           : [],
         mensaje: normalizarMensaje(mensaje),
+        ...(Array.isArray(aceptacionesTerminos)
+          ? { aceptacionesTerminos }
+          : {}),
       },
       { signal }
     );
@@ -386,7 +424,12 @@ const invitacionService = {
    */
   invitarActividadBatch(
     idProyecto,
-    { idRequerimientoActividad, idsPerfilDestinatario, mensaje } = {},
+    {
+      idRequerimientoActividad,
+      idsPerfilDestinatario,
+      mensaje,
+      aceptacionesTerminos,
+    } = {},
     signal
   ) {
     return http.post(
@@ -397,6 +440,9 @@ const invitacionService = {
           ? idsPerfilDestinatario
           : [],
         mensaje: normalizarMensaje(mensaje),
+        ...(Array.isArray(aceptacionesTerminos)
+          ? { aceptacionesTerminos }
+          : {}),
       },
       { signal }
     );

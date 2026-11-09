@@ -58,6 +58,13 @@
         <span class="invitacion-card__fecha">
           Enviada el {{ fechaEnvio }}
         </span>
+
+        <span
+          v-if="esRechazada && fechaRechazo"
+          class="invitacion-card__fecha"
+        >
+          Rechazada el {{ fechaRechazo }}
+        </span>
       </div>
 
       <p v-if="invitacion.mensaje" class="invitacion-card__mensaje">
@@ -220,6 +227,14 @@ export default {
     },
     fechaEnvio() {
       return formatearFechaCorta(this.invitacion.fechaEnvio);
+    },
+    fechaRechazo() {
+      return this.invitacion.fechaRechazo
+        ? formatearFechaCorta(this.invitacion.fechaRechazo)
+        : "";
+    },
+    esRechazada() {
+      return this.invitacion.estado === ESTADOS_INVITACION.RECHAZADA;
     },
     etiquetaDireccion() {
       return ETIQUETAS_DIRECCION[this.invitacion.direccion] || "";

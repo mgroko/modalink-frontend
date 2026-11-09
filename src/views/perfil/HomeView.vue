@@ -20,6 +20,7 @@
       @postular="abrirPostulacion"
       @abrir-proyecto="irAProyecto"
       @ver-todos-proyectos="irAProyectos"
+      @ver-todas-oportunidades="irABuscarOportunidades"
     />
 
     <div v-else-if="!mensajeError" class="home-view__estado">
@@ -60,6 +61,7 @@ import { setPerfilActivo, refrescarSesion } from "../../services/authState.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
+import { ordenarProyectosInicio } from "../../utils/proyectoConstants.js";
 import {
   AVISO_DISPONIBILIDAD_PROVISORIA,
   TIPOS_POSTULACION,
@@ -166,7 +168,8 @@ export default {
     procesarProyectos(resultado) {
       if (resultado.status === "fulfilled") {
         const data = resultado.value?.data || {};
-        this.proyectos = Array.isArray(data.contenido) ? data.contenido : [];
+        const proyectos = Array.isArray(data.contenido) ? data.contenido : [];
+        this.proyectos = ordenarProyectosInicio(proyectos);
         this.totalProyectos =
           Number(data.totalElementos) || this.proyectos.length;
         return;
@@ -264,6 +267,30 @@ export default {
     },
     irAProyectos() {
       this.$router.push({ name: "proyectos-inicio" });
+    },
+    /**
+     * UC-72/UC-73: "Ver todas" abre el buscador con la pestaña correspondiente
+     * y la profesión del perfil activo precargada (la vista la resuelve si no
+     * viaja en la query).
+     */
+    irABuscarOportunidades() {
+      const tipos = this.oportunidades.map((oportunidad) =>
+        String(oportunidad?.tipo || "").toUpperCase()
+      );
+      const todasActividades =
+        tipos.length > 0 && tipos.every((tipo) => tipo === "ACTIVIDAD");
+      const idProfesion = Number(this.perfilActivo?.idProfesion);
+
+      this.$router.push({
+        name: "buscar",
+        query: {
+          tab: "oportunidades",
+          ...(todasActividades ? { subtab: "actividades" } : {}),
+          ...(Number.isFinite(idProfesion) && idProfesion > 0
+            ? { idProfesion }
+            : {}),
+        },
+      });
     },
     abrirPostulacion(oportunidad) {
       if (!oportunidad) return;

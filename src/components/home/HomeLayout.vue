@@ -35,6 +35,20 @@
         </button>
         <button
           class="home-layout__nav-item"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'contratos' }"
+          @click.stop="$router.push({ name: 'buscar-contratos' })"
+        >
+          <span class="material-symbols-outlined">description</span>
+          <span>Contratos</span>
+          <span
+            v-if="contratosPendientes > 0"
+            class="home-layout__nav-badge"
+          >
+            {{ contratosPendientes }}
+          </span>
+        </button>
+        <button
+          class="home-layout__nav-item"
           @click.stop="noDisponible('Mi red')"
         >
           <span class="material-symbols-outlined">group</span>
@@ -104,7 +118,7 @@
           :class="`home-layout__profile-menu--${direccionMenu}`"
         >
           <button @click="verPerfil">Ver perfil</button>
-          <button @click="$router.push({ name: 'modificar-datos' })">Ajustes</button>
+          <button @click="irAAjustes">Ajustes</button>
           <div class="home-layout__switcher">
             <button @click="perfilesAbiertos = !perfilesAbiertos">
               <span>Cambiar perfil activo</span>
@@ -154,7 +168,9 @@
       class="home-layout__body"
       :class="{
         'home-layout__body--full': $route.meta.sinSidebarPerfil,
-        'home-layout__body--ancho-proyecto': $route.meta.navActiva === 'proyectos',
+        'home-layout__body--ancho-proyecto': ['proyectos', 'contratos'].includes(
+          $route.meta.navActiva
+        ),
       }"
     >
       <aside v-if="!$route.meta.sinSidebarPerfil" class="home-layout__sidebar">
@@ -208,6 +224,13 @@
           >
             <span class="material-symbols-outlined">business_center</span>
             Proyectos
+          </button>
+          <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('oportunidades') }"
+            @click="$router.push({ name: 'buscar', query: { tab: 'oportunidades' } })"
+          >
+            <span class="material-symbols-outlined">work</span>
+            Oportunidades
           </button>
           <button
             :class="{ 'home-layout__quick-link--active': esQuickActivo('invitaciones') }"
@@ -271,6 +294,10 @@ import {
   state as reemplazoState,
   cargarResumenReemplazos,
 } from "../../services/reemplazoState";
+import {
+  state as contratoState,
+  cargarContratosPendientes,
+} from "../../services/contratoState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
@@ -342,6 +369,9 @@ export default {
         invitacionState.pendientesRecibidas + reemplazoState.pendientes
       );
     },
+    contratosPendientes() {
+      return contratoState.pendientesFirma;
+    },
   },
   watch: {
     fotoPerfilActiva() {
@@ -350,6 +380,14 @@ export default {
     idActivo(nuevo) {
       cargarResumenInvitaciones(nuevo);
       cargarResumenReemplazos(nuevo);
+      cargarContratosPendientes(nuevo);
+    },
+    "$route.fullPath"(nuevo) {
+      // Refresca el contador al entrar/salir de las pantallas de contratos,
+      // por ejemplo después de firmar, rechazar o generar uno nuevo.
+      if (/\/contratos(\/|$)/.test(nuevo || "")) {
+        cargarContratosPendientes(this.idActivo);
+      }
     },
   },
   mounted() {
@@ -357,6 +395,7 @@ export default {
     cargarResumenPerfil(this.idActivo);
     cargarResumenInvitaciones(this.idActivo);
     cargarResumenReemplazos(this.idActivo);
+    cargarContratosPendientes(this.idActivo);
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {
@@ -459,6 +498,8 @@ export default {
       });
     },
     irAAjustes() {
+      this.menuAbierto = false;
+      this.perfilesAbiertos = false;
       if (this.idActivo == null) return;
       this.$router.push({ name: "ajustes-perfil-inicio" });
     },
@@ -481,11 +522,18 @@ export default {
       if (clave === "proyectos") {
         return ruta.meta.navActiva === "proyectos";
       }
+      if (clave === "oportunidades") {
+        return ruta.name === "buscar" && ruta.query.tab === "oportunidades";
+      }
       if (clave === "invitaciones") {
         return ruta.name === "invitaciones";
       }
       if (clave === "ajustes") {
-        return ["ajustes-perfil-inicio", "editar-perfil-ajustes"].includes(ruta.name);
+        return [
+          "ajustes-perfil-inicio",
+          "editar-perfil-ajustes",
+          "configurar-terminos-perfil",
+        ].includes(ruta.name);
       }
       if (clave === "panel") {
         return ruta.name === "dashboard-usuario";

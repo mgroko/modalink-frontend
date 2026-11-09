@@ -1,0 +1,160 @@
+/* ============================================================
+   Estilos compartidos de las pantallas de autenticación
+   (LoginView / RegistroView). Se importan desde cada vista.
+   ============================================================ */
+
+/* ---------- Contenedor de la pantalla ---------- */
+.auth-page {
+  width: 100%;
+  max-width: 460px;
+  margin: auto; /* centra y permite scroll cuando el form es más alto que la pantalla */
+  padding: 3rem 0 2rem;
+}
+
+.auth-page--wide {
+  max-width: 600px;
+}
+
+/* ---------- Encabezado ---------- */
+.auth-title {
+  font-family: inherit;
+  font-size: clamp(2.25rem, 4vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  margin: 0 0 0.75rem;
+}
+
+.auth-subtitle {
+  margin: 0 0 1.75rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Botón de Google (logo multicolor) ---------- */
+.auth-google {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-google:hover {
+  background: var(--color-surface-soft);
+  border-color: var(--color-text-muted);
+  box-shadow: 0 2px 10px var(--color-shadow);
+}
+
+.auth-google:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ---------- Divisor "o con tu correo" ---------- */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* ---------- Campos del formulario ---------- */
+.auth-page .va-input-wrapper__label {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.auth-page .va-input-wrapper__field {
+  min-height: 52px;
+  border-radius: 10px;
+  border-color: var(--color-border);
+}
+
+.auth-page--wide .va-input-wrapper__field {
+  min-height: 50px; /* versión más compacta para el formulario largo */
+}
+
+/* Grilla de dos columnas para el registro */
+.auth-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem 1rem;
+}
+
+.auth-fields__full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .auth-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mensaje de ayuda bajo un campo (ej. mínimo de caracteres) */
+.auth-hint {
+  margin-top: -0.75rem;
+  grid-column: 1 / -1;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Acción principal ---------- */
+.auth-submit-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 2.5rem;
+}
+
+.auth-submit {
+  width: 100%;
+  max-width: 260px;
+  min-height: 52px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  --va-button-font-size: 1rem;
+}
+
+/* ---------- Pie: cambiar entre login / registro ---------- */
+.auth-footer {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.auth-footer a {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}

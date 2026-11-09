@@ -14,6 +14,7 @@ import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
 import EditarPerfilView from "../views/perfil/EditarPerfilView.vue";
 import AjustesPerfilView from "../views/perfil/AjustesPerfilView.vue";
+import ConfigurarTerminosView from "../views/perfil/ConfigurarTerminosView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
@@ -24,6 +25,11 @@ import ModificarActividadView from "../views/proyecto/ModificarActividadView.vue
 import ModificarProyectoView from "../views/proyecto/ModificarProyectoView.vue";
 import ActividadDetalleView from "../views/proyecto/ActividadDetalleView.vue";
 import InvitarProyectoView from "../views/proyecto/InvitarProyectoView.vue";
+import GenerarContratoView from "../views/proyecto/GenerarContratoView.vue";
+import BuscarContratosView from "../views/contrato/BuscarContratosView.vue";
+import ContratosPendientesView from "../views/contrato/ContratosPendientesView.vue";
+import DetalleContratoView from "../views/contrato/DetalleContratoView.vue";
+import ModificarContratoView from "../views/contrato/ModificarContratoView.vue";
 import InvitacionesView from "../views/proyecto/InvitacionesView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
@@ -35,6 +41,7 @@ import BusquedaUsuariosView from "../views/admin/BusquedaUsuariosView.vue";
 import DashboardAdminView from "../views/admin/DashboardAdminView.vue";
 import GestionarCaracteristicasView from "../views/admin/GestionarCaracteristicasView.vue";
 import GestionHabilidadesView from "../views/admin/GestionHabilidadesView.vue";
+import GestionTiposContratoView from "../views/admin/GestionTiposContratoView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
@@ -44,6 +51,7 @@ import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
 import ReportePerfilDetalleView from "../views/admin/ReportePerfilDetalleView.vue";
+import AuditoriaAdminView from "../views/admin/AuditoriaAdminView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
 
@@ -102,6 +110,24 @@ const routes = [
     },
   },
   {
+    path: "/inicio-perfil/ajustes/terminos-condiciones",
+    name: "configurar-terminos-perfil",
+    component: ConfigurarTerminosView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Términos y condiciones",
+      requiresActiveProfile: true,
+      sinFondoBlanco: true,
+      navActiva: "ajustes",
+    },
+  },
+  {
+    path: "/inicio-perfil/resenas/:idCalificacion",
+    name: "inicioperfil-resena",
+    component: InicioPerfilView,
+    meta: { layout: HomeLayout, titulo: "Reseña", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
     path: "/inicio-perfil/:seccion",
     name: "inicioperfil-seccion",
     component: InicioPerfilView,
@@ -112,6 +138,12 @@ const routes = [
     name: "ver-perfil",
     component: InicioPerfilView,
     meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/perfiles/:id/resenas/:idCalificacion",
+    name: "ver-perfil-resena",
+    component: InicioPerfilView,
+    meta: { layout: HomeLayout, titulo: "Reseña", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
   },
   {
     path: "/perfiles/:id/:seccion",
@@ -128,6 +160,13 @@ const routes = [
   {
     path: "/buscar-perfiles",
     redirect: { name: "buscar" },
+  },
+  {
+    path: "/buscar-requerimientos",
+    redirect: (to) => ({
+      name: "buscar",
+      query: { ...to.query, tab: "oportunidades" },
+    }),
   },
   {
     path: "/crear-proyecto",
@@ -152,6 +191,40 @@ const routes = [
     name: "invitar-proyecto",
     component: InvitarProyectoView,
     meta: { layout: HomeLayout, titulo: "Invitar a proyecto", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/proyectos/:id/contratos/nuevo",
+    name: "generar-contrato",
+    component: GenerarContratoView,
+    meta: { layout: HomeLayout, titulo: "Nuevo contrato", requiresActiveProfile: true, navActiva: "proyectos" },
+  },
+  {
+    path: "/contratos",
+    name: "buscar-contratos",
+    component: BuscarContratosView,
+    meta: { layout: HomeLayout, titulo: "Contratos", requiresActiveProfile: true, navActiva: "contratos" },
+  },
+  {
+    path: "/contratos/buscar",
+    redirect: (to) => ({ name: "buscar-contratos", query: to.query }),
+  },
+  {
+    path: "/contratos/pendientes",
+    name: "contratos-pendientes",
+    component: ContratosPendientesView,
+    meta: { layout: HomeLayout, titulo: "Pendientes de mi firma", requiresActiveProfile: true, navActiva: "contratos" },
+  },
+  {
+    path: "/proyectos/:idProyecto/contratos/:idContrato/modificar",
+    name: "modificar-contrato",
+    component: ModificarContratoView,
+    meta: { layout: HomeLayout, titulo: "Modificar contrato", requiresActiveProfile: true, navActiva: "contratos" },
+  },
+  {
+    path: "/proyectos/:idProyecto/contratos/:idContrato",
+    name: "detalle-contrato",
+    component: DetalleContratoView,
+    meta: { layout: HomeLayout, titulo: "Detalle del contrato", requiresActiveProfile: true, navActiva: "contratos" },
   },
   {
     path: "/invitaciones",
@@ -349,6 +422,16 @@ const routes = [
     },
   },
   {
+    path: "/admin/auditoria",
+    name: "auditoria-admin",
+    component: AuditoriaAdminView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Auditoría",
+    }
+  },
+  {
     path: "/admin/gestion-usuarios",
     name: "gestion-usuarios",
     component: GestionUsuariosView,
@@ -387,6 +470,17 @@ const routes = [
     name: "gestion-unidades-medida",
     component: GestionUnidadesMedidaView,
     meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Unidades de medida" }
+  },
+  {
+    path: "/admin/tipos-contrato",
+    name: "gestion-tipos-contrato",
+    component: GestionTiposContratoView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "VER_TIPOS_CONTRATO",
+      titulo: "Tipos de contrato",
+    }
   },
   {
     path: "/admin/configuracion",

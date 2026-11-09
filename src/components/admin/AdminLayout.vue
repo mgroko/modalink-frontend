@@ -1,6 +1,13 @@
 <template>
-  <div class="admin-layout" @click="cerrarPaneles">
-    <aside class="admin-layout__sidebar">
+  <div
+    class="admin-layout"
+    :class="{ 'admin-layout--menu-abierto': menuAbierto }"
+    @click="cerrarPaneles"
+  >
+    <aside
+      class="admin-layout__sidebar"
+      :class="{ 'admin-layout__sidebar--abierto': menuAbierto }"
+    >
       <RouterLink to="/admin/dashboard" class="admin-layout__brand">ModaLink</RouterLink>
 
       <div class="admin-layout__search" aria-label="Buscar">
@@ -39,6 +46,10 @@
           <span class="material-symbols-outlined">flag</span>
           <span>Reportes de perfil</span>
         </RouterLink>
+        <RouterLink to="/admin/auditoria" class="admin-layout__link">
+          <span class="material-symbols-outlined">fact_check</span>
+          <span>Auditoría</span>
+        </RouterLink>
         <RouterLink to="/admin/gestionar-caracteristicas" class="admin-layout__link">
           <span class="material-symbols-outlined">tune</span>
           <span>Características técnicas</span>
@@ -46,6 +57,10 @@
         <RouterLink to="/admin/habilidades" class="admin-layout__link">
           <span class="material-symbols-outlined">psychology</span>
           <span>Habilidades</span>
+        </RouterLink>
+        <RouterLink to="/admin/tipos-contrato" class="admin-layout__link">
+          <span class="material-symbols-outlined">description</span>
+          <span>Tipos de contrato</span>
         </RouterLink>
         <RouterLink to="/admin/unidades-medida" class="admin-layout__link">
           <span class="material-symbols-outlined">straighten</span>
@@ -67,6 +82,15 @@
 
     <main class="admin-layout__content">
       <header class="admin-layout__header">
+        <button
+          type="button"
+          class="admin-layout__burger"
+          aria-label="Abrir menú"
+          :aria-expanded="menuAbierto ? 'true' : 'false'"
+          @click.stop="abrirMenu"
+        >
+          <span class="material-symbols-outlined">menu</span>
+        </button>
         <div class="admin-layout__heading">
           <h1>ADMINISTRACIÓN</h1>
           <span>{{ tituloActual }}</span>
@@ -110,6 +134,13 @@
           </div>
         </div>
       </header>
+      <button
+        v-if="menuAbierto"
+        type="button"
+        class="admin-layout__overlay"
+        aria-label="Cerrar menú"
+        @click.stop="cerrarMenu"
+      ></button>
       <slot />
     </main>
   </div>
@@ -136,7 +167,24 @@ export default {
   data() {
     return {
       notificacionesOrigen: null,
+      menuAbierto: false,
     };
+  },
+  watch: {
+    // Al navegar (tapa desde el drawer) el menú se cierra.
+    $route() {
+      this.cerrarMenu();
+    },
+    menuAbierto(abierto) {
+      if (abierto) {
+        document.addEventListener("keydown", this.manejarEscape);
+      } else {
+        document.removeEventListener("keydown", this.manejarEscape);
+      }
+    },
+  },
+  beforeUnmount() {
+    document.removeEventListener("keydown", this.manejarEscape);
   },
   computed: {
     usuario() {
@@ -179,6 +227,15 @@ export default {
     await cargarResumenUsuario();
   },
   methods: {
+    abrirMenu() {
+      this.menuAbierto = true;
+    },
+    cerrarMenu() {
+      this.menuAbierto = false;
+    },
+    manejarEscape(event) {
+      if (event.key === "Escape") this.cerrarMenu();
+    },
     alternarNotificaciones(origen) {
       this.notificacionesOrigen =
         this.notificacionesOrigen === origen ? null : origen;
@@ -313,6 +370,22 @@ export default {
 .admin-layout__footer {
   display: flex;
   margin-top: auto;
+}
+
+/* Menú en drawer para mobile: hamburguesa + overlay + sidebar fijo. */
+.admin-layout__burger {
+  display: none;
+}
+
+.admin-layout__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  padding: 0;
+  background: var(--color-overlay);
+  border: 0;
+  cursor: pointer;
 }
 
 .admin-layout__sidebar-user .admin-layout__user-data {
@@ -565,16 +638,52 @@ export default {
     display: block;
   }
 
+  .admin-layout__burger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    color: var(--color-primary);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .admin-layout__burger .material-symbols-outlined {
+    font-size: 1.25rem;
+  }
+
+  .admin-layout--menu-abierto .admin-layout__overlay {
+    display: block;
+  }
+
   .admin-layout__sidebar {
-    width: 100%;
-    min-height: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
+    width: 276px;
+    max-width: 84vw;
+    min-height: 100dvh;
     padding: 1rem;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border-soft);
+    overflow-y: auto;
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border-soft);
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+  }
+
+  .admin-layout--menu-abierto .admin-layout__sidebar {
+    transform: translateX(0);
   }
 
   .admin-layout__nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .admin-layout__footer {

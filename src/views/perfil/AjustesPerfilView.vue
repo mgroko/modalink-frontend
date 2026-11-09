@@ -53,11 +53,18 @@
 
         <button
           type="button"
-          class="ajustes-perfil__opcion ajustes-perfil__opcion--bloqueada"
-          disabled
-          aria-disabled="true"
-          aria-describedby="tyc-proximamente"
-          title="Disponible próximamente"
+          class="ajustes-perfil__opcion"
+          :class="{
+            'ajustes-perfil__opcion--bloqueada': !puedeConfigurarTerminos,
+          }"
+          :disabled="!puedeConfigurarTerminos"
+          :aria-disabled="!puedeConfigurarTerminos ? 'true' : 'false'"
+          :title="
+            puedeConfigurarTerminos
+              ? undefined
+              : 'Solo los perfiles activos pueden configurar términos y condiciones'
+          "
+          @click="irAConfigurarTerminos"
         >
           <span class="material-symbols-outlined ajustes-perfil__icono" aria-hidden="true">
             description
@@ -65,7 +72,6 @@
           <span class="ajustes-perfil__texto">
             <span class="ajustes-perfil__opcion-titulo">
               Configurar términos y condiciones
-              <span id="tyc-proximamente" class="ajustes-perfil__badge">Próximamente</span>
             </span>
             <span class="ajustes-perfil__opcion-descripcion">
               Definí las cláusulas que se muestran en tu perfil.
@@ -161,6 +167,9 @@ export default {
     puedeSolicitarBaja() {
       return this.perfil?.estado === "Activo";
     },
+    puedeConfigurarTerminos() {
+      return this.perfil?.estado === "Activo";
+    },
     fechaLimiteBaja() {
       const fecha = this.perfil?.fechaLimite || fechaExpiracionBaja(new Date());
       return fecha ? formatearFecha(fecha) : "";
@@ -214,6 +223,10 @@ export default {
         name: "editar-perfil-ajustes",
         params: { id: this.perfil.idPerfil },
       });
+    },
+    irAConfigurarTerminos() {
+      if (!this.puedeConfigurarTerminos) return;
+      this.$router.push({ name: "configurar-terminos-perfil" });
     },
     abrirConfirmacionBaja() {
       if (!this.puedeSolicitarBaja) return;

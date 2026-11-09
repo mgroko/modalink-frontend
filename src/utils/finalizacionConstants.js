@@ -8,6 +8,7 @@
  */
 
 import { normalizarBloqueos } from "./confirmacionConstants.js";
+import { formatearFechasEnTexto } from "./fechas.js";
 
 export const VALORACION_MIN = 1;
 export const VALORACION_MAX = 5;
@@ -91,6 +92,7 @@ function aFechaMs(valor) {
  * @property {string} apellidoUsuario
  * @property {string} rol
  * @property {boolean} yaCalificado
+ * @property {string|null} [fotoUrl] foto del perfil si el backend la envía
  */
 
 /**
@@ -113,6 +115,7 @@ export function normalizarMiembroACalificar(miembro) {
       dato.apellidoUsuario == null ? "" : String(dato.apellidoUsuario),
     rol: dato.rol == null ? "" : String(dato.rol),
     yaCalificado: dato.yaCalificado === true,
+    fotoUrl: dato.fotoUrl || dato.urlFoto || dato.fotoPerfil || null,
   };
 }
 
@@ -560,8 +563,9 @@ export function clasificarErrorFinalizacion(error) {
   return {
     status: error?.response?.status,
     codigo,
-    mensaje:
-      data?.message || data?.mensaje || mensajeCodigoFinalizacion(codigo),
+    mensaje: formatearFechasEnTexto(
+      data?.message || data?.mensaje || mensajeCodigoFinalizacion(codigo)
+    ),
     bloqueos: normalizarBloqueos(data?.bloqueos),
     faltantes: normalizarFaltantes(data?.faltantes),
     fechaEntrega: data?.fechaEntrega || null,

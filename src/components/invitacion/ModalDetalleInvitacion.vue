@@ -35,6 +35,10 @@
           <dt>Fecha de envío</dt>
           <dd>{{ fechaEnvio }}</dd>
         </div>
+        <div v-if="esRechazada && fechaRechazo">
+          <dt>Fecha de rechazo</dt>
+          <dd>{{ fechaRechazo }}</dd>
+        </div>
       </dl>
 
       <section
@@ -236,6 +240,14 @@ export default {
     },
     fechaEnvio() {
       return formatearFechaCorta(this.invitacion?.fechaEnvio);
+    },
+    fechaRechazo() {
+      return this.invitacion?.fechaRechazo
+        ? formatearFechaCorta(this.invitacion.fechaRechazo)
+        : "";
+    },
+    esRechazada() {
+      return this.invitacion?.estado === ESTADOS_INVITACION.RECHAZADA;
     },
     idPerfilEmisor() {
       return this.invitacion?.remitente?.idPerfil ?? null;

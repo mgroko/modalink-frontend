@@ -132,6 +132,7 @@ export function normalizarInvitacionBusqueda(item) {
     direccion: String(dato.direccion || "").toUpperCase(),
     estado: normalizarEstadoInvitacion(dato.estado),
     fechaEnvio: dato.fechaEnvio ?? null,
+    fechaRechazo: dato.fechaRechazo ?? null,
     idProyecto: dato.idProyecto ?? null,
     nombreProyecto: String(dato.nombreProyecto || "").trim(),
     idRequerimientoGral: dato.idRequerimientoGral ?? null,

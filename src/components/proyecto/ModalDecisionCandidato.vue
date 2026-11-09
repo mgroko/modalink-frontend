@@ -38,13 +38,29 @@
       >
         <template v-if="esAprobar">
           Se creará la membresía y, si corresponde, la asignación a la
-          actividad. Las demás invitaciones de este proceso se eliminarán.
+          actividad. Las demás invitaciones activas de este proceso se
+          cancelarán y sus candidatos serán notificados.
         </template>
         <template v-else>
           El candidato será notificado del rechazo. Si quedan otras
-          invitaciones activas, el proceso volverá a esperar respuestas.
+          incorporaciones pendientes de aprobación, el proceso seguirá
+          pendiente; si sólo quedan invitaciones sin responder, volverá a
+          esperar respuestas.
         </template>
       </p>
+
+      <AceptacionTerminosPerfil
+        v-if="esAprobar && modelValue && candidato?.idPerfil"
+        :key="`tyc-${candidato.idPerfil}`"
+        :id-perfil="candidato.idPerfil"
+        :nombre-perfil="candidato.nombreArtistico || 'el candidato'"
+        :model-value="aceptacionTerminos"
+        :terminos-vigentes="terminosVigentes"
+        :token-refresco="tokenRefrescoTerminos"
+        :deshabilitado="procesando"
+        @update:model-value="aceptacionTerminos = $event"
+        @estado="estadoTerminos = $event"
+      />
 
       <BaseAlert v-if="error" :message="error" type="error" />
 
@@ -69,7 +85,7 @@
           :preset="esAprobar ? 'primary' : undefined"
           :color="esAprobar ? undefined : 'danger'"
           :loading="procesando"
-          :disabled="procesando"
+          :disabled="!puedeConfirmar"
           @click="confirmar"
         >
           {{ esAprobar ? "Aprobar incorporación" : "Rechazar incorporación" }}
@@ -81,6 +97,7 @@
 
 <script>
 import BaseAlert from "../AlertaBase.vue";
+import AceptacionTerminosPerfil from "../perfil/AceptacionTerminosPerfil.vue";
 import {
   ACCIONES_DECISION_REEMPLAZO,
   LIMITE_MOTIVO_REEMPLAZO,
@@ -88,7 +105,7 @@ import {
 
 export default {
   name: "ModalDecisionCandidato",
-  components: { BaseAlert },
+  components: { BaseAlert, AceptacionTerminosPerfil },
   props: {
     modelValue: {
       type: Boolean,
@@ -118,12 +135,23 @@ export default {
       type: String,
       default: "",
     },
+    /** Versión vigente devuelta por un 409 de aceptación. */
+    terminosVigentes: {
+      type: Object,
+      default: null,
+    },
+    tokenRefrescoTerminos: {
+      type: Number,
+      default: 0,
+    },
   },
   emits: ["update:modelValue", "confirmar"],
   data() {
     return {
       LIMITE_MOTIVO_REEMPLAZO,
       motivo: "",
+      aceptacionTerminos: null,
+      estadoTerminos: null,
     };
   },
   computed: {
@@ -133,13 +161,32 @@ export default {
     nombreCandidato() {
       return this.candidato?.nombreArtistico || "este candidato";
     },
+    puedeConfirmar() {
+      if (this.procesando) return false;
+      if (!this.esAprobar) return true;
+      return this.estadoTerminos?.listo === true;
+    },
   },
   watch: {
     modelValue(visible) {
-      if (visible) this.motivo = "";
+      if (visible) {
+        this.motivo = "";
+        this.aceptacionTerminos = null;
+        this.estadoTerminos = null;
+      }
     },
     accion() {
       this.motivo = "";
+      this.aceptacionTerminos = null;
+      this.estadoTerminos = null;
+    },
+    terminosVigentes() {
+      this.aceptacionTerminos = null;
+      this.estadoTerminos = null;
+    },
+    tokenRefrescoTerminos() {
+      this.aceptacionTerminos = null;
+      this.estadoTerminos = null;
     },
   },
   methods: {
@@ -152,8 +199,13 @@ export default {
       this.$emit("update:modelValue", false);
     },
     confirmar() {
-      if (this.procesando) return;
-      this.$emit("confirmar", this.esAprobar ? "" : this.motivo.trim());
+      if (!this.puedeConfirmar) return;
+      this.$emit("confirmar", {
+        motivo: this.esAprobar ? "" : this.motivo.trim(),
+        aceptacionTerminos: this.esAprobar
+          ? this.aceptacionTerminos
+          : null,
+      });
     },
   },
 };

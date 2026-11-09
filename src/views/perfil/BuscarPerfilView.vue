@@ -1,32 +1,37 @@
 <template>
   <div class="buscar-perfil">
     <h1 class="buscar-perfil__titulo">Buscar</h1>
-    <p class="buscar-perfil__subtitulo">
-      {{
-        tab === "proyectos"
-          ? "Encontrá proyectos por nombre, estado o director."
-          : "Encontrá profesionales por nombre, profesión o ubicación."
-      }}
-    </p>
+    <p class="buscar-perfil__subtitulo">{{ subtitulo }}</p>
 
-    <div class="buscar-perfil__tabs" role="tablist" aria-label="Tipo de búsqueda">
+    <div v-if="recientes.length" class="buscar-perfil__recientes">
+      <span class="buscar-perfil__recientes-label">Recientes:</span>
       <button
-        class="buscar-perfil__tab"
-        :class="{ 'buscar-perfil__tab--active': tab === 'perfiles' }"
-        role="tab"
-        :aria-selected="tab === 'perfiles'"
-        @click="cambiarTab('perfiles')"
+        v-for="termino in recientes"
+        :key="termino"
+        type="button"
+        class="buscar-perfil__reciente"
+        @click="aplicarReciente(termino)"
       >
-        Perfiles
+        {{ termino }}
       </button>
+    </div>
+
+    <div
+      class="buscar-perfil__tabs"
+      role="tablist"
+      aria-label="Tipo de búsqueda"
+    >
       <button
+        v-for="item in tabs"
+        :key="item.id"
         class="buscar-perfil__tab"
-        :class="{ 'buscar-perfil__tab--active': tab === 'proyectos' }"
+        :class="{ 'buscar-perfil__tab--active': tab === item.id }"
         role="tab"
-        :aria-selected="tab === 'proyectos'"
-        @click="cambiarTab('proyectos')"
+        :aria-selected="tab === item.id"
+        @click="cambiarTab(item.id)"
       >
-        Proyectos
+        {{ item.label }}
+        <span class="buscar-perfil__tab-count">{{ item.count }}</span>
       </button>
     </div>
 
@@ -34,17 +39,24 @@
       <VaInput
         v-model="filtros.q"
         class="buscar-perfil__campo buscar-perfil__campo--texto"
-        :placeholder="placeholderTexto"
-        @keyup.enter="buscarAhora"
+        placeholder="Nombre, profesión, proyecto, director o ubicación"
+        clearable
+        @keyup.enter="buscarDesdeCabecera"
         @input="programarBusqueda"
       >
         <template #prependInner>
-          <span class="material-symbols-outlined buscar-perfil__icono-campo">search</span>
+          <span class="material-symbols-outlined buscar-perfil__icono-campo">
+            search
+          </span>
         </template>
       </VaInput>
 
+      <VaButton preset="primary" @click="buscarDesdeCabecera">
+        Buscar
+      </VaButton>
+
       <VaSelect
-        v-if="tab === 'perfiles'"
+        v-if="mostrarFiltroProfesion"
         v-model="filtros.idProfesion"
         class="buscar-perfil__campo"
         :options="profesiones"
@@ -57,18 +69,26 @@
       />
 
       <VaSelect
-        v-else
+        v-if="mostrarFiltroEstado"
         v-model="filtros.estadoProyecto"
         class="buscar-perfil__campo"
         :options="opcionesEstadoProyecto"
         value-by="value"
         text-by="text"
-        placeholder="Estado"
+        placeholder="Estado del proyecto"
         clearable
         @update:modelValue="buscarAhora"
       />
 
+      <FiltroUbicacion
+        v-if="mostrarFiltroUbicacion"
+        :model-value="filtros.ubicacion"
+        class="buscar-perfil__campo"
+        @update:model-value="cambiarUbicacion"
+      />
+
       <VaSelect
+        v-if="mostrarTamano"
         v-model="filtros.tamano"
         class="buscar-perfil__campo buscar-perfil__campo--tamano"
         :options="opcionesTamano"
@@ -79,7 +99,7 @@
       />
 
       <VaButton
-        v-if="tab === 'perfiles'"
+        v-if="mostrarAvanzadoBoton"
         preset="secondary"
         size="small"
         :icon="mostrarAvanzado ? 'mso-expand_less' : 'mso-expand_more'"
@@ -88,14 +108,15 @@
         Más filtros
       </VaButton>
 
-      <VaButton preset="secondary" @click="limpiarFiltros">
+      <VaButton preset="secondary" size="small" @click="limpiarFiltros">
         Limpiar filtros
       </VaButton>
     </section>
 
-    <section v-if="tab === 'perfiles' && mostrarAvanzado" class="buscar-perfil__filtros">
-    
-
+    <section
+      v-if="mostrarFiltrosAvanzados"
+      class="buscar-perfil__filtros"
+    >
       <VaSelect
         v-model="filtros.idCaracteristica"
         class="buscar-perfil__campo"
@@ -127,7 +148,7 @@
           class="buscar-perfil__campo"
           :type="tipoEntradaValor"
           placeholder="Valor"
-          @keyup.enter="buscarAhora"
+          @keyup.enter="buscarDesdeCabecera"
           @input="programarBusqueda"
         />
       </template>
@@ -135,6 +156,49 @@
         Seleccioná una profesión para filtrar por característica.
       </span>
     </section>
+
+    <section
+      v-if="mostrarFiltrosOportunidad"
+      class="buscar-perfil__filtros buscar-perfil__filtros--toggles"
+      aria-label="Filtros de oportunidades"
+    >
+      <label class="buscar-perfil__toggle">
+        <VaCheckbox
+          v-model="filtros.soloMiProfesion"
+          @update:modelValue="cambiarSoloMiProfesion"
+        />
+        <span>Solo mi profesión</span>
+      </label>
+
+      <label class="buscar-perfil__toggle">
+        <VaCheckbox
+          v-model="filtros.soloPostulables"
+          @update:modelValue="buscarAhora"
+        />
+        <span>Solo postulables</span>
+      </label>
+
+      <label class="buscar-perfil__toggle">
+        <VaCheckbox
+          v-model="filtros.excluirYaPostulados"
+          @update:modelValue="buscarAhora"
+        />
+        <span>Ocultar ya postulados</span>
+      </label>
+    </section>
+
+    <div v-if="!cargando" class="buscar-perfil__toolbar">
+      <p class="buscar-perfil__resumen">{{ textoResumen }}</p>
+      <VaSelect
+        v-model="orden"
+        class="buscar-perfil__campo--orden"
+        :options="opcionesOrden"
+        value-by="value"
+        text-by="text"
+        disabled
+        title="El orden por relevancia estará disponible próximamente"
+      />
+    </div>
 
     <BaseAlert v-if="mensajeError" :message="mensajeError" type="error" />
 
@@ -145,203 +209,171 @@
     </div>
 
     <div v-if="cargando" class="buscar-perfil__estado">
-      <span class="material-symbols-outlined buscar-perfil__estado-icono">hourglass_empty</span>
-      {{ tab === "proyectos" ? "Buscando proyectos..." : "Buscando perfiles..." }}
+      <span class="material-symbols-outlined buscar-perfil__estado-icono">
+        hourglass_empty
+      </span>
+      Buscando...
     </div>
 
     <template v-else>
-      <p v-if="paginacion.totalElementos > 0" class="buscar-perfil__resumen">
-        {{ paginacion.totalElementos }}
-        {{ tab === "proyectos" ? "proyecto(s) encontrado(s)" : "perfil(es) encontrado(s)" }}
-        <template v-if="!esTodos">
-          · Página {{ paginacion.paginaActual + 1 }} de {{ paginacion.totalPaginas }}
-        </template>
-      </p>
-
       <div v-if="resultadosVacios" class="buscar-perfil__estado">
-        <span class="material-symbols-outlined buscar-perfil__estado-icono">search_off</span>
-        <span>
-          {{
-            tab === "proyectos"
-              ? "No encontramos ningún proyecto que coincida con tus criterios de búsqueda."
-              : "No encontramos ningún perfil que coincida con tus criterios de búsqueda."
-          }}
+        <span class="material-symbols-outlined buscar-perfil__estado-icono">
+          search_off
         </span>
+        <span>{{ textoVacio }}</span>
         <VaButton preset="secondary" size="small" @click="limpiarFiltros">
           Restablecer filtros
         </VaButton>
       </div>
 
-      <div v-else-if="tab === 'perfiles'" class="buscar-perfil__grid">
-        <article
-          v-for="perfil in perfiles"
-          :key="perfil.idPerfil"
-          class="perfil-busqueda"
-          role="button"
-          tabindex="0"
-          @click="irAPerfil(perfil)"
-          @keydown.enter="irAPerfil(perfil)"
-          @keydown.space.prevent="irAPerfil(perfil)"
+      <template v-else-if="tab === 'todo'">
+        <BuscadorSeccion
+          v-if="todo.perfiles.length"
+          titulo="Perfiles"
+          :hay-items="true"
+          :ver-todos="contadores.perfiles > todo.perfiles.length"
+          :texto-ver-todos="`Ver los ${contadores.perfiles}`"
+          @ver-todos="cambiarTab('perfiles')"
         >
-          <div class="perfil-busqueda__foto">
-            <img
-              v-if="perfil.fotoUrl"
-              :src="fotoDe(perfil)"
-              :alt="perfil.nombreArtistico"
-            />
-            <span v-else class="perfil-busqueda__inicial">
-              {{ inicialDe(perfil.nombreArtistico) }}
+          <PerfilBusquedaCard
+            v-for="perfil in todo.perfiles"
+            :key="perfil.idPerfil"
+            :perfil="perfil"
+            @abrir="irAPerfil"
+          />
+        </BuscadorSeccion>
+
+        <BuscadorSeccion
+          v-if="todo.proyectos.length"
+          titulo="Proyectos"
+          :hay-items="true"
+          :ver-todos="contadores.proyectos > todo.proyectos.length"
+          :texto-ver-todos="`Ver los ${contadores.proyectos}`"
+          @ver-todos="cambiarTab('proyectos')"
+        >
+          <ProyectoBusquedaCard
+            v-for="proyecto in todo.proyectos"
+            :key="proyecto.idProyecto"
+            :proyecto="proyecto"
+            @abrir="irAProyecto"
+          />
+        </BuscadorSeccion>
+
+        <BuscadorSeccion
+          v-if="todo.oportunidades.length"
+          titulo="Oportunidades abiertas"
+          :hay-items="true"
+          :ver-todos="contadores.oportunidades > todo.oportunidades.length"
+          :texto-ver-todos="`Ver las ${contadores.oportunidades}`"
+          @ver-todos="cambiarTab('oportunidades')"
+        >
+          <OportunidadBusquedaCard
+            v-for="oportunidad in todo.oportunidades"
+            :key="claveOportunidad(oportunidad)"
+            :oportunidad="oportunidad"
+            :habilidades-catalogo="habilidades"
+            :caracteristicas-catalogo="caracteristicas"
+            @postular="abrirPostulacion"
+            @ver-detalle="verDetalleOportunidad"
+          />
+        </BuscadorSeccion>
+      </template>
+
+      <template v-else-if="tab === 'perfiles'">
+        <div class="buscar-perfil__grid">
+          <PerfilBusquedaCard
+            v-for="perfil in perfiles"
+            :key="perfil.idPerfil"
+            :perfil="perfil"
+            @abrir="irAPerfil"
+          />
+        </div>
+        <PaginacionResultados
+          :paginacion="paginacion"
+          :es-todos="esTodos"
+          @cambiar="cambiarPagina"
+        />
+      </template>
+
+      <template v-else-if="tab === 'proyectos'">
+        <div class="buscar-perfil__grid">
+          <ProyectoBusquedaCard
+            v-for="proyecto in proyectos"
+            :key="proyecto.idProyecto"
+            :proyecto="proyecto"
+            @abrir="irAProyecto"
+          />
+        </div>
+        <PaginacionResultados
+          :paginacion="paginacion"
+          :es-todos="esTodos"
+          @cambiar="cambiarPagina"
+        />
+      </template>
+
+      <template v-else-if="tab === 'oportunidades'">
+        <div class="buscar-perfil__subtabs" role="tablist">
+          <button
+            class="buscar-perfil__subtab"
+            :class="{ 'buscar-perfil__subtab--active': subtabOportunidades === 'generales' }"
+            role="tab"
+            :aria-selected="subtabOportunidades === 'generales'"
+            @click="cambiarSubtabOportunidades('generales')"
+          >
+            Generales
+            <span class="buscar-perfil__tab-count">
+              {{ contadoresOportunidades.generales }}
             </span>
-          </div>
+          </button>
+          <button
+            class="buscar-perfil__subtab"
+            :class="{ 'buscar-perfil__subtab--active': subtabOportunidades === 'actividades' }"
+            role="tab"
+            :aria-selected="subtabOportunidades === 'actividades'"
+            @click="cambiarSubtabOportunidades('actividades')"
+          >
+            Actividades
+            <span class="buscar-perfil__tab-count">
+              {{ contadoresOportunidades.actividades }}
+            </span>
+          </button>
+        </div>
 
-          <div class="perfil-busqueda__cuerpo">
-            <h3 class="perfil-busqueda__nombre">{{ perfil.nombreArtistico }}</h3>
+        <div class="buscar-perfil__grid">
+          <OportunidadBusquedaCard
+            v-for="oportunidad in oportunidades"
+            :key="claveOportunidad(oportunidad)"
+            :oportunidad="oportunidad"
+            :habilidades-catalogo="habilidades"
+            :caracteristicas-catalogo="caracteristicas"
+            @postular="abrirPostulacion"
+            @ver-detalle="verDetalleOportunidad"
+          />
+        </div>
 
-            <VaBadge
-              v-if="perfil.profesion"
-              :text="perfil.profesion"
-              color="secondary"
-              outline
-              class="perfil-busqueda__profesion"
-            />
-
-            <p v-if="perfil.nombreUsuario" class="perfil-busqueda__nombre-real">
-              {{ perfil.nombreUsuario }} {{ perfil.apellidoUsuario }}
-            </p>
-
-            <p v-if="ubicacionTexto(perfil)" class="perfil-busqueda__ubicacion">
-              <span class="material-symbols-outlined">location_on</span>
-              {{ ubicacionTexto(perfil) }}
-            </p>
-
-            <div v-if="habilidadesVisibles(perfil).length" class="perfil-busqueda__habilidades">
-              <span
-                v-for="habilidad in habilidadesVisibles(perfil)"
-                :key="habilidad"
-                class="perfil-busqueda__habilidad"
-              >
-                {{ habilidad }}
-              </span>
-              <span
-                v-if="habilidadesExtras(perfil) > 0"
-                class="perfil-busqueda__habilidad perfil-busqueda__habilidad--mas"
-              >
-                +{{ habilidadesExtras(perfil) }}
-              </span>
-            </div>
-
-            <div
-              v-if="caracteristicasVisibles(perfil).length"
-              class="perfil-busqueda__caracteristicas"
-            >
-              <span
-                v-for="caracteristica in caracteristicasVisibles(perfil)"
-                :key="caracteristica.idCaracteristica"
-                class="perfil-busqueda__caracteristica"
-                :class="{
-                  'perfil-busqueda__caracteristica--colorida': colorValido(caracteristica),
-                }"
-                :style="estiloColorCaracteristica(caracteristica)"
-              >
-                {{ textoCaracteristica(caracteristica) }}
-              </span>
-              <span
-                v-if="caracteristicasExtras(perfil) > 0"
-                class="perfil-busqueda__caracteristica perfil-busqueda__caracteristica--mas"
-              >
-                +{{ caracteristicasExtras(perfil) }}
-              </span>
-            </div>
-          </div>
-
-          <div class="perfil-busqueda__footer">
-            <VaButton
-              color="primary"
-              size="small"
-              @click.stop="irAPerfil(perfil)"
-            >
-              Ver perfil
-            </VaButton>
-          </div>
-        </article>
-      </div>
-
-      <div v-else class="buscar-perfil__grid">
-        <article
-          v-for="proyecto in proyectos"
-          :key="proyecto.idProyecto"
-          class="proyecto-busqueda"
-          role="button"
-          tabindex="0"
-          @click="irAProyecto(proyecto)"
-          @keydown.enter="irAProyecto(proyecto)"
-          @keydown.space.prevent="irAProyecto(proyecto)"
-        >
-          <div class="proyecto-busqueda__cuerpo">
-            <div class="proyecto-busqueda__header">
-              <h3 class="proyecto-busqueda__nombre">{{ proyecto.nombre }}</h3>
-              <EstadoProyectoBadge :estado="proyecto.estado" />
-            </div>
-
-            <p v-if="proyecto.descripcion" class="proyecto-busqueda__descripcion">
-              {{ proyecto.descripcion }}
-            </p>
-
-            <p v-if="proyecto.nombreDirector" class="proyecto-busqueda__director">
-              <span class="material-symbols-outlined">person</span>
-              {{ proyecto.nombreDirector }}
-            </p>
-
-            <p v-if="proyecto.fechaInicio" class="proyecto-busqueda__fecha">
-              <span class="material-symbols-outlined">event</span>
-              Inicia: {{ formatFecha(proyecto.fechaInicio) }}
-            </p>
-
-            <VaBadge
-              v-if="proyecto.privacidad"
-              :text="etiquetaPrivacidad(proyecto.privacidad)"
-              color="secondary"
-              outline
-              class="proyecto-busqueda__privacidad"
-            />
-          </div>
-
-          <div class="proyecto-busqueda__footer">
-            <VaButton
-              color="primary"
-              size="small"
-              @click.stop="irAProyecto(proyecto)"
-            >
-              Ver proyecto
-            </VaButton>
-          </div>
-        </article>
-      </div>
-
-      <div
-        v-if="!esTodos && paginacion.totalPaginas > 1"
-        class="buscar-perfil__paginacion"
-      >
-        <VaButton
-          preset="secondary"
-          size="small"
-          icon="mso-chevron_left"
-          :disabled="paginacion.primera"
-          @click="cambiarPagina(-1)"
-        >
-          Anterior
-        </VaButton>
-        <VaButton
-          preset="secondary"
-          size="small"
-          icon-right="mso-chevron_right"
-          :disabled="paginacion.ultima"
-          @click="cambiarPagina(1)"
-        >
-          Siguiente
-        </VaButton>
-      </div>
+        <PaginacionResultados
+          :paginacion="paginacion"
+          :es-todos="esTodos"
+          @cambiar="cambiarPagina"
+        />
+      </template>
     </template>
+
+    <ModalPostulacion
+      :model-value="modalPostulacion.visible"
+      :id-proyecto="modalPostulacion.idProyecto"
+      :tipo="modalPostulacion.tipo"
+      :nombre-proyecto="modalPostulacion.nombreProyecto"
+      :requerimiento="modalPostulacion.requerimiento"
+      :actividad="modalPostulacion.actividad"
+      :enviando="enviandoPostulacion"
+      :error="errorPostulacion"
+      :sugerir-calendario="errorPostulacionEsDisponibilidad"
+      :sin-fecha-entrega="modalPostulacionSinFechaEntrega"
+      @update:model-value="cerrarModalPostulacion"
+      @confirmar="confirmarPostulacion"
+      @revisar-calendario="irACalendario"
+    />
   </div>
 </template>
 
@@ -349,45 +381,115 @@
 import perfilService from "../../services/perfilService";
 import proyectoService from "../../services/proyectoService";
 import usuarioService from "../../services/usuarioService";
+import requerimientoService from "../../services/requerimientoService";
+import habilidadService from "../../services/habilidadService";
 import BaseAlert from "../../components/AlertaBase.vue";
-import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.vue";
+import BuscadorSeccion from "../../components/busqueda/BuscadorSeccion.vue";
+import PerfilBusquedaCard from "../../components/busqueda/PerfilBusquedaCard.vue";
+import ProyectoBusquedaCard from "../../components/busqueda/ProyectoBusquedaCard.vue";
+import OportunidadBusquedaCard from "../../components/proyecto/OportunidadBusquedaCard.vue";
+import FiltroUbicacion from "../../components/ubicacion/FiltroUbicacion.vue";
+import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
+import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
 import { useToast } from "vuestic-ui";
-import { formatUbicacion, resolverUbicacionTexto } from "../../utils/ubicacion.js";
+import { idPerfilActivo, refrescarSesion } from "../../services/authState.js";
+import { resolverUbicacionTexto } from "../../utils/ubicacion.js";
 import { mensajeErrorApi } from "../../utils/apiError";
-import { resolverFotoUrl } from "../../utils/fotos.js";
+import { OPCIONES_ESTADO_FILTRO } from "../../utils/proyectoConstants.js";
+import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import {
-  ETIQUETAS_CARAC,
-  ETIQUETAS_VALORES,
-  UNIDADES_POR_CODIGO,
-  normCodigo,
-} from "../../utils/perfilConstants.js";
+  AVISO_DISPONIBILIDAD_PROVISORIA,
+  TIPOS_POSTULACION,
+  esErrorCupoCompleto,
+  esErrorDisponibilidad,
+  esErrorPostulacionDuplicada,
+  mensajeExitoPostulacion,
+} from "../../utils/postulacionConstants.js";
 import {
-  ETIQUETAS_PRIVACIDAD,
-  OPCIONES_ESTADO_FILTRO,
-} from "../../utils/proyectoConstants.js";
+  claveOportunidad,
+  normalizarTipoOportunidad,
+  puedePostularOportunidad,
+} from "../../utils/requerimientoAbiertoConstants.js";
 
 const DEBOUNCE_MS = 350;
 const LONGITUD_MIN_UBICACION = 3;
 const LIMITE_CACHE_UBICACION = 100;
-const LIMITE_CARACTERISTICAS_CARD = 3;
+const CLAVE_RECIENTES = "modalink.busquedasRecientes";
+const MAX_RECIENTES = 5;
+const TABS = [
+  { id: "todo", label: "Todo" },
+  { id: "perfiles", label: "Perfiles" },
+  { id: "proyectos", label: "Proyectos" },
+  { id: "oportunidades", label: "Oportunidades" },
+];
 
-// Cancela la tanda de requests en vuelo cuando arranca una búsqueda nueva
-// (no reactivo a propósito: AbortController no debe pasar por reactive()).
+const PAGINACION_INICIAL = () => ({
+  paginaActual: 0,
+  tamanoPagina: 20,
+  totalElementos: 0,
+  totalPaginas: 0,
+  primera: true,
+  ultima: true,
+});
+
+const MODAL_INICIAL = () => ({
+  visible: false,
+  tipo: TIPOS_POSTULACION.GENERAL,
+  idProyecto: null,
+  nombreProyecto: "",
+  requerimiento: null,
+  actividad: null,
+  fechaEntrega: null,
+});
+
+function normalizarTab(valor) {
+  const tab = String(valor || "").toLowerCase();
+  return TABS.some((item) => item.id === tab) ? tab : "todo";
+}
+
+function normalizarSubtab(valor) {
+  return String(valor || "").toLowerCase() === "actividades"
+    ? "actividades"
+    : "generales";
+}
+
+function idDesdeQuery(valor) {
+  const id = Number(valor);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+// Cancela la tanda de requests en vuelo cuando arranca una búsqueda nueva.
 let controladorBusqueda = null;
+let controladorContadores = null;
 
+/*
+ * Buscador unificado: Todo, Perfiles, Proyectos y Oportunidades.
+ *
+ * Respeta la estructura y el lenguaje visual existentes de la pantalla de
+ * búsqueda. La composición de resultados se hace en el frontend porque no
+ * existe un endpoint global; cada recurso conserva su contrato y su
+ * paginación server-side.
+ */
 export default {
   name: "BuscarView",
   components: {
     BaseAlert,
-    EstadoProyectoBadge,
+    BuscadorSeccion,
+    PerfilBusquedaCard,
+    ProyectoBusquedaCard,
+    OportunidadBusquedaCard,
+    FiltroUbicacion,
+    ModalPostulacion,
+    PaginacionResultados,
   },
   setup() {
     return { toast: useToast() };
   },
   data() {
     return {
-      tab: "perfiles",
-      buscado: { perfiles: false, proyectos: false },
+      tab: "todo",
+      subtabOportunidades: "generales",
+      buscado: {},
       filtros: {
         q: "",
         nombre: "",
@@ -397,6 +499,10 @@ export default {
         valorCaracteristica: "",
         idValorCaracteristica: null,
         estadoProyecto: null,
+        soloMiProfesion: false,
+        soloPostulables: false,
+        excluirYaPostulados: false,
+        ubicacion: { provinciaId: null, localidadId: null },
         tamano: { text: "20 por página", value: 20 },
       },
       opcionesTamano: [
@@ -405,56 +511,93 @@ export default {
         { text: "Ver todos", value: 0 },
       ],
       opcionesEstadoProyecto: OPCIONES_ESTADO_FILTRO,
+      opcionesOrden: [{ text: "Más relevantes", value: "relevancia" }],
+      orden: "relevancia",
       profesiones: [],
       cargandoProfesiones: false,
+      habilidades: [],
+      cargandoHabilidades: false,
       caracteristicas: [],
       cargandoCaracteristicas: false,
       mostrarAvanzado: false,
       perfiles: [],
       proyectos: [],
-      paginacionPerfiles: {
-        paginaActual: 0,
-        tamanoPagina: 20,
-        totalElementos: 0,
-        totalPaginas: 0,
-        primera: true,
-        ultima: true,
+      oportunidades: [],
+      paginacionPerfiles: PAGINACION_INICIAL(),
+      paginacionProyectos: PAGINACION_INICIAL(),
+      paginacionOportunidades: PAGINACION_INICIAL(),
+      todo: {
+        perfiles: [],
+        proyectos: [],
+        oportunidades: [],
       },
-      paginacionProyectos: {
-        paginaActual: 0,
-        tamanoPagina: 20,
-        totalElementos: 0,
-        totalPaginas: 0,
-        primera: true,
-        ultima: true,
+      contadores: {
+        todo: 0,
+        perfiles: 0,
+        proyectos: 0,
+        oportunidades: 0,
       },
+      contadoresOportunidades: {
+        generales: 0,
+        actividades: 0,
+      },
+      recientes: [],
+      claveContadoresCargada: null,
       cargando: true,
       mensajeError: "",
       puedeReintentar: false,
       debounceHandle: null,
       idBusqueda: 0,
       resolucionUbicacionCache: new Map(),
-      claveResultados: null,
-      resultadosCombinados: [],
-      claveResultadosProyectos: null,
-      resultadosCombinadosProyectos: [],
+      modalPostulacion: MODAL_INICIAL(),
+      enviandoPostulacion: false,
+      errorPostulacion: "",
+      errorPostulacionEsDisponibilidad: false,
     };
   },
   computed: {
-    paginacion() {
-      return this.tab === "proyectos"
-        ? this.paginacionProyectos
-        : this.paginacionPerfiles;
+    tabs() {
+      return TABS.map((item) => ({
+        ...item,
+        count: Number(this.contadores[item.id]) || 0,
+      }));
     },
-    resultadosVacios() {
-      return this.tab === "proyectos"
-        ? this.proyectos.length === 0
-        : this.perfiles.length === 0;
+    subtitulo() {
+      if (this.tab === "perfiles") {
+        return "Encontrá profesionales por nombre, profesión o ubicación.";
+      }
+      if (this.tab === "proyectos") {
+        return "Encontrá proyectos por nombre, estado, director, profesión o ubicación.";
+      }
+      if (this.tab === "oportunidades") {
+        return "Requerimientos abiertos para postularte, con filtros por profesión o ubicación.";
+      }
+      return "Perfiles, proyectos y oportunidades en un solo lugar.";
     },
-    placeholderTexto() {
-      return this.tab === "proyectos"
-        ? "Nombre del proyecto o director"
-        : "Nombre, profesión o ubicación";
+    mostrarFiltroProfesion() {
+      return true;
+    },
+    mostrarFiltroUbicacion() {
+      return (
+        this.tab === "todo" ||
+        this.tab === "proyectos" ||
+        this.tab === "oportunidades"
+      );
+    },
+    mostrarFiltroEstado() {
+      return this.tab === "proyectos" || this.tab === "todo";
+    },
+    mostrarTamano() {
+      return this.tab !== "todo";
+    },
+    mostrarAvanzadoBoton() {
+      return this.tab === "perfiles" || this.tab === "todo";
+    },
+    mostrarFiltrosAvanzados() {
+      return this.mostrarAvanzadoBoton && this.mostrarAvanzado;
+    },
+    mostrarFiltrosOportunidad() {
+      return this.tab === "oportunidades" || this.tab === "todo";
     },
     esTodos() {
       return this.filtros.tamano?.value === 0;
@@ -462,7 +605,8 @@ export default {
     caracteristicaSeleccionada() {
       return (
         this.caracteristicas.find(
-          (c) => c.idCaracteristica === this.filtros.idCaracteristica
+          (caracteristica) =>
+            caracteristica.idCaracteristica === this.filtros.idCaracteristica
         ) || null
       );
     },
@@ -482,140 +626,230 @@ export default {
       return tipo === "NUMERICO" ? "number" : "text";
     },
     valoresDeCaracteristica() {
-      const caracteristica = this.caracteristicaSeleccionada;
-      return Array.isArray(caracteristica?.valores) ? caracteristica.valores : [];
+      return Array.isArray(this.caracteristicaSeleccionada?.valores)
+        ? this.caracteristicaSeleccionada.valores
+        : [];
+    },
+    paginacion() {
+      if (this.tab === "perfiles") return this.paginacionPerfiles;
+      if (this.tab === "proyectos") return this.paginacionProyectos;
+      if (this.tab === "oportunidades") return this.paginacionOportunidades;
+      return {
+        ...PAGINACION_INICIAL(),
+        totalElementos: this.contadores.todo,
+        totalPaginas: this.contadores.todo > 0 ? 1 : 0,
+      };
+    },
+    resultadosVacios() {
+      if (this.tab === "todo") {
+        return (
+          this.todo.perfiles.length === 0 &&
+          this.todo.proyectos.length === 0 &&
+          this.todo.oportunidades.length === 0
+        );
+      }
+      if (this.tab === "perfiles") return this.perfiles.length === 0;
+      if (this.tab === "proyectos") return this.proyectos.length === 0;
+      return this.oportunidades.length === 0;
+    },
+    textoResumen() {
+      if (this.tab === "todo") {
+        const total = Number(this.contadores.todo) || 0;
+        return `${total} ${
+          total === 1 ? "resultado" : "resultados"
+        } para tu búsqueda`;
+      }
+      const total = Number(this.paginacion.totalElementos) || 0;
+      const etiqueta =
+        this.tab === "perfiles"
+          ? "perfil(es)"
+          : this.tab === "proyectos"
+            ? "proyecto(s)"
+            : "oportunidad(es)";
+      const pagina = this.esTodos
+        ? ""
+        : ` · Página ${this.paginacion.paginaActual + 1} de ${
+            this.paginacion.totalPaginas || 1
+          }`;
+      return `${total} ${etiqueta} encontrado(s)${pagina}`;
+    },
+    textoVacio() {
+      if (this.tab === "perfiles") {
+        return "No encontramos ningún perfil que coincida con tus criterios de búsqueda.";
+      }
+      if (this.tab === "proyectos") {
+        return "No encontramos ningún proyecto que coincida con tus criterios de búsqueda.";
+      }
+      if (this.tab === "oportunidades") {
+        return "No encontramos oportunidades que coincidan con tus criterios de búsqueda.";
+      }
+      return "No encontramos resultados que coincidan con tu búsqueda.";
+    },
+    modalPostulacionSinFechaEntrega() {
+      return (
+        this.modalPostulacion.tipo === TIPOS_POSTULACION.ACTIVIDAD &&
+        !this.modalPostulacion.fechaEntrega
+      );
+    },
+  },
+  watch: {
+    "$route.query"(nuevo, anterior) {
+      if (JSON.stringify(nuevo) === JSON.stringify(anterior)) return;
+
+      const tab = normalizarTab(nuevo?.tab);
+      const subtab = normalizarSubtab(nuevo?.subtab);
+      const q = typeof nuevo?.q === "string" ? nuevo.q : "";
+      const qActual = this.limpiarTexto(this.filtros.q);
+      const idProfesion = idDesdeQuery(nuevo?.idProfesion);
+      const provinciaId =
+        typeof nuevo?.provinciaId === "string" ? nuevo.provinciaId : null;
+      const localidadId =
+        typeof nuevo?.localidadId === "string" ? nuevo.localidadId : null;
+
+      const provinciaActual = this.filtros.ubicacion?.provinciaId
+        ? String(this.filtros.ubicacion.provinciaId)
+        : null;
+      const localidadActual = this.filtros.ubicacion?.localidadId
+        ? String(this.filtros.ubicacion.localidadId)
+        : null;
+
+      const cambia =
+        tab !== this.tab ||
+        subtab !== this.subtabOportunidades ||
+        q !== qActual ||
+        idProfesion !== this.filtros.idProfesion ||
+        provinciaId !== provinciaActual ||
+        localidadId !== localidadActual;
+
+      if (!cambia) return;
+
+      this.tab = tab;
+      this.subtabOportunidades = subtab;
+      this.filtros.q = q;
+      this.filtros.idProfesion = idProfesion;
+      this.filtros.ubicacion = { provinciaId, localidadId };
+      this.buscar(0);
     },
   },
   async mounted() {
-    const q = this.$route.query.q;
-    if (typeof q === "string" && q.trim()) {
-      this.filtros.q = q.trim();
-    }
-    const tab = this.$route.query.tab;
-    if (tab === "proyectos") {
-      this.tab = "proyectos";
-    }
-    await Promise.all([this.cargarProfesiones(), this.buscar()]);
+    this.sincronizarDesdeRuta();
+    this.cargarRecientes();
+    await Promise.all([
+      this.cargarProfesiones(),
+      this.cargarHabilidades(),
+      this.cargarPerfilActivo(),
+    ]);
+    await this.cargarCaracteristicas();
+    await this.buscar();
   },
-  watch: {
-    "$route.query.q"(nuevo) {
-      const valor = typeof nuevo === "string" ? nuevo.trim() : "";
-      if (valor === this.filtros.q.trim()) return;
-      this.filtros.q = valor;
-      this.buscarAhora();
-    },
-    "$route.query.tab"(nuevo) {
-      const tab = nuevo === "proyectos" ? "proyectos" : "perfiles";
-      if (tab === this.tab) return;
-      this.tab = tab;
-      this.mensajeError = "";
-      this.puedeReintentar = false;
-      if (!this.buscado[tab]) this.buscar(0);
-    },
+  beforeUnmount() {
+    clearTimeout(this.debounceHandle);
+    if (controladorBusqueda) controladorBusqueda.abort();
+    if (controladorContadores) controladorContadores.abort();
   },
   methods: {
+    claveOportunidad,
     limpiarTexto(valor) {
       return String(valor ?? "").trim();
     },
-    inicialDe(valor) {
-      return String(valor || "?").charAt(0).toUpperCase();
-    },
-    ubicacionTexto(perfil) {
-      return formatUbicacion(perfil);
-    },
-    fotoDe(perfil) {
-      return resolverFotoUrl(perfil?.fotoUrl);
-    },
-    habilidadesVisibles(perfil) {
-      const lista = Array.isArray(perfil?.habilidades) ? perfil.habilidades : [];
-      return lista.slice(0, 4);
-    },
-    habilidadesExtras(perfil) {
-      const lista = Array.isArray(perfil?.habilidades) ? perfil.habilidades : [];
-      return Math.max(0, lista.length - 4);
-    },
-    caracteristicasVisibles(perfil) {
-      const lista = Array.isArray(perfil?.caracteristicas)
-        ? perfil.caracteristicas
-        : [];
-      return lista.slice(0, LIMITE_CARACTERISTICAS_CARD);
-    },
-    caracteristicasExtras(perfil) {
-      const lista = Array.isArray(perfil?.caracteristicas)
-        ? perfil.caracteristicas
-        : [];
-      return Math.max(0, lista.length - LIMITE_CARACTERISTICAS_CARD);
-    },
-    etiquetaCarac(codigo) {
-      const n = normCodigo(codigo);
-      if (ETIQUETAS_CARAC[n]) return ETIQUETAS_CARAC[n];
-      return this.capitalizar(codigo) || "—";
-    },
-    valorCarac(caracteristica) {
-      const raw = caracteristica?.codigoValor || caracteristica?.valor;
-      if (raw == null || raw === "") return "—";
-      const n = normCodigo(raw);
-      if (ETIQUETAS_VALORES[n]) return ETIQUETAS_VALORES[n];
-      return this.capitalizar(raw) || raw;
-    },
-    unidadCarac(caracteristica) {
-      const unidad = UNIDADES_POR_CODIGO[normCodigo(caracteristica?.codigo)];
-      return unidad ? ` ${unidad}` : "";
-    },
-    capitalizar(texto) {
-      const palabras = String(texto || "")
-        .toLowerCase()
-        .split(/[_\-]+/)
-        .filter(Boolean)
-        .map((p) => p.charAt(0).toUpperCase() + p.slice(1));
-      return palabras.join(" ");
-    },
-    textoCaracteristica(caracteristica) {
-      if (!caracteristica) return "";
-      if (caracteristica.codigoValor) return this.valorCarac(caracteristica);
-      const etiqueta = this.etiquetaCarac(caracteristica.codigo);
-      const valor = caracteristica.valor;
-      if (valor == null || valor === "") return etiqueta;
-      return `${etiqueta} ${this.valorCarac(caracteristica)}${this.unidadCarac(
-        caracteristica
-      )}`;
-    },
-    colorValido(caracteristica) {
-      const color = caracteristica?.codigoValor ? caracteristica?.colorHex : null;
-      return typeof color === "string" && /^#[0-9A-Fa-f]{6}$/.test(color);
-    },
-    estiloColorCaracteristica(caracteristica) {
-      if (!this.colorValido(caracteristica)) return {};
-      const color = caracteristica.colorHex;
-      return { backgroundColor: color, color: this.textoContraste(color) };
-    },
-    textoContraste(colorHex) {
-      const hex = colorHex.replace("#", "");
-      const canal = (valor) => {
-        const v = parseInt(valor, 16) / 255;
-        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    sincronizarDesdeRuta() {
+      const tab = normalizarTab(this.$route.query.tab);
+      this.tab = tab;
+      this.subtabOportunidades = normalizarSubtab(this.$route.query.subtab);
+      this.filtros.q =
+        typeof this.$route.query.q === "string" ? this.$route.query.q : "";
+      this.filtros.idProfesion = idDesdeQuery(this.$route.query.idProfesion);
+      this.filtros.ubicacion = {
+        provinciaId:
+          typeof this.$route.query.provinciaId === "string"
+            ? this.$route.query.provinciaId
+            : null,
+        localidadId:
+          typeof this.$route.query.localidadId === "string"
+            ? this.$route.query.localidadId
+            : null,
       };
-      const luminancia =
-        0.2126 * canal(hex.slice(0, 2)) +
-        0.7152 * canal(hex.slice(2, 4)) +
-        0.0722 * canal(hex.slice(4, 6));
-      return luminancia > 0.45 ? "#1f2937" : "#ffffff";
     },
-    irAPerfil(perfil) {
-      if (perfil?.idPerfil) {
-        this.$router.push({ name: "ver-perfil", params: { id: perfil.idPerfil } });
+    sincronizarRuta() {
+      const query = { ...this.$route.query };
+      const texto = this.limpiarTexto(this.filtros.q);
+      if (texto) query.q = texto;
+      else delete query.q;
+
+      if (this.tab === "todo") delete query.tab;
+      else query.tab = this.tab;
+
+      if (this.tab === "oportunidades") {
+        query.subtab = this.subtabOportunidades;
+      } else {
+        delete query.subtab;
       }
+
+      if (this.filtros.idProfesion != null) {
+        query.idProfesion = String(this.filtros.idProfesion);
+      } else {
+        delete query.idProfesion;
+      }
+
+      if (this.filtros.ubicacion.provinciaId) {
+        query.provinciaId = this.filtros.ubicacion.provinciaId;
+      } else {
+        delete query.provinciaId;
+      }
+
+      if (this.filtros.ubicacion.localidadId) {
+        query.localidadId = this.filtros.ubicacion.localidadId;
+      } else {
+        delete query.localidadId;
+      }
+
+      this.$router.replace({ name: "buscar", query }).catch(() => {});
     },
     async cargarProfesiones() {
       this.cargandoProfesiones = true;
       try {
         const response = await perfilService.listarProfesiones();
         const datos = response?.data;
-        this.profesiones = Array.isArray(datos) ? datos : datos?.profesiones || [];
+        this.profesiones = Array.isArray(datos)
+          ? datos
+          : datos?.profesiones || [];
       } catch {
         this.profesiones = [];
       } finally {
         this.cargandoProfesiones = false;
+      }
+    },
+    async cargarHabilidades() {
+      this.cargandoHabilidades = true;
+      try {
+        const response = await habilidadService.listar();
+        const datos = response?.data;
+        this.habilidades = Array.isArray(datos)
+          ? datos
+          : datos?.habilidades || [];
+      } catch {
+        this.habilidades = [];
+      } finally {
+        this.cargandoHabilidades = false;
+      }
+    },
+    async cargarPerfilActivo() {
+      if (this.filtros.idProfesion != null) return;
+      const id = idPerfilActivo();
+      if (id == null) return;
+      try {
+        const response = await perfilService.obtener(id);
+        const idProfesion = Number(response?.data?.idProfesion);
+        if (
+          this.filtros.idProfesion == null &&
+          Number.isFinite(idProfesion) &&
+          idProfesion > 0
+        ) {
+          this.filtros.idProfesion = idProfesion;
+          this.sincronizarRuta();
+        }
+      } catch {
+        // Sin perfil activo o sin acceso: la búsqueda sigue sin precarga.
       }
     },
     limpiarRamaCaracteristica() {
@@ -632,22 +866,55 @@ export default {
       }
       this.cargandoCaracteristicas = true;
       try {
-        const response = await perfilService.caracteristicasPorProfesion(idProfesion);
+        const response =
+          await perfilService.caracteristicasPorProfesion(idProfesion);
         if (idProfesion !== this.filtros.idProfesion) return;
         const datos = response?.data;
         this.caracteristicas = Array.isArray(datos) ? datos : [];
       } catch {
-        if (idProfesion === this.filtros.idProfesion) this.caracteristicas = [];
+        if (idProfesion === this.filtros.idProfesion) {
+          this.caracteristicas = [];
+        }
       } finally {
         if (idProfesion === this.filtros.idProfesion) {
           this.cargandoCaracteristicas = false;
         }
       }
     },
-    cambiarProfesion() {
-      this.limpiarRamaCaracteristica();
+    cambiarUbicacion(ubicacion) {
+      this.filtros.ubicacion = {
+        provinciaId:
+          ubicacion?.provinciaId != null
+            ? String(ubicacion.provinciaId)
+            : null,
+        localidadId:
+          ubicacion?.localidadId != null
+            ? String(ubicacion.localidadId)
+            : null,
+      };
+      this.sincronizarRuta();
       this.buscarAhora();
-      this.cargarCaracteristicas();
+    },
+    cambiarProfesion() {
+      this.filtros.soloMiProfesion = false;
+      this.limpiarRamaCaracteristica();
+      this.sincronizarRuta();
+      if (this.tab === "perfiles" || this.tab === "todo") {
+        this.cargarCaracteristicas();
+      } else {
+        this.caracteristicas = [];
+        this.cargandoCaracteristicas = false;
+      }
+      this.buscarAhora();
+    },
+    cambiarSoloMiProfesion() {
+      if (this.filtros.soloMiProfesion) {
+        this.filtros.idProfesion = null;
+        this.limpiarRamaCaracteristica();
+        this.caracteristicas = [];
+        this.sincronizarRuta();
+      }
+      this.buscarAhora();
     },
     cambiarCaracteristica() {
       this.filtros.valorCaracteristica = "";
@@ -662,76 +929,130 @@ export default {
       clearTimeout(this.debounceHandle);
       this.buscar(0);
     },
-    cambiarPagina(delta) {
-      const destino = this.paginacion.paginaActual + delta;
-      if (destino < 0 || destino >= this.paginacion.totalPaginas) return;
-      this.buscar(destino);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    limpiarFiltros() {
-      if (this.tab === "proyectos") {
-        this.filtros.estadoProyecto = null;
-        this.claveResultadosProyectos = null;
-        this.resultadosCombinadosProyectos = [];
-      } else {
-        this.filtros.nombre = "";
-        this.filtros.apellido = "";
-        this.filtros.idProfesion = null;
-        this.filtros.idCaracteristica = null;
-        this.filtros.valorCaracteristica = "";
-        this.filtros.idValorCaracteristica = null;
-        this.caracteristicas = [];
-        this.cargandoCaracteristicas = false;
-        this.claveResultados = null;
-        this.resultadosCombinados = [];
-      }
-      this.filtros.q = "";
-      this.filtros.tamano = { text: "20 por página", value: 20 };
-      const query = { ...this.$route.query };
-      delete query.q;
-      if (Object.keys(query).length > 0 || this.$route.query.q) {
-        this.$router.replace({ query });
-      }
+    buscarDesdeCabecera() {
+      this.guardarReciente(this.filtros.q);
+      this.sincronizarRuta();
       this.buscarAhora();
+    },
+    cargarRecientes() {
+      try {
+        const crudo = localStorage.getItem(CLAVE_RECIENTES);
+        const lista = crudo ? JSON.parse(crudo) : [];
+        this.recientes = Array.isArray(lista)
+          ? lista.filter((item) => typeof item === "string").slice(0, MAX_RECIENTES)
+          : [];
+      } catch {
+        this.recientes = [];
+      }
+    },
+    guardarReciente(texto) {
+      const termino = this.limpiarTexto(texto);
+      if (!termino) return;
+      this.recientes = [
+        termino,
+        ...this.recientes.filter((item) => item !== termino),
+      ].slice(0, MAX_RECIENTES);
+      try {
+        localStorage.setItem(CLAVE_RECIENTES, JSON.stringify(this.recientes));
+      } catch {
+        // almacenamiento no disponible: se mantiene solo en memoria
+      }
+    },
+    aplicarReciente(texto) {
+      this.filtros.q = texto;
+      this.buscarDesdeCabecera();
     },
     cambiarTab(tab) {
       if (tab === this.tab) return;
       this.tab = tab;
       this.mensajeError = "";
       this.puedeReintentar = false;
-      this.sincronizarQueryTab();
-      if (!this.buscado[tab]) this.buscar(0);
+      this.sincronizarRuta();
+      this.buscar(0);
     },
-    sincronizarQueryTab() {
-      const query = { ...this.$route.query };
-      if (this.tab === "proyectos") {
-        query.tab = "proyectos";
-      } else {
-        delete query.tab;
+    cambiarSubtabOportunidades(subtab) {
+      if (subtab === this.subtabOportunidades) return;
+      this.subtabOportunidades = subtab;
+      this.sincronizarRuta();
+      this.buscar(0);
+    },
+    cambiarPagina(delta) {
+      const paginacion = this.paginacion;
+      const destino = paginacion.paginaActual + delta;
+      if (destino < 0 || destino >= paginacion.totalPaginas) return;
+      this.buscar(destino);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    limpiarFiltros() {
+      this.filtros.q = "";
+      this.filtros.nombre = "";
+      this.filtros.apellido = "";
+      this.filtros.idProfesion = null;
+      this.filtros.idCaracteristica = null;
+      this.filtros.valorCaracteristica = "";
+      this.filtros.idValorCaracteristica = null;
+      this.filtros.estadoProyecto = null;
+      this.filtros.soloMiProfesion = false;
+      this.filtros.soloPostulables = false;
+      this.filtros.excluirYaPostulados = false;
+      this.filtros.ubicacion = { provinciaId: null, localidadId: null };
+      this.filtros.tamano = { text: "20 por página", value: 20 };
+      this.caracteristicas = [];
+      this.cargandoCaracteristicas = false;
+      this.sincronizarRuta();
+      this.buscarAhora();
+    },
+    tamanoActual() {
+      return this.filtros.tamano?.value ?? 20;
+    },
+    paginacionInicial() {
+      return PAGINACION_INICIAL();
+    },
+    normalizarPagina(data) {
+      return {
+        paginaActual: data?.paginaActual ?? 0,
+        tamanoPagina: data?.tamanoPagina ?? 20,
+        totalElementos: data?.totalElementos ?? 0,
+        totalPaginas: data?.totalPaginas ?? 1,
+        primera: data?.primera ?? true,
+        ultima: data?.ultima ?? true,
+      };
+    },
+    paginar(listado, page, size) {
+      const totalElementos = listado.length;
+      if (!size) {
+        return {
+          paginaActual: 0,
+          tamanoPagina: totalElementos,
+          totalElementos,
+          totalPaginas: 1,
+          primera: true,
+          ultima: true,
+          contenido: listado,
+        };
       }
-      this.$router.replace({ query });
+      const totalPaginas = Math.max(1, Math.ceil(totalElementos / size));
+      const pagina = Math.min(Math.max(page, 0), totalPaginas - 1);
+      return {
+        paginaActual: pagina,
+        tamanoPagina: size,
+        totalElementos,
+        totalPaginas,
+        primera: pagina === 0,
+        ultima: pagina >= totalPaginas - 1,
+        contenido: listado.slice(pagina * size, (pagina + 1) * size),
+      };
     },
-    /**
-     * Filtros explícitos del panel (sin texto libre ni paginación).
-     * Se aplican a la ruta simple y a cada variante del fan-out,
-     * de modo que el AND del sistema sigue respetándose por request.
-     */
     buildParamsBase() {
       const params = {};
       const nombre = this.limpiarTexto(this.filtros.nombre);
-      if (nombre) {
-        params.nombre = nombre;
-      }
       const apellido = this.limpiarTexto(this.filtros.apellido);
-      if (apellido) {
-        params.apellido = apellido;
-      }
+      if (nombre) params.nombre = nombre;
+      if (apellido) params.apellido = apellido;
       if (this.filtros.idProfesion != null) {
         params.idProfesion = this.filtros.idProfesion;
       }
 
-      // idCaracteristica es contenedor de valorCaracteristica/idValorCaracteristica;
-      // idValorCaracteristica tiene prioridad sobre el texto (ficha UC-16 §2.2).
       if (this.filtros.idCaracteristica != null) {
         params.idCaracteristica = this.filtros.idCaracteristica;
         const idValor = this.filtros.idValorCaracteristica;
@@ -744,34 +1065,40 @@ export default {
       }
       return params;
     },
-    // Sin texto libre: una sola request con paginación del servidor.
-    buildParams(page) {
-      const params = this.buildParamsBase();
-      const size = this.filtros.tamano?.value ?? 20;
-      if (size === 0) {
-        params.todos = true;
-      } else {
-        params.page = page;
-        params.size = size;
-      }
-      return params;
-    },
-    /**
-     * Filtros explícitos del tab de proyectos (sin texto libre ni paginación).
-     * El estado se aplica a la ruta simple y a cada variante del fan-out,
-     * de modo que el AND del sistema sigue respetándose por request.
-     */
     buildParamsProyectoBase() {
       const params = {};
       if (this.filtros.estadoProyecto) {
         params.estado = this.filtros.estadoProyecto;
       }
+      if (this.filtros.idProfesion != null) {
+        params.idProfesion = this.filtros.idProfesion;
+      }
+      if (this.filtros.ubicacion?.provinciaId) {
+        params.provinciaId = this.filtros.ubicacion.provinciaId;
+      }
+      if (this.filtros.ubicacion?.localidadId) {
+        params.localidadId = this.filtros.ubicacion.localidadId;
+      }
       return params;
     },
-    buildParamsProyecto(page) {
-      const params = this.buildParamsProyectoBase();
-      const size = this.filtros.tamano?.value ?? 20;
-      if (size === 0) {
+    buildParamsOportunidad(page, size, todos = false) {
+      const params = {};
+      const texto = this.limpiarTexto(this.filtros.q);
+      if (texto) params.texto = texto;
+      if (this.filtros.idProfesion != null) {
+        params.idProfesion = this.filtros.idProfesion;
+      }
+      if (this.filtros.soloMiProfesion) params.soloMiProfesion = true;
+      if (this.filtros.soloPostulables) params.soloPostulables = true;
+      if (this.filtros.excluirYaPostulados) params.excluirYaPostulados = true;
+      if (this.filtros.ubicacion?.provinciaId) {
+        params.provinciaId = this.filtros.ubicacion.provinciaId;
+      }
+      if (this.filtros.ubicacion?.localidadId) {
+        params.localidadId = this.filtros.ubicacion.localidadId;
+      }
+
+      if (todos || !size) {
         params.todos = true;
       } else {
         params.page = page;
@@ -779,23 +1106,6 @@ export default {
       }
       return params;
     },
-    normalizarPagina(data) {
-      return {
-        paginaActual: data.paginaActual ?? 0,
-        tamanoPagina: data.tamanoPagina ?? 20,
-        totalElementos: data.totalElementos ?? 0,
-        totalPaginas: data.totalPaginas ?? 1,
-        primera: data.primera ?? true,
-        ultima: data.ultima ?? true,
-      };
-    },
-    /**
-     * Decide si el texto libre corresponde al catálogo Georef.
-     * Prioridad: provincia > localidad; si no coincide o el catálogo
-     * falla, devuelve null (la tanda no incluye variante de ubicación).
-     * Se memoiza por texto (los catálogos son estáticos) para no repetir
-     * requests Georef en cada página o cada debounce.
-     */
     async resolverFiltroUbicacion(texto) {
       const consulta = this.limpiarTexto(texto).toLowerCase();
       if (consulta.length < LONGITUD_MIN_UBICACION) return null;
@@ -807,16 +1117,21 @@ export default {
       let catalogoOk = true;
       try {
         const provResponse = await usuarioService.listarProvincias();
-        const provincias = Array.isArray(provResponse?.data) ? provResponse.data : [];
+        const provincias = Array.isArray(provResponse?.data)
+          ? provResponse.data
+          : [];
 
         resolucion = resolverUbicacionTexto(texto, provincias);
         if (!resolucion) {
-          const locResponse = await usuarioService.listarLocalidades({ nombre: texto });
-          const localidades = Array.isArray(locResponse?.data) ? locResponse.data : [];
+          const locResponse = await usuarioService.listarLocalidades({
+            nombre: texto,
+          });
+          const localidades = Array.isArray(locResponse?.data)
+            ? locResponse.data
+            : [];
           resolucion = resolverUbicacionTexto(texto, provincias, localidades);
         }
       } catch {
-        // Fallo transitorio del catálogo: no se cachea, se reintenta después.
         resolucion = null;
         catalogoOk = false;
       }
@@ -829,30 +1144,23 @@ export default {
       }
       return resolucion;
     },
-    /**
-     * El sistema combina los filtros con AND, así que la unión OR del texto
-     * libre se resuelve disparando una variante por campo (todas con
-     * todos=true: la paginación se resuelve después sobre el merge).
-     * Si el panel ya ocupó la clave (nombre/apellido), esa variante se
-     * descarta para no mandar el mismo parámetro duplicado.
-     */
-    async variantesDeTexto(texto) {
-      const base = this.buildParamsBase();
+    async variantesDeTexto(texto, base) {
       const claves = ["nombreArtistico", "nombre", "apellido", "profesion"];
       const variantes = claves
         .filter((clave) => base[clave] === undefined)
+        .filter((clave) => !(clave === "profesion" && base.idProfesion != null))
         .map((clave) => ({ ...base, todos: true, [clave]: texto }));
 
       const ubicacion = await this.resolverFiltroUbicacion(texto);
       if (ubicacion) {
-        variantes.push({ ...base, todos: true, [ubicacion.tipo]: ubicacion.valor });
+        variantes.push({
+          ...base,
+          todos: true,
+          [ubicacion.tipo]: ubicacion.valor,
+        });
       }
       return variantes;
     },
-    /**
-     * Une las respuestas de la tanda: dedupe por idPerfil y orden por
-     * nombreArtistico asc (replica el orden fijo que trae el sistema).
-     */
     combinarResultados(respuestas) {
       const vistos = new Map();
       for (const respuesta of respuestas) {
@@ -873,13 +1181,7 @@ export default {
         )
       );
     },
-    /**
-     * Unión OR del texto libre sobre proyectos: nombre del proyecto y
-     * director (nombre artístico o nombre/apellido), espejo del fan-out
-     * de perfiles pero con los dos campos que ofrece la ficha UC-29.
-     */
-    variantesDeTextoProyecto(texto) {
-      const base = this.buildParamsProyectoBase();
+    variantesDeTextoProyecto(texto, base) {
       return ["nombre", "director"].map((clave) => ({
         ...base,
         todos: true,
@@ -904,53 +1206,236 @@ export default {
         })
       );
     },
-    /**
-     * Paginación en cliente sobre el listado combinado, con la misma
-     * forma de PaginaResponse que consume la vista.
-     */
-    paginar(listado, page) {
-      const size = this.filtros.tamano?.value ?? 20;
-      const totalElementos = listado.length;
+    async consultarPerfiles(
+      { page = 0, size = 20, todos = false } = {},
+      signal
+    ) {
+      const base = this.buildParamsBase();
+      const texto = this.limpiarTexto(this.filtros.q);
 
-      if (size === 0) {
+      if (!texto) {
+        const params = { ...base };
+        if (todos || !size) params.todos = true;
+        else {
+          params.page = page;
+          params.size = size;
+        }
+        const response = await perfilService.buscar(params, signal);
+        const data = response?.data || {};
         return {
-          paginaActual: 0,
-          tamanoPagina: totalElementos,
-          totalElementos,
-          totalPaginas: 1,
-          primera: true,
-          ultima: true,
-          contenido: listado,
+          items: Array.isArray(data.contenido) ? data.contenido : [],
+          paginacion: this.normalizarPagina(data),
         };
       }
 
-      const totalPaginas = Math.max(1, Math.ceil(totalElementos / size));
-      const pagina = Math.min(Math.max(page, 0), totalPaginas - 1);
+      const variantes = await this.variantesDeTexto(texto, base);
+      const respuestas = await Promise.all(
+        variantes.map((params) => perfilService.buscar(params, signal))
+      );
+      const listado = this.combinarResultados(respuestas);
+      const pagina = this.paginar(listado, page, size);
+      return { items: pagina.contenido, paginacion: pagina };
+    },
+    async consultarProyectos(
+      { page = 0, size = 20, todos = false } = {},
+      signal
+    ) {
+      const base = this.buildParamsProyectoBase();
+      const texto = this.limpiarTexto(this.filtros.q);
+
+      if (!texto) {
+        const params = { ...base };
+        if (todos || !size) params.todos = true;
+        else {
+          params.page = page;
+          params.size = size;
+        }
+        const response = await proyectoService.buscar(params, signal);
+        const data = response?.data || {};
+        return {
+          items: Array.isArray(data.contenido) ? data.contenido : [],
+          paginacion: this.normalizarPagina(data),
+        };
+      }
+
+      const variantes = this.variantesDeTextoProyecto(texto, base);
+      const respuestas = await Promise.all(
+        variantes.map((params) => proyectoService.buscar(params, signal))
+      );
+      const listado = this.combinarProyectos(respuestas);
+      const pagina = this.paginar(listado, page, size);
+      return { items: pagina.contenido, paginacion: pagina };
+    },
+    async consultarOportunidadesPorTipo(
+      tipo,
+      { page = 0, size = 20, todos = false } = {},
+      signal
+    ) {
+      const params = this.buildParamsOportunidad(page, size, todos);
+      const response =
+        tipo === TIPOS_POSTULACION.ACTIVIDAD
+          ? await requerimientoService.buscarActividades(params, signal)
+          : await requerimientoService.buscarGenerales(params, signal);
+      const data = response?.data || {};
       return {
-        paginaActual: pagina,
-        tamanoPagina: size,
-        totalElementos,
-        totalPaginas,
-        primera: pagina === 0,
-        ultima: pagina >= totalPaginas - 1,
-        contenido: listado.slice(pagina * size, (pagina + 1) * size),
+        items: Array.isArray(data.contenido) ? data.contenido : [],
+        paginacion: this.normalizarPagina(data),
       };
     },
-    /** Despacha la búsqueda al tab activo. */
+    resultadoSeguro(resultado, etiqueta, errores) {
+      if (resultado.status === "fulfilled") return resultado.value;
+      errores.push(etiqueta);
+      return { items: [], paginacion: this.paginacionInicial() };
+    },
+    async cargarTodo(signal, corrida) {
+      const [perfilesRes, proyectosRes, generalesRes, actividadesRes] =
+        await Promise.allSettled([
+          this.consultarPerfiles({ page: 0, size: 3 }, signal),
+          this.consultarProyectos({ page: 0, size: 3 }, signal),
+          this.consultarOportunidadesPorTipo(
+            TIPOS_POSTULACION.GENERAL,
+            { page: 0, size: 3 },
+            signal
+          ),
+          this.consultarOportunidadesPorTipo(
+            TIPOS_POSTULACION.ACTIVIDAD,
+            { page: 0, size: 3 },
+            signal
+          ),
+        ]);
+
+      if (corrida !== this.idBusqueda) return;
+
+      const errores = [];
+      const perfiles = this.resultadoSeguro(
+        perfilesRes,
+        "perfiles",
+        errores
+      );
+      const proyectos = this.resultadoSeguro(
+        proyectosRes,
+        "proyectos",
+        errores
+      );
+      const generales = this.resultadoSeguro(
+        generalesRes,
+        "oportunidades generales",
+        errores
+      );
+      const actividades = this.resultadoSeguro(
+        actividadesRes,
+        "oportunidades de actividad",
+        errores
+      );
+
+      this.todo.perfiles = perfiles.items;
+      this.todo.proyectos = proyectos.items;
+      this.todo.oportunidades = [
+        ...generales.items,
+        ...actividades.items,
+      ].slice(0, 3);
+
+      this.contadores.perfiles = perfiles.paginacion.totalElementos;
+      this.contadores.proyectos = proyectos.paginacion.totalElementos;
+      this.contadoresOportunidades = {
+        generales: generales.paginacion.totalElementos,
+        actividades: actividades.paginacion.totalElementos,
+      };
+      this.contadores.oportunidades =
+        this.contadoresOportunidades.generales +
+        this.contadoresOportunidades.actividades;
+      this.actualizarContadorTodo();
+
+      if (errores.length) {
+        this.mensajeError =
+          errores.length === 4
+            ? "No se pudieron cargar los resultados. Intentá nuevamente."
+            : `No se pudieron cargar: ${errores.join(", ")}.`;
+        this.puedeReintentar = true;
+      } else {
+        this.claveContadoresCargada = this.claveContadoresActual();
+      }
+    },
+    actualizarContadorTodo() {
+      this.contadores.todo =
+        this.contadores.perfiles +
+        this.contadores.proyectos +
+        this.contadores.oportunidades;
+    },
+    claveContadoresActual() {
+      return JSON.stringify({
+        q: this.limpiarTexto(this.filtros.q),
+        idProfesion: this.filtros.idProfesion,
+        estadoProyecto: this.filtros.estadoProyecto,
+        idCaracteristica: this.filtros.idCaracteristica,
+        idValorCaracteristica: this.filtros.idValorCaracteristica,
+        valorCaracteristica: this.limpiarTexto(
+          this.filtros.valorCaracteristica
+        ),
+        soloMiProfesion: this.filtros.soloMiProfesion,
+        soloPostulables: this.filtros.soloPostulables,
+        excluirYaPostulados: this.filtros.excluirYaPostulados,
+        provinciaId: this.filtros.ubicacion?.provinciaId || null,
+        localidadId: this.filtros.ubicacion?.localidadId || null,
+      });
+    },
+    /**
+     * Mantiene los contadores de las pestañas inactivas sin duplicar
+     * resultados visibles. Se ejecuta sólo cuando cambian los filtros.
+     */
+    async actualizarContadoresGlobales() {
+      const clave = this.claveContadoresActual();
+      if (clave === this.claveContadoresCargada) return;
+
+      if (controladorContadores) controladorContadores.abort();
+      controladorContadores = new AbortController();
+      const signal = controladorContadores.signal;
+
+      const [perfilesRes, proyectosRes, generalesRes, actividadesRes] =
+        await Promise.allSettled([
+          this.consultarPerfiles({ page: 0, size: 1 }, signal),
+          this.consultarProyectos({ page: 0, size: 1 }, signal),
+          this.consultarOportunidadesPorTipo(
+            TIPOS_POSTULACION.GENERAL,
+            { page: 0, size: 1 },
+            signal
+          ),
+          this.consultarOportunidadesPorTipo(
+            TIPOS_POSTULACION.ACTIVIDAD,
+            { page: 0, size: 1 },
+            signal
+          ),
+        ]);
+
+      if (signal.aborted || clave !== this.claveContadoresActual()) return;
+
+      if (perfilesRes.status === "fulfilled") {
+        this.contadores.perfiles =
+          perfilesRes.value.paginacion.totalElementos;
+      }
+      if (proyectosRes.status === "fulfilled") {
+        this.contadores.proyectos =
+          proyectosRes.value.paginacion.totalElementos;
+      }
+      if (generalesRes.status === "fulfilled") {
+        this.contadoresOportunidades.generales =
+          generalesRes.value.paginacion.totalElementos;
+      }
+      if (actividadesRes.status === "fulfilled") {
+        this.contadoresOportunidades.actividades =
+          actividadesRes.value.paginacion.totalElementos;
+      }
+      this.contadores.oportunidades =
+        this.contadoresOportunidades.generales +
+        this.contadoresOportunidades.actividades;
+      this.actualizarContadorTodo();
+      this.claveContadoresCargada = clave;
+    },
     async buscar(page = 0) {
       this.buscado[this.tab] = true;
-      if (this.tab === "proyectos") {
-        await this.buscarProyectos(page);
-      } else {
-        await this.buscarPerfiles(page);
-      }
-    },
-    async buscarPerfiles(page = 0) {
-      // Token de corrida: si llega una búsqueda nueva mientras esta sigue
-      // resolviendo la tanda, se descarta; la anterior se corta además
-      // con AbortController.
       const corrida = ++this.idBusqueda;
       if (controladorBusqueda) controladorBusqueda.abort();
+      if (controladorContadores) controladorContadores.abort();
       controladorBusqueda = new AbortController();
       const signal = controladorBusqueda.signal;
 
@@ -959,120 +1444,58 @@ export default {
       this.puedeReintentar = false;
 
       try {
-        const texto = this.limpiarTexto(this.filtros.q);
-
-        // Sin texto libre: una sola request con paginación del servidor.
-        if (!texto) {
-          const response = await perfilService.buscar(this.buildParams(page), signal);
-          if (corrida !== this.idBusqueda) return;
-          const data = response?.data || {};
-          this.perfiles = Array.isArray(data.contenido) ? data.contenido : [];
-          this.paginacionPerfiles = this.normalizarPagina(data);
+        if (this.tab === "todo") {
+          await this.cargarTodo(signal, corrida);
           return;
         }
 
-        // Con texto libre: unión OR en paralelo (nombre artístico, nombre,
-        // apellido, profesión y ubicación Georef) + merge + paginación cliente.
-        const variantes = await this.variantesDeTexto(texto);
-        if (corrida !== this.idBusqueda) return;
-
-        const clave = JSON.stringify({ texto, variantes });
-        let listado;
-        if (this.claveResultados === clave) {
-          // Mismo texto y mismos filtros: se reutiliza el merge (cambio de página
-          // o de tamaño no vuelve a llamar al sistema).
-          listado = this.resultadosCombinados;
-        } else {
-          const respuestas = await Promise.all(
-            variantes.map((params) => perfilService.buscar(params, signal))
-          );
-          if (corrida !== this.idBusqueda) return;
-          listado = this.combinarResultados(respuestas);
-          this.claveResultados = clave;
-          this.resultadosCombinados = listado;
-        }
-
-        const pagina = this.paginar(listado, page);
-        this.perfiles = pagina.contenido;
-        this.paginacionPerfiles = {
-          paginaActual: pagina.paginaActual,
-          tamanoPagina: pagina.tamanoPagina,
-          totalElementos: pagina.totalElementos,
-          totalPaginas: pagina.totalPaginas,
-          primera: pagina.primera,
-          ultima: pagina.ultima,
-        };
-      } catch (error) {
-        if (
-          corrida !== this.idBusqueda ||
-          error?.code === "ERR_CANCELED" ||
-          error?.name === "CanceledError"
-        ) {
-          return;
-        }
-        const status = error?.response?.status;
-        this.perfiles = [];
-        this.manejarErrorBusqueda(error, status, "perfiles");
-      } finally {
-        if (corrida === this.idBusqueda) this.cargando = false;
-      }
-    },
-    async buscarProyectos(page = 0) {
-      const corrida = ++this.idBusqueda;
-      if (controladorBusqueda) controladorBusqueda.abort();
-      controladorBusqueda = new AbortController();
-      const signal = controladorBusqueda.signal;
-
-      this.cargando = true;
-      this.mensajeError = "";
-      this.puedeReintentar = false;
-
-      try {
-        const texto = this.limpiarTexto(this.filtros.q);
-
-        // Sin texto libre: una sola request con paginación del servidor.
-        // Los criterios son opcionales (ficha UC-29): la búsqueda vacía
-        // lista todos los proyectos visibles para el perfil activo.
-        if (!texto) {
-          const response = await proyectoService.buscar(
-            this.buildParamsProyecto(page),
+        if (this.tab === "oportunidades") {
+          const tipo =
+            this.subtabOportunidades === "actividades"
+              ? TIPOS_POSTULACION.ACTIVIDAD
+              : TIPOS_POSTULACION.GENERAL;
+          const resultado = await this.consultarOportunidadesPorTipo(
+            tipo,
+            { page, size: this.tamanoActual() },
             signal
           );
           if (corrida !== this.idBusqueda) return;
-          const data = response?.data || {};
-          this.proyectos = Array.isArray(data.contenido) ? data.contenido : [];
-          this.paginacionProyectos = this.normalizarPagina(data);
+          this.oportunidades = resultado.items;
+          this.paginacionOportunidades = resultado.paginacion;
+          this.contadoresOportunidades[this.subtabOportunidades] =
+            resultado.paginacion.totalElementos;
+          this.contadores.oportunidades =
+            this.contadoresOportunidades.generales +
+            this.contadoresOportunidades.actividades;
+          this.actualizarContadorTodo();
+          this.actualizarContadoresGlobales();
           return;
         }
 
-        // Con texto libre: unión OR (nombre del proyecto o director) +
-        // merge + paginación cliente.
-        const variantes = this.variantesDeTextoProyecto(texto);
-
-        const clave = JSON.stringify({ texto, variantes });
-        let listado;
-        if (this.claveResultadosProyectos === clave) {
-          listado = this.resultadosCombinadosProyectos;
-        } else {
-          const respuestas = await Promise.all(
-            variantes.map((params) => proyectoService.buscar(params, signal))
+        if (this.tab === "proyectos") {
+          const resultado = await this.consultarProyectos(
+            { page, size: this.tamanoActual() },
+            signal
           );
           if (corrida !== this.idBusqueda) return;
-          listado = this.combinarProyectos(respuestas);
-          this.claveResultadosProyectos = clave;
-          this.resultadosCombinadosProyectos = listado;
+          this.proyectos = resultado.items;
+          this.paginacionProyectos = resultado.paginacion;
+          this.contadores.proyectos = resultado.paginacion.totalElementos;
+          this.actualizarContadorTodo();
+          this.actualizarContadoresGlobales();
+          return;
         }
 
-        const pagina = this.paginar(listado, page);
-        this.proyectos = pagina.contenido;
-        this.paginacionProyectos = {
-          paginaActual: pagina.paginaActual,
-          tamanoPagina: pagina.tamanoPagina,
-          totalElementos: pagina.totalElementos,
-          totalPaginas: pagina.totalPaginas,
-          primera: pagina.primera,
-          ultima: pagina.ultima,
-        };
+        const resultado = await this.consultarPerfiles(
+          { page, size: this.tamanoActual() },
+          signal
+        );
+        if (corrida !== this.idBusqueda) return;
+        this.perfiles = resultado.items;
+        this.paginacionPerfiles = resultado.paginacion;
+        this.contadores.perfiles = resultado.paginacion.totalElementos;
+        this.actualizarContadorTodo();
+        this.actualizarContadoresGlobales();
       } catch (error) {
         if (
           corrida !== this.idBusqueda ||
@@ -1081,33 +1504,70 @@ export default {
         ) {
           return;
         }
-        const status = error?.response?.status;
-        this.proyectos = [];
-        this.manejarErrorBusqueda(error, status, "proyectos");
+        this.limpiarResultadosTab();
+        this.manejarErrorBusqueda(error);
       } finally {
         if (corrida === this.idBusqueda) this.cargando = false;
       }
     },
-    manejarErrorBusqueda(error, status, recurso) {
+    limpiarResultadosTab() {
+      if (this.tab === "perfiles") {
+        this.perfiles = [];
+        this.paginacionPerfiles = this.paginacionInicial();
+      } else if (this.tab === "proyectos") {
+        this.proyectos = [];
+        this.paginacionProyectos = this.paginacionInicial();
+      } else if (this.tab === "oportunidades") {
+        this.oportunidades = [];
+        this.paginacionOportunidades = this.paginacionInicial();
+      } else {
+        this.todo = { perfiles: [], proyectos: [], oportunidades: [] };
+      }
+    },
+    manejarErrorBusqueda(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+
       if (status === 404) {
         this.mensajeError =
+          mensaje ||
           "No hay un perfil activo seleccionado en la sesión. Elegí un perfil para buscar.";
       } else if (status === 401) {
-        this.mensajeError = mensajeErrorApi(error, "Tu cuenta no se encuentra habilitada.");
+        this.mensajeError = mensajeErrorApi(
+          error,
+          "Tu cuenta no se encuentra habilitada."
+        );
       } else if (status === 403) {
-        this.mensajeError = mensajeErrorApi(error, "No se pudo completar la búsqueda.");
+        this.mensajeError = mensajeErrorApi(
+          error,
+          "No se pudo completar la búsqueda."
+        );
       } else if (!status || status >= 500) {
         this.puedeReintentar = true;
-        this.mensajeError = `Ocurrió un error al buscar ${recurso}. Inténtalo nuevamente.`;
+        this.mensajeError =
+          "Ocurrió un error al buscar. Inténtalo nuevamente.";
         this.toast.init({
           title: "Error del servidor",
-          message: `No se pudieron cargar los ${recurso}. Usá el botón de reintento.`,
+          message:
+            "No se pudieron cargar los resultados. Usá el botón de reintento.",
           color: "danger",
           position: "top-right",
           duration: 6000,
         });
       } else {
-        this.mensajeError = `Ocurrió un error al buscar ${recurso}. Inténtalo nuevamente.`;
+        this.mensajeError =
+          mensaje || "Ocurrió un error al buscar. Inténtalo nuevamente.";
+      }
+    },
+    reintentar() {
+      this.buscar(this.paginacion.paginaActual);
+    },
+    irAPerfil(perfil) {
+      if (perfil?.idPerfil) {
+        this.$router.push({
+          name: "ver-perfil",
+          params: { id: perfil.idPerfil },
+        });
       }
     },
     irAProyecto(proyecto) {
@@ -1118,22 +1578,260 @@ export default {
         });
       }
     },
-    formatFecha(fecha) {
-      const partes = String(fecha || "").split("-");
-      if (partes.length !== 3) return fecha;
-      const [anio, mes, dia] = partes;
-      return `${dia}/${mes}/${anio}`;
+    verDetalleOportunidad(oportunidad) {
+      if (!oportunidad) return;
+      const tipo = normalizarTipoOportunidad(oportunidad.tipo);
+      if (
+        tipo === TIPOS_POSTULACION.ACTIVIDAD &&
+        oportunidad.idProyecto != null &&
+        oportunidad.idActividad != null
+      ) {
+        this.$router.push({
+          name: "actividad-detalle",
+          params: {
+            id: oportunidad.idProyecto,
+            idActividad: oportunidad.idActividad,
+          },
+        });
+        return;
+      }
+      if (oportunidad.idProyecto != null) {
+        this.$router.push({
+          name: "dashboard-proyecto",
+          params: { id: oportunidad.idProyecto },
+          query: { tab: "postulaciones" },
+        });
+      }
     },
-    etiquetaPrivacidad(privacidad) {
-      return ETIQUETAS_PRIVACIDAD[privacidad] || privacidad;
+    abrirPostulacion(oportunidad) {
+      if (!oportunidad || !puedePostularOportunidad(oportunidad)) return;
+
+      const tipo = normalizarTipoOportunidad(
+        oportunidad.tipo,
+        this.subtabOportunidades === "actividades"
+          ? TIPOS_POSTULACION.ACTIVIDAD
+          : TIPOS_POSTULACION.GENERAL
+      );
+
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+      this.modalPostulacion = {
+        visible: true,
+        tipo,
+        idProyecto: oportunidad.idProyecto,
+        nombreProyecto: oportunidad.nombreProyecto || "",
+        requerimiento: {
+          idRequerimiento: oportunidad.idRequerimiento,
+          cantidad: oportunidad.cantidad,
+          nombreProfesion: oportunidad.nombreProfesion,
+          descripcion: oportunidad.descripcion,
+        },
+        actividad:
+          tipo === TIPOS_POSTULACION.ACTIVIDAD
+            ? {
+                idActividad: oportunidad.idActividad,
+                nombre: oportunidad.nombreActividad,
+                fechaHoraInicio: oportunidad.fechaHoraInicioActividad,
+                fechaHoraFin: oportunidad.fechaHoraFinActividad,
+                duracionMinutos: oportunidad.duracionMinutos,
+              }
+            : null,
+        fechaEntrega: oportunidad.fechaEntrega || null,
+      };
     },
-    reintentar() {
-      this.buscar(this.paginacion.paginaActual);
+    cerrarModalPostulacion(visible) {
+      this.modalPostulacion.visible = visible;
+      if (!visible) {
+        this.errorPostulacion = "";
+        this.errorPostulacionEsDisponibilidad = false;
+      }
     },
-  },
-  beforeUnmount() {
-    clearTimeout(this.debounceHandle);
-    if (controladorBusqueda) controladorBusqueda.abort();
+    async confirmarPostulacion() {
+      if (this.enviandoPostulacion) return;
+
+      const { tipo, idProyecto, requerimiento, actividad } =
+        this.modalPostulacion;
+      const idRequerimiento = requerimiento?.idRequerimiento;
+      if (idProyecto == null || idRequerimiento == null) return;
+
+      this.enviandoPostulacion = true;
+      this.errorPostulacion = "";
+      this.errorPostulacionEsDisponibilidad = false;
+
+      try {
+        const response =
+          tipo === TIPOS_POSTULACION.ACTIVIDAD
+            ? await proyectoService.postularARequerimientoActividad(
+                idProyecto,
+                idRequerimiento
+              )
+            : await proyectoService.postularARequerimientoGeneral(
+                idProyecto,
+                idRequerimiento
+              );
+
+        const data = response?.data || {};
+        this.marcarPostulado(tipo, idRequerimiento);
+        this.cerrarModalPostulacion(false);
+
+        this.toast.init({
+          title: "Postulación enviada",
+          message: mensajeExitoPostulacion(tipo, actividad?.nombre),
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        if (data.tentativa === true) {
+          this.toast.init({
+            title: "Disponibilidad provisoria",
+            message: AVISO_DISPONIBILIDAD_PROVISORIA,
+            color: "primary",
+            position: "top-right",
+            duration: 8000,
+          });
+        }
+
+        await this.buscar(
+          this.tab === "oportunidades"
+            ? this.paginacionOportunidades.paginaActual
+            : 0
+        );
+      } catch (error) {
+        await this.manejarErrorPostulacion(error);
+      } finally {
+        this.enviandoPostulacion = false;
+      }
+    },
+    async manejarErrorPostulacion(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+      const clasificacion = clasificarErrorProyecto(error);
+
+      if (status === 400) {
+        this.errorPostulacion =
+          mensaje ||
+          "No se pudo enviar la postulación. Revisá los datos e intentá nuevamente.";
+        return;
+      }
+
+      if (status === 401) {
+        this.cerrarModalPostulacion(false);
+        this.toast.init({
+          title: "No se pudo postular",
+          message: mensajeErrorApi(error, "Tu cuenta no se encuentra activa."),
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        return;
+      }
+
+      if (status === 404) {
+        this.cerrarModalPostulacion(false);
+
+        if (clasificacion?.tipo === "perfil-activo") {
+          this.mensajeError =
+            "No hay un perfil activo seleccionado. Elegí un perfil para continuar.";
+          return;
+        }
+
+        if (clasificacion?.tipo === "perfil-no-encontrado") {
+          await refrescarSesion();
+          this.mensajeError =
+            "Tu perfil activo ya no está disponible. Elegí un perfil desde el dashboard.";
+          return;
+        }
+
+        this.toast.init({
+          title: "No se pudo postular",
+          message: mensaje || "El requerimiento ya no está disponible.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.buscar(0);
+        return;
+      }
+
+      if (status === 409) {
+        if (esErrorDisponibilidad(error)) {
+          this.errorPostulacion = mensaje;
+          this.errorPostulacionEsDisponibilidad = true;
+          return;
+        }
+
+        const { tipo, requerimiento } = this.modalPostulacion;
+        const idRequerimiento = requerimiento?.idRequerimiento;
+
+        if (esErrorPostulacionDuplicada(error) && idRequerimiento != null) {
+          this.marcarPostulado(tipo, idRequerimiento);
+        }
+
+        if (esErrorCupoCompleto(error) && idRequerimiento != null) {
+          this.marcarSinCupo(tipo, idRequerimiento);
+        }
+
+        this.cerrarModalPostulacion(false);
+        this.toast.init({
+          title: "No se pudo postular",
+          message: mensaje || "La postulación no se pudo completar.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.buscar(
+          this.tab === "oportunidades"
+            ? this.paginacionOportunidades.paginaActual
+            : 0
+        );
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.errorPostulacion =
+          "Ocurrió un error al enviar la postulación. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorPostulacion = mensajeErrorApi(
+        error,
+        "No se pudo enviar la postulación."
+      );
+    },
+    marcarPostulado(tipo, idRequerimiento) {
+      this.actualizarOportunidad(tipo, idRequerimiento, {
+        yaPostulado: true,
+        estadoPostulacion: "PENDIENTE",
+        puedePostularse: false,
+      });
+    },
+    marcarSinCupo(tipo, idRequerimiento) {
+      this.actualizarOportunidad(tipo, idRequerimiento, {
+        satisfecho: true,
+        faltantes: 0,
+        puedePostularse: false,
+        motivoNoPostulable: "CUPO",
+      });
+    },
+    actualizarOportunidad(tipo, idRequerimiento, cambios) {
+      const claveBuscada = claveOportunidad({ tipo, idRequerimiento });
+      for (const lista of [this.oportunidades, this.todo.oportunidades]) {
+        const indice = lista.findIndex(
+          (oportunidad) => claveOportunidad(oportunidad) === claveBuscada
+        );
+        if (indice !== -1) {
+          lista.splice(indice, 1, { ...lista[indice], ...cambios });
+        }
+      }
+    },
+    irACalendario() {
+      this.cerrarModalPostulacion(false);
+      this.$router.push({
+        name: "inicioperfil-seccion",
+        params: { seccion: "calendario" },
+      });
+    },
   },
 };
 </script>
@@ -1153,7 +1851,35 @@ export default {
 .buscar-perfil__subtitulo {
   font-size: 0.85rem;
   color: var(--color-text-muted);
-  margin: 0 0 1.25rem;
+  margin: 0 0 1rem;
+}
+
+.buscar-perfil__recientes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.buscar-perfil__recientes-label {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.buscar-perfil__reciente {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.buscar-perfil__reciente:hover {
+  border-color: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .buscar-perfil__tabs {
@@ -1167,15 +1893,20 @@ export default {
 }
 
 .buscar-perfil__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
   font-size: 0.85rem;
   font-weight: 600;
-  padding: 0.45rem 1.1rem;
+  padding: 0.45rem 1rem;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .buscar-perfil__tab:hover {
@@ -1186,6 +1917,25 @@ export default {
   background: var(--color-surface);
   color: var(--color-primary);
   box-shadow: 0 1px 3px rgba(35, 33, 52, 0.1);
+}
+
+.buscar-perfil__tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.buscar-perfil__tab--active .buscar-perfil__tab-count {
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
 }
 
 .buscar-perfil__filtros {
@@ -1200,17 +1950,25 @@ export default {
   margin-bottom: 1rem;
 }
 
+.buscar-perfil__filtros--toggles {
+  gap: 0.75rem 1.25rem;
+}
+
 .buscar-perfil__campo {
   min-width: 180px;
 }
 
 .buscar-perfil__campo--texto {
   flex: 1;
-  min-width: 220px;
+  min-width: 240px;
 }
 
 .buscar-perfil__campo--tamano {
   min-width: 150px;
+}
+
+.buscar-perfil__campo--orden {
+  min-width: 170px;
 }
 
 .buscar-perfil__icono-campo {
@@ -1223,16 +1981,34 @@ export default {
   color: var(--color-text-muted);
 }
 
+.buscar-perfil__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.buscar-perfil__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.buscar-perfil__resumen {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
 .buscar-perfil__reintento {
   display: flex;
   justify-content: center;
   margin: 0.75rem 0;
-}
-
-.buscar-perfil__resumen {
-  margin: 0 0 0.85rem;
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
 }
 
 .buscar-perfil__grid {
@@ -1241,206 +2017,33 @@ export default {
   gap: 1rem;
 }
 
-.perfil-busqueda {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem 1.25rem 1rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  text-align: center;
-  cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
-}
-
-.perfil-busqueda:hover {
-  box-shadow: 0 8px 20px rgba(35, 33, 52, 0.08);
-  transform: translateY(-2px);
-  border-color: var(--color-primary-light);
-}
-
-.perfil-busqueda:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.perfil-busqueda__foto {
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  overflow: hidden;
+.buscar-perfil__subtabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  margin-bottom: 1rem;
   background: var(--color-surface-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
 }
 
-.perfil-busqueda__foto img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.perfil-busqueda__inicial {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--color-secondary);
-}
-
-.perfil-busqueda__cuerpo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.perfil-busqueda__nombre {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.perfil-busqueda__profesion {
-  font-size: 0.75rem;
-}
-
-.perfil-busqueda__nombre-real {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
-.perfil-busqueda__ubicacion {
+.buscar-perfil__subtab {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
-.perfil-busqueda__ubicacion .material-symbols-outlined {
-  font-size: 1rem;
-}
-
-.perfil-busqueda__habilidades,
-.perfil-busqueda__caracteristicas {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
   gap: 0.35rem;
-}
-
-.perfil-busqueda__habilidad,
-.perfil-busqueda__caracteristica {
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-  font-size: 0.72rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-}
-
-.perfil-busqueda__habilidad--mas,
-.perfil-busqueda__caracteristica--mas {
-  background: var(--color-surface);
+  padding: 0.35rem 0.9rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
   color: var(--color-text-muted);
-}
-
-.perfil-busqueda__caracteristica--colorida {
-  border-color: transparent;
-  font-weight: 600;
-}
-
-.perfil-busqueda__footer {
-  margin-top: auto;
-  padding-top: 0.5rem;
-}
-
-.proyecto-busqueda {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
-}
-
-.proyecto-busqueda:hover {
-  box-shadow: 0 8px 20px rgba(35, 33, 52, 0.08);
-  transform: translateY(-2px);
-  border-color: var(--color-primary-light);
-}
-
-.proyecto-busqueda:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.proyecto-busqueda__cuerpo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
-.proyecto-busqueda__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.proyecto-busqueda__nombre {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-text);
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-
-.proyecto-busqueda__descripcion {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.proyecto-busqueda__director,
-.proyecto-busqueda__fecha {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin: 0;
   font-size: 0.8rem;
-  color: var(--color-text-muted);
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.proyecto-busqueda__director .material-symbols-outlined,
-.proyecto-busqueda__fecha .material-symbols-outlined {
-  font-size: 1rem;
-}
-
-.proyecto-busqueda__privacidad {
-  align-self: flex-start;
-  font-size: 0.75rem;
-}
-
-.proyecto-busqueda__footer {
-  margin-top: auto;
-  padding-top: 0.5rem;
+.buscar-perfil__subtab--active {
+  background: var(--color-surface);
+  color: var(--color-primary);
 }
 
 .buscar-perfil__paginacion {
@@ -1463,5 +2066,29 @@ export default {
 
 .buscar-perfil__estado-icono {
   font-size: 2.5rem;
+}
+
+@media (max-width: 640px) {
+  .buscar-perfil__tabs {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .buscar-perfil__tab {
+    flex: 0 0 auto;
+  }
+
+  .buscar-perfil__campo,
+  .buscar-perfil__campo--texto,
+  .buscar-perfil__campo--tamano,
+  .buscar-perfil__campo--orden {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .buscar-perfil__grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

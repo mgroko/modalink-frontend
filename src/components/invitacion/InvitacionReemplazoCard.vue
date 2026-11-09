@@ -42,6 +42,10 @@
           Invitación: {{ fechaInvitacion }}
         </span>
 
+        <span v-if="fechaRespuesta" class="invitacion-reemplazo__dato">
+          Respondida: {{ fechaRespuesta }}
+        </span>
+
         <span v-if="inicioActividad" class="invitacion-reemplazo__dato">
           Actividad: {{ inicioActividad }}
           <template v-if="duracionTexto"> · {{ duracionTexto }}</template>
@@ -52,11 +56,16 @@
         {{ invitacion.mensaje }}
       </p>
 
+      <p v-if="motivoRespuesta" class="invitacion-reemplazo__mensaje">
+        Motivo del rechazo: {{ motivoRespuesta }}
+      </p>
+
       <p
         v-if="esAceptadaPendiente"
         class="invitacion-reemplazo__aviso"
       >
-        Aceptaste esta invitación. Está pendiente de aprobación del director.
+        Aceptaste esta invitación. Está pendiente de aprobación del director;
+        si elige a otra persona, la invitación se cancelará.
       </p>
     </div>
 
@@ -148,6 +157,14 @@ export default {
       return this.invitacion?.fechaInvitacion
         ? formatearFechaCorta(this.invitacion.fechaInvitacion)
         : "";
+    },
+    fechaRespuesta() {
+      return this.invitacion?.fechaRespuesta
+        ? formatearFechaCorta(this.invitacion.fechaRespuesta)
+        : "";
+    },
+    motivoRespuesta() {
+      return String(this.invitacion?.motivoRespuesta || "").trim();
     },
     inicioActividad() {
       return this.invitacion?.fechaHoraInicio

@@ -13,7 +13,13 @@
         :style="{ backgroundColor: colorAvatarMiembro(miembro?.idPerfil) }"
         aria-hidden="true"
       >
-        {{ inicialesMiembro(miembro) }}
+        <img
+          v-if="fotoUrl && !fotoRota"
+          :src="fotoUrl"
+          :alt="nombre"
+          @error="fotoRota = true"
+        />
+        <template v-else>{{ inicialesMiembro(miembro) }}</template>
       </span>
 
       <div class="calificacion-miembro__datos">
@@ -92,6 +98,7 @@
 </template>
 
 <script>
+import perfilService from "../../services/perfilService";
 import {
   LIMITE_RESENIA,
   etiquetaValoracion,
@@ -102,6 +109,11 @@ import {
   nombreCompletoMiembro,
   textoRolMiembro,
 } from "../../utils/integranteConstants.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
+
+// Evita repetir GET /perfiles/{id} cuando el mismo integrante se renderiza
+// en el modal y en la vista de calificaciones.
+const cacheFotos = new Map();
 
 /*
  * Tarjeta de calificación de un integrante para UC-37.
@@ -154,9 +166,20 @@ export default {
   data() {
     return {
       LIMITE_RESENIA,
+      fotoCargada: null,
+      fotoRota: false,
+      cargandoFoto: false,
     };
   },
   computed: {
+    fotoUrl() {
+      const directa =
+        this.miembro?.fotoUrl ||
+        this.miembro?.urlFoto ||
+        this.miembro?.fotoPerfil ||
+        null;
+      return resolverFotoUrl(directa || this.fotoCargada);
+    },
     nombre() {
       return (
         this.miembro?.nombreArtistico ||
@@ -182,10 +205,54 @@ export default {
       return !!this.errorValoracion || !!this.errorResenia;
     },
   },
+  watch: {
+    "miembro.idPerfil"() {
+      this.fotoCargada = null;
+      this.fotoRota = false;
+      this.cargarFoto();
+    },
+  },
+  mounted() {
+    this.cargarFoto();
+  },
   methods: {
     etiquetaValoracion,
     colorAvatarMiembro,
     inicialesMiembro,
+    async cargarFoto() {
+      const idPerfil = this.miembro?.idPerfil;
+      if (idPerfil == null) return;
+
+      const directa =
+        this.miembro?.fotoUrl ||
+        this.miembro?.urlFoto ||
+        this.miembro?.fotoPerfil;
+      if (directa) return;
+
+      if (cacheFotos.has(idPerfil)) {
+        this.fotoCargada = cacheFotos.get(idPerfil);
+        return;
+      }
+      if (this.cargandoFoto) return;
+
+      this.cargandoFoto = true;
+      try {
+        const response = await perfilService.obtener(idPerfil);
+        const foto =
+          response?.data?.fotoUrl ||
+          response?.data?.urlFoto ||
+          response?.data?.fotoPerfil ||
+          null;
+        cacheFotos.set(idPerfil, foto);
+        if (this.miembro?.idPerfil !== idPerfil) return;
+        this.fotoCargada = foto;
+      } catch {
+        cacheFotos.set(idPerfil, null);
+        if (this.miembro?.idPerfil === idPerfil) this.fotoCargada = null;
+      } finally {
+        this.cargandoFoto = false;
+      }
+    },
     seleccionar(valoracion) {
       if (this.disabled || this.yaCalificado) return;
       this.$emit("update:valoracion", valoracion);
@@ -237,12 +304,19 @@ export default {
   justify-content: center;
   width: 40px;
   height: 40px;
+  overflow: hidden;
   border-radius: 50%;
   color: #fff;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   flex: none;
+}
+
+.calificacion-miembro__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .calificacion-miembro__datos {

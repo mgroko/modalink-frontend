@@ -109,6 +109,12 @@ export default {
           contador: invitacionState.pendientesRecibidas,
         },
         { key: "resenas", label: "Reseñas", icono: "star", tipo: "seccion" },
+        {
+          key: "terminos",
+          label: "Términos y condiciones",
+          icono: "description",
+          tipo: "seccion",
+        },
         { key: "mi-red", label: "Mi red", icono: "group", tipo: "no-disponible" },
         { key: "ajustes", label: "Ajustes", icono: "settings", tipo: "ruta", ruta: "ajustes-perfil-inicio" },
         { key: "panel", label: "Panel de usuario", icono: "space_dashboard", tipo: "ruta", ruta: "dashboard-usuario" },
@@ -118,6 +124,12 @@ export default {
         { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "no-disponible" },
         { key: "participaciones", label: "Participaciones", icono: "groups", tipo: "no-disponible" },
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
+        {
+          key: "terminos",
+          label: "Términos y condiciones",
+          icono: "description",
+          tipo: "seccion",
+        },
       ];
 
       return this.esPropio ? itemsPropio : itemsAjeno;

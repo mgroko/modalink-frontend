@@ -30,6 +30,7 @@
       :filtros="filtros"
       :error-fechas="errorFechas"
       :etiqueta-perfil="etiquetaPerfil"
+      :mostrar-estado="!esSeccionRechazadas"
       @cambio="cambiarFiltro"
       @buscar="buscar(0)"
       @limpiar="limpiarFiltros"
@@ -59,7 +60,10 @@
 
     <template v-else-if="!esSeccionReemplazos && !mensajeError">
       <div
-        v-if="paginacion.totalElementos > 0"
+        v-if="
+          paginacion.totalElementos > 0 ||
+          (esSeccionRechazadas && reemplazosRechazadosFiltrados.length)
+        "
         class="invitaciones__resultado-cabecera"
       >
         <span class="invitaciones__resultado-total">
@@ -67,6 +71,7 @@
         </span>
 
         <button
+          v-if="paginacion.totalElementos > 0"
           type="button"
           class="invitaciones__orden"
           :aria-sort="ordenFecha === 'desc' ? 'descending' : 'ascending'"
@@ -84,7 +89,9 @@
           v-for="invitacion in invitaciones"
           :key="invitacion.idInvitacion"
           :invitacion="invitacion"
-          :mostrar-direccion="tabActual === DIRECCIONES_INVITACION.TODAS"
+          :mostrar-direccion="
+            tabActual === DIRECCIONES_INVITACION.TODAS || esSeccionRechazadas
+          "
           :id-perfil-activo="idPerfilActivo"
           :eliminacion-bloqueada="estaEliminacionBloqueada(invitacion)"
           :gestion-bloqueada="estaGestionBloqueada(invitacion)"
@@ -96,7 +103,10 @@
         />
       </div>
 
-      <div v-else class="invitaciones__vacio">
+      <div
+        v-else-if="!esSeccionRechazadas || !reemplazosRechazadosFiltrados.length"
+        class="invitaciones__vacio"
+      >
         <span class="material-symbols-outlined" aria-hidden="true">mail</span>
         <p>{{ textoVacio }}</p>
       </div>
@@ -129,6 +139,63 @@
         </VaButton>
       </div>
     </template>
+
+    <section
+      v-if="esSeccionRechazadas"
+      class="invitaciones__rechazos-reemplazo"
+    >
+      <h2 class="invitaciones__subtitulo-seccion">
+        Invitaciones de reemplazo rechazadas
+      </h2>
+
+      <BaseAlert
+        v-if="errorReemplazosRechazados"
+        :message="errorReemplazosRechazados"
+        type="error"
+      />
+
+      <div
+        v-if="errorReemplazosRechazados && puedeReintentarReemplazosRechazados"
+        class="invitaciones__reintento"
+      >
+        <VaButton
+          preset="primary"
+          icon="mso-refresh"
+          @click="cargarReemplazosRechazados"
+        >
+          Reintentar
+        </VaButton>
+      </div>
+
+      <div
+        v-if="cargandoReemplazosRechazados && !reemplazosRechazados.length"
+        class="invitaciones__estado"
+      >
+        <span class="material-symbols-outlined invitaciones__estado-icono">
+          hourglass_empty
+        </span>
+        Cargando invitaciones de reemplazo rechazadas...
+      </div>
+
+      <template v-else-if="!errorReemplazosRechazados">
+        <div
+          v-if="reemplazosRechazadosFiltrados.length"
+          class="invitaciones__lista"
+        >
+          <InvitacionReemplazoCard
+            v-for="invitacion in reemplazosRechazadosFiltrados"
+            :key="invitacion.idCandidato"
+            :invitacion="invitacion"
+            @abrir="abrirDetalleReemplazo"
+          />
+        </div>
+
+        <div v-else class="invitaciones__vacio">
+          <span class="material-symbols-outlined" aria-hidden="true">mail</span>
+          <p>No tenés invitaciones de reemplazo rechazadas.</p>
+        </div>
+      </template>
+    </section>
 
     <template v-if="esSeccionReemplazos">
       <BaseAlert v-if="errorReemplazos" :message="errorReemplazos" type="error" />
@@ -291,6 +358,7 @@ import { mensajeErrorApi } from "../../utils/apiError";
 import {
   ACCIONES_GESTION_INVITACION,
   DIRECCIONES_INVITACION,
+  ESTADOS_INVITACION,
   ORDEN_FECHA_INVITACION,
   TAMANO_PAGINA_INVITACIONES,
   TIPOS_ERROR_ELIMINAR_INVITACION,
@@ -324,11 +392,13 @@ const FILTROS_INICIALES = {
 };
 
 const SECCION_REEMPLAZOS = "REEMPLAZOS";
+const SECCION_RECHAZADAS = "RECHAZADAS";
 
 let controlador = null;
 let controladorEliminar = null;
 let controladorGestion = null;
 let controladorReemplazos = null;
+let controladorReemplazosRechazados = null;
 let controladorGestionReemplazo = null;
 
 /*
@@ -376,6 +446,7 @@ export default {
         [DIRECCIONES_INVITACION.RECIBIDA]: null,
         [DIRECCIONES_INVITACION.ENVIADA]: null,
       },
+      conteoInvitacionesRechazadas: null,
       cargando: true,
       mensajeError: "",
       puedeReintentar: false,
@@ -404,6 +475,10 @@ export default {
       cargandoReemplazos: false,
       errorReemplazos: "",
       puedeReintentarReemplazos: false,
+      reemplazosRechazados: [],
+      cargandoReemplazosRechazados: false,
+      errorReemplazosRechazados: "",
+      puedeReintentarReemplazosRechazados: false,
       modalDetalleReemplazo: {
         visible: false,
         invitacion: null,
@@ -417,6 +492,7 @@ export default {
       errorGestionReemplazo: "",
       mostrarRechazoReemplazo: false,
       idCargaReemplazos: 0,
+      idCargaReemplazosRechazados: 0,
     };
   },
   computed: {
@@ -425,6 +501,53 @@ export default {
     },
     esSeccionReemplazos() {
       return this.tabActual === SECCION_REEMPLAZOS;
+    },
+    esSeccionRechazadas() {
+      return this.tabActual === SECCION_RECHAZADAS;
+    },
+    totalRechazadas() {
+      return (
+        this.paginacion.totalElementos +
+        this.reemplazosRechazadosFiltrados.length
+      );
+    },
+    reemplazosRechazadosFiltrados() {
+      const filtros = this.filtros;
+      const idProyecto = filtros.idProyecto;
+      const nombreProyecto = String(filtros.nombreProyecto || "")
+        .trim()
+        .toLowerCase();
+      const tipo = String(filtros.tipo || "").toUpperCase();
+      const desde = filtros.fechaDesde;
+      const hasta = filtros.fechaHasta;
+
+      return this.reemplazosRechazados.filter((item) => {
+        if (
+          idProyecto != null &&
+          idProyecto !== "" &&
+          String(item.idProyecto) !== String(idProyecto)
+        ) {
+          return false;
+        }
+        if (
+          nombreProyecto &&
+          !String(item.nombreProyecto || "")
+            .toLowerCase()
+            .includes(nombreProyecto)
+        ) {
+          return false;
+        }
+        if (tipo && String(item.tipo || "").toUpperCase() !== tipo) {
+          return false;
+        }
+        if (desde && item.fechaInvitacion) {
+          if (String(item.fechaInvitacion).slice(0, 10) < desde) return false;
+        }
+        if (hasta && item.fechaInvitacion) {
+          if (String(item.fechaInvitacion).slice(0, 10) > hasta) return false;
+        }
+        return true;
+      });
     },
     errorFechas() {
       return validarRangoFechasInvitaciones(
@@ -438,7 +561,7 @@ export default {
         !!this.filtros.fechaDesde ||
         !!this.filtros.fechaHasta ||
         !!String(this.filtros.nombrePerfil || "").trim() ||
-        !!this.filtros.estado ||
+        (!this.esSeccionRechazadas && !!this.filtros.estado) ||
         !!this.filtros.tipo
       );
     },
@@ -469,6 +592,16 @@ export default {
           total: this.conteos[DIRECCIONES_INVITACION.ENVIADA],
         },
         {
+          value: SECCION_RECHAZADAS,
+          label: "Rechazadas",
+          total:
+            this.conteoInvitacionesRechazadas == null &&
+            !this.reemplazosRechazadosFiltrados.length
+              ? null
+              : (this.conteoInvitacionesRechazadas || 0) +
+                this.reemplazosRechazadosFiltrados.length,
+        },
+        {
           value: SECCION_REEMPLAZOS,
           label: "Reemplazos",
           total: this.reemplazos.length,
@@ -478,6 +611,12 @@ export default {
     textoResumen() {
       const total = this.paginacion.totalElementos;
       const palabra = total === 1 ? "invitación" : "invitaciones";
+      if (this.esSeccionRechazadas) {
+        const totalRechazadas = this.totalRechazadas;
+        const palabraRechazadas =
+          totalRechazadas === 1 ? "invitación rechazada" : "invitaciones rechazadas";
+        return `${totalRechazadas} ${palabraRechazadas}`;
+      }
       if (this.tabActual === DIRECCIONES_INVITACION.RECIBIDA) {
         return `${total} ${palabra} recibida${total === 1 ? "" : "s"}`;
       }
@@ -489,6 +628,9 @@ export default {
     textoVacio() {
       if (this.hayFiltrosActivos) {
         return "No tenés invitaciones que coincidan con los filtros.";
+      }
+      if (this.esSeccionRechazadas) {
+        return "Todavía no tenés invitaciones a proyectos rechazadas.";
       }
       if (this.tabActual === DIRECCIONES_INVITACION.RECIBIDA) {
         return "Todavía no tenés invitaciones recibidas.";
@@ -521,7 +663,18 @@ export default {
         }
         return;
       }
-      if (this.tabActual === SECCION_REEMPLAZOS) {
+      if (nuevo === "rechazadas") {
+        if (this.tabActual !== SECCION_RECHAZADAS) {
+          this.tabActual = SECCION_RECHAZADAS;
+          this.buscar(0);
+          this.cargarReemplazosRechazados();
+        }
+        return;
+      }
+      if (
+        this.tabActual === SECCION_REEMPLAZOS ||
+        this.tabActual === SECCION_RECHAZADAS
+      ) {
         this.tabActual = DIRECCIONES_INVITACION.RECIBIDA;
         this.buscar(0);
       }
@@ -533,6 +686,7 @@ export default {
   mounted() {
     this.aplicarSeccionDesdeQuery();
     this.cargarReemplazos();
+    this.cargarReemplazosRechazados();
     if (!this.esSeccionReemplazos) this.buscar(0);
     cargarResumenInvitaciones(this.idPerfilActivo);
   },
@@ -541,12 +695,15 @@ export default {
     if (controladorEliminar) controladorEliminar.abort();
     if (controladorGestion) controladorGestion.abort();
     if (controladorReemplazos) controladorReemplazos.abort();
+    if (controladorReemplazosRechazados) controladorReemplazosRechazados.abort();
     if (controladorGestionReemplazo) controladorGestionReemplazo.abort();
   },
   methods: {
     aplicarSeccionDesdeQuery() {
       if (this.$route.query.seccion === "reemplazos") {
         this.tabActual = SECCION_REEMPLAZOS;
+      } else if (this.$route.query.seccion === "rechazadas") {
+        this.tabActual = SECCION_RECHAZADAS;
       }
     },
     cambiarTab(direccion) {
@@ -555,6 +712,7 @@ export default {
 
       const query = { ...this.$route.query };
       if (direccion === SECCION_REEMPLAZOS) query.seccion = "reemplazos";
+      else if (direccion === SECCION_RECHAZADAS) query.seccion = "rechazadas";
       else delete query.seccion;
       this.$router.replace({ name: "invitaciones", query }).catch(() => {});
 
@@ -562,6 +720,9 @@ export default {
         this.cargarReemplazos();
       } else {
         this.buscar(0);
+        if (direccion === SECCION_RECHAZADAS) {
+          this.cargarReemplazosRechazados();
+        }
       }
     },
     cambiarFiltro({ campo, valor }) {
@@ -628,16 +789,23 @@ export default {
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     paramsLista() {
-      return construirParamsInvitaciones(
-        { ...this.filtros, direccion: this.tabActual },
-        { todos: true }
-      );
+      const filtros = { ...this.filtros, direccion: this.tabActual };
+      if (this.esSeccionRechazadas) {
+        filtros.direccion = DIRECCIONES_INVITACION.TODAS;
+        filtros.estado = ESTADOS_INVITACION.RECHAZADA;
+      }
+      return construirParamsInvitaciones(filtros, { todos: true });
     },
     paramsConteo(direccion) {
-      return construirParamsInvitaciones(
-        { ...this.filtros, direccion },
-        { pagina: 0, tamano: 1 }
-      );
+      const filtros = { ...this.filtros, direccion };
+      if (direccion === SECCION_RECHAZADAS) {
+        filtros.direccion = DIRECCIONES_INVITACION.TODAS;
+        filtros.estado = ESTADOS_INVITACION.RECHAZADA;
+      }
+      return construirParamsInvitaciones(filtros, {
+        pagina: 0,
+        tamano: 1,
+      });
     },
     async buscar(pagina = 0) {
       if (this.errorFechas) {
@@ -662,13 +830,25 @@ export default {
         DIRECCIONES_INVITACION.ENVIADA,
       ].filter((direccion) => direccion !== this.tabActual);
 
+      const peticiones = [
+        invitacionService.buscar(this.paramsLista(), signal),
+        ...direccionesConteo.map((direccion) =>
+          invitacionService.buscar(this.paramsConteo(direccion), signal)
+        ),
+      ];
+
+      if (!this.esSeccionRechazadas) {
+        peticiones.push(
+          invitacionService.buscar(
+            this.paramsConteo(SECCION_RECHAZADAS),
+            signal
+          )
+        );
+      }
+
       try {
-        const [listaResultado, ...conteosResultado] = await Promise.allSettled([
-          invitacionService.buscar(this.paramsLista(), signal),
-          ...direccionesConteo.map((direccion) =>
-            invitacionService.buscar(this.paramsConteo(direccion), signal)
-          ),
-        ]);
+        const [listaResultado, ...conteosResultado] =
+          await Promise.allSettled(peticiones);
 
         if (corrida !== this.idCarga) return;
 
@@ -693,7 +873,26 @@ export default {
         });
         this.conteos = nuevosConteos;
 
+        if (!this.esSeccionRechazadas) {
+          const resultadoRechazadas =
+            conteosResultado[direccionesConteo.length];
+          if (resultadoRechazadas?.status === "fulfilled") {
+            const total = Number(
+              resultadoRechazadas.value?.data?.totalElementos
+            );
+            this.conteoInvitacionesRechazadas = Number.isFinite(total)
+              ? total
+              : null;
+          } else {
+            this.conteoInvitacionesRechazadas = null;
+          }
+        }
+
         this.aplicarOrdenYPagina(pagina);
+
+        if (this.esSeccionRechazadas) {
+          this.conteoInvitacionesRechazadas = this.paginacion.totalElementos;
+        }
       } catch (error) {
         if (this.esCancelacion(error) || corrida !== this.idCarga) return;
         await this.manejarError(error);
@@ -720,6 +919,7 @@ export default {
         [DIRECCIONES_INVITACION.RECIBIDA]: null,
         [DIRECCIONES_INVITACION.ENVIADA]: null,
       };
+      this.conteoInvitacionesRechazadas = null;
       this.mensajeError = "";
       this.puedeReintentar = false;
 
@@ -798,6 +998,47 @@ export default {
       } finally {
         if (corrida === this.idCargaReemplazos) {
           this.cargandoReemplazos = false;
+        }
+      }
+    },
+    async cargarReemplazosRechazados() {
+      const corrida = ++this.idCargaReemplazosRechazados;
+      if (controladorReemplazosRechazados) {
+        controladorReemplazosRechazados.abort();
+      }
+      controladorReemplazosRechazados = new AbortController();
+
+      this.cargandoReemplazosRechazados = true;
+      this.errorReemplazosRechazados = "";
+      this.puedeReintentarReemplazosRechazados = false;
+
+      try {
+        const response = await reemplazoService.listarInvitacionesRechazadas(
+          controladorReemplazosRechazados.signal
+        );
+        if (corrida !== this.idCargaReemplazosRechazados) return;
+        const data = response?.data;
+        this.reemplazosRechazados = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.contenido)
+            ? data.contenido
+            : [];
+      } catch (error) {
+        if (
+          this.esCancelacion(error) ||
+          corrida !== this.idCargaReemplazosRechazados
+        ) {
+          return;
+        }
+        this.reemplazosRechazados = [];
+        this.errorReemplazosRechazados = mensajeErrorApi(
+          error,
+          "No se pudieron cargar las invitaciones de reemplazo rechazadas."
+        );
+        this.puedeReintentarReemplazosRechazados = true;
+      } finally {
+        if (corrida === this.idCargaReemplazosRechazados) {
+          this.cargandoReemplazosRechazados = false;
         }
       }
     },
@@ -960,6 +1201,7 @@ export default {
           duration: 6000,
         });
         await this.cargarReemplazos();
+        await this.cargarReemplazosRechazados();
       } catch (error) {
         if (this.esCancelacion(error)) return;
         await this.manejarErrorGestionReemplazo(error, esAceptar);
@@ -1559,7 +1801,8 @@ export default {
 .invitaciones__tabs {
   display: flex;
   align-items: center;
-  gap: 1.4rem;
+  flex-wrap: wrap;
+  gap: 0 1.4rem;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1604,6 +1847,20 @@ export default {
 .invitaciones__tab--activa .invitaciones__tab-contador {
   background: var(--color-primary);
   color: #fff;
+}
+
+.invitaciones__rechazos-reemplazo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.invitaciones__subtitulo-seccion {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .invitaciones__resultado-cabecera {

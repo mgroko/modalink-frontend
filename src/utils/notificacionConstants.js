@@ -36,6 +36,11 @@ export const TIPOS_NOTIFICACION = {
   REEMPLAZO_INCORPORACION_APROBADA: "REEMPLAZO_INCORPORACION_APROBADA",
   REEMPLAZO_INCORPORACION_RECHAZADA: "REEMPLAZO_INCORPORACION_RECHAZADA",
   REEMPLAZO_CANCELADO: "REEMPLAZO_CANCELADO",
+  CONTRATO_PENDIENTE_FIRMA: "CONTRATO_PENDIENTE_FIRMA",
+  CONTRATO_MODIFICADO: "CONTRATO_MODIFICADO",
+  CONTRATO_ACTIVO: "CONTRATO_ACTIVO",
+  CONTRATO_RECHAZADO: "CONTRATO_RECHAZADO",
+  CONTRATO_ELIMINADO: "CONTRATO_ELIMINADO",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -45,6 +50,7 @@ export const RUTAS_NOTIFICACION = {
   ADMIN_REPORTE_PERFIL: "admin-reporte-perfil",
   CALIFICACIONES: "calificaciones-proyecto",
   INVITACIONES: "invitaciones",
+  CONTRATO: "detalle-contrato",
 };
 
 const ETIQUETAS_TIPO = {
@@ -81,6 +87,12 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_RECHAZADA]:
     "Incorporación rechazada",
   [TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO]: "Reemplazo cancelado",
+  [TIPOS_NOTIFICACION.CONTRATO_PENDIENTE_FIRMA]:
+    "Contrato pendiente de firma",
+  [TIPOS_NOTIFICACION.CONTRATO_MODIFICADO]: "Contrato modificado",
+  [TIPOS_NOTIFICACION.CONTRATO_ACTIVO]: "Contrato activo",
+  [TIPOS_NOTIFICACION.CONTRATO_RECHAZADO]: "Contrato rechazado",
+  [TIPOS_NOTIFICACION.CONTRATO_ELIMINADO]: "Contrato eliminado",
 };
 
 const ICONOS_TIPO = {
@@ -112,6 +124,11 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_APROBADA]: "check_circle",
   [TIPOS_NOTIFICACION.REEMPLAZO_INCORPORACION_RECHAZADA]: "cancel",
   [TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO]: "cancel",
+  [TIPOS_NOTIFICACION.CONTRATO_PENDIENTE_FIRMA]: "draw",
+  [TIPOS_NOTIFICACION.CONTRATO_MODIFICADO]: "edit_note",
+  [TIPOS_NOTIFICACION.CONTRATO_ACTIVO]: "verified",
+  [TIPOS_NOTIFICACION.CONTRATO_RECHAZADO]: "cancel",
+  [TIPOS_NOTIFICACION.CONTRATO_ELIMINADO]: "delete",
 };
 
 /**
@@ -292,11 +309,36 @@ export function destinoNotificacion(notificacion) {
       };
     }
 
+    case TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO: {
+      // La cancelación por vacante cubierta se envía al candidato con
+      // entidad REEMPLAZO_CANDIDATO; el director la recibe con entidad
+      // REEMPLAZO y debe ir al panel del proyecto.
+      if (notificacion.entidadTipo === "REEMPLAZO_CANDIDATO") {
+        return {
+          etiqueta: "Ver invitaciones",
+          ruta: {
+            name: RUTAS_NOTIFICACION.INVITACIONES,
+            query: { seccion: "reemplazos" },
+          },
+        };
+      }
+      const id = idValido(notificacion.idProyecto);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver reemplazos",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PROYECTO,
+              params: { id },
+              query: { tab: "reemplazos" },
+            },
+          };
+    }
+
     case TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATOS_DISPONIBLES:
     case TIPOS_NOTIFICACION.REEMPLAZO_SIN_CANDIDATOS:
     case TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATO_RECHAZO:
-    case TIPOS_NOTIFICACION.REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION:
-    case TIPOS_NOTIFICACION.REEMPLAZO_CANCELADO: {
+    case TIPOS_NOTIFICACION.REEMPLAZO_ACEPTADO_PENDIENTE_APROBACION: {
       const id = idValido(notificacion.idProyecto);
       return id == null
         ? null
@@ -321,6 +363,29 @@ export function destinoNotificacion(notificacion) {
               params: { id },
             },
           };
+    }
+
+    case TIPOS_NOTIFICACION.CONTRATO_PENDIENTE_FIRMA:
+    case TIPOS_NOTIFICACION.CONTRATO_MODIFICADO:
+    case TIPOS_NOTIFICACION.CONTRATO_ACTIVO:
+    case TIPOS_NOTIFICACION.CONTRATO_RECHAZADO:
+    case TIPOS_NOTIFICACION.CONTRATO_ELIMINADO: {
+      // El trigger de contrato envía `entidad_tipo = 'CONTRATO'`,
+      // `entidad_id = id_contrato` e `id_proyecto`.
+      const idProyecto = idValido(notificacion.idProyecto);
+      const idContrato =
+        idValido(notificacion.idContrato) ??
+        (notificacion.entidadTipo === "CONTRATO"
+          ? idValido(notificacion.entidadId)
+          : null);
+      if (idProyecto == null || idContrato == null) return null;
+      return {
+        etiqueta: "Ver contrato",
+        ruta: {
+          name: RUTAS_NOTIFICACION.CONTRATO,
+          params: { idProyecto, idContrato },
+        },
+      };
     }
 
     case TIPOS_NOTIFICACION.PERFIL_REPORTADO: {

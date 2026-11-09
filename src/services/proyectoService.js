@@ -337,6 +337,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} nombreUsuario
  * @property {string} apellidoUsuario
  * @property {"DIRECTOR"|"MIEMBRO"|string} rol
+ * @property {string|null} [fotoUrl] foto del perfil si el backend la envía
  * @property {boolean} yaCalificado true si el perfil activo ya lo calificó.
  *           No incluye valoración ni reseña: esos datos se buscan en
  *           `calificacionesEmitidas` por `idPerfilReceptor`.
@@ -519,6 +520,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {boolean} aceptaPostulacionGral
  * @property {number|null} idDirector null si no hay director activo
  * @property {string|null} nombreDirector null si no hay director activo
+ * @property {object|null} ciudad ciudad del proyecto (CiudadResponse) o null
  */
 
 /**
@@ -542,6 +544,10 @@ import { serializarParams } from "../utils/queryParams.js";
  *           (la visibilidad es un filtro AND aparte)
  * @property {string} [director] coincidencia parcial sobre nombre artístico
  *           o nombre/apellido del director activo del proyecto
+ * @property {number} [idProfesion] proyectos con algún requerimiento abierto
+ *           (general o de actividad Pendiente/En curso) de esa profesión
+ * @property {string} [provinciaId] id Georef de la provincia del proyecto
+ * @property {string} [localidadId] id Georef de la localidad/ciudad del proyecto
  * @property {number} [page] base 0, default 0
  * @property {number} [size] default 20
  * @property {boolean} [todos] true (o size ≤ 0) devuelve todo sin paginar
@@ -559,6 +565,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} apellidoUsuario
  * @property {number} idProfesion
  * @property {string} nombreProfesion
+ * @property {string|null} [fotoUrl] foto del perfil si el backend la envía
  * @property {"DIRECTOR"|"MIEMBRO"} rol
  * @property {"ACTIVO"|string} estadoParticipacion
  * @property {boolean} eliminable fuente de verdad para habilitar la baja
@@ -566,6 +573,8 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {"SIN_PERMISO"|"PROYECTO_NO_PERMITE_BAJA"|"AUTOELIMINACION"|
  *           "ULTIMO_DIRECTOR"|null} motivoNoEliminable motivo cuando
  *           `eliminable` es false.
+ * @property {number|null} [idTycAceptado] versión de T&C aceptada al
+ *           incorporarse; null en membresías históricas.
  */
 
 /**
@@ -782,6 +791,40 @@ const proyectoService = {
   },
 
   /**
+   * GET /proyectos/{idProyecto}/historial/contratos — historial de contratos.
+   *
+   * El Director ve todos los eventos de contratos del proyecto. Un miembro ve
+   * únicamente los eventos de los contratos donde su perfil es o fue parte
+   * firmante. Incluye contratos eliminados y proyectos finalizados.
+   *
+   * Errores:
+   * - 400 page, size o tipo inválidos
+   * - 401 sesión ausente/vencida
+   * - 403 sin membresía activa ni rol Director
+   * - 404 proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {{tipo?: string, nombre?: string, page?: number, size?: number}} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: Object}>} 200 OK
+   */
+  listarHistorialContratos(idProyecto, params = {}, signal) {
+    const page = Number(params.page ?? 0);
+    const size = Number(params.size ?? 20);
+    const query = serializarParams({
+      tipo: params.tipo || "",
+      nombre: String(params.nombre || "").trim(),
+      page: Number.isFinite(page) && page >= 0 ? Math.floor(page) : 0,
+      size: Number.isFinite(size)
+        ? Math.min(Math.max(Math.floor(size), 1), 100)
+        : 20,
+    });
+    return http.get(
+      `/proyectos/${idProyecto}/historial/contratos${query ? `?${query}` : ""}`,
+      { signal }
+    );
+  },
+
+  /**
    * DELETE /proyectos/{idProyecto}/miembros/{idMiembro} — UC-38.
    * Da de baja a un integrante activo del proyecto. El backend es la fuente de
    * verdad: el frontend sólo debe enviar el motivo y refrescar después del 204.
@@ -953,7 +996,10 @@ const proyectoService = {
    * @returns {Promise<{data: ProyectoResponse}>} 200 OK con el proyecto publicado
    */
   publicar(idProyecto, signal) {
-    return http.post(`/proyectos/${idProyecto}/publicar`, null, { signal });
+    // JSON vacío: axios 1.x envía un body `null` como
+    // application/x-www-form-urlencoded y Spring responde 415 cuando el
+    // endpoint declara @RequestBody. El backend ignora este body.
+    return http.post(`/proyectos/${idProyecto}/publicar`, {}, { signal });
   },
 
   /**
@@ -1060,7 +1106,7 @@ const proyectoService = {
    * @returns {Promise<{data: ConfirmarProyectoResponse}>} 200 OK
    */
   confirmar(idProyecto, signal) {
-    return http.post(`/proyectos/${idProyecto}/confirmar`, null, { signal });
+    return http.post(`/proyectos/${idProyecto}/confirmar`, {}, { signal });
   },
 
   /**
@@ -1199,7 +1245,7 @@ const proyectoService = {
    * @returns {Promise<{data: ProyectoReprogramadoResponse}>} 200 OK
    */
   reprogramar(idProyecto, signal) {
-    return http.post(`/proyectos/${idProyecto}/reprogramar`, null, { signal });
+    return http.post(`/proyectos/${idProyecto}/reprogramar`, {}, { signal });
   },
 
   /**

@@ -56,6 +56,19 @@ import { normalizarTextoReemplazo } from "../utils/reemplazoConstants.js";
  * @property {string|null} fechaRespuesta
  * @property {string|null} fechaDecision
  * @property {string|null} motivoDecision
+ * @property {number|null} [idTycAceptado]
+ */
+
+/**
+ * Aceptación de la versión vigente de T&C del candidato (UC-23 §5.3).
+ * @typedef {Object} AceptacionTerminosRequest
+ * @property {number|null} idTyc
+ * @property {boolean} aceptaTerminos
+ */
+
+/**
+ * @typedef {Object} AprobarCandidatoRequest
+ * @property {AceptacionTerminosRequest} [aceptacionTerminos]
  */
 
 /**
@@ -79,6 +92,8 @@ import { normalizarTextoReemplazo } from "../utils/reemplazoConstants.js";
  * @property {string|null} fechaHoraInicio
  * @property {number|null} duracionMinutos
  * @property {string|null} mensaje
+ * @property {string|null} fechaRespuesta
+ * @property {string|null} motivoRespuesta
  */
 
 /**
@@ -159,7 +174,7 @@ const reemplazoService = {
   regenerar(idProyecto, idReemplazo, signal) {
     return http.post(
       `/proyectos/${idProyecto}/reemplazos/${idReemplazo}/regenerar`,
-      null,
+      {},
       { signal }
     );
   },
@@ -183,16 +198,33 @@ const reemplazoService = {
 
   /**
    * POST /proyectos/{idProyecto}/reemplazos/{idReemplazo}/candidatos/{idCandidato}/aprobar
+   * Puede haber varios candidatos ACEPTADO_PENDIENTE_APROBACION en el mismo
+   * proceso: el director elige a uno y, al aprobarlo, las demás invitaciones
+   * activas se cancelan.
+   * Si el candidato tiene T&C vigentes, el director envía
+   * `aceptacionTerminos`.
    * @param {number|string} idProyecto
    * @param {number|string} idReemplazo
    * @param {number|string} idCandidato
+   * @param {AprobarCandidatoRequest} [request]
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: CandidatoReemplazoResponse}>}
    */
-  aprobarCandidato(idProyecto, idReemplazo, idCandidato, signal) {
+  aprobarCandidato(
+    idProyecto,
+    idReemplazo,
+    idCandidato,
+    request = {},
+    signal
+  ) {
     return http.post(
       `/proyectos/${idProyecto}/reemplazos/${idReemplazo}/candidatos/${idCandidato}/aprobar`,
-      null,
+      // Nunca `null`: axios 1.x lo envía como
+      // application/x-www-form-urlencoded, content-type que Spring no puede
+      // mapear al @RequestBody(required = false) del endpoint (415).
+      request?.aceptacionTerminos
+        ? { aceptacionTerminos: request.aceptacionTerminos }
+        : {},
       { signal }
     );
   },
@@ -231,6 +263,18 @@ const reemplazoService = {
   },
 
   /**
+   * GET /reemplazos/invitaciones/rechazadas
+   * Devuelve sólo las invitaciones de reemplazo rechazadas por el
+   * profesional. Las eliminadas por el director y las canceladas con el
+   * proceso no se incluyen.
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionReemplazoResponse[]}>}
+   */
+  listarInvitacionesRechazadas(signal) {
+    return http.get("/reemplazos/invitaciones/rechazadas", { signal });
+  },
+
+  /**
    * POST /reemplazos/invitaciones/{idCandidato}/aceptar
    * @param {number|string} idCandidato
    * @param {AbortSignal} [signal]
@@ -239,7 +283,7 @@ const reemplazoService = {
   aceptarInvitacion(idCandidato, signal) {
     return http.post(
       `/reemplazos/invitaciones/${idCandidato}/aceptar`,
-      null,
+      {},
       { signal }
     );
   },
