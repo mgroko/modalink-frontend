@@ -21,6 +21,7 @@
       @abrir-proyecto="irAProyecto"
       @ver-todos-proyectos="irAProyectos"
       @ver-todas-oportunidades="irABuscarOportunidades"
+      @nueva-publicacion="abrirNuevaPublicacion"
     />
 
     <div v-else-if="!mensajeError" class="home-view__estado">
@@ -48,6 +49,11 @@
       @confirmar="confirmarPostulacion"
       @revisar-calendario="irACalendario"
     />
+
+    <ModalNuevaPublicacion
+      v-model="modalNuevaPublicacionVisible"
+      @creada="alCrearPublicacion"
+    />
   </div>
 </template>
 
@@ -57,6 +63,7 @@ import proyectoService from "../../services/proyectoService.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import HomeFeed from "../../components/home/HomeFeed.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
+import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import { setPerfilActivo, refrescarSesion } from "../../services/authState.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -88,6 +95,7 @@ export default {
   components: {
     BaseAlert,
     HomeFeed,
+    ModalNuevaPublicacion,
     ModalPostulacion,
   },
   setup() {
@@ -108,6 +116,7 @@ export default {
       enviandoPostulacion: false,
       errorPostulacion: "",
       errorPostulacionEsDisponibilidad: false,
+      modalNuevaPublicacionVisible: false,
     };
   },
   computed: {
@@ -199,6 +208,21 @@ export default {
       const actividades = Number(resumen?.totalOportunidadesActividad) || 0;
       const total = generales + actividades;
       return total || oportunidades.length;
+    },
+    abrirNuevaPublicacion() {
+      if (!this.perfilActivo) return;
+      this.modalNuevaPublicacionVisible = true;
+    },
+    alCrearPublicacion() {
+      this.modalNuevaPublicacionVisible = false;
+      this.toast.init({
+        title: "Publicación creada",
+        message: "La publicación ya está visible en tu portfolio.",
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.$router.push({ name: "inicioperfil" });
     },
     async refrescarResumen() {
       const postuladas = new Set(

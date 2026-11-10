@@ -6,17 +6,13 @@
         <p class="home-feed__subtitulo">{{ subtitulo }}</p>
       </div>
 
-      <span class="home-feed__cta-wrapper" data-tooltip="Próximamente">
-        <button
-          type="button"
-          class="home-feed__cta"
-          disabled
-          aria-disabled="true"
-          aria-label="Nueva publicación (próximamente)"
-        >
-          Nueva publicación
-        </button>
-      </span>
+      <button
+        type="button"
+        class="home-feed__cta"
+        @click="$emit('nueva-publicacion')"
+      >
+        Nueva publicación
+      </button>
     </header>
 
     <HomeFeedTabs
@@ -145,6 +141,7 @@ export default {
     "abrir-proyecto",
     "ver-todos-proyectos",
     "ver-todas-oportunidades",
+    "nueva-publicacion",
   ],
   computed: {
     tabs() {
@@ -276,8 +273,13 @@ export default {
   color: #ffffff;
   font-size: 0.82rem;
   font-weight: 600;
-  cursor: not-allowed;
-  opacity: 0.55;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.home-feed__cta:hover,
+.home-feed__cta:focus-visible {
+  filter: brightness(1.06);
 }
 
 .home-feed__estado {

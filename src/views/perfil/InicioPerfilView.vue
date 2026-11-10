@@ -133,9 +133,9 @@
 
           <!-- Sección: Publicaciones (default) -->
           <template v-else>
-            <section class="inicio-perfil__panel">
+            <section ref="publicacionesRef" class="inicio-perfil__panel">
               <div class="inicio-perfil__panel-header">
-                <h2 class="inicio-perfil__panel-titulo">Publicaciones del perfil</h2>
+                <h2 class="inicio-perfil__panel-titulo">Publicaciones</h2>
                 <VaButton
                   v-if="esPropio"
                   color="success"
@@ -146,16 +146,62 @@
                   Nueva publicación
                 </VaButton>
               </div>
-              <p v-if="!publicaciones.length" class="inicio-perfil__vacio">
-                Todavía no hay publicaciones.
-              </p>
-              <article
-                v-for="publicacion in publicaciones"
-                :key="publicacion.idPublicacion"
-                class="inicio-perfil__publicacion"
+
+              <FiltrosPublicaciones
+                v-if="perfil"
+                :filtros="filtrosPublicaciones"
+                :proyectos="proyectosFiltroPublicaciones"
+                :cargando-proyectos="cargandoProyectosPublicaciones"
+                :error-proyectos="errorProyectosPublicaciones"
+                :error-fechas="errorFechasPublicaciones"
+                :hay-filtros="hayFiltrosPublicaciones"
+                :pagina="paginacionPublicaciones.paginaActual || 0"
+                :cargando="cargandoPublicaciones"
+                @cambio="cambiarFiltroPublicacion"
+                @buscar="buscarPublicaciones"
+                @limpiar="limpiarFiltrosPublicaciones"
+              />
+
+              <div
+                v-if="cargandoPublicaciones"
+                class="inicio-perfil__estado-publicaciones"
+                role="status"
+                aria-live="polite"
               >
-                <p>{{ publicacion.contenido || publicacion.texto }}</p>
-              </article>
+                <span class="inicio-perfil__spinner" aria-hidden="true"></span>
+                Cargando publicaciones...
+              </div>
+
+              <div
+                v-else-if="errorPublicaciones"
+                class="inicio-perfil__estado-publicaciones"
+              >
+                <p class="inicio-perfil__estado-publicaciones-texto">
+                  {{ errorPublicaciones }}
+                </p>
+                <VaButton preset="secondary" icon="mso-refresh" @click="cargarPublicaciones()">
+                  Reintentar
+                </VaButton>
+              </div>
+
+              <p v-else-if="!publicaciones.length" class="inicio-perfil__vacio">
+                {{ textoVacioPublicaciones }}
+              </p>
+
+              <div v-else class="inicio-perfil__publicaciones-grid">
+                <PublicacionCardCompacta
+                  v-for="publicacion in publicaciones"
+                  :key="publicacion.idPublicacion"
+                  :publicacion="publicacion"
+                  @abrir="abrirPublicacion"
+                />
+              </div>
+
+              <PaginacionResultados
+                v-if="!cargandoPublicaciones && !errorPublicaciones && publicaciones.length"
+                :paginacion="paginacionPublicaciones"
+                @cambiar="cambiarPaginaPublicaciones"
+              />
             </section>
 
             <section v-if="habilidades.length" class="inicio-perfil__panel">
@@ -319,19 +365,43 @@
         @update:model-value="alCambiarModalEliminarConexion"
         @confirmar="confirmarEliminarConexion"
       />
+
+      <PublicacionDetalleModal
+        v-model="modalPublicacionVisible"
+        :publicacion="publicacionSeleccionada"
+        @abrir-galeria="abrirGaleriaPublicacion"
+        @ver-proyecto="irAProyectoPublicacion"
+      />
+
+      <GaleriaPublicacionModal
+        v-model="modalGaleriaPublicacionVisible"
+        :imagenes="imagenesGaleria"
+        :titulo="tituloGaleria"
+      />
+
+      <ModalNuevaPublicacion
+        v-model="modalNuevaPublicacionVisible"
+        @creada="alCrearPublicacion"
+      />
     </template>
   </div>
 </template>
 
 <script>
 import perfilService from "../../services/perfilService";
-import homeService from "../../services/homeService";
+import publicacionService from "../../services/publicacionService";
 import authService from "../../services/authService";
 import calificacionPerfilService from "../../services/calificacionPerfilService";
 import solicitudConexionService from "../../services/solicitudConexionService";
 import conexionService from "../../services/conexionService";
 import { cargarResumenPerfil } from "../../services/notificacionState";
 import { cargarConteosSolicitudesConexion } from "../../services/solicitudConexionState";
+import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
+import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
+import PublicacionCardCompacta from "../../components/perfil/PublicacionCardCompacta.vue";
+import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
+import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
+import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import {
   esAdmin,
   idPerfilActivo,
@@ -382,6 +452,16 @@ import {
 import { normalizarResena, normalizarResumen } from "../../utils/resenasConstants";
 import { normalizarTerminos } from "../../utils/terminosCondiciones.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
+import {
+  construirQueryPublicaciones,
+  filtrosPublicacionVacios,
+  firmarFiltrosPublicacion,
+  hayFiltrosPublicacion,
+  leerFiltrosPublicacionQuery,
+  normalizarProyectoFiltro,
+  normalizarPublicacion,
+} from "../../utils/publicacionConstants.js";
+import { validarRangoFechas } from "../../utils/parametrosPostulaciones.js";
 import { useToast } from "vuestic-ui";
 
 const SECCIONES_NO_DISPONIBLES = {
@@ -394,9 +474,15 @@ export default {
   components: {
     BaseAlert,
     CalendarioProfesional,
+    FiltrosPublicaciones,
+    GaleriaPublicacionModal,
+    ModalNuevaPublicacion,
+    PaginacionResultados,
     PerfilHero,
     PerfilSidebarNav,
     ProximosEventos,
+    PublicacionCardCompacta,
+    PublicacionDetalleModal,
     ReportarPerfilModal,
     ModalEnviarSolicitudConexion,
     ModalCancelarSolicitudConexion,
@@ -415,6 +501,29 @@ export default {
     return {
       perfil: null,
       publicaciones: [],
+      filtrosPublicaciones: filtrosPublicacionVacios(),
+      proyectosFiltroPublicaciones: [],
+      cargandoProyectosPublicaciones: false,
+      errorProyectosPublicaciones: "",
+      cargandoPublicaciones: false,
+      errorPublicaciones: "",
+      errorFechasPublicaciones: "",
+      paginacionPublicaciones: {
+        paginaActual: 0,
+        totalPaginas: 1,
+        totalElementos: 0,
+        primera: true,
+        ultima: true,
+      },
+      controladorPublicaciones: null,
+      controladorProyectosPublicaciones: null,
+      sincronizandoQueryPublicaciones: false,
+      modalNuevaPublicacionVisible: false,
+      modalPublicacionVisible: false,
+      publicacionSeleccionada: null,
+      modalGaleriaPublicacionVisible: false,
+      imagenesGaleria: [],
+      tituloGaleria: "",
       resenasResumen: null,
       resenasDestacadas: [],
       cargandoResenas: false,
@@ -464,6 +573,14 @@ export default {
       const seccionRuta = this.$route.params.seccion;
       const validas = ["calendario", "resenas", "terminos"];
       return validas.includes(seccionRuta) ? seccionRuta : "publicaciones";
+    },
+    hayFiltrosPublicaciones() {
+      return hayFiltrosPublicacion(this.filtrosPublicaciones);
+    },
+    textoVacioPublicaciones() {
+      return this.hayFiltrosPublicaciones
+        ? "No se encontraron publicaciones con esos filtros."
+        : "Todavía no hay publicaciones.";
     },
     puedeConfigurarTerminos() {
       return (
@@ -548,6 +665,8 @@ export default {
     if (this.intervaloContador) clearInterval(this.intervaloContador);
     this.abortarTerminos();
     this.abortarResenasDestacadas();
+    this.abortarPublicaciones();
+    this.abortarProyectosPublicaciones();
   },
   watch: {
     "$route.params.id"() {
@@ -561,6 +680,9 @@ export default {
     },
     "$route.params.idCalificacion"() {
       window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    "$route.query"() {
+      this.sincronizarPublicacionesDesdeRuta();
     },
   },
   methods: {
@@ -582,6 +704,22 @@ export default {
       this.errorCarga = false;
       this.resetearTerminos();
       this.abortarResenasDestacadas();
+      this.abortarPublicaciones();
+      this.abortarProyectosPublicaciones();
+      this.publicaciones = [];
+      this.cargandoPublicaciones = false;
+      this.errorPublicaciones = "";
+      this.errorFechasPublicaciones = "";
+      this.cargandoProyectosPublicaciones = false;
+      this.errorProyectosPublicaciones = "";
+      this.proyectosFiltroPublicaciones = [];
+      this.paginacionPublicaciones = {
+        paginaActual: 0,
+        totalPaginas: 1,
+        totalElementos: 0,
+        primera: true,
+        ultima: true,
+      };
       this.resenasResumen = null;
       this.resenasDestacadas = [];
       this.cargandoResenas = false;
@@ -596,22 +734,7 @@ export default {
       }
 
       try {
-        // Paralelismo (UC-14 §7): el resumen del feed solo hace falta si el
-        // perfil es propio. "¿Es mío?" se resuelve antes de lanzar las
-        // peticiones con el perfil activo en sesión (mismo criterio del
-        // computed esPropio) para no serializar los dos round-trips.
-        const esMio = idDeRuta == null || id === idPerfilActivo();
-
-        const perfilPromise = perfilService.obtener(id);
-        const resumenPromise = esMio
-          ? // best-effort: un fallo del resumen no debe romper la carga del perfil
-            homeService.obtenerResumen().catch(() => null)
-          : Promise.resolve(null);
-
-        const [perfilRes, resumenInicial] = await Promise.all([
-          perfilPromise,
-          resumenPromise,
-        ]);
+        const perfilRes = await perfilService.obtener(id);
 
         this.perfil = perfilRes?.data || null;
         if (!this.perfil) {
@@ -634,21 +757,16 @@ export default {
           await this.cargarTerminos();
         }
 
-        // Caso raro: el sistema marca esPropietario pero el id no coincidía
-        // con el perfil activo al disparar las peticiones → traer el resumen
-        // en este punto (ya de forma secuencial).
-        let resumenRes = resumenInicial;
-        if (this.perfil.esPropietario === true && resumenRes == null) {
-          resumenRes = await homeService.obtenerResumen().catch(() => null);
-        }
-
-        // Las publicaciones del feed propio solo se muestran cuando el perfil
-        // consultado pertenece al usuario en sesión.
-        const resumen = resumenRes?.data || null;
-        this.publicaciones =
-          this.perfil.esPropietario === true && Array.isArray(resumen?.publicacionesRecientes)
-            ? resumen.publicacionesRecientes
-            : [];
+        const consultaPublicaciones = leerFiltrosPublicacionQuery(
+          this.$route.query
+        );
+        this.filtrosPublicaciones = consultaPublicaciones.filtros;
+        this.paginacionPublicaciones = {
+          ...this.paginacionPublicaciones,
+          paginaActual: consultaPublicaciones.pagina,
+        };
+        this.cargarPublicaciones({ pagina: consultaPublicaciones.pagina });
+        this.cargarProyectosFiltroPublicaciones();
       } catch (error) {
         const status = error?.response?.status;
         if (status === 401) {
@@ -669,6 +787,291 @@ export default {
       } finally {
         this.cargando = false;
       }
+    },
+    abortarPublicaciones() {
+      if (this.controladorPublicaciones) {
+        this.controladorPublicaciones.abort();
+        this.controladorPublicaciones = null;
+      }
+    },
+    abortarProyectosPublicaciones() {
+      if (this.controladorProyectosPublicaciones) {
+        this.controladorProyectosPublicaciones.abort();
+        this.controladorProyectosPublicaciones = null;
+      }
+    },
+    esCancelacion(error) {
+      return (
+        error?.code === "ERR_CANCELED" ||
+        error?.name === "CanceledError" ||
+        error?.name === "AbortError"
+      );
+    },
+    async cargarPublicaciones({
+      pagina = this.paginacionPublicaciones.paginaActual || 0,
+    } = {}) {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
+
+      this.abortarPublicaciones();
+      const controller = new AbortController();
+      this.controladorPublicaciones = controller;
+      this.cargandoPublicaciones = true;
+      this.errorPublicaciones = "";
+      this.errorFechasPublicaciones = "";
+
+      try {
+        const filtros = this.filtrosPublicaciones;
+        const response = await publicacionService.listarPorPerfil(
+          idPerfil,
+          {
+            page: pagina,
+            size: 10,
+            fechaDesde: filtros.fechaDesde,
+            fechaHasta: filtros.fechaHasta,
+            idProyecto: filtros.idProyecto,
+            titulo: String(filtros.titulo || "").trim(),
+            descripcion: String(filtros.descripcion || "").trim(),
+          },
+          controller.signal
+        );
+
+        if (this.controladorPublicaciones !== controller) return;
+
+        const data = response?.data || {};
+        const contenido = Array.isArray(data.contenido) ? data.contenido : [];
+        this.publicaciones = contenido
+          .map(normalizarPublicacion)
+          .filter(Boolean);
+        this.paginacionPublicaciones = {
+          paginaActual: Number(data.paginaActual) || 0,
+          totalPaginas: Number(data.totalPaginas) || 1,
+          totalElementos: Number(data.totalElementos) || 0,
+          primera: data.primera !== false,
+          ultima: data.ultima !== false,
+        };
+      } catch (error) {
+        if (
+          this.controladorPublicaciones !== controller ||
+          this.esCancelacion(error)
+        ) {
+          return;
+        }
+
+        const status = error?.response?.status;
+        const mensaje = error?.response?.data?.message || "";
+
+        if (status === 400) {
+          this.errorFechasPublicaciones =
+            mensaje || "El rango de fechas no es válido.";
+          return;
+        }
+
+        if (status === 404) {
+          this.errorPublicaciones =
+            mensaje || "El perfil ya no está disponible.";
+          return;
+        }
+
+        this.errorPublicaciones = mensajeErrorApi(
+          error,
+          "No se pudieron cargar las publicaciones."
+        );
+      } finally {
+        if (this.controladorPublicaciones === controller) {
+          this.cargandoPublicaciones = false;
+          this.controladorPublicaciones = null;
+        }
+      }
+    },
+    async cargarProyectosFiltroPublicaciones() {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
+
+      this.abortarProyectosPublicaciones();
+      const controller = new AbortController();
+      this.controladorProyectosPublicaciones = controller;
+      this.cargandoProyectosPublicaciones = true;
+      this.errorProyectosPublicaciones = "";
+
+      try {
+        const response = await publicacionService.listarProyectosFiltro(
+          idPerfil,
+          controller.signal
+        );
+        if (this.controladorProyectosPublicaciones !== controller) return;
+
+        const data = response?.data;
+        const lista = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.contenido)
+            ? data.contenido
+            : Array.isArray(data?.proyectos)
+              ? data.proyectos
+              : [];
+        const proyectos = new Map();
+
+        for (const item of lista) {
+          const normalizado = normalizarProyectoFiltro(item);
+          if (normalizado) {
+            proyectos.set(String(normalizado.idProyecto), normalizado);
+          }
+        }
+
+        this.proyectosFiltroPublicaciones = [...proyectos.values()];
+      } catch (error) {
+        if (
+          this.controladorProyectosPublicaciones !== controller ||
+          this.esCancelacion(error)
+        ) {
+          return;
+        }
+
+        this.proyectosFiltroPublicaciones = [];
+        this.errorProyectosPublicaciones = mensajeErrorApi(
+          error,
+          "No se pudieron cargar los proyectos para filtrar."
+        );
+      } finally {
+        if (this.controladorProyectosPublicaciones === controller) {
+          this.cargandoProyectosPublicaciones = false;
+          this.controladorProyectosPublicaciones = null;
+        }
+      }
+    },
+    sincronizarPublicacionesDesdeRuta() {
+      if (this.sincronizandoQueryPublicaciones || this.cargando || !this.perfil) {
+        return;
+      }
+
+      const { filtros, pagina } = leerFiltrosPublicacionQuery(this.$route.query);
+      const firmaRuta = firmarFiltrosPublicacion(filtros, pagina);
+      const firmaActual = firmarFiltrosPublicacion(
+        this.filtrosPublicaciones,
+        this.paginacionPublicaciones.paginaActual
+      );
+      if (firmaRuta === firmaActual) return;
+
+      this.filtrosPublicaciones = filtros;
+      this.paginacionPublicaciones = {
+        ...this.paginacionPublicaciones,
+        paginaActual: pagina,
+      };
+      this.cargarPublicaciones({ pagina });
+    },
+    actualizarQueryPublicaciones(pagina) {
+      const query = construirQueryPublicaciones(
+        this.$route.query,
+        this.filtrosPublicaciones,
+        pagina
+      );
+
+      if (JSON.stringify(query) === JSON.stringify(this.$route.query || {})) {
+        return;
+      }
+
+      this.sincronizandoQueryPublicaciones = true;
+      this.$router
+        .replace({ query })
+        .catch(() => {})
+        .finally(() => {
+          this.sincronizandoQueryPublicaciones = false;
+        });
+    },
+    cambiarFiltroPublicacion({ campo, valor }) {
+      this.filtrosPublicaciones = {
+        ...this.filtrosPublicaciones,
+        [campo]:
+          campo === "idProyecto"
+            ? valor == null || valor === ""
+              ? null
+              : valor
+            : valor || "",
+      };
+      if (campo === "fechaDesde" || campo === "fechaHasta") {
+        this.errorFechasPublicaciones = "";
+      }
+    },
+    buscarPublicaciones() {
+      const errorFechas = validarRangoFechas(
+        this.filtrosPublicaciones.fechaDesde,
+        this.filtrosPublicaciones.fechaHasta
+      );
+      if (errorFechas) {
+        this.errorFechasPublicaciones = errorFechas;
+        return;
+      }
+
+      this.errorFechasPublicaciones = "";
+      this.paginacionPublicaciones = {
+        ...this.paginacionPublicaciones,
+        paginaActual: 0,
+      };
+      this.actualizarQueryPublicaciones(0);
+      this.cargarPublicaciones({ pagina: 0 });
+    },
+    limpiarFiltrosPublicaciones() {
+      this.filtrosPublicaciones = filtrosPublicacionVacios();
+      this.errorFechasPublicaciones = "";
+      this.paginacionPublicaciones = {
+        ...this.paginacionPublicaciones,
+        paginaActual: 0,
+      };
+      this.actualizarQueryPublicaciones(0);
+      this.cargarPublicaciones({ pagina: 0 });
+    },
+    cambiarPaginaPublicaciones(delta) {
+      const paginaActual =
+        Number(this.paginacionPublicaciones.paginaActual) || 0;
+      const destino = paginaActual + Number(delta || 0);
+      const totalPaginas = Number(this.paginacionPublicaciones.totalPaginas) || 1;
+
+      if (destino < 0 || destino >= totalPaginas) return;
+
+      this.paginacionPublicaciones = {
+        ...this.paginacionPublicaciones,
+        paginaActual: destino,
+      };
+      this.actualizarQueryPublicaciones(destino);
+      this.cargarPublicaciones({ pagina: destino });
+      this.$nextTick(() => {
+        this.$refs.publicacionesRef?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    },
+    abrirPublicacion(publicacion) {
+      if (!publicacion) return;
+      this.publicacionSeleccionada = publicacion;
+      this.modalPublicacionVisible = true;
+    },
+    abrirGaleriaPublicacion(publicacion) {
+      if (!Array.isArray(publicacion?.imagenes) || !publicacion.imagenes.length) {
+        return;
+      }
+      this.imagenesGaleria = publicacion.imagenes;
+      this.tituloGaleria = publicacion.titulo;
+      this.modalPublicacionVisible = false;
+      this.modalGaleriaPublicacionVisible = true;
+    },
+    irAProyectoPublicacion(proyecto) {
+      if (proyecto?.idProyecto == null) return;
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: proyecto.idProyecto },
+      });
+    },
+    alCrearPublicacion() {
+      this.modalNuevaPublicacionVisible = false;
+      this.toast.init({
+        title: "Publicación creada",
+        message: "La publicación ya está visible en el portfolio.",
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.limpiarFiltrosPublicaciones();
     },
     resetearTerminos() {
       this.abortarTerminos();
@@ -1259,7 +1662,8 @@ export default {
       return false;
     },
     nuevaPublicacion() {
-      this.noDisponible("Nueva publicación");
+      if (!this.esPropio) return;
+      this.modalNuevaPublicacionVisible = true;
     },
     irAEditar() {
       if (this.perfil?.idPerfil) {
@@ -1380,19 +1784,42 @@ export default {
   font-size: 0.85rem;
 }
 
-.inicio-perfil__publicacion {
-  padding: 0.9rem 0;
-  border-bottom: 1px solid var(--color-border);
+.inicio-perfil__publicaciones-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
 }
 
-.inicio-perfil__publicacion:last-child {
-  border-bottom: 0;
+.inicio-perfil__estado-publicaciones {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 2rem 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
 }
 
-.inicio-perfil__publicacion p {
+.inicio-perfil__estado-publicaciones-texto {
+  max-width: 30rem;
   margin: 0;
-  color: var(--color-text);
-  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.inicio-perfil__spinner {
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: inicio-perfil-girar 0.8s linear infinite;
+}
+
+@keyframes inicio-perfil-girar {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .inicio-perfil__carac-grid {
@@ -1509,6 +1936,12 @@ export default {
   .inicio-perfil__sidebar {
     position: static;
     order: -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .inicio-perfil__publicaciones-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
