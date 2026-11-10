@@ -35,6 +35,7 @@
           :tab-activa="tabActiva"
           :mostrar-planificacion="esMiembro"
           :mostrar-integrantes="esMiembro"
+          :mostrar-chat="esMiembro"
           :mostrar-historial="puedeVerHistorial"
           :mostrar-reemplazos="esDirector"
           :mostrar-contratos="puedeVerContratos"
@@ -297,6 +298,13 @@
           @invitar="irAInvitarProyecto"
         />
 
+        <ChatGrupalProyecto
+          v-else-if="tabActiva === 'chat' && esMiembro"
+          :id-proyecto="idProyecto"
+          :nombre-proyecto="proyecto.nombre"
+          @ir-miembros="cambiarTab('integrantes')"
+        />
+
         <HistorialProyecto
           v-else-if="tabActiva === 'historial' && puedeVerHistorial"
           :id-proyecto="idProyecto"
@@ -502,6 +510,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
 import IntegrantesProyecto from "../../components/proyecto/IntegrantesProyecto.vue";
+import ChatGrupalProyecto from "../../components/proyecto/ChatGrupalProyecto.vue";
 import HistorialProyecto from "../../components/proyecto/HistorialProyecto.vue";
 import ReemplazosProyecto from "../../components/proyecto/ReemplazosProyecto.vue";
 import ContratosProyecto from "../../components/proyecto/ContratosProyecto.vue";
@@ -611,6 +620,7 @@ export default {
     ProyectoEncabezado,
     PlanificacionProyecto,
     IntegrantesProyecto,
+    ChatGrupalProyecto,
     HistorialProyecto,
     ReemplazosProyecto,
     ContratosProyecto,
@@ -1006,7 +1016,7 @@ data() {
       if (!valor) {
         this.limpiarResumenReemplazos();
         if (
-          ["planificacion", "integrantes", "historial", "reemplazos", "contratos"].includes(
+          ["planificacion", "integrantes", "chat", "historial", "reemplazos", "contratos"].includes(
             this.tabActiva
           )
         ) {
@@ -1278,6 +1288,7 @@ data() {
         "informacion",
         "planificacion",
         "integrantes",
+        "chat",
         "historial",
         "reemplazos",
         "postulaciones",
@@ -1285,7 +1296,7 @@ data() {
       ];
       const tab = permitidas.includes(solicitada) ? solicitada : "informacion";
 
-      if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) {
+      if (["planificacion", "integrantes", "chat"].includes(tab) && !this.esMiembro) {
         this.tabActiva = "informacion";
         return;
       }
@@ -1322,7 +1333,7 @@ data() {
         .catch(() => {});
     },
     cambiarTab(tab) {
-      if (["planificacion", "integrantes"].includes(tab) && !this.esMiembro) return;
+      if (["planificacion", "integrantes", "chat"].includes(tab) && !this.esMiembro) return;
       if (tab === "historial" && !this.puedeVerHistorial) return;
       if (tab === "reemplazos" && !this.esDirector) return;
       if (tab === "contratos" && !this.puedeVerContratos) return;

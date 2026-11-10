@@ -9,6 +9,12 @@
 
 export const TIPOS_NOTIFICACION = {
   POSTULACION_RECIBIDA: "POSTULACION_RECIBIDA",
+  SOLICITUD_CONEXION_RECIBIDA: "SOLICITUD_CONEXION_RECIBIDA",
+  SOLICITUD_CONEXION_ACEPTADA: "SOLICITUD_CONEXION_ACEPTADA",
+  SOLICITUD_CONEXION_RECHAZADA: "SOLICITUD_CONEXION_RECHAZADA",
+  CONEXION_ELIMINADA: "CONEXION_ELIMINADA",
+  MENSAJE_PRIVADO_RECIBIDO: "MENSAJE_PRIVADO_RECIBIDO",
+  MENSAJE_GRUPAL_RECIBIDO: "MENSAJE_GRUPAL_RECIBIDO",
   POSTULACION_ACEPTADA: "POSTULACION_ACEPTADA",
   POSTULACION_RECHAZADA: "POSTULACION_RECHAZADA",
   PROYECTO_CANCELADO: "PROYECTO_CANCELADO",
@@ -51,10 +57,23 @@ export const RUTAS_NOTIFICACION = {
   CALIFICACIONES: "calificaciones-proyecto",
   INVITACIONES: "invitaciones",
   CONTRATO: "detalle-contrato",
+  MI_RED: "mi-red",
+  MENSAJES: "mensajes",
 };
 
 const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "Postulación recibida",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECIBIDA]:
+    "Solicitud de conexión recibida",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_ACEPTADA]:
+    "Solicitud de conexión aceptada",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECHAZADA]:
+    "Solicitud de conexión rechazada",
+  [TIPOS_NOTIFICACION.CONEXION_ELIMINADA]: "Conexión eliminada",
+  [TIPOS_NOTIFICACION.MENSAJE_PRIVADO_RECIBIDO]:
+    "Mensaje privado recibido",
+  [TIPOS_NOTIFICACION.MENSAJE_GRUPAL_RECIBIDO]:
+    "Mensaje en el chat del proyecto",
   [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "Postulación aceptada",
   [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "Postulación rechazada",
   [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "Proyecto cancelado",
@@ -97,6 +116,12 @@ const ETIQUETAS_TIPO = {
 
 const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.POSTULACION_RECIBIDA]: "person_add",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECIBIDA]: "person_add",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_ACEPTADA]: "how_to_reg",
+  [TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECHAZADA]: "person_remove",
+  [TIPOS_NOTIFICACION.CONEXION_ELIMINADA]: "link_off",
+  [TIPOS_NOTIFICACION.MENSAJE_PRIVADO_RECIBIDO]: "chat",
+  [TIPOS_NOTIFICACION.MENSAJE_GRUPAL_RECIBIDO]: "chat",
   [TIPOS_NOTIFICACION.POSTULACION_ACEPTADA]: "how_to_reg",
   [TIPOS_NOTIFICACION.POSTULACION_RECHAZADA]: "person_remove",
   [TIPOS_NOTIFICACION.PROYECTO_CANCELADO]: "cancel",
@@ -220,6 +245,95 @@ export function destinoNotificacion(notificacion) {
         : {
             etiqueta: "Ver postulaciones",
             ruta: { name: RUTAS_NOTIFICACION.POSTULACIONES, params: { id } },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECIBIDA: {
+      return {
+        etiqueta: "Ver solicitudes",
+        ruta: {
+          name: RUTAS_NOTIFICACION.MI_RED,
+          query: { tab: "recibidas" },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.SOLICITUD_CONEXION_ACEPTADA: {
+      const idConexion =
+        idValido(notificacion.idConexion) ??
+        (notificacion.entidadTipo === "CONEXION"
+          ? idValido(notificacion.entidadId)
+          : null);
+
+      return {
+        etiqueta: "Ver conexión",
+        ruta: {
+          name: RUTAS_NOTIFICACION.MI_RED,
+          query: {
+            tab: "conexiones",
+            ...(idConexion != null ? { idConexion } : {}),
+          },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.SOLICITUD_CONEXION_RECHAZADA: {
+      return {
+        etiqueta: "Ver solicitudes",
+        ruta: {
+          name: RUTAS_NOTIFICACION.MI_RED,
+          query: {
+            tab: "enviadas",
+            estado: "RECHAZADA",
+          },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.CONEXION_ELIMINADA: {
+      return {
+        etiqueta: "Ver conexiones",
+        ruta: {
+          name: RUTAS_NOTIFICACION.MI_RED,
+          query: { tab: "conexiones" },
+        },
+      };
+    }
+
+    case TIPOS_NOTIFICACION.MENSAJE_PRIVADO_RECIBIDO: {
+      // El backend usa entidad_tipo = CONVERSACION y entidad_id = idConversacion.
+      const id = idValido(
+        notificacion.entidadTipo === "CONVERSACION"
+          ? notificacion.entidadId
+          : null
+      );
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ir al chat",
+            ruta: {
+              name: RUTAS_NOTIFICACION.MENSAJES,
+              query: { conversacion: id },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.MENSAJE_GRUPAL_RECIBIDO: {
+      // El backend usa entidad_tipo = PROYECTO y entidad_id = idProyecto.
+      const id =
+        idValido(notificacion.idProyecto) ??
+        (notificacion.entidadTipo === "PROYECTO"
+          ? idValido(notificacion.entidadId)
+          : null);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ir al chat del proyecto",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PROYECTO,
+              params: { id },
+              query: { tab: "chat" },
+            },
           };
     }
 

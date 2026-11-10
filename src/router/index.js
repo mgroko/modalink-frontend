@@ -17,6 +17,8 @@ import AjustesPerfilView from "../views/perfil/AjustesPerfilView.vue";
 import ConfigurarTerminosView from "../views/perfil/ConfigurarTerminosView.vue";
 import InicioPerfilView from "../views/perfil/InicioPerfilView.vue";
 import BuscarPerfilView from "../views/perfil/BuscarPerfilView.vue";
+import MiRedView from "../views/conexion/MiRedView.vue";
+import MensajesView from "../views/mensajes/MensajesView.vue";
 import CrearProyectoView from "../views/proyecto/CrearProyectoView.vue";
 import ProyectosInicioView from "../views/proyecto/ProyectosInicioView.vue";
 import DashboardProyectoView from "../views/proyecto/DashboardProyectoView.vue";
@@ -150,6 +152,49 @@ const routes = [
     name: "ver-perfil-seccion",
     component: InicioPerfilView,
     meta: { layout: HomeLayout, titulo: "Perfil", requiresActiveProfile: true, sinSidebarPerfil: true, sinFondoBlanco: true },
+  },
+  {
+    path: "/mi-red",
+    name: "mi-red",
+    component: MiRedView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Mi red",
+      requiresActiveProfile: true,
+      navActiva: "mi-red",
+    },
+  },
+  {
+    path: "/mensajes",
+    name: "mensajes",
+    component: MensajesView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Mensajes",
+      requiresActiveProfile: true,
+      navActiva: "mensajes",
+      sinFondoBlanco: true,
+    },
+  },
+  {
+    path: "/solicitudes-conexion",
+    redirect: (to) => ({
+      name: "mi-red",
+      query: {
+        ...to.query,
+        tab: to.query.direccion === "ENVIADA" ? "enviadas" : "recibidas",
+      },
+    }),
+  },
+  {
+    path: "/red-contactos",
+    redirect: (to) => ({
+      name: "mi-red",
+      query: {
+        ...to.query,
+        tab: "conexiones",
+      },
+    }),
   },
   {
     path: "/buscar",
@@ -300,6 +345,14 @@ const routes = [
       requiresActiveProfile: true,
       navActiva: "proyectos",
     },
+  },
+  {
+    path: "/proyectos/:id/chat",
+    redirect: (to) => ({
+      name: "dashboard-proyecto",
+      params: { id: to.params.id },
+      query: { ...to.query, tab: "chat" },
+    }),
   },
   {
     path: "/proyectos/:id",

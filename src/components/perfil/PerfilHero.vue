@@ -1,13 +1,24 @@
 <template>
   <section class="perfil-hero" :class="{ 'perfil-hero--compacto': compacto }">
-    <div class="perfil-hero__avatar">
+    <button
+      ref="avatarBoton"
+      type="button"
+      class="perfil-hero__avatar perfil-hero__avatar--boton"
+      :disabled="!fotoUrl"
+      :aria-label="
+        fotoUrl
+          ? 'Ampliar foto de perfil'
+          : 'El perfil no tiene foto de perfil'
+      "
+      @click="abrirFoto"
+    >
       <img
         v-if="fotoUrl"
         :src="fotoUrl"
         :alt="perfil?.nombreArtistico || 'Foto de perfil'"
       />
       <span v-else class="material-symbols-outlined">person</span>
-    </div>
+    </button>
 
     <div class="perfil-hero__info">
       <div class="perfil-hero__nombre-fila">
@@ -18,6 +29,11 @@
         </span>
       </div>
       <p class="perfil-hero__profesion">{{ profesionTexto }}</p>
+      <IndicadorPresencia
+        v-if="perfil?.idPerfil"
+        :en-linea="enLinea"
+        class="perfil-hero__presencia"
+      />
       <p v-if="ubicacionTexto" class="perfil-hero__ubicacion">{{ ubicacionTexto }}</p>
       <p v-if="perfil?.biografia" class="perfil-hero__descripcion">{{ perfil.biografia }}</p>
     </div>
@@ -30,15 +46,52 @@
     >
       <span class="material-symbols-outlined">edit</span>
     </button>
+
+    <Teleport to="body">
+      <div
+        v-if="fotoAmpliada"
+        ref="lightbox"
+        class="perfil-hero__lightbox"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Foto de perfil ampliada"
+        tabindex="-1"
+        @click.self="cerrarFoto"
+      >
+        <button
+          type="button"
+          class="perfil-hero__lightbox-cerrar"
+          aria-label="Cerrar foto ampliada"
+          @click="cerrarFoto"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+
+        <img
+          class="perfil-hero__lightbox-img"
+          :src="fotoUrl"
+          :alt="perfil?.nombreArtistico || 'Foto de perfil'"
+        />
+      </div>
+    </Teleport>
   </section>
 </template>
 
 <script>
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import IndicadorPresencia from "../conexion/IndicadorPresencia.vue";
+import {
+  enLineaDe,
+  desuscribirPerfiles,
+  suscribirPerfiles,
+} from "../../services/presenciaState";
 
 export default {
   name: "PerfilHero",
+  components: {
+    IndicadorPresencia,
+  },
   props: {
     perfil: {
       type: Object,
@@ -54,7 +107,17 @@ export default {
     },
   },
   emits: ["editar"],
+  data() {
+    return {
+      idPresencia: null,
+      fotoAmpliada: false,
+      overflowAnterior: "",
+    };
+  },
   computed: {
+    enLinea() {
+      return enLineaDe(this.perfil?.idPerfil, this.perfil?.enLinea);
+    },
     fotoUrl() {
       return resolverFotoUrl(
         this.perfil?.fotoUrl || this.perfil?.urlFoto || this.perfil?.fotoPerfil
@@ -74,6 +137,57 @@ export default {
     },
     ubicacionTexto() {
       return formatUbicacion(this.perfil) || "";
+    },
+  },
+  watch: {
+    "perfil.idPerfil"() {
+      this.cerrarFoto();
+      this.actualizarSuscripcion();
+    },
+  },
+  mounted() {
+    this.actualizarSuscripcion();
+  },
+  beforeUnmount() {
+    this.quitarSuscripcion();
+    this.cerrarFoto();
+  },
+  methods: {
+    actualizarSuscripcion() {
+      const id = this.perfil?.idPerfil ?? null;
+      if (this.idPresencia != null && this.idPresencia !== id) {
+        desuscribirPerfiles([this.idPresencia]);
+      }
+      this.idPresencia = id;
+      if (id != null) suscribirPerfiles([id]);
+    },
+    quitarSuscripcion() {
+      if (this.idPresencia != null) {
+        desuscribirPerfiles([this.idPresencia]);
+        this.idPresencia = null;
+      }
+    },
+    abrirFoto() {
+      if (!this.fotoUrl || this.fotoAmpliada) return;
+
+      this.overflowAnterior = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      this.fotoAmpliada = true;
+      document.addEventListener("keydown", this.alPresionarTecla);
+
+      this.$nextTick(() => this.$refs.lightbox?.focus());
+    },
+    cerrarFoto() {
+      if (!this.fotoAmpliada) return;
+
+      this.fotoAmpliada = false;
+      document.body.style.overflow = this.overflowAnterior || "";
+      document.removeEventListener("keydown", this.alPresionarTecla);
+
+      this.$nextTick(() => this.$refs.avatarBoton?.focus());
+    },
+    alPresionarTecla(evento) {
+      if (evento.key === "Escape") this.cerrarFoto();
     },
   },
 };
@@ -102,6 +216,26 @@ export default {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.perfil-hero__avatar--boton {
+  padding: 0;
+  border: 0;
+  font: inherit;
+  cursor: zoom-in;
+}
+
+.perfil-hero__avatar--boton:disabled {
+  cursor: default;
+}
+
+.perfil-hero__avatar--boton:not(:disabled):hover {
+  box-shadow: 0 0 0 3px var(--color-hover);
+}
+
+.perfil-hero__avatar--boton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .perfil-hero--compacto .perfil-hero__avatar {
@@ -168,6 +302,10 @@ export default {
   color: var(--color-text-muted);
 }
 
+.perfil-hero__presencia {
+  margin-top: 0.1rem;
+}
+
 .perfil-hero__ubicacion {
   margin: 0;
   font-size: 0.82rem;
@@ -211,5 +349,64 @@ export default {
 .perfil-hero--compacto {
   padding: 0.85rem 1rem;
   gap: 0.75rem;
+}
+
+.perfil-hero__lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.perfil-hero__lightbox:focus {
+  outline: none;
+}
+
+.perfil-hero__lightbox-img {
+  max-width: min(92vw, 1100px);
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.perfil-hero__lightbox-cerrar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+}
+
+.perfil-hero__lightbox-cerrar:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.perfil-hero__lightbox-cerrar .material-symbols-outlined {
+  font-size: 1.4rem;
+}
+
+@media (max-width: 600px) {
+  .perfil-hero__lightbox {
+    padding: 1rem;
+  }
+
+  .perfil-hero__lightbox-img {
+    max-width: 100%;
+    max-height: 82vh;
+  }
 }
 </style>

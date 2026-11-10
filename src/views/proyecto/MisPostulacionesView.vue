@@ -2,6 +2,14 @@
   <div class="mis-postulaciones">
     <header class="mis-postulaciones__cabecera">
       <h1 class="mis-postulaciones__titulo">Mis postulaciones</h1>
+      <VaButton
+        preset="secondary"
+        size="small"
+        icon="mso-arrow_back"
+        @click="volverAProyectos"
+      >
+        Volver a proyectos
+      </VaButton>
     </header>
 
     <div class="mis-postulaciones__filtros" role="group" aria-label="Filtrar por estado">
@@ -206,6 +214,9 @@ export default {
     etiquetaOrigenPostulacion,
     textoRequerimiento,
     formatearFechaCorta,
+    volverAProyectos() {
+      this.$router.push({ name: "proyectos-inicio" });
+    },
     cambiarEstado(estado) {
       if (this.filtros.estado === estado) return;
       this.filtros = { ...this.filtros, estado };
@@ -405,6 +416,14 @@ export default {
   flex-direction: column;
   gap: 1rem;
   width: 100%;
+}
+
+.mis-postulaciones__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .mis-postulaciones__titulo {

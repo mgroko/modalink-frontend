@@ -48,6 +48,11 @@ import http from "./http";
  */
 
 /**
+ * Relación entre el perfil activo y el perfil consultado (UC-43).
+ * @typedef {"NINGUNA"|"SOLICITUD_ENVIADA"|"SOLICITUD_RECIBIDA"|"CONECTADO"} EstadoConexion
+ */
+
+/**
  * Términos y condiciones vigentes de un perfil (UC-23).
  * `GET /perfiles/{idPerfil}` incluye siempre este objeto; si el perfil no
  * configuró una versión, llega la plantilla base con idTyc y fechas en null.
@@ -88,6 +93,14 @@ import http from "./http";
  * @property {CaracteristicaResponse[]} caracteristicas
  * @property {TerminosCondicionesResponse} terminosCondiciones UC-23. Siempre
  *           viene como objeto; nunca null.
+ * @property {EstadoConexion} estadoConexion UC-43. Para el perfil propio
+ *           siempre llega "NINGUNA".
+ * @property {number|null} idSolicitudConexion ID de la solicitud pendiente,
+ *           cuando corresponde.
+ * @property {number|null} idConexion ID de la conexión vigente, cuando
+ *           corresponde.
+ * @property {boolean} enLinea presencia del perfil consultado (extensión
+ *           de Mi red).
  * @property {boolean} esPropietario true solo si el perfil pertenece al
  *           usuario autenticado (define los CTAs de la vista)
  */

@@ -1773,8 +1773,6 @@ export default {
   flex-direction: column;
   gap: 1rem;
   width: 100%;
-  max-width: 1180px;
-  margin: 0 auto;
 }
 
 .invitaciones__cabecera {

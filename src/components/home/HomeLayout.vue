@@ -49,17 +49,31 @@
         </button>
         <button
           class="home-layout__nav-item"
-          @click.stop="noDisponible('Mi red')"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'mi-red' }"
+          @click.stop="$router.push({ name: 'mi-red' })"
         >
           <span class="material-symbols-outlined">group</span>
           <span>Mi red</span>
+          <span
+            v-if="solicitudesPendientes > 0"
+            class="home-layout__nav-badge"
+          >
+            {{ solicitudesPendientes }}
+          </span>
         </button>
         <button
           class="home-layout__nav-item"
-          @click.stop="noDisponible('Mensajes')"
+          :class="{ 'home-layout__nav-item--active': navActiva === 'mensajes' }"
+          @click.stop="$router.push({ name: 'mensajes' })"
         >
           <span class="material-symbols-outlined">chat_bubble</span>
           <span>Mensajes</span>
+          <span
+            v-if="mensajesNoLeidos > 0"
+            class="home-layout__nav-badge"
+          >
+            {{ mensajesNoLeidos }}
+          </span>
         </button>
         <div class="home-layout__notificaciones-wrapper" @click.stop>
           <button
@@ -168,9 +182,9 @@
       class="home-layout__body"
       :class="{
         'home-layout__body--full': $route.meta.sinSidebarPerfil,
-        'home-layout__body--ancho-proyecto': ['proyectos', 'contratos'].includes(
-          $route.meta.navActiva
-        ),
+        'home-layout__body--ancho-proyecto':
+          ['home', 'mi-red', 'buscar', 'mensajes'].includes($route.name) ||
+          ['proyectos', 'contratos', 'invitaciones', 'ajustes'].includes($route.meta.navActiva),
       }"
     >
       <aside v-if="!$route.meta.sinSidebarPerfil" class="home-layout__sidebar">
@@ -287,6 +301,10 @@ import {
   cargarResumenPerfil,
 } from "../../services/notificacionState";
 import {
+  state as mensajeState,
+  cargarResumen as cargarResumenMensajes,
+} from "../../services/mensajeState";
+import {
   state as invitacionState,
   cargarResumenInvitaciones,
 } from "../../services/invitacionState";
@@ -298,11 +316,13 @@ import {
   state as contratoState,
   cargarContratosPendientes,
 } from "../../services/contratoState";
+import {
+  state as solicitudConexionState,
+  cargarPendientesRecibidas,
+} from "../../services/solicitudConexionState";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
-import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import { nextTick } from "vue";
-import { useToast } from "vuestic-ui";
 import ThemeToggle from "../ThemeToggle.vue";
 import NotificacionesPopover from "../notificaciones/NotificacionesPopover.vue";
 
@@ -311,9 +331,6 @@ export default {
   components: {
     ThemeToggle,
     NotificacionesPopover,
-  },
-  setup() {
-    return { toast: useToast() };
   },
   data() {
     return {
@@ -372,6 +389,12 @@ export default {
     contratosPendientes() {
       return contratoState.pendientesFirma;
     },
+    solicitudesPendientes() {
+      return solicitudConexionState.pendientesRecibidas;
+    },
+    mensajesNoLeidos() {
+      return mensajeState.resumen.conversacionesNoLeidas;
+    },
   },
   watch: {
     fotoPerfilActiva() {
@@ -381,6 +404,8 @@ export default {
       cargarResumenInvitaciones(nuevo);
       cargarResumenReemplazos(nuevo);
       cargarContratosPendientes(nuevo);
+      cargarPendientesRecibidas(nuevo);
+      cargarResumenMensajes();
     },
     "$route.fullPath"(nuevo) {
       // Refresca el contador al entrar/salir de las pantallas de contratos,
@@ -396,6 +421,8 @@ export default {
     cargarResumenInvitaciones(this.idActivo);
     cargarResumenReemplazos(this.idActivo);
     cargarContratosPendientes(this.idActivo);
+    cargarPendientesRecibidas(this.idActivo);
+    cargarResumenMensajes();
     window.addEventListener("resize", this.recalcularPosicionDropdown);
   },
   beforeUnmount() {
@@ -480,9 +507,6 @@ export default {
       this.menuAbierto = false;
       this.perfilesAbiertos = false;
       this.$router.push({ name: "inicioperfil" });
-    },
-    noDisponible(nombre) {
-      mostrarNoDisponible(this.toast, nombre);
     },
     irABuscar() {
       const texto = this.busqueda.trim();

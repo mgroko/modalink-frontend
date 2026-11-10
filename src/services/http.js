@@ -77,11 +77,13 @@ http.interceptors.response.use(
         mensaje403
       );
 
-    // 403 en métodos mutantes: reintento con el token CSRF vigente.
-    // Se evalúa antes del atajo de /auth para que el logout (y el resto de
-    // las rutas de autenticación) también puedan recuperarse de un token
-    // CSRF desactualizado. Antes el atajo impedía el reintento y el error se
-    // ocultaba, dejando la cookie JWT viva.
+    // 403 en métodos mutantes: puede ser un token CSRF ausente o vencido.
+    // Se evalúa antes del atajo de /auth para que el login/logout y el resto
+    // de las rutas de autenticación también puedan recuperarse.
+    //
+    // Si la cookie todavía no existe (por ejemplo, el primer heartbeat de
+    // presencia sale antes de que /auth/me emita XSRF-TOKEN), se fuerza un
+    // bootstrap con /auth/me y se reintenta la request original una sola vez.
     if (
       status === 403 &&
       codigo403 !== "CUENTA_PENDIENTE_BAJA" &&
@@ -90,8 +92,20 @@ http.interceptors.response.use(
       !config._csrfRetried
     ) {
       config._csrfRetried = true;
-      const freshToken = getCookieValue("XSRF-TOKEN");
+
+      let freshToken = getCookieValue("XSRF-TOKEN");
+
+      if (!freshToken) {
+        try {
+          await http.get("/auth/me");
+        } catch {
+          // Sin sesión o sin red: se sigue con el tratamiento normal.
+        }
+        freshToken = getCookieValue("XSRF-TOKEN");
+      }
+
       if (freshToken) {
+        config.headers = config.headers || {};
         config.headers["X-XSRF-TOKEN"] = freshToken;
         return http(config);
       }
