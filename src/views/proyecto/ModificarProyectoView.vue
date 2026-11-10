@@ -222,7 +222,7 @@
         <section v-else class="modificar-proyecto__seccion">
           <h2 class="modificar-proyecto__seccion-titulo">Moodboard</h2>
           <p class="modificar-proyecto__seccion-ayuda">
-            Solo se modifica la descripción: las imágenes no se pueden cambiar desde acá.
+            Podés cambiar la descripción, agregar imágenes nuevas o quitar las existentes.
           </p>
           <MoodboardSeccion
             :model-value="form.moodboard"
@@ -230,9 +230,41 @@
             :mostrar-encabezado="false"
             :error="errorCampo('moodboard.descripcion')"
             :error-messages="mensajeCampo('moodboard.descripcion')"
-            solo-lectura
             @update:model-value="onMoodboardChange"
+            @update:imagenes="onMoodboardImagenesChange"
           />
+
+          <p
+            v-if="subiendoImagenes"
+            class="modificar-proyecto__progreso-imagenes"
+            role="status"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
+            Subiendo imágenes {{ progresoImagenes.completadas }} de {{ progresoImagenes.total }}…
+          </p>
+
+          <div
+            v-if="erroresSubidaImagenes.length"
+            class="modificar-proyecto__errores-subida"
+            role="alert"
+          >
+            <p class="modificar-proyecto__errores-subida-titulo">
+              No se pudieron subir estas imágenes:
+            </p>
+            <ul class="modificar-proyecto__errores-subida-lista">
+              <li v-for="error in erroresSubidaImagenes" :key="error.id">
+                {{ error.nombre }}: {{ error.mensaje }}
+              </li>
+            </ul>
+            <VaButton
+              preset="secondary"
+              size="small"
+              :disabled="guardando || subiendoImagenes"
+              @click="reintentarSubidaImagenes"
+            >
+              Reintentar imágenes
+            </VaButton>
+          </div>
         </section>
 
         <div class="modificar-proyecto__alertas">
@@ -240,6 +272,11 @@
             v-if="mensajeErrorActividades && !modalConfirmar"
             :message="mensajeErrorActividades"
             type="error"
+          />
+          <BaseAlert
+            v-if="mensajeAdvertencia && !modalConfirmar"
+            :message="mensajeAdvertencia"
+            type="warning"
           />
           <BaseAlert v-if="mensajeError && !modalConfirmar" :message="mensajeError" type="error" />
           <BaseAlert v-if="mensajeExito" :message="mensajeExito" type="success" />
@@ -351,6 +388,7 @@ import {
 } from "../../utils/requerimientoProyectoConstants.js";
 import { mensajeErrorApi } from "../../utils/apiError.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
+import { revocarPreviews } from "../../utils/moodboardImagenes.js";
 
 const RAICES_PASO = {
   1: ["descripcion", "privacidad", "fechaEntregaEstipulada", "ubicacion"],
@@ -414,6 +452,10 @@ export default {
       guardando: false,
       mensajeError: "",
       mensajeExito: "",
+      mensajeAdvertencia: "",
+      subiendoImagenes: false,
+      progresoImagenes: { total: 0, completadas: 0 },
+      erroresSubidaImagenes: [],
       modalConfirmar: false,
       modalEliminarUbicacionVisible: false,
       siguienteUid: 0,
@@ -456,6 +498,16 @@ export default {
     textoConflictoRequerimiento() {
       return mensajeErrorRequerimientoVinculos(this.idRequerimientoConVinculos);
     },
+    imagenesConservadas() {
+      return this.imagenesMoodboard
+        .filter((imagen) => imagen.idImagen != null)
+        .map((imagen) => imagen.idImagen);
+    },
+    nuevasImagenesPendientes() {
+      return this.imagenesMoodboard.filter(
+        (imagen) => imagen.archivo instanceof File && !imagen.subida
+      );
+    },
   },
   watch: {
     "form.objetivos": {
@@ -480,6 +532,7 @@ export default {
   beforeUnmount() {
     if (controladorCarga) controladorCarga.abort();
     if (controladorGuardado) controladorGuardado.abort();
+    revocarPreviews(this.imagenesMoodboard);
   },
   methods: {
     async cargarProyecto() {
@@ -564,17 +617,24 @@ export default {
       );
       this.idRequerimientoConVinculos = null;
 
+      revocarPreviews(this.imagenesMoodboard);
       this.imagenesMoodboard = (proyecto.moodboard?.imagenes || []).map(
         (imagen, indice) => ({
-          id: imagen.idImagen,
+          id: `existente-${imagen.idImagen}`,
+          idImagen: imagen.idImagen,
           nombre: `Imagen ${indice + 1}`,
           preview: resolverFotoUrl(imagen.url),
+          archivo: null,
+          subida: true,
         })
       );
 
       this.ubicacionQuitada = false;
       this.advertenciaUbicacion = "";
       this.advertenciaFecha = "";
+      this.mensajeAdvertencia = "";
+      this.erroresSubidaImagenes = [];
+      this.progresoImagenes = { total: 0, completadas: 0 };
       this.erroresBackend = {};
       this.seccionErrores = {};
       this.dirty = { objetivos: false, personal: false, moodboard: false };
@@ -783,6 +843,11 @@ export default {
 
     onMoodboardChange(descripcion) {
       this.form.moodboard = descripcion;
+      this.dirty.moodboard = true;
+    },
+
+    onMoodboardImagenesChange(imagenes) {
+      this.imagenesMoodboard = Array.isArray(imagenes) ? imagenes : [];
       this.dirty.moodboard = true;
     },
 
@@ -1058,6 +1123,8 @@ export default {
       this.guardando = true;
       this.mensajeError = "";
       this.mensajeExito = "";
+      this.mensajeAdvertencia = "";
+      this.erroresSubidaImagenes = [];
       this.idRequerimientoConVinculos = null;
 
       if (controladorGuardado) controladorGuardado.abort();
@@ -1069,19 +1136,130 @@ export default {
           this.buildRequest(),
           controladorGuardado.signal
         );
-        const proyecto = response?.data;
         this.modalConfirmar = false;
-        this.mensajeExito = "Los cambios se guardaron correctamente.";
-        await this.$router.push({
-          name: "dashboard-proyecto",
-          params: { id: this.idProyecto },
-          state: { proyecto },
-        });
+
+        const pendientes = this.nuevasImagenesPendientes;
+        if (pendientes.length > 0) {
+          const subidaOk = await this.subirImagenesMoodboardSecuencial(pendientes);
+          if (!subidaOk) {
+            this.mensajeAdvertencia =
+              "Los datos del proyecto se guardaron, pero no se pudieron subir todas las imágenes. Podés reintentar solo las que fallaron.";
+            return false;
+          }
+        }
+
+        await this.finalizarGuardado(response?.data);
         return true;
       } catch (error) {
         if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return false;
         await this.manejarError(error);
         return false;
+      } finally {
+        this.guardando = false;
+      }
+    },
+
+    async finalizarGuardado(proyecto) {
+      let proyectoFinal = proyecto;
+      try {
+        const recarga = await proyectoService.obtener(this.idProyecto);
+        proyectoFinal = recarga?.data || proyecto;
+      } catch (_) {
+        // Si falla la recarga, el dashboard vuelve a pedir el proyecto.
+      }
+
+      this.mensajeExito = "Los cambios se guardaron correctamente.";
+      this.mensajeAdvertencia = "";
+      this.erroresSubidaImagenes = [];
+      await this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: this.idProyecto },
+        state: { proyecto: proyectoFinal },
+      });
+    },
+
+    /**
+     * Sube las imágenes nuevas de a una, en orden. Cada request es su propia
+     * transacción: si una falla, las anteriores quedan guardadas y solo se
+     * reintenta la que falló.
+     */
+    async subirImagenesMoodboardSecuencial(imagenes) {
+      this.subiendoImagenes = true;
+      this.progresoImagenes = { total: imagenes.length, completadas: 0 };
+      this.erroresSubidaImagenes = [];
+
+      try {
+        for (const imagen of imagenes) {
+          try {
+            const response = await proyectoService.subirImagenesMoodboard(
+              this.idProyecto,
+              [imagen.archivo]
+            );
+            this.actualizarImagenSubida(imagen, response?.data);
+            this.progresoImagenes.completadas += 1;
+          } catch (error) {
+            this.erroresSubidaImagenes.push({
+              id: imagen.id,
+              nombre: imagen.nombre,
+              mensaje: mensajeErrorApi(error, "No se pudo subir la imagen."),
+            });
+          }
+        }
+      } finally {
+        this.subiendoImagenes = false;
+      }
+
+      return this.erroresSubidaImagenes.length === 0;
+    },
+
+    /**
+     * Reemplaza la preview local por la URL definitiva y guarda el idImagen
+     * que devolvió el servidor, para que un guardado posterior no la elimine.
+     */
+    actualizarImagenSubida(item, moodboardResponse) {
+      const idsConocidos = new Set(
+        this.imagenesMoodboard
+          .filter((imagen) => imagen !== item && imagen.idImagen != null)
+          .map((imagen) => imagen.idImagen)
+      );
+      const imagenesServidor = moodboardResponse?.imagenes || [];
+      const nueva =
+        imagenesServidor.find((imagen) => !idsConocidos.has(imagen.idImagen)) ||
+        imagenesServidor.reduce(
+          (max, imagen) => (imagen.idImagen > (max?.idImagen || 0) ? imagen : max),
+          null
+        );
+
+      if (!nueva) return;
+
+      const previewLocal = item.preview;
+      item.idImagen = nueva.idImagen;
+      item.id = `existente-${nueva.idImagen}`;
+      item.preview = resolverFotoUrl(nueva.url);
+      item.subida = true;
+
+      if (typeof previewLocal === "string" && previewLocal.startsWith("blob:")) {
+        URL.revokeObjectURL(previewLocal);
+      }
+    },
+
+    async reintentarSubidaImagenes() {
+      if (this.guardando || this.subiendoImagenes) return;
+      const pendientes = this.nuevasImagenesPendientes;
+      if (pendientes.length === 0) return;
+
+      this.guardando = true;
+      this.mensajeError = "";
+      this.mensajeAdvertencia = "";
+
+      try {
+        const subidaOk = await this.subirImagenesMoodboardSecuencial(pendientes);
+        if (subidaOk) {
+          await this.finalizarGuardado(null);
+        } else {
+          this.mensajeAdvertencia =
+            "Todavía quedan imágenes sin subir. Revisá la lista y volvé a intentar.";
+        }
       } finally {
         this.guardando = false;
       }
@@ -1153,8 +1331,13 @@ export default {
 
       if (this.dirty.moodboard) {
         const descripcion = String(this.form.moodboard || "").trim();
-        if (descripcion || this.proyectoOriginal?.moodboard) {
-          request.moodboard = { descripcion: descripcion || null };
+        const hayImagenes = this.imagenesMoodboard.length > 0;
+        if (descripcion || this.proyectoOriginal?.moodboard || hayImagenes) {
+          request.moodboard = {
+            descripcion: descripcion || null,
+            // Lista completa deseada: las que no viajan acá se eliminan.
+            imagenesConservadas: this.imagenesConservadas,
+          };
         }
       }
 
@@ -1515,6 +1698,52 @@ export default {
   margin: 0.2rem 0 0;
   font-size: 0.8rem;
   color: var(--color-text-muted);
+}
+
+.modificar-proyecto__progreso-imagenes {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.modificar-proyecto__progreso-imagenes .material-symbols-outlined {
+  font-size: 1.1rem;
+  animation: modificar-proyecto-giro 0.9s linear infinite;
+}
+
+@keyframes modificar-proyecto-giro {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.modificar-proyecto__errores-subida {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.modificar-proyecto__errores-subida-titulo {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.modificar-proyecto__errores-subida-lista {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+
+.modificar-proyecto__errores-subida-lista li + li {
+  margin-top: 0.15rem;
 }
 
 .modificar-proyecto__aviso {

@@ -158,16 +158,18 @@ export function crearItemImagen(archivo) {
     nombre: archivo.name,
     archivo,
     preview: URL.createObjectURL(archivo),
+    subida: false,
   };
 }
 
 /**
- * Libera los object URLs de las previews (al reiniciar el formulario o
- * desmontar la vista) para no filtrar memoria.
- * @param {{preview?: string}[]} items
+ * Libera los object URLs de las previews locales (al reiniciar el formulario
+ * o desmontar la vista) para no filtrar memoria. Las imágenes ya subidas
+ * tienen una URL remota: no se revocan.
+ * @param {{preview?: string, archivo?: File}[]} items
  */
 export function revocarPreviews(items = []) {
   for (const item of items) {
-    if (item?.preview) URL.revokeObjectURL(item.preview);
+    if (item?.archivo && item?.preview) URL.revokeObjectURL(item.preview);
   }
 }

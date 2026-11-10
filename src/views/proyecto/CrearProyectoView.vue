@@ -579,24 +579,30 @@ export default {
 
     /**
      * Segunda llamada del flujo de creación (§7.1): sube los archivos
-     * retenidos. Si falla, el proyecto YA existe: sólo se abre el modal en
-     * modo advertencia con Reintentar / Continuar sin imágenes — nunca se
-     * repite POST /proyectos (§7.5.4).
+     * retenidos, de a uno y en orden, para no mandar un lote completo en una
+     * sola request. Si falla una imagen, el proyecto YA existe: sólo se abre
+     * el modal en modo advertencia con Reintentar / Continuar sin imágenes —
+     * nunca se repite POST /proyectos (§7.5.4).
      * @param {number} idProyecto
-     * @returns {Promise<boolean>} true si las imágenes se subieron
+     * @returns {Promise<boolean>} true si todas las imágenes se subieron
      */
     async subirImagenesDelMoodboard(idProyecto) {
-      try {
-        await proyectoService.subirImagenesMoodboard(
-          idProyecto,
-          this.imagenesMoodboard.map((imagen) => imagen.archivo)
-        );
-        return true;
-      } catch (error) {
-        this.advertenciaSubidaImagenes = this.mensajeFalloSubidaImagenes(error);
-        this.modalExito = true;
-        return false;
+      const pendientes = this.imagenesMoodboard.filter(
+        (imagen) => imagen.archivo && !imagen.subida
+      );
+
+      for (const imagen of pendientes) {
+        try {
+          await proyectoService.subirImagenesMoodboard(idProyecto, [imagen.archivo]);
+          imagen.subida = true;
+        } catch (error) {
+          this.advertenciaSubidaImagenes = this.mensajeFalloSubidaImagenes(error);
+          this.modalExito = true;
+          return false;
+        }
       }
+
+      return true;
     },
 
     /** Reintenta SÓLO el POST de imágenes con el idProyecto existente (§7.5.4). */

@@ -116,8 +116,8 @@ export default {
       default: true,
     },
     /**
-     * Modo edición (UC-36): las imágenes del moodboard no se modifican desde
-     * este endpoint, así que se muestran en sólo lectura y sin dropzone.
+     * Modo lectura (vista de detalle del proyecto). En la edición (UC-36)
+     * se muestra editable: agregar/quitar imágenes y cambiar la descripción.
      */
     soloLectura: {
       type: Boolean,

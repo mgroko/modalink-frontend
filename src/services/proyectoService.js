@@ -44,6 +44,9 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} MoodboardRequest
  * @property {string} [descripcion] máx. 200 caracteres; moodboard 1:1 con el proyecto
+ * @property {number[]} [imagenesConservadas] UC-36: lista completa de imágenes
+ *           que deben conservarse. Omitir/null = no tocar las imágenes;
+ *           [] = eliminar todas. En la creación (UC-24) se ignora.
  */
 
 /**
@@ -101,7 +104,8 @@ import { serializarParams } from "../utils/queryParams.js";
  *           lista completa deseada (no delta); incluir todos los no
  *           protegidos que deban conservarse y omitir los protegidos
  * @property {MoodboardRequest|null} [moodboard] si se envía actualiza/crea;
- *           descripcion null borra la descripción
+ *           descripcion null borra la descripción. `imagenesConservadas`
+ *           permite eliminar imágenes del moodboard (UC-36).
  */
 
 /**
