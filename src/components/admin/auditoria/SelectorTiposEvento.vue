@@ -62,9 +62,18 @@
 
       <div v-else class="selector-tipos__grupos" role="listbox" aria-multiselectable="true">
         <div v-for="grupo in gruposVisibles" :key="grupo.modulo" class="selector-tipos__grupo">
-          <span class="selector-tipos__grupo-titulo">
-            {{ etiquetaModuloAuditoria(grupo.modulo) }}
-          </span>
+          <div class="selector-tipos__grupo-header">
+            <VaCheckbox
+              class="selector-tipos__grupo-check"
+              :model-value="todosDelGrupoSeleccionados(grupo)"
+              :indeterminate="grupoParcialmenteSeleccionado(grupo)"
+              :aria-label="`Seleccionar todos los eventos de ${etiquetaModuloAuditoria(grupo.modulo)}`"
+              @update:modelValue="alternarGrupo(grupo)"
+            />
+            <span class="selector-tipos__grupo-titulo">
+              {{ etiquetaModuloAuditoria(grupo.modulo) }}
+            </span>
+          </div>
           <VaCheckbox
             v-for="tipo in grupo.tipos"
             :key="tipo.codigo"
@@ -77,14 +86,25 @@
       </div>
 
       <div class="selector-tipos__pie">
-        <button
-          type="button"
-          class="selector-tipos__limpiar"
-          :disabled="!tiposSeleccionados.length"
-          @click="limpiar"
-        >
-          Limpiar selección
-        </button>
+        <div class="selector-tipos__pie-acciones">
+          <button
+            type="button"
+            class="selector-tipos__accion"
+            :disabled="!tiposVisibles.length || todosVisiblesSeleccionados"
+            :title="textoSeleccionarTodo"
+            @click="seleccionarTodo"
+          >
+            Seleccionar todo
+          </button>
+          <button
+            type="button"
+            class="selector-tipos__accion"
+            :disabled="!tiposSeleccionados.length"
+            @click="limpiar"
+          >
+            Limpiar selección
+          </button>
+        </div>
         <span class="selector-tipos__contador">
           {{ tiposSeleccionados.length }} seleccionados
         </span>
@@ -147,6 +167,22 @@ export default {
     tiposSeleccionados() {
       return Array.isArray(this.modelValue) ? this.modelValue : [];
     },
+    tiposVisibles() {
+      return this.gruposVisibles.flatMap((grupo) =>
+        grupo.tipos.map((tipo) => tipo.codigo)
+      );
+    },
+    todosVisiblesSeleccionados() {
+      return (
+        this.tiposVisibles.length > 0 &&
+        this.tiposVisibles.every((codigo) => this.estaSeleccionado(codigo))
+      );
+    },
+    textoSeleccionarTodo() {
+      return this.busqueda.trim()
+        ? "Seleccionar los tipos que coinciden con la búsqueda"
+        : "Seleccionar todos los tipos de evento";
+    },
   },
   mounted() {
     document.addEventListener("click", this.escucharClicExterno);
@@ -174,6 +210,40 @@ export default {
     },
     estaSeleccionado(codigo) {
       return this.tiposSeleccionados.includes(codigo);
+    },
+    codigosDelGrupo(grupo) {
+      return grupo.tipos.map((tipo) => tipo.codigo);
+    },
+    todosDelGrupoSeleccionados(grupo) {
+      const codigos = this.codigosDelGrupo(grupo);
+      return (
+        codigos.length > 0 &&
+        codigos.every((codigo) => this.estaSeleccionado(codigo))
+      );
+    },
+    grupoParcialmenteSeleccionado(grupo) {
+      const codigos = this.codigosDelGrupo(grupo);
+      const seleccionados = codigos.filter((codigo) =>
+        this.estaSeleccionado(codigo)
+      );
+      return seleccionados.length > 0 && seleccionados.length < codigos.length;
+    },
+    alternarGrupo(grupo) {
+      const codigos = this.codigosDelGrupo(grupo);
+      if (!codigos.length) return;
+
+      const siguientes = this.todosDelGrupoSeleccionados(grupo)
+        ? this.tiposSeleccionados.filter((codigo) => !codigos.includes(codigo))
+        : [...new Set([...this.tiposSeleccionados, ...codigos])];
+
+      this.$emit("update:modelValue", siguientes);
+    },
+    seleccionarTodo() {
+      if (!this.tiposVisibles.length) return;
+      this.$emit(
+        "update:modelValue",
+        [...new Set([...this.tiposSeleccionados, ...this.tiposVisibles])]
+      );
     },
     alternar(codigo) {
       const siguientes = this.estaSeleccionado(codigo)
@@ -320,6 +390,18 @@ export default {
   gap: 0.15rem;
 }
 
+.selector-tipos__grupo-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.4rem;
+}
+
+.selector-tipos__grupo-check {
+  --va-checkbox-horizontal-gap: 0;
+  flex: 0 0 auto;
+}
+
 .selector-tipos__grupo-titulo {
   color: var(--color-text-muted);
   font-size: 0.65rem;
@@ -343,15 +425,27 @@ export default {
 }
 
 .selector-tipos__pie {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-top: 0.5rem;
+  margin-top: 0.15rem;
+  padding: 0.5rem 0 0.1rem;
+  background: var(--color-surface);
   border-top: 1px solid var(--color-border-soft);
 }
 
-.selector-tipos__limpiar {
+.selector-tipos__pie-acciones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.selector-tipos__accion {
   padding: 0;
   color: var(--color-primary);
   background: none;
@@ -362,7 +456,7 @@ export default {
   cursor: pointer;
 }
 
-.selector-tipos__limpiar:disabled {
+.selector-tipos__accion:disabled {
   color: var(--color-text-subtle);
   cursor: default;
 }
