@@ -46,6 +46,7 @@ import GestionHabilidadesView from "../views/admin/GestionHabilidadesView.vue";
 import GestionTiposContratoView from "../views/admin/GestionTiposContratoView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
+import ConfiguracionSchedulerLimpiezaImagenesView from "../views/admin/ConfiguracionSchedulerLimpiezaImagenesView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
 import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
 import ReparacionCronogramaView from "../views/admin/ReparacionCronogramaView.vue";
@@ -566,6 +567,17 @@ const routes = [
       requiereAdmin: true,
       requierePermiso: "ADMINISTRAR_CONFIGURACION",
       titulo: "Scheduler de bajas",
+    }
+  },
+  {
+    path: "/admin/configuracion-scheduler/limpieza-imagenes",
+    name: "configuracion-scheduler-limpieza-imagenes",
+    component: ConfiguracionSchedulerLimpiezaImagenesView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Scheduler de limpieza de imágenes",
     }
   },
   {
