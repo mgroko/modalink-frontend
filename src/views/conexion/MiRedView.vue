@@ -280,7 +280,7 @@ export default {
   align-items: center;
   padding: 1.5rem;
   border-radius: 20px;
-  background: var(--color-primary);
+  background: #494776;
   color: var(--color-on-primary);
 }
 
