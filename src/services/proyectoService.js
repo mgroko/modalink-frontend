@@ -909,7 +909,8 @@ const proyectoService = {
    *   seleccionado en la sesión."
    * - 404 ProyectoNoEncontradoException → "El proyecto con id {id} no existe."
    * - 403 AccesoDenegadoProyectoException → proyecto Privado/Borrador y el
-   *   perfil no es miembro (no confundir con 401: http.js ya redirige)
+   *   perfil no es miembro ni contacto de un director activo (no confundir
+   *   con 401: http.js ya redirige)
    * - 409 PerfilEnBajaException → "El perfil no se encuentra activo."
    * @param {number} idProyecto
    * @param {AbortSignal} [signal] cancela la request en vuelo (patrón de

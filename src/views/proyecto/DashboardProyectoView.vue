@@ -108,7 +108,7 @@
                   {{ ETIQUETAS_PRIVACIDAD[proyecto.privacidad] || proyecto.privacidad }}
                 </span>
                 <span v-if="esPrivado" class="dashboard-proyecto__dato-hint">
-                  Visible solo para tus perfiles miembros
+                  Visible para tus contactos y los miembros del proyecto
                 </span>
               </div>
 
