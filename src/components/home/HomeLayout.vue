@@ -184,7 +184,7 @@
         'home-layout__body--full': $route.meta.sinSidebarPerfil,
         'home-layout__body--ancho-proyecto':
           ['home', 'mi-red', 'buscar', 'mensajes'].includes($route.name) ||
-          ['proyectos', 'contratos'].includes($route.meta.navActiva),
+          ['proyectos', 'contratos', 'invitaciones', 'ajustes'].includes($route.meta.navActiva),
       }"
     >
       <aside v-if="!$route.meta.sinSidebarPerfil" class="home-layout__sidebar">

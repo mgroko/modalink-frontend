@@ -289,8 +289,6 @@ export default {
   flex-direction: column;
   gap: 1rem;
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
 }
 
 .ajustes-perfil__error {
