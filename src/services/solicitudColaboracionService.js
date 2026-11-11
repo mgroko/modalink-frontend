@@ -4,6 +4,7 @@ import http from "./http";
  * Contratos de solicitudes de colaboración:
  * - UC-61: envío desde una publicación propia.
  * - UC-62/63: aceptar y rechazar.
+ * - UC-64: eliminación por el perfil remitente.
  * - UC-65: búsqueda y selector de publicaciones.
  */
 
@@ -76,6 +77,18 @@ const solicitudColaboracionService = {
   rechazar(idSolicitudColaboracion) {
     return http.post(
       `/solicitudes-colaboracion/${idSolicitudColaboracion}/rechazar`
+    );
+  },
+
+  /**
+   * DELETE /solicitudes-colaboracion/{id} — UC-64.
+   * Sólo el perfil remitente puede eliminar una solicitud pendiente.
+   * @param {number|string} idSolicitudColaboracion
+   * @returns {Promise<{status: number}>} 204 No Content
+   */
+  eliminar(idSolicitudColaboracion) {
+    return http.delete(
+      `/solicitudes-colaboracion/${idSolicitudColaboracion}`
     );
   },
 };

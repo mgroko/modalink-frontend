@@ -123,6 +123,7 @@
         :id-perfiles="idPerfilesDisponibilidad"
         :sin-fecha-entrega="sinFechaEntrega"
         :token-refresco="tokenDisponibilidad"
+        contexto="aceptacion"
         :titulo="tituloDisponibilidad"
         @actualizado="disponibilidad = $event"
       />

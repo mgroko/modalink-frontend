@@ -90,6 +90,7 @@
           :accion="accionProcesando"
           @aceptar="aceptar"
           @rechazar="rechazar"
+          @eliminar="abrirEliminarSolicitud"
           @ver-publicacion="verPublicacion"
         />
       </div>
@@ -108,6 +109,14 @@
       :error="errorModal"
       @confirmar="confirmarGestion"
     />
+
+    <ModalEliminarSolicitudColaboracion
+      v-model="modalEliminar.visible"
+      :solicitud="modalEliminar.solicitud"
+      :eliminando="procesandoId != null"
+      :error="errorEliminar"
+      @confirmar="confirmarEliminarSolicitud"
+    />
   </div>
 </template>
 
@@ -115,6 +124,7 @@
 import BaseAlert from "../AlertaBase.vue";
 import PaginacionResultados from "../busqueda/PaginacionResultados.vue";
 import FiltrosSolicitudesColaboracion from "./FiltrosSolicitudesColaboracion.vue";
+import ModalEliminarSolicitudColaboracion from "./ModalEliminarSolicitudColaboracion.vue";
 import ModalGestionSolicitudColaboracion from "./ModalGestionSolicitudColaboracion.vue";
 import SolicitudColaboracionCard from "./SolicitudColaboracionCard.vue";
 import solicitudColaboracionService from "../../services/solicitudColaboracionService";
@@ -161,6 +171,7 @@ export default {
   components: {
     BaseAlert,
     FiltrosSolicitudesColaboracion,
+    ModalEliminarSolicitudColaboracion,
     ModalGestionSolicitudColaboracion,
     PaginacionResultados,
     SolicitudColaboracionCard,
@@ -185,10 +196,15 @@ export default {
       procesandoId: null,
       accionProcesando: "",
       errorModal: "",
+      errorEliminar: "",
       modalGestion: {
         visible: false,
         solicitud: null,
         accion: ACCIONES_GESTION_SOLICITUD_COLABORACION.ACEPTAR,
+      },
+      modalEliminar: {
+        visible: false,
+        solicitud: null,
       },
       conteos: {
         [TAB_TODAS]: null,
@@ -531,6 +547,77 @@ export default {
         this.modalGestion.solicitud,
         this.modalGestion.accion
       );
+    },
+    abrirEliminarSolicitud(solicitud) {
+      if (this.procesandoId != null || !solicitud?.puedeEliminar) return;
+      this.errorEliminar = "";
+      this.modalEliminar = {
+        visible: true,
+        solicitud,
+      };
+    },
+    confirmarEliminarSolicitud() {
+      if (!this.modalEliminar?.solicitud) return;
+      return this.eliminarSolicitud(this.modalEliminar.solicitud);
+    },
+    async eliminarSolicitud(solicitud) {
+      if (this.procesandoId != null || !solicitud) return;
+
+      this.error = "";
+      this.errorEliminar = "";
+      this.procesandoId = solicitud.idSolicitudColaboracion;
+      this.accionProcesando =
+        ACCIONES_GESTION_SOLICITUD_COLABORACION.ELIMINAR;
+
+      try {
+        await solicitudColaboracionService.eliminar(
+          solicitud.idSolicitudColaboracion
+        );
+
+        this.modalEliminar.visible = false;
+        this.toast.init({
+          title: "Solicitud eliminada",
+          message:
+            "La solicitud fue eliminada y el destinatario ya no verá la notificación.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        await this.cargarPublicaciones();
+        await Promise.all([
+          this.buscar(this.paginacion.paginaActual),
+          this.cargarConteos(),
+        ]);
+        cargarResumenSolicitudesColaboracion();
+        this.$emit("actualizada");
+      } catch (error) {
+        const status = error?.response?.status;
+        const mensaje =
+          status === 404
+            ? error?.response?.data?.message ||
+              "La solicitud ya no está disponible."
+            : mensajeErrorSolicitudColaboracion(
+                error,
+                "No se pudo eliminar la solicitud."
+              );
+
+        if (status === 409 || status === 403 || status === 404) {
+          this.modalEliminar.visible = false;
+          await this.cargarPublicaciones();
+          await Promise.all([
+            this.buscar(this.paginacion.paginaActual),
+            this.cargarConteos(),
+          ]);
+          cargarResumenSolicitudesColaboracion();
+          this.error = mensaje;
+        } else {
+          this.errorEliminar = mensaje;
+        }
+      } finally {
+        this.procesandoId = null;
+        this.accionProcesando = "";
+      }
     },
     async gestionar(solicitud, accion) {
       if (this.procesandoId != null) return;

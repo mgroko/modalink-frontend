@@ -186,7 +186,7 @@
                 {{ textoVacioPublicaciones }}
               </p>
 
-              <div v-else class="inicio-perfil__publicaciones-grid">
+              <div v-else class="inicio-perfil__publicaciones-lista">
                 <PublicacionCardGaleria
                   v-for="publicacion in publicaciones"
                   :key="publicacion.idPublicacion"
@@ -2345,16 +2345,20 @@ export default {
   font-size: 0.85rem;
 }
 
-.inicio-perfil__publicaciones-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-
 .inicio-perfil__publicaciones-lista {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+.inicio-perfil__publicaciones-lista :deep(.publicacion-galeria__media) {
+  aspect-ratio: auto;
+  height: 340px;
+}
+
+.inicio-perfil__publicaciones-lista :deep(.publicacion-galeria__miniatura) {
+  flex: 0 0 72px;
+  width: 72px;
 }
 
 .inicio-perfil__publicaciones-mas {
@@ -2513,8 +2517,8 @@ export default {
 }
 
 @media (max-width: 700px) {
-  .inicio-perfil__publicaciones-grid {
-    grid-template-columns: 1fr;
+  .inicio-perfil__publicaciones-lista :deep(.publicacion-galeria__media) {
+    height: 240px;
   }
 }
 </style>

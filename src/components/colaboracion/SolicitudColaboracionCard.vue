@@ -90,6 +90,18 @@
         Rechazar
       </VaButton>
 
+      <VaButton
+        v-if="solicitud.puedeEliminar"
+        preset="secondary"
+        color="danger"
+        size="small"
+        :loading="procesando && accion === 'eliminar'"
+        :disabled="procesando"
+        @click="$emit('eliminar', solicitud)"
+      >
+        Eliminar
+      </VaButton>
+
       <button
         type="button"
         class="solicitud-colaboracion-card__ver"
@@ -128,7 +140,7 @@ export default {
       default: "",
     },
   },
-  emits: ["aceptar", "rechazar", "ver-publicacion"],
+  emits: ["aceptar", "rechazar", "eliminar", "ver-publicacion"],
   computed: {
     publicacion() {
       return this.solicitud?.publicacion || null;

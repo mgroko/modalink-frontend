@@ -21,6 +21,14 @@
       <img
         v-if="imagenActual"
         :src="imagenActual"
+        alt=""
+        aria-hidden="true"
+        class="publicacion-galeria__fondo"
+      />
+
+      <img
+        v-if="imagenActual"
+        :src="imagenActual"
         :alt="`${publicacion.titulo} — imagen ${indiceActual + 1}`"
         class="publicacion-galeria__imagen"
       />
@@ -230,10 +238,26 @@ export default {
   cursor: zoom-in;
 }
 
-.publicacion-galeria__imagen {
+.publicacion-galeria__fondo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  filter: blur(22px) brightness(0.82) saturate(1.05);
+  transform: scale(1.12);
+  pointer-events: none;
+}
+
+.publicacion-galeria__imagen {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .publicacion-galeria__sin-imagen {
@@ -245,6 +269,7 @@ export default {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
+  z-index: 2;
   padding: 0.18rem 0.55rem;
   color: var(--color-on-primary);
   background: rgba(35, 33, 52, 0.72);
@@ -257,6 +282,7 @@ export default {
 .publicacion-galeria__flecha {
   position: absolute;
   top: 50%;
+  z-index: 2;
   display: grid;
   width: 2.2rem;
   height: 2.2rem;
@@ -299,6 +325,7 @@ export default {
   right: 0;
   bottom: 0.8rem;
   left: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;

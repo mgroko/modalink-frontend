@@ -91,6 +91,7 @@
       :id-perfiles="idsDisponibilidad"
       :titulo="tituloDisponibilidad"
       :token-refresco="tokenRefrescoDisponibilidad"
+      contexto="asignacion"
       mostrar-reprogramacion
       mostrar-acciones
       @actualizado="onDisponibilidad"
