@@ -205,6 +205,48 @@
             </section>
           </template>
 
+          <!-- Sección: Proyectos (historial completo) -->
+          <template v-else-if="seccion === 'proyectos'">
+            <section class="inicio-perfil__panel">
+              <h2 class="inicio-perfil__panel-titulo">Historial de proyectos</h2>
+
+              <template v-if="esPropio">
+                <div v-if="cargandoHistorial" class="inicio-perfil__estado-publicaciones">
+                  <span class="inicio-perfil__spinner" aria-hidden="true"></span>
+                  Cargando historial...
+                </div>
+                <p v-else-if="errorHistorial" class="inicio-perfil__vacio">
+                  {{ errorHistorial }}
+                </p>
+                <p v-else-if="!proyectosHistorial.length" class="inicio-perfil__vacio">
+                  Todavía no hay proyectos finalizados.
+                </p>
+                <div v-else class="inicio-perfil__historial">
+                  <article
+                    v-for="proyecto in proyectosHistorial"
+                    :key="proyecto.idProyecto"
+                    class="inicio-perfil__historial-item"
+                  >
+                    <div class="inicio-perfil__historial-principal">
+                      <strong>{{ proyecto.nombre }}</strong>
+                      <EstadoProyectoBadge :estado="proyecto.estado" />
+                    </div>
+                    <p class="inicio-perfil__historial-meta">
+                      {{ etiquetaRolProyecto(proyecto.rolUsuario) }}
+                      <template v-if="mesAnioProyecto(proyecto)">
+                        · {{ mesAnioProyecto(proyecto) }}
+                      </template>
+                    </p>
+                  </article>
+                </div>
+              </template>
+
+              <p v-else class="inicio-perfil__vacio">
+                El historial de proyectos solo está disponible en tu propio perfil.
+              </p>
+            </section>
+          </template>
+
           <!-- Sección: Perfil (default) -->
           <template v-else>
             <section v-if="habilidades.length" class="inicio-perfil__panel">
@@ -277,14 +319,6 @@
             <section class="inicio-perfil__panel">
               <div class="inicio-perfil__panel-header">
                 <h2 class="inicio-perfil__panel-titulo">Publicaciones</h2>
-                <VaButton
-                  preset="secondary"
-                  size="small"
-                  icon-right="mso-arrow_forward"
-                  @click="irAPublicaciones"
-                >
-                  Ver todas
-                </VaButton>
               </div>
 
               <div
@@ -313,19 +347,44 @@
                 Todavía no hay publicaciones.
               </p>
 
-              <div v-else class="inicio-perfil__publicaciones-grid inicio-perfil__publicaciones-grid--perfil">
-                <PublicacionCardCompacta
-                  v-for="publicacion in publicacionesPerfil"
-                  :key="publicacion.idPublicacion"
-                  :publicacion="publicacion"
-                  @abrir="abrirPublicacion"
-                />
-              </div>
+              <template v-else>
+                <div class="inicio-perfil__publicaciones-lista">
+                  <PublicacionCard
+                    v-for="publicacion in publicacionesPerfil"
+                    :key="publicacion.idPublicacion"
+                    :publicacion="publicacion"
+                    @abrir-galeria="abrirGaleriaPublicacion"
+                    @ver-proyecto="irAProyectoPublicacion"
+                    @editar="editarPublicacion"
+                  />
+                </div>
+
+                <div class="inicio-perfil__publicaciones-mas">
+                  <VaButton
+                    preset="secondary"
+                    icon-right="mso-arrow_forward"
+                    @click="irAPublicaciones"
+                  >
+                    Ver más
+                  </VaButton>
+                </div>
+              </template>
             </section>
 
             <!-- TODO: mostrar historial en perfiles ajenos cuando exista el endpoint. -->
             <section v-if="esPropio" class="inicio-perfil__panel">
-              <h2 class="inicio-perfil__panel-titulo">Historial de proyectos</h2>
+              <div class="inicio-perfil__panel-header">
+                <h2 class="inicio-perfil__panel-titulo">Historial de proyectos</h2>
+                <VaButton
+                  v-if="proyectosHistorial.length > proyectosHistorialRecientes.length"
+                  preset="secondary"
+                  size="small"
+                  icon-right="mso-arrow_forward"
+                  @click="cambiarSeccion('proyectos')"
+                >
+                  Ver todos
+                </VaButton>
+              </div>
 
               <div v-if="cargandoHistorial" class="inicio-perfil__estado-publicaciones">
                 <span class="inicio-perfil__spinner" aria-hidden="true"></span>
@@ -339,7 +398,7 @@
               </p>
               <div v-else class="inicio-perfil__historial">
                 <article
-                  v-for="proyecto in proyectosHistorial"
+                  v-for="proyecto in proyectosHistorialRecientes"
                   :key="proyecto.idProyecto"
                   class="inicio-perfil__historial-item"
                 >
@@ -493,6 +552,7 @@ import { cargarResumenPerfil } from "../../services/notificacionState";
 import { cargarConteosSolicitudesConexion } from "../../services/solicitudConexionState";
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
 import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
+import PublicacionCard from "../../components/perfil/PublicacionCard.vue";
 import PublicacionCardCompacta from "../../components/perfil/PublicacionCardCompacta.vue";
 import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
@@ -566,9 +626,11 @@ import { validarRangoFechas } from "../../utils/parametrosPostulaciones.js";
 import { useToast } from "vuestic-ui";
 
 const SECCIONES_NO_DISPONIBLES = {
-  proyectos: "Proyectos",
   participaciones: "Participaciones",
 };
+
+const PUBLICACIONES_PERFIL_PREVIEW = 2;
+const HISTORIAL_PROYECTOS_PREVIEW = 3;
 
 export default {
   name: "InicioPerfilView",
@@ -583,6 +645,7 @@ export default {
     PerfilHero,
     PerfilSidebarNav,
     ProximosEventos,
+    PublicacionCard,
     PublicacionCardCompacta,
     PublicacionDetalleModal,
     ReportarPerfilModal,
@@ -683,7 +746,14 @@ export default {
       if (this.idResena != null) return "resenas";
 
       const seccionRuta = this.$route.params.seccion;
-      const validas = ["perfil", "publicaciones", "calendario", "resenas", "terminos"];
+      const validas = [
+        "perfil",
+        "publicaciones",
+        "proyectos",
+        "calendario",
+        "resenas",
+        "terminos",
+      ];
       return validas.includes(seccionRuta) ? seccionRuta : "perfil";
     },
     hayFiltrosPublicaciones() {
@@ -693,6 +763,9 @@ export default {
       return this.hayFiltrosPublicaciones
         ? "No se encontraron publicaciones con esos filtros."
         : "Todavía no hay publicaciones.";
+    },
+    proyectosHistorialRecientes() {
+      return this.proyectosHistorial.slice(0, HISTORIAL_PROYECTOS_PREVIEW);
     },
     puedeConfigurarTerminos() {
       return (
@@ -949,7 +1022,7 @@ export default {
       try {
         const response = await publicacionService.listarPorPerfil(
           idPerfil,
-          { page: 0, size: 3 },
+          { page: 0, size: PUBLICACIONES_PERFIL_PREVIEW },
           controller.signal
         );
         if (this.controladorPublicacionesPerfil !== controller) return;
@@ -998,11 +1071,17 @@ export default {
         const contenido = Array.isArray(response?.data?.contenido)
           ? response.data.contenido
           : [];
-        this.proyectosHistorial = contenido.filter(
-          (proyecto) =>
-            normalizarEstadoProyecto(proyecto?.estado) ===
-            ESTADOS_PROYECTO.FINALIZADO
-        );
+        this.proyectosHistorial = contenido
+          .filter(
+            (proyecto) =>
+              normalizarEstadoProyecto(proyecto?.estado) ===
+              ESTADOS_PROYECTO.FINALIZADO
+          )
+          .sort(
+            (a, b) =>
+              this.fechaHistorialProyecto(b) -
+              this.fechaHistorialProyecto(a)
+          );
       } catch (error) {
         if (this.controladorHistorial !== controller || this.esCancelacion(error)) {
           return;
@@ -1024,6 +1103,12 @@ export default {
     },
     etiquetaRolProyecto(rol) {
       return etiquetaRolProyecto(rol);
+    },
+    fechaHistorialProyecto(proyecto) {
+      const valor = proyecto?.fechaFinalizacion || proyecto?.fechaInicio;
+      if (!valor) return 0;
+      const fecha = new Date(valor).getTime();
+      return Number.isFinite(fecha) ? fecha : 0;
     },
     mesAnioProyecto(proyecto) {
       const valor = proyecto?.fechaFinalizacion || proyecto?.fechaInicio;
@@ -2067,6 +2152,18 @@ export default {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
+}
+
+.inicio-perfil__publicaciones-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.inicio-perfil__publicaciones-mas {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
 }
 
 .inicio-perfil__historial {

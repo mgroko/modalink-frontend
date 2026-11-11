@@ -172,7 +172,7 @@ export default {
           icono: "photo_library",
           tipo: "seccion",
         },
-        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "proyectos-inicio" },
+        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "seccion" },
         {
           key: "invitaciones",
           label: "Invitaciones",
