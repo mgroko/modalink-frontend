@@ -213,7 +213,7 @@ export default {
           icono: "photo_library",
           tipo: "seccion",
         },
-        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "no-disponible" },
+        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "seccion" },
         { key: "participaciones", label: "Participaciones", icono: "groups", tipo: "no-disponible" },
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
         {

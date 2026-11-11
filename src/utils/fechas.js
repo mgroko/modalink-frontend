@@ -228,6 +228,18 @@ export function fechaLarga(valor) {
   return `${diaSemana} ${p.dia} de ${MESES_LARGOS[p.mes - 1]} de ${p.anio}`;
 }
 
+/**
+ * Devuelve "mes año" en español (ej. "noviembre 2026") a partir de un
+ * valor ISO-8601 o Date. Retorna "" si no hay fecha válida.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearMesAnio(valor) {
+  const p = aPartes(valor);
+  if (!p) return "";
+  return `${MESES_LARGOS[p.mes - 1]} ${p.anio}`;
+}
+
 export function rangoSemana(inicio, fin) {
   const pIni = aPartes(inicio);
   const pFin = aPartes(fin);

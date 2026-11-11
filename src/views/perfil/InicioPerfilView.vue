@@ -207,43 +207,22 @@
 
           <!-- Sección: Proyectos (historial completo) -->
           <template v-else-if="seccion === 'proyectos'">
-            <section class="inicio-perfil__panel">
+            <section ref="historialRef" class="inicio-perfil__panel">
               <h2 class="inicio-perfil__panel-titulo">Historial de proyectos</h2>
 
-              <template v-if="esPropio">
-                <div v-if="cargandoHistorial" class="inicio-perfil__estado-publicaciones">
-                  <span class="inicio-perfil__spinner" aria-hidden="true"></span>
-                  Cargando historial...
-                </div>
-                <p v-else-if="errorHistorial" class="inicio-perfil__vacio">
-                  {{ errorHistorial }}
-                </p>
-                <p v-else-if="!proyectosHistorial.length" class="inicio-perfil__vacio">
-                  Todavía no hay proyectos finalizados.
-                </p>
-                <div v-else class="inicio-perfil__historial">
-                  <article
-                    v-for="proyecto in proyectosHistorial"
-                    :key="proyecto.idProyecto"
-                    class="inicio-perfil__historial-item"
-                  >
-                    <div class="inicio-perfil__historial-principal">
-                      <strong>{{ proyecto.nombre }}</strong>
-                      <EstadoProyectoBadge :estado="proyecto.estado" />
-                    </div>
-                    <p class="inicio-perfil__historial-meta">
-                      {{ etiquetaRolProyecto(proyecto.rolUsuario) }}
-                      <template v-if="mesAnioProyecto(proyecto)">
-                        · {{ mesAnioProyecto(proyecto) }}
-                      </template>
-                    </p>
-                  </article>
-                </div>
-              </template>
+              <HistorialProyectosLista
+                :proyectos="historialProyectos"
+                :cargando="cargandoHistorial"
+                :error="errorHistorial"
+                @abrir="abrirProyectoHistorial"
+                @reintentar="cargarHistorialProyectos()"
+              />
 
-              <p v-else class="inicio-perfil__vacio">
-                El historial de proyectos solo está disponible en tu propio perfil.
-              </p>
+              <PaginacionResultados
+                v-if="!cargandoHistorial && !errorHistorial && historialProyectos.length"
+                :paginacion="paginacionHistorial"
+                @cambiar="cambiarPaginaHistorial"
+              />
             </section>
           </template>
 
@@ -372,49 +351,27 @@
               </template>
             </section>
 
-            <!-- TODO: mostrar historial en perfiles ajenos cuando exista el endpoint. -->
-            <section v-if="esPropio" class="inicio-perfil__panel">
+            <section class="inicio-perfil__panel">
               <div class="inicio-perfil__panel-header">
                 <h2 class="inicio-perfil__panel-titulo">Historial de proyectos</h2>
                 <VaButton
-                  v-if="proyectosHistorial.length > proyectosHistorialRecientes.length"
+                  v-if="historialPreviewTotal > 0"
                   preset="secondary"
                   size="small"
                   icon-right="mso-arrow_forward"
                   @click="cambiarSeccion('proyectos')"
                 >
-                  Ver todos
+                  Ver más
                 </VaButton>
               </div>
 
-              <div v-if="cargandoHistorial" class="inicio-perfil__estado-publicaciones">
-                <span class="inicio-perfil__spinner" aria-hidden="true"></span>
-                Cargando historial...
-              </div>
-              <p v-else-if="errorHistorial" class="inicio-perfil__vacio">
-                {{ errorHistorial }}
-              </p>
-              <p v-else-if="!proyectosHistorial.length" class="inicio-perfil__vacio">
-                Todavía no hay proyectos finalizados.
-              </p>
-              <div v-else class="inicio-perfil__historial">
-                <article
-                  v-for="proyecto in proyectosHistorialRecientes"
-                  :key="proyecto.idProyecto"
-                  class="inicio-perfil__historial-item"
-                >
-                  <div class="inicio-perfil__historial-principal">
-                    <strong>{{ proyecto.nombre }}</strong>
-                    <EstadoProyectoBadge :estado="proyecto.estado" />
-                  </div>
-                  <p class="inicio-perfil__historial-meta">
-                    {{ etiquetaRolProyecto(proyecto.rolUsuario) }}
-                    <template v-if="mesAnioProyecto(proyecto)">
-                      · {{ mesAnioProyecto(proyecto) }}
-                    </template>
-                  </p>
-                </article>
-              </div>
+              <HistorialProyectosLista
+                :proyectos="historialPreview"
+                :cargando="cargandoHistorialPreview"
+                :error="errorHistorialPreview"
+                @abrir="abrirProyectoHistorial"
+                @reintentar="cargarHistorialPreview()"
+              />
             </section>
           </template>
         </div>
@@ -574,7 +531,7 @@ import {
 } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
-import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.vue";
+import HistorialProyectosLista from "../../components/perfil/HistorialProyectosLista.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
@@ -618,11 +575,6 @@ import { normalizarResena, normalizarResumen } from "../../utils/resenasConstant
 import { normalizarTerminos } from "../../utils/terminosCondiciones.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import {
-  ESTADOS_PROYECTO,
-  etiquetaRolProyecto,
-  normalizarEstadoProyecto,
-} from "../../utils/proyectoConstants.js";
-import {
   construirQueryPublicaciones,
   filtrosPublicacionVacios,
   firmarFiltrosPublicacion,
@@ -639,16 +591,17 @@ const SECCIONES_NO_DISPONIBLES = {
 };
 
 const PUBLICACIONES_PERFIL_PREVIEW = 2;
-const HISTORIAL_PROYECTOS_PREVIEW = 3;
+const HISTORIAL_PREVIEW_SIZE = 3;
+const HISTORIAL_PAGE_SIZE = 10;
 
 export default {
   name: "InicioPerfilView",
   components: {
     BaseAlert,
     CalendarioProfesional,
-    EstadoProyectoBadge,
     FiltrosPublicaciones,
     GaleriaPublicacionModal,
+    HistorialProyectosLista,
     ModalInvitarColaborador,
     ModalNuevaPublicacion,
     PaginacionResultados,
@@ -680,7 +633,19 @@ export default {
       cargandoPublicacionesPerfil: false,
       errorPublicacionesPerfil: "",
       controladorPublicacionesPerfil: null,
-      proyectosHistorial: [],
+      historialPreview: [],
+      historialPreviewTotal: 0,
+      cargandoHistorialPreview: false,
+      errorHistorialPreview: "",
+      controladorHistorialPreview: null,
+      historialProyectos: [],
+      paginacionHistorial: {
+        paginaActual: 0,
+        totalPaginas: 1,
+        totalElementos: 0,
+        primera: true,
+        ultima: true,
+      },
       cargandoHistorial: false,
       errorHistorial: "",
       controladorHistorial: null,
@@ -776,9 +741,6 @@ export default {
         ? "No se encontraron publicaciones con esos filtros."
         : "Todavía no hay publicaciones.";
     },
-    proyectosHistorialRecientes() {
-      return this.proyectosHistorial.slice(0, HISTORIAL_PROYECTOS_PREVIEW);
-    },
     puedeConfigurarTerminos() {
       return (
         this.esPropio &&
@@ -865,6 +827,7 @@ export default {
     this.abortarPublicaciones();
     this.abortarProyectosPublicaciones();
     this.abortarPublicacionesPerfil();
+    this.abortarHistorialPreview();
     this.abortarHistorialProyectos();
   },
   watch: {
@@ -876,6 +839,7 @@ export default {
       window.scrollTo({ top: 0, behavior: "smooth" });
       this.avisarSeccionNoDisponible();
       if (this.seccion === "terminos") this.cargarTerminos();
+      if (this.seccion === "proyectos") this.cargarHistorialProyectos();
     },
     "$route.params.idCalificacion"() {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -906,12 +870,24 @@ export default {
       this.abortarPublicaciones();
       this.abortarProyectosPublicaciones();
       this.abortarPublicacionesPerfil();
+      this.abortarHistorialPreview();
       this.abortarHistorialProyectos();
       this.publicaciones = [];
       this.publicacionesPerfil = [];
       this.cargandoPublicacionesPerfil = false;
       this.errorPublicacionesPerfil = "";
-      this.proyectosHistorial = [];
+      this.historialPreview = [];
+      this.historialPreviewTotal = 0;
+      this.cargandoHistorialPreview = false;
+      this.errorHistorialPreview = "";
+      this.historialProyectos = [];
+      this.paginacionHistorial = {
+        paginaActual: 0,
+        totalPaginas: 1,
+        totalElementos: 0,
+        primera: true,
+        ultima: true,
+      };
       this.cargandoHistorial = false;
       this.errorHistorial = "";
       this.cargandoPublicaciones = false;
@@ -975,7 +951,8 @@ export default {
         this.cargarPublicaciones({ pagina: consultaPublicaciones.pagina });
         this.cargarPublicacionesPerfil();
         this.cargarProyectosFiltroPublicaciones();
-        if (this.esPropio) this.cargarHistorialProyectos();
+        this.cargarHistorialPreview();
+        if (this.seccion === "proyectos") this.cargarHistorialProyectos();
       } catch (error) {
         const status = error?.response?.status;
         if (status === 401) {
@@ -1013,12 +990,6 @@ export default {
       if (this.controladorPublicacionesPerfil) {
         this.controladorPublicacionesPerfil.abort();
         this.controladorPublicacionesPerfil = null;
-      }
-    },
-    abortarHistorialProyectos() {
-      if (this.controladorHistorial) {
-        this.controladorHistorial.abort();
-        this.controladorHistorial = null;
       }
     },
     async cargarPublicacionesPerfil() {
@@ -1064,8 +1035,77 @@ export default {
         }
       }
     },
-    async cargarHistorialProyectos() {
-      if (!this.esPropio) return;
+    abortarHistorialPreview() {
+      if (this.controladorHistorialPreview) {
+        this.controladorHistorialPreview.abort();
+        this.controladorHistorialPreview = null;
+      }
+    },
+    abortarHistorialProyectos() {
+      if (this.controladorHistorial) {
+        this.controladorHistorial.abort();
+        this.controladorHistorial = null;
+      }
+    },
+    mensajeErrorHistorial(error) {
+      const status = error?.response?.status;
+      if (status === 401) return "";
+      if (status === 403) {
+        return "No tenés permisos para ver el historial de este perfil.";
+      }
+      if (status === 404) {
+        return "El perfil no está disponible o no tenés acceso a su historial.";
+      }
+      return mensajeErrorApi(
+        error,
+        "No se pudo cargar el historial de proyectos."
+      );
+    },
+    async cargarHistorialPreview() {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
+
+      this.abortarHistorialPreview();
+      const controller = new AbortController();
+      this.controladorHistorialPreview = controller;
+      this.cargandoHistorialPreview = true;
+      this.errorHistorialPreview = "";
+
+      try {
+        const response = await proyectoService.historialPerfil(
+          idPerfil,
+          { page: 0, size: HISTORIAL_PREVIEW_SIZE },
+          controller.signal
+        );
+        if (this.controladorHistorialPreview !== controller) return;
+
+        const data = response?.data || {};
+        this.historialPreview = Array.isArray(data.contenido)
+          ? data.contenido
+          : [];
+        this.historialPreviewTotal = Number(data.totalElementos) || 0;
+      } catch (error) {
+        if (
+          this.controladorHistorialPreview !== controller ||
+          this.esCancelacion(error)
+        ) {
+          return;
+        }
+        this.historialPreview = [];
+        this.historialPreviewTotal = 0;
+        this.errorHistorialPreview = this.mensajeErrorHistorial(error);
+      } finally {
+        if (this.controladorHistorialPreview === controller) {
+          this.cargandoHistorialPreview = false;
+          this.controladorHistorialPreview = null;
+        }
+      }
+    },
+    async cargarHistorialProyectos({
+      pagina = this.paginacionHistorial.paginaActual || 0,
+    } = {}) {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
 
       this.abortarHistorialProyectos();
       const controller = new AbortController();
@@ -1074,35 +1114,30 @@ export default {
       this.errorHistorial = "";
 
       try {
-        const response = await proyectoService.propios(
-          { todos: true },
+        const response = await proyectoService.historialPerfil(
+          idPerfil,
+          { page: pagina, size: HISTORIAL_PAGE_SIZE },
           controller.signal
         );
         if (this.controladorHistorial !== controller) return;
 
-        const contenido = Array.isArray(response?.data?.contenido)
-          ? response.data.contenido
+        const data = response?.data || {};
+        this.historialProyectos = Array.isArray(data.contenido)
+          ? data.contenido
           : [];
-        this.proyectosHistorial = contenido
-          .filter(
-            (proyecto) =>
-              normalizarEstadoProyecto(proyecto?.estado) ===
-              ESTADOS_PROYECTO.FINALIZADO
-          )
-          .sort(
-            (a, b) =>
-              this.fechaHistorialProyecto(b) -
-              this.fechaHistorialProyecto(a)
-          );
+        this.paginacionHistorial = {
+          paginaActual: Number(data.paginaActual) || 0,
+          totalPaginas: Number(data.totalPaginas) || 1,
+          totalElementos: Number(data.totalElementos) || 0,
+          primera: data.primera !== false,
+          ultima: data.ultima !== false,
+        };
       } catch (error) {
         if (this.controladorHistorial !== controller || this.esCancelacion(error)) {
           return;
         }
-        this.proyectosHistorial = [];
-        this.errorHistorial = mensajeErrorApi(
-          error,
-          "No se pudo cargar el historial de proyectos."
-        );
+        this.historialProyectos = [];
+        this.errorHistorial = this.mensajeErrorHistorial(error);
       } finally {
         if (this.controladorHistorial === controller) {
           this.cargandoHistorial = false;
@@ -1110,39 +1145,31 @@ export default {
         }
       }
     },
+    cambiarPaginaHistorial(delta) {
+      const paginaActual = Number(this.paginacionHistorial.paginaActual) || 0;
+      const destino = paginaActual + Number(delta || 0);
+      const totalPaginas = Number(this.paginacionHistorial.totalPaginas) || 1;
+      if (destino < 0 || destino >= totalPaginas) return;
+
+      this.cargarHistorialProyectos({ pagina: destino });
+      this.$nextTick(() => {
+        this.$refs.historialRef?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    },
+    abrirProyectoHistorial(proyecto) {
+      if (proyecto?.puedeVerProyecto !== true || proyecto.idProyecto == null) {
+        return;
+      }
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: proyecto.idProyecto },
+      });
+    },
     irAPublicaciones() {
       this.cambiarSeccion("publicaciones");
-    },
-    etiquetaRolProyecto(rol) {
-      return etiquetaRolProyecto(rol);
-    },
-    fechaHistorialProyecto(proyecto) {
-      const valor = proyecto?.fechaFinalizacion || proyecto?.fechaInicio;
-      if (!valor) return 0;
-      const fecha = new Date(valor).getTime();
-      return Number.isFinite(fecha) ? fecha : 0;
-    },
-    mesAnioProyecto(proyecto) {
-      const valor = proyecto?.fechaFinalizacion || proyecto?.fechaInicio;
-      if (!valor) return "";
-      const [anio, mes] = String(valor).split("T")[0].split("-");
-      const indice = Number(mes) - 1;
-      if (!anio || indice < 0 || indice > 11) return "";
-      const meses = [
-        "enero",
-        "febrero",
-        "marzo",
-        "abril",
-        "mayo",
-        "junio",
-        "julio",
-        "agosto",
-        "septiembre",
-        "octubre",
-        "noviembre",
-        "diciembre",
-      ];
-      return `${meses[indice]} ${anio}`;
     },
     esCancelacion(error) {
       return (
@@ -2194,37 +2221,6 @@ export default {
   display: flex;
   justify-content: center;
   margin-top: 1rem;
-}
-
-.inicio-perfil__historial {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.inicio-perfil__historial-item {
-  padding: 0.75rem 0.85rem;
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border-soft);
-  border-radius: 8px;
-}
-
-.inicio-perfil__historial-principal {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.inicio-perfil__historial-principal strong {
-  color: var(--color-text);
-  font-size: 0.86rem;
-}
-
-.inicio-perfil__historial-meta {
-  margin: 0.2rem 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.76rem;
 }
 
 .inicio-perfil__estado-publicaciones {
