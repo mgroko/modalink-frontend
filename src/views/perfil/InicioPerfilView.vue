@@ -191,8 +191,6 @@
                   v-for="publicacion in publicaciones"
                   :key="publicacion.idPublicacion"
                   :publicacion="publicacion"
-                  @abrir="abrirPublicacion"
-                  @abrir-galeria="abrirGaleriaPublicacion"
                 />
               </div>
 
@@ -227,6 +225,13 @@
 
           <!-- Sección: Perfil (default) -->
           <template v-else>
+            <PolaroidsPerfilPanel
+              v-if="mostrarPolaroids"
+              :id-perfil="perfil.idPerfil"
+              :es-propio="esPropio"
+              :puede-gestionar="puedeGestionarPolaroids"
+            />
+
             <section v-if="habilidades.length" class="inicio-perfil__panel">
               <h2 class="inicio-perfil__panel-titulo">Habilidades</h2>
               <div class="inicio-perfil__habilidades">
@@ -237,60 +242,6 @@
                 >
                   {{ habilidad }}
                 </span>
-              </div>
-            </section>
-
-            <section v-if="caracteristicas.length" class="inicio-perfil__panel">
-              <h2 class="inicio-perfil__panel-titulo">Características técnicas</h2>
-
-              <div v-if="renAltura.length" class="inicio-perfil__carac-grid">
-                <div class="inicio-perfil__campo" v-for="carac in renAltura" :key="carac.idCaracteristica">
-                  <span class="inicio-perfil__label">{{ carac._etiqueta }}</span>
-                  <span class="inicio-perfil__valor">
-                    <span v-if="carac.colorHex" class="inicio-perfil__swatch" :style="{ background: carac.colorHex }"></span>
-                    {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="renMedidas.length" class="inicio-perfil__carac-grid">
-                <div class="inicio-perfil__campo" v-for="carac in renMedidas" :key="carac.idCaracteristica">
-                  <span class="inicio-perfil__label">{{ carac._etiqueta }}</span>
-                  <span class="inicio-perfil__valor">
-                    <span v-if="carac.colorHex" class="inicio-perfil__swatch" :style="{ background: carac.colorHex }"></span>
-                    {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="renPielOjos.length" class="inicio-perfil__carac-grid">
-                <div class="inicio-perfil__campo" v-for="carac in renPielOjos" :key="carac.idCaracteristica">
-                  <span class="inicio-perfil__label">{{ carac._etiqueta }}</span>
-                  <span class="inicio-perfil__valor">
-                    <span v-if="carac.colorHex" class="inicio-perfil__swatch" :style="{ background: carac.colorHex }"></span>
-                    {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="renCabelloTipo.length" class="inicio-perfil__carac-grid">
-                <div class="inicio-perfil__campo" v-for="carac in renCabelloTipo" :key="carac.idCaracteristica">
-                  <span class="inicio-perfil__label">{{ carac._etiqueta }}</span>
-                  <span class="inicio-perfil__valor">
-                    <span v-if="carac.colorHex" class="inicio-perfil__swatch" :style="{ background: carac.colorHex }"></span>
-                    {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="renOtras.length" class="inicio-perfil__carac-grid">
-                <div class="inicio-perfil__campo" v-for="carac in renOtras" :key="carac.idCaracteristica">
-                  <span class="inicio-perfil__label">{{ carac._etiqueta }}</span>
-                  <span class="inicio-perfil__valor">
-                    <span v-if="carac.colorHex" class="inicio-perfil__swatch" :style="{ background: carac.colorHex }"></span>
-                    {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
-                  </span>
-                </div>
               </div>
             </section>
 
@@ -386,6 +337,10 @@
               @funcionalidad-no-disponible="noDisponible($event)"
               @cerrar-sesion="cerrarSesion"
             />
+            <CaracteristicasTecnicasCard
+              v-if="mostrarCaracteristicas"
+              :caracteristicas="caracteristicas"
+            />
           </template>
           <template v-else>
             <PerfilSidebarNav
@@ -409,6 +364,10 @@
               @eliminar="abrirEliminarConexion"
               @mensaje="abrirMensaje"
               @reportar="modalReporte = true"
+            />
+            <CaracteristicasTecnicasCard
+              v-if="mostrarCaracteristicas"
+              :caracteristicas="caracteristicas"
             />
             <ResenasCard
               :resumen="resenasResumen"
@@ -468,15 +427,6 @@
         @confirmar="confirmarEliminarConexion"
       />
 
-      <PublicacionDetalleModal
-        v-model="modalPublicacionVisible"
-        :publicacion="publicacionSeleccionada"
-        @abrir-galeria="abrirGaleriaPublicacion"
-        @ver-proyecto="irAProyectoPublicacion"
-        @editar="editarPublicacion"
-        @invitar="abrirInvitarColaborador"
-      />
-
       <ModalNuevaPublicacion
         v-model="modalEditarPublicacionVisible"
         modo="editar"
@@ -518,7 +468,6 @@ import PaginacionResultados from "../../components/busqueda/PaginacionResultados
 import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
 import PublicacionCard from "../../components/perfil/PublicacionCard.vue";
 import PublicacionCardGaleria from "../../components/perfil/PublicacionCardGaleria.vue";
-import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
@@ -530,8 +479,10 @@ import {
 } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
+import CaracteristicasTecnicasCard from "../../components/perfil/CaracteristicasTecnicasCard.vue";
 import HistorialProyectosLista from "../../components/perfil/HistorialProyectosLista.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
+import PolaroidsPerfilPanel from "../../components/perfil/PolaroidsPerfilPanel.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
 import ResenaDetallePanel from "../../components/perfil/ResenaDetallePanel.vue";
@@ -544,18 +495,6 @@ import ModalGestionSolicitudConexion from "../../components/conexion/ModalGestio
 import ModalEliminarConexion from "../../components/conexion/ModalEliminarConexion.vue";
 import SkeletonPerfil from "../../components/perfil/SkeletonPerfil.vue";
 import TerminosCondicionesPanel from "../../components/perfil/TerminosCondicionesPanel.vue";
-import {
-  ETIQUETAS_CARAC,
-  ORDEN_CARAC,
-  CODIGOS_ALTURA,
-  CODIGOS_MEDIDAS,
-  CODIGOS_PIEL_OJOS,
-  CODIGOS_CABELLO_TIPO,
-  TODOS_CODIGOS,
-  UNIDADES_POR_CODIGO,
-  normCodigo,
-  inLista,
-} from "../../utils/perfilConstants.js";
 import { diasRestantes, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
@@ -582,6 +521,10 @@ import {
   normalizarProyectoFiltro,
   normalizarPublicacion,
 } from "../../utils/publicacionConstants.js";
+import {
+  esPerfilActivo,
+  esPerfilModelo,
+} from "../../utils/polaroidConstants.js";
 import { validarRangoFechas } from "../../utils/parametrosPostulaciones.js";
 import { useToast } from "vuestic-ui";
 
@@ -602,6 +545,7 @@ export default {
   components: {
     BaseAlert,
     CalendarioProfesional,
+    CaracteristicasTecnicasCard,
     FiltrosPublicaciones,
     GaleriaPublicacionModal,
     HistorialProyectosLista,
@@ -610,10 +554,10 @@ export default {
     PaginacionResultados,
     PerfilHero,
     PerfilSidebarNav,
+    PolaroidsPerfilPanel,
     ProximosEventos,
     PublicacionCard,
     PublicacionCardGaleria,
-    PublicacionDetalleModal,
     ReportarPerfilModal,
     ModalEnviarSolicitudConexion,
     ModalCancelarSolicitudConexion,
@@ -675,8 +619,6 @@ export default {
       publicacionEditando: null,
       modalInvitarColaboradorVisible: false,
       publicacionInvitar: null,
-      modalPublicacionVisible: false,
-      publicacionSeleccionada: null,
       modalGaleriaPublicacionVisible: false,
       imagenesGaleria: [],
       tituloGaleria: "",
@@ -757,6 +699,21 @@ export default {
       if (this.perfil?.esPropietario != null) return this.perfil.esPropietario === true;
       return this.perfil?.idPerfil != null && this.perfil.idPerfil === idPerfilActivo();
     },
+    esModelo() {
+      return esPerfilModelo(this.perfil);
+    },
+    perfilActivo() {
+      return esPerfilActivo(this.perfil);
+    },
+    mostrarPolaroids() {
+      return this.esModelo && this.perfilActivo;
+    },
+    mostrarCaracteristicas() {
+      return this.caracteristicas.length > 0 && this.perfilActivo;
+    },
+    puedeGestionarPolaroids() {
+      return this.esPropio && this.perfilActivo;
+    },
     esAdministrador() {
       return esAdmin();
     },
@@ -800,23 +757,6 @@ export default {
     },
     caracteristicas() {
       return this.perfil?.caracteristicas || [];
-    },
-    renAltura() {
-      return this._ordenarCarac(CODIGOS_ALTURA);
-    },
-    renMedidas() {
-      return this._ordenarCarac(CODIGOS_MEDIDAS);
-    },
-    renPielOjos() {
-      return this._ordenarCarac(CODIGOS_PIEL_OJOS);
-    },
-    renCabelloTipo() {
-      return this._ordenarCarac(CODIGOS_CABELLO_TIPO);
-    },
-    renOtras() {
-      return this.caracteristicas
-        .filter((c) => !inLista(c.codigo, TODOS_CODIGOS))
-        .map((c) => ({ ...c, _etiqueta: this.etiquetaCarac(c.codigo) }));
     },
   },
   async mounted() {
@@ -1552,18 +1492,12 @@ export default {
         });
       });
     },
-    abrirPublicacion(publicacion) {
-      if (!publicacion) return;
-      this.publicacionSeleccionada = publicacion;
-      this.modalPublicacionVisible = true;
-    },
     abrirGaleriaPublicacion(publicacion) {
       if (!Array.isArray(publicacion?.imagenes) || !publicacion.imagenes.length) {
         return;
       }
       this.imagenesGaleria = publicacion.imagenes;
       this.tituloGaleria = publicacion.titulo;
-      this.modalPublicacionVisible = false;
       this.modalGaleriaPublicacionVisible = true;
     },
     irAProyectoPublicacion(proyecto) {
@@ -1588,13 +1522,11 @@ export default {
     editarPublicacion(publicacion) {
       if (!publicacion?.idPublicacion) return;
       this.publicacionEditando = publicacion;
-      this.modalPublicacionVisible = false;
       this.modalEditarPublicacionVisible = true;
     },
     abrirInvitarColaborador(publicacion) {
       if (!publicacion?.idPublicacion) return;
       this.publicacionInvitar = publicacion;
-      this.modalPublicacionVisible = false;
       this.modalInvitarColaboradorVisible = true;
     },
     alEnviarInvitacion(invitacion) {
@@ -2240,34 +2172,6 @@ export default {
         this.$router.push({ name: "login" });
       }
     },
-    _ordenarCarac(codigos) {
-      return this.caracteristicas
-        .filter((c) => inLista(c.codigo, codigos))
-        .map((c) => ({ ...c, _etiqueta: this.etiquetaCarac(c.codigo) }))
-        .sort((a, b) => {
-          const na = normCodigo(a.codigo);
-          const nb = normCodigo(b.codigo);
-          const oa = ORDEN_CARAC[na] ?? codigos.indexOf(na);
-          const ob = ORDEN_CARAC[nb] ?? codigos.indexOf(nb);
-          return oa - ob;
-        });
-    },
-    etiquetaCarac(codigo) {
-      const n = normCodigo(codigo);
-      if (ETIQUETAS_CARAC[n]) return ETIQUETAS_CARAC[n];
-      return this.capitalizar(codigo) || "—";
-    },
-    valorCarac(carac) {
-      // Spec UC-14 §2/§7.3: codigoValor ya es la etiqueta visible de BD y
-      // valor es texto libre; se muestran tal cual, sin re-mapear.
-      if (carac.codigoValor) return carac.codigoValor;
-      if (carac.valor) return carac.valor;
-      return "—";
-    },
-    unidadCarac(carac) {
-      const unidad = UNIDADES_POR_CODIGO[normCodigo(carac.codigo)];
-      return unidad ? ` ${unidad}` : "";
-    },
     capitalizar(texto) {
       const palabras = String(texto || "")
         .toLowerCase()
@@ -2349,11 +2253,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-}
-
-.inicio-perfil__publicaciones-lista :deep(.publicacion-galeria__media) {
-  aspect-ratio: auto;
-  height: 340px;
 }
 
 .inicio-perfil__publicaciones-lista :deep(.publicacion-galeria__miniatura) {
@@ -2517,8 +2416,8 @@ export default {
 }
 
 @media (max-width: 700px) {
-  .inicio-perfil__publicaciones-lista :deep(.publicacion-galeria__media) {
-    height: 240px;
+  .inicio-perfil__publicaciones-lista {
+    gap: 0.75rem;
   }
 }
 </style>

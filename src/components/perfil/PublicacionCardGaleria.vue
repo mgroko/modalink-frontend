@@ -2,21 +2,10 @@
   <article
     v-if="publicacion"
     class="publicacion-galeria"
-    role="button"
-    tabindex="0"
-    :aria-label="`Ver publicación: ${publicacion.titulo}`"
-    @click="$emit('abrir', publicacion)"
-    @keydown.enter.self="$emit('abrir', publicacion)"
-    @keydown.space.self.prevent="$emit('abrir', publicacion)"
   >
     <div
       class="publicacion-galeria__media"
-      role="button"
-      tabindex="0"
-      aria-label="Abrir galería de imágenes"
-      @click.stop="$emit('abrir-galeria', publicacion)"
-      @keydown.enter.self.stop="$emit('abrir-galeria', publicacion)"
-      @keydown.space.self.stop.prevent="$emit('abrir-galeria', publicacion)"
+      :style="estiloMedia"
     >
       <img
         v-if="imagenActual"
@@ -31,6 +20,7 @@
         :src="imagenActual"
         :alt="`${publicacion.titulo} — imagen ${indiceActual + 1}`"
         class="publicacion-galeria__imagen"
+        @load="actualizarRelacion"
       />
       <span
         v-else
@@ -149,10 +139,11 @@ export default {
       default: null,
     },
   },
-  emits: ["abrir", "abrir-galeria"],
+  emits: [],
   data() {
     return {
       indiceActual: 0,
+      relacionAspecto: null,
     };
   },
   computed: {
@@ -176,13 +167,25 @@ export default {
     ubicacionTexto() {
       return formatUbicacionPublicacion(this.publicacion?.ubicacion);
     },
+    estiloMedia() {
+      return this.relacionAspecto
+        ? { aspectRatio: String(this.relacionAspecto) }
+        : {};
+    },
   },
   watch: {
     "publicacion.idPublicacion"() {
       this.indiceActual = 0;
+      this.relacionAspecto = null;
     },
   },
   methods: {
+    actualizarRelacion(event) {
+      const imagen = event?.target;
+      if (!imagen?.naturalWidth || !imagen?.naturalHeight) return;
+      const relacion = imagen.naturalWidth / imagen.naturalHeight;
+      this.relacionAspecto = Math.min(Math.max(relacion, 0.5), 2.5);
+    },
     resolverImagen(imagen) {
       return resolverFotoUrl(imagen?.url);
     },
@@ -212,7 +215,7 @@ export default {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
-  cursor: pointer;
+  cursor: default;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease,
@@ -231,11 +234,12 @@ export default {
   position: relative;
   display: grid;
   width: 100%;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 16 / 9;
+  max-height: 480px;
   place-items: center;
   overflow: hidden;
   background: var(--color-surface-muted);
-  cursor: zoom-in;
+  cursor: default;
 }
 
 .publicacion-galeria__fondo {
@@ -435,7 +439,8 @@ export default {
 
 @media (max-width: 620px) {
   .publicacion-galeria__media {
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 16 / 9;
+    max-height: 360px;
   }
 
   .publicacion-galeria__miniatura {
