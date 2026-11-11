@@ -229,6 +229,18 @@ export function fechaLarga(valor) {
 }
 
 /**
+ * Fecha larga sin día de la semana (ej. "25 de noviembre de 2026"). Se usa
+ * en resúmenes donde el espacio es acotado y el día de la semana no aporta.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function fechaLargaSinDia(valor) {
+  const p = aPartes(valor);
+  if (!p) return "";
+  return `${p.dia} de ${MESES_LARGOS[p.mes - 1]} de ${p.anio}`;
+}
+
+/**
  * Devuelve "mes año" en español (ej. "noviembre 2026") a partir de un
  * valor ISO-8601 o Date. Retorna "" si no hay fecha válida.
  * @param {string|Date|null|undefined} valor

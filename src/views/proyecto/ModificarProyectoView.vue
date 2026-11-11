@@ -415,6 +415,8 @@ export default {
     return {
       pasos: ["Datos generales", "Objetivos", "Personal", "Moodboard"],
       paso: 1,
+      /** Evita duplicar la fila al aplicar `?nuevo=1` más de una vez. */
+      nuevosAplicados: {},
       form: {
         nombre: "",
         descripcion: "",
@@ -525,6 +527,14 @@ export default {
     "form.moodboard"() {
       if (this.precargado) this.dirty.moodboard = true;
     },
+    "$route.query.paso"() {
+      if (!this.precargado) return;
+      this.aplicarNavegacionDesdeQuery();
+    },
+    "$route.query.nuevo"() {
+      if (!this.precargado) return;
+      this.aplicarNavegacionDesdeQuery();
+    },
   },
   mounted() {
     this.cargarProyecto();
@@ -570,6 +580,12 @@ export default {
         }
 
         this.precargarFormulario(proyecto);
+        // El próximo tick ya dejó `precargado = true`, así que la fila que
+        // agregue `?nuevo=1` se marca como cambio pendiente de guardado.
+        this.$nextTick(() => {
+          if (corrida === this.idCarga) this.aplicarNavegacionDesdeQuery();
+        });
+
         const resultados = await Promise.allSettled([
           this.cargarCatalogos(),
           this.cargarActividades(),
@@ -1027,6 +1043,39 @@ export default {
       this.$nextTick(() => {
         this.$refs.form?.resetValidation?.();
       });
+    },
+
+    /**
+     * Paso solicitado por query (`?paso=2|3|4`). La información general del
+     * proyecto usa este parámetro para abrir directamente Objetivos, Personal
+     * o Moodboard. Valores inválidos se ignoran y dejan el paso 1.
+     * @returns {number|null}
+     */
+    pasoDesdeQuery() {
+      const valor = Number(this.$route.query.paso);
+      if (!Number.isInteger(valor)) return null;
+      if (valor < 1 || valor > this.pasos.length) return null;
+      return valor;
+    },
+
+    /**
+     * Aplica el paso de la URL una vez precargado el formulario. Con
+     * `?nuevo=1` agrega además la fila vacía que espera el usuario al pulsar
+     * "Agregar objetivo" o "Agregar requerimiento". El flag evita duplicarla
+     * si el watcher de query se dispara más de una vez.
+     */
+    aplicarNavegacionDesdeQuery() {
+      const paso = this.pasoDesdeQuery();
+      if (paso == null) return;
+
+      this.irAPaso(paso);
+
+      if (this.$route.query.nuevo !== "1") return;
+      if (this.nuevosAplicados[paso]) return;
+      this.nuevosAplicados = { ...this.nuevosAplicados, [paso]: true };
+
+      if (paso === 2) this.agregarObjetivo();
+      else if (paso === 3) this.agregarRequerimiento();
     },
 
     pasoDeClave(clave) {
