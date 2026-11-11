@@ -41,55 +41,6 @@
       </button>
     </nav>
 
-    <div v-if="!esPropio" class="perfil-nav__acciones">
-      <PerfilAccionesConexion
-        class="perfil-nav__accion"
-        :estado-conexion="estadoConexion"
-        :mostrar="mostrarConexion"
-        :cargando="cargandoConexion"
-        :procesando="procesandoConexion"
-        :accion-procesando="accionProcesandoConexion"
-        @conectar="$emit('conectar')"
-        @aceptar="$emit('aceptar')"
-        @rechazar="$emit('rechazar')"
-        @eliminar="$emit('eliminar')"
-      />
-      <VaButton
-        class="perfil-nav__accion"
-        preset="secondary"
-        color="primary"
-        icon="mso-chat_bubble"
-        @click="$emit('mensaje')"
-      >
-        Mensaje
-      </VaButton>
-    </div>
-
-    <VaButton
-      v-if="!esPropio && mostrarCancelar"
-      preset="secondary"
-      color="danger"
-      size="small"
-      block
-      icon="mso-close"
-      :loading="cancelandoConexion"
-      :disabled="cancelandoConexion"
-      :aria-busy="cancelandoConexion ? 'true' : 'false'"
-      @click="$emit('cancelar')"
-    >
-      Cancelar solicitud
-    </VaButton>
-
-    <VaButton
-      v-if="!esPropio && puedeReportar"
-      color="danger"
-      size="small"
-      block
-      icon="mso-flag"
-      @click="$emit('reportar')"
-    >
-      Reportar perfil
-    </VaButton>
   </div>
 </template>
 
@@ -98,20 +49,11 @@ import { state as invitacionState } from "../../services/invitacionState";
 import { state as reemplazoState } from "../../services/reemplazoState";
 import { state as solicitudColaboracionState } from "../../services/solicitudColaboracionState";
 import { state as solicitudConexionState } from "../../services/solicitudConexionState";
-import PerfilAccionesConexion from "./PerfilAccionesConexion.vue";
 
 export default {
   name: "PerfilSidebarNav",
-  components: {
-    PerfilAccionesConexion,
-  },
   props: {
     esPropio: {
-      type: Boolean,
-      default: true,
-    },
-    /** Oculta la acción para administradores (UC-15). */
-    puedeReportar: {
       type: Boolean,
       default: true,
     },
@@ -119,49 +61,11 @@ export default {
       type: String,
       default: "perfil",
     },
-    /** Estado de la relación entre el perfil activo y el perfil consultado. */
-    estadoConexion: {
-      type: String,
-      default: "NINGUNA",
-    },
-    /** El perfil consultado permite mostrar la acción de conexión. */
-    mostrarConexion: {
-      type: Boolean,
-      default: true,
-    },
-    cargandoConexion: {
-      type: Boolean,
-      default: false,
-    },
-    /** Muestra la acción para cancelar una solicitud enviada y pendiente. */
-    mostrarCancelar: {
-      type: Boolean,
-      default: false,
-    },
-    cancelandoConexion: {
-      type: Boolean,
-      default: false,
-    },
-    procesandoConexion: {
-      type: Boolean,
-      default: false,
-    },
-    accionProcesandoConexion: {
-      type: String,
-      default: "",
-    },
   },
   emits: [
     "cambiar-seccion",
     "navegar-ruta",
     "cerrar-sesion",
-    "conectar",
-    "aceptar",
-    "rechazar",
-    "eliminar",
-    "cancelar",
-    "mensaje",
-    "reportar",
     "funcionalidad-no-disponible",
   ],
   computed: {
@@ -329,12 +233,4 @@ export default {
   background: var(--color-danger-soft);
 }
 
-.perfil-nav__acciones {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.perfil-nav__accion {
-  flex: 1;
-}
 </style>

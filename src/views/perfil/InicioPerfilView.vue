@@ -328,6 +328,10 @@
 
         <aside class="inicio-perfil__sidebar">
           <template v-if="esPropio">
+            <CaracteristicasTecnicasCard
+              v-if="mostrarCaracteristicas"
+              :caracteristicas="caracteristicas"
+            />
             <ProximosEventos ref="proximosEventos" />
             <PerfilSidebarNav
               es-propio
@@ -337,16 +341,13 @@
               @funcionalidad-no-disponible="noDisponible($event)"
               @cerrar-sesion="cerrarSesion"
             />
+          </template>
+          <template v-else>
             <CaracteristicasTecnicasCard
               v-if="mostrarCaracteristicas"
               :caracteristicas="caracteristicas"
             />
-          </template>
-          <template v-else>
-            <PerfilSidebarNav
-              :es-propio="false"
-              :puede-reportar="!esAdministrador"
-              :seccion-activa="seccion"
+            <PerfilAccionesPublico
               :estado-conexion="estadoConexion"
               :mostrar-conexion="mostrarConexion"
               :cargando-conexion="enviandoConexion"
@@ -354,20 +355,19 @@
               :cancelando-conexion="cancelandoConexion"
               :procesando-conexion="procesandoConexion"
               :accion-procesando-conexion="accionProcesandoConexion"
-              @cambiar-seccion="cambiarSeccion"
-              @navegar-ruta="navegarRuta"
-              @funcionalidad-no-disponible="noDisponible($event)"
               @conectar="abrirModalConexion"
               @cancelar="abrirModalCancelarConexion"
               @aceptar="abrirGestionConexion('aceptar')"
               @rechazar="abrirGestionConexion('rechazar')"
               @eliminar="abrirEliminarConexion"
               @mensaje="abrirMensaje"
-              @reportar="modalReporte = true"
             />
-            <CaracteristicasTecnicasCard
-              v-if="mostrarCaracteristicas"
-              :caracteristicas="caracteristicas"
+            <PerfilSidebarNav
+              :es-propio="false"
+              :seccion-activa="seccion"
+              @cambiar-seccion="cambiarSeccion"
+              @navegar-ruta="navegarRuta"
+              @funcionalidad-no-disponible="noDisponible($event)"
             />
             <ResenasCard
               :resumen="resenasResumen"
@@ -379,6 +379,16 @@
               @ver-perfil-autor="irAlPerfilAutor"
               @reintentar="cargarResenasDestacadas"
             />
+            <VaButton
+              v-if="!esAdministrador"
+              color="danger"
+              size="small"
+              block
+              icon="mso-flag"
+              @click="modalReporte = true"
+            >
+              Reportar perfil
+            </VaButton>
           </template>
         </aside>
       </div>
@@ -481,6 +491,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 import CaracteristicasTecnicasCard from "../../components/perfil/CaracteristicasTecnicasCard.vue";
 import HistorialProyectosLista from "../../components/perfil/HistorialProyectosLista.vue";
+import PerfilAccionesPublico from "../../components/perfil/PerfilAccionesPublico.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PolaroidsPerfilPanel from "../../components/perfil/PolaroidsPerfilPanel.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
@@ -552,6 +563,7 @@ export default {
     ModalInvitarColaborador,
     ModalNuevaPublicacion,
     PaginacionResultados,
+    PerfilAccionesPublico,
     PerfilHero,
     PerfilSidebarNav,
     PolaroidsPerfilPanel,
