@@ -17,9 +17,11 @@
       @keydown.home.prevent="irA(0)"
       @keydown.end.prevent="irA(tabs.length - 1)"
     >
-      <span class="material-symbols-outlined" aria-hidden="true">{{ tab.icon }}</span>
       <span>{{ tab.label }}</span>
-      <span v-if="tab.count > 0" class="home-feed-tabs__contador">{{ tab.count }}</span>
+      <template v-if="tab.count > 0">
+        <span class="home-feed-tabs__separador" aria-hidden="true">·</span>
+        <span class="home-feed-tabs__contador">{{ tab.count }}</span>
+      </template>
     </button>
   </div>
 </template>
@@ -133,28 +135,14 @@ export default {
   line-height: 1;
 }
 
+.home-feed-tabs__separador {
+  opacity: 0.65;
+}
+
 .home-feed-tabs__contador {
-  min-width: 1.2rem;
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  background: var(--color-chip);
-  color: var(--color-text-muted);
-  font-size: 0.66rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
   line-height: 1.4;
-  text-align: center;
-}
-
-.home-feed-tabs__chip--activa .home-feed-tabs__contador {
-  background: rgba(255, 255, 255, 0.24);
-  color: #ffffff;
-}
-
-:root[data-theme="dark"]
-  .home-feed-tabs__chip--activa
-  .home-feed-tabs__contador {
-  background: rgba(23, 22, 31, 0.16);
-  color: #17161f;
 }
 
 @media (max-width: 640px) {

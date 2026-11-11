@@ -4,6 +4,7 @@
     class="publicacion-card"
     :class="[
       `publicacion-card--${modo}`,
+      `publicacion-card--${variante}`,
       { 'publicacion-card--clickable': clickable },
     ]"
     @click="alClickTarjeta"
@@ -58,7 +59,28 @@
       <template v-else>{{ publicacion.titulo }}</template>
     </h2>
 
-    <div v-if="ubicacionTexto || publicacion.proyecto" class="publicacion-card__chips">
+    <div
+      v-if="variante === 'home' && (ubicacionTexto || publicacion.proyecto)"
+      class="publicacion-card__meta-home"
+    >
+      <span v-if="ubicacionTexto" class="publicacion-card__meta-home-item">
+        <span class="material-symbols-outlined" aria-hidden="true">
+          location_on
+        </span>
+        {{ ubicacionTexto }}
+      </span>
+      <span
+        v-if="publicacion.proyecto"
+        class="publicacion-card__meta-home-item publicacion-card__meta-home-item--proyecto"
+      >
+        Proyecto: {{ publicacion.proyecto.nombre }}
+      </span>
+    </div>
+
+    <div
+      v-else-if="ubicacionTexto || publicacion.proyecto"
+      class="publicacion-card__chips"
+    >
       <span v-if="ubicacionTexto" class="publicacion-card__chip">
         <span class="material-symbols-outlined">location_on</span>
         {{ ubicacionTexto }}
@@ -123,7 +145,7 @@
         class="material-symbols-outlined publicacion-card__colaboradores-icono"
         aria-hidden="true"
       >
-        group
+        {{ variante === "home" ? "person" : "group" }}
       </span>
 
       <span
@@ -203,6 +225,11 @@ export default {
       type: String,
       default: "inline",
       validator: (valor) => ["inline", "modal"].includes(valor),
+    },
+    variante: {
+      type: String,
+      default: "default",
+      validator: (valor) => ["default", "home"].includes(valor),
     },
     mostrarAccionesBaja: {
       type: Boolean,
@@ -368,6 +395,58 @@ export default {
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+.publicacion-card--home {
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: 14px;
+}
+
+.publicacion-card--home .publicacion-card__titulo {
+  font-size: 1.55rem;
+  font-weight: 750;
+}
+
+.publicacion-card--home .publicacion-card__collage {
+  height: 360px;
+}
+
+.publicacion-card--home .publicacion-card__descripcion p {
+  -webkit-line-clamp: 2;
+}
+
+.publicacion-card--home .publicacion-card__footer {
+  margin-top: 0.2rem;
+  padding-top: 0.9rem;
+}
+
+.publicacion-card__meta-home {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.publicacion-card__meta-home-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.publicacion-card__meta-home-item .material-symbols-outlined {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.publicacion-card__meta-home-item--proyecto {
+  margin-left: auto;
+  text-align: right;
 }
 
 .publicacion-card__autor {

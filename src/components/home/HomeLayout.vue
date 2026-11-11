@@ -219,6 +219,13 @@
 
         <nav class="home-layout__quick-links">
           <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('inicio') }"
+            @click="$router.push({ name: 'home' })"
+          >
+            <span class="material-symbols-outlined">home</span>
+            Inicio
+          </button>
+          <button
             :class="{ 'home-layout__quick-link--active': esQuickActivo('mi-perfil') }"
             @click="$router.push({ name: 'inicioperfil' })"
           >
@@ -541,6 +548,9 @@ export default {
     },
     esQuickActivo(clave) {
       const ruta = this.$route;
+      if (clave === "inicio") {
+        return ruta.name === "home";
+      }
       if (clave === "mi-perfil") {
         if (ruta.name === "inicioperfil-seccion") {
           return ruta.params.seccion !== "calendario";

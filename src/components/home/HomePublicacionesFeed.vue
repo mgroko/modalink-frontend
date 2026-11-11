@@ -1,5 +1,9 @@
 <template>
-  <section class="home-publicaciones" aria-label="Publicaciones de contactos">
+  <section
+    class="home-publicaciones"
+    :class="{ 'home-publicaciones--home': variante === 'home' }"
+    aria-label="Publicaciones de contactos"
+  >
     <header class="home-publicaciones__cabecera">
       <h2 class="home-publicaciones__titulo">Publicaciones</h2>
       <span class="home-publicaciones__subtitulo">
@@ -33,6 +37,7 @@
           v-for="publicacion in publicaciones"
           :key="publicacion.idPublicacion"
           :publicacion="publicacion"
+          :variante="variante"
           mostrar-acciones-baja
           clickable
           @abrir="$emit('abrir-publicacion', $event)"
@@ -88,6 +93,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    variante: {
+      type: String,
+      default: "default",
+    },
   },
   emits: [
     "abrir-publicacion",
@@ -117,6 +126,23 @@ export default {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
+}
+
+.home-publicaciones--home {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.home-publicaciones--home .home-publicaciones__titulo {
+  font-size: 1.15rem;
+}
+
+.home-publicaciones--home .home-publicaciones__lista {
+  gap: 1rem;
 }
 
 .home-publicaciones__cabecera {

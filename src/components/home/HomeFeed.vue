@@ -32,66 +32,111 @@
       </div>
 
       <template v-else>
-        <BaseAlert
-          v-if="errorProyectos && mostrarProyectos"
-          :message="errorProyectos"
-          type="error"
-          class="home-feed__alerta"
-        />
+        <div class="home-feed__layout">
+          <div class="home-feed__principal">
+            <BaseAlert
+              v-if="errorProyectos && mostrarProyectos"
+              :message="errorProyectos"
+              type="error"
+              class="home-feed__alerta"
+            />
 
-        <HomeFeedSection
-          v-if="mostrarProyectos"
-          titulo="Proyectos"
-          :hay-items="proyectosVisibles.length > 0"
-          :texto-vacio="textoVacioProyectos"
-          :ver-todo="true"
-          :texto-ver-todo="textoVerTodoProyectos"
-          @ver-todo="verTodosProyectos"
-        >
-          <ProyectoHomeCard
-            v-for="proyecto in proyectosVisibles"
-            :key="proyecto.idProyecto"
-            :proyecto="proyecto"
-            @abrir="$emit('abrir-proyecto', $event)"
-          />
-        </HomeFeedSection>
+            <HomePublicacionesFeed
+              v-if="mostrarPublicaciones"
+              variante="home"
+              :publicaciones="publicaciones"
+              :cargando="cargandoPublicaciones"
+              :error="errorPublicaciones"
+              :hay-mas="hayMasPublicaciones"
+              :cargando-mas="cargandoMasPublicaciones"
+              @abrir-publicacion="$emit('abrir-publicacion', $event)"
+              @ver-comentarios="$emit('ver-comentarios', $event)"
+              @no-disponible="$emit('no-disponible', $event)"
+              @sin-perfil="$emit('sin-perfil', $event)"
+              @perfil-inactivo="$emit('perfil-inactivo', $event)"
+              @ver-proyecto="$emit('ver-proyecto-publicacion', $event)"
+              @editar="$emit('editar-publicacion', $event)"
+              @invitar="$emit('invitar-colaborador', $event)"
+              @eliminar="$emit('eliminar-publicacion', $event)"
+              @reintentar="$emit('reintentar-publicaciones')"
+              @cargar-mas="$emit('cargar-mas-publicaciones')"
+            />
 
-        <HomeFeedSection
-          v-if="mostrarOportunidades"
-          titulo="Oportunidades disponibles"
-          :hay-items="oportunidadesVisibles.length > 0"
-          texto-vacio="No hay oportunidades abiertas para tu perfil por ahora."
-          :ver-todo="true"
-          texto-ver-todo="Ver todas"
-          @ver-todo="$emit('ver-todas-oportunidades')"
-        >
-          <OportunidadCard
-            v-for="oportunidad in oportunidadesVisibles"
-            :key="`${oportunidad.tipo}:${oportunidad.idRequerimiento}`"
-            :oportunidad="oportunidad"
-            @postular="$emit('postular', $event)"
-          />
-        </HomeFeedSection>
+            <HomeFeedSection
+              v-if="mostrarProyectos"
+              titulo="Proyectos"
+              :hay-items="proyectosVisibles.length > 0"
+              :texto-vacio="textoVacioProyectos"
+              :ver-todo="true"
+              :texto-ver-todo="textoVerTodoProyectos"
+              @ver-todo="verTodosProyectos"
+            >
+              <ProyectoHomeCard
+                v-for="proyecto in proyectosVisibles"
+                :key="proyecto.idProyecto"
+                :proyecto="proyecto"
+                @abrir="$emit('abrir-proyecto', $event)"
+              />
+            </HomeFeedSection>
 
-        <HomePublicacionesFeed
-          v-if="mostrarPublicaciones"
-          :publicaciones="publicaciones"
-          :cargando="cargandoPublicaciones"
-          :error="errorPublicaciones"
-          :hay-mas="hayMasPublicaciones"
-          :cargando-mas="cargandoMasPublicaciones"
-          @abrir-publicacion="$emit('abrir-publicacion', $event)"
-          @ver-comentarios="$emit('ver-comentarios', $event)"
-          @no-disponible="$emit('no-disponible', $event)"
-          @sin-perfil="$emit('sin-perfil', $event)"
-          @perfil-inactivo="$emit('perfil-inactivo', $event)"
-          @ver-proyecto="$emit('ver-proyecto-publicacion', $event)"
-          @editar="$emit('editar-publicacion', $event)"
-          @invitar="$emit('invitar-colaborador', $event)"
-          @eliminar="$emit('eliminar-publicacion', $event)"
-          @reintentar="$emit('reintentar-publicaciones')"
-          @cargar-mas="$emit('cargar-mas-publicaciones')"
-        />
+            <HomeFeedSection
+              v-if="mostrarOportunidades"
+              titulo="Oportunidades disponibles"
+              :hay-items="oportunidadesVisibles.length > 0"
+              texto-vacio="No hay oportunidades abiertas para tu perfil por ahora."
+              :ver-todo="true"
+              texto-ver-todo="Ver todas"
+              @ver-todo="verTodasOportunidades"
+            >
+              <OportunidadCard
+                v-for="oportunidad in oportunidadesVisibles"
+                :key="`${oportunidad.tipo}:${oportunidad.idRequerimiento}`"
+                :oportunidad="oportunidad"
+                @postular="$emit('postular', $event)"
+              />
+            </HomeFeedSection>
+          </div>
+
+          <aside class="home-feed__aside">
+            <BaseAlert
+              v-if="errorProyectos && mostrarProyectosAside"
+              :message="errorProyectos"
+              type="error"
+            />
+
+            <HomeAsideSection
+              v-if="mostrarProyectosAside"
+              titulo="Proyectos"
+              :hay-items="proyectosAsideVisibles.length > 0"
+              texto-vacio="No hay proyectos visibles."
+              texto-ver-todo="Ver todo"
+              @ver-todo="verTodosProyectos"
+            >
+              <ProyectoHomeCardCompacto
+                v-for="proyecto in proyectosAsideVisibles"
+                :key="proyecto.idProyecto"
+                :proyecto="proyecto"
+                @abrir="$emit('abrir-proyecto', $event)"
+              />
+            </HomeAsideSection>
+
+            <HomeAsideSection
+              v-if="mostrarOportunidadesAside"
+              titulo="Oportunidades"
+              :hay-items="oportunidadesAsideVisibles.length > 0"
+              texto-vacio="No hay oportunidades abiertas."
+              texto-ver-todo="Ver todas"
+              @ver-todo="verTodasOportunidades"
+            >
+              <OportunidadHomeCardCompacto
+                v-for="oportunidad in oportunidadesAsideVisibles"
+                :key="`${oportunidad.tipo}:${oportunidad.idRequerimiento}`"
+                :oportunidad="oportunidad"
+                @postular="$emit('postular', $event)"
+              />
+            </HomeAsideSection>
+          </aside>
+        </div>
       </template>
     </div>
   </div>
@@ -101,8 +146,11 @@
 import BaseAlert from "../AlertaBase.vue";
 import HomeFeedTabs from "./HomeFeedTabs.vue";
 import HomeFeedSection from "./HomeFeedSection.vue";
+import HomeAsideSection from "./HomeAsideSection.vue";
 import ProyectoHomeCard from "./ProyectoHomeCard.vue";
+import ProyectoHomeCardCompacto from "./ProyectoHomeCardCompacto.vue";
 import OportunidadCard from "./OportunidadCard.vue";
+import OportunidadHomeCardCompacto from "./OportunidadHomeCardCompacto.vue";
 import HomePublicacionesFeed from "./HomePublicacionesFeed.vue";
 
 const TABS = [
@@ -121,11 +169,14 @@ export default {
   name: "HomeFeed",
   components: {
     BaseAlert,
+    HomeAsideSection,
     HomeFeedTabs,
     HomeFeedSection,
-    ProyectoHomeCard,
-    OportunidadCard,
     HomePublicacionesFeed,
+    OportunidadCard,
+    OportunidadHomeCardCompacto,
+    ProyectoHomeCard,
+    ProyectoHomeCardCompacto,
   },
   props: {
     tabActiva: {
@@ -218,23 +269,31 @@ export default {
       return SUBTITULOS[this.tabActiva] || SUBTITULOS.todo;
     },
     mostrarProyectos() {
-      return this.tabActiva === "todo" || this.tabActiva === "proyectos";
+      return this.tabActiva === "proyectos";
     },
     mostrarOportunidades() {
-      return this.tabActiva === "todo" || this.tabActiva === "oportunidades";
+      return this.tabActiva === "oportunidades";
     },
     mostrarPublicaciones() {
       return this.tabActiva === "todo";
     },
+    mostrarProyectosAside() {
+      return this.tabActiva !== "proyectos";
+    },
+    mostrarOportunidadesAside() {
+      return this.tabActiva !== "oportunidades";
+    },
     proyectosVisibles() {
-      return this.tabActiva === "todo"
-        ? this.proyectos.slice(0, 3)
-        : this.proyectos;
+      return this.proyectos;
     },
     oportunidadesVisibles() {
-      return this.tabActiva === "todo"
-        ? this.oportunidades.slice(0, 3)
-        : this.oportunidades;
+      return this.oportunidades;
+    },
+    proyectosAsideVisibles() {
+      return this.proyectos.slice(0, 3);
+    },
+    oportunidadesAsideVisibles() {
+      return this.oportunidades.slice(0, 3);
     },
     textoVerTodoProyectos() {
       return this.tabActiva === "todo" ? "Ver todo" : "Ver todos";
@@ -253,6 +312,13 @@ export default {
       }
       this.$emit("ver-todos-proyectos");
     },
+    verTodasOportunidades() {
+      if (this.tabActiva === "todo") {
+        this.$emit("cambiar-tab", "oportunidades");
+        return;
+      }
+      this.$emit("ver-todas-oportunidades");
+    },
   },
 };
 </script>
@@ -261,6 +327,25 @@ export default {
 .home-feed {
   display: flex;
   flex-direction: column;
+}
+
+.home-feed__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 1.5rem;
+}
+
+.home-feed__principal {
+  min-width: 0;
+}
+
+.home-feed__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: sticky;
+  top: 1rem;
 }
 
 .home-feed__cabecera {
@@ -354,6 +439,17 @@ export default {
 
 .home-feed__alerta {
   margin-bottom: 0.75rem;
+}
+
+@media (max-width: 1050px) {
+  .home-feed__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .home-feed__aside {
+    position: static;
+    order: 2;
+  }
 }
 
 @media (max-width: 640px) {
