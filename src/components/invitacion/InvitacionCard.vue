@@ -56,6 +56,9 @@
         </span>
 
         <span class="invitacion-card__fecha">
+          <span class="material-symbols-outlined" aria-hidden="true">
+            calendar_today
+          </span>
           Enviada el {{ fechaEnvio }}
         </span>
 
@@ -63,6 +66,9 @@
           v-if="esRechazada && fechaRechazo"
           class="invitacion-card__fecha"
         >
+          <span class="material-symbols-outlined" aria-hidden="true">
+            event_busy
+          </span>
           Rechazada el {{ fechaRechazo }}
         </span>
       </div>
@@ -81,19 +87,20 @@
         @click.stop
       >
         <VaButton
-          preset="secondary"
-          color="danger"
-          size="small"
-          @click.stop="$emit('rechazar', invitacion)"
-        >
-          Rechazar
-        </VaButton>
-        <VaButton
           preset="primary"
           size="small"
+          block
           @click.stop="$emit('aceptar', invitacion)"
         >
           Aceptar
+        </VaButton>
+        <VaButton
+          preset="secondary"
+          size="small"
+          block
+          @click.stop="$emit('rechazar', invitacion)"
+        >
+          Rechazar
         </VaButton>
       </div>
 
@@ -106,6 +113,7 @@
           preset="secondary"
           color="danger"
           size="small"
+          block
           @click.stop="$emit('eliminar', invitacion)"
         >
           Eliminar
@@ -120,6 +128,7 @@
         <VaButton
           preset="secondary"
           size="small"
+          block
           @click.stop="$emit('ver-proyecto', invitacion)"
         >
           Ver proyecto
@@ -356,8 +365,16 @@ export default {
 }
 
 .invitacion-card__fecha {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   color: var(--color-text-muted);
   font-size: 0.76rem;
+}
+
+.invitacion-card__fecha .material-symbols-outlined {
+  font-size: 0.9rem;
+  color: var(--color-text-subtle);
 }
 
 .invitacion-card__mensaje {
@@ -383,8 +400,10 @@ export default {
 
 .invitacion-card__acciones {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  width: 100%;
 }
 
 @media (max-width: 760px) {

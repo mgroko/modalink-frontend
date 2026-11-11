@@ -1,30 +1,42 @@
 <template>
   <div class="solicitudes-colaboracion">
-    <div
-      class="solicitudes-colaboracion__tabs"
-      role="tablist"
-      aria-label="Solicitudes de colaboración"
-    >
-      <button
-        v-for="tab in tabs"
-        :key="tab.value"
-        type="button"
-        class="solicitudes-colaboracion__tab"
-        :class="{
-          'solicitudes-colaboracion__tab--activa': tab.value === tabActual,
-        }"
-        role="tab"
-        :aria-selected="tab.value === tabActual ? 'true' : 'false'"
-        @click="cambiarTab(tab.value)"
+    <div class="solicitudes-colaboracion__subtabs">
+      <div
+        class="solicitudes-colaboracion__tabs"
+        role="tablist"
+        aria-label="Solicitudes de colaboración"
       >
-        {{ tab.label }}
-        <span
-          v-if="tab.total != null"
-          class="solicitudes-colaboracion__contador"
+        <button
+          v-for="tab in tabs"
+          :key="tab.value"
+          type="button"
+          class="solicitudes-colaboracion__tab"
+          :class="{
+            'solicitudes-colaboracion__tab--activa': tab.value === tabActual,
+          }"
+          role="tab"
+          :aria-selected="tab.value === tabActual ? 'true' : 'false'"
+          @click="cambiarTab(tab.value)"
         >
-          {{ tab.total }}
-        </span>
-      </button>
+          {{ tab.label }}
+          <span
+            v-if="tab.total != null"
+            class="solicitudes-colaboracion__contador"
+          >
+            {{ tab.total }}
+          </span>
+        </button>
+      </div>
+
+      <label class="solicitudes-colaboracion__historial">
+        <VaSwitch
+          :model-value="filtros.todosLosEstados"
+          :disabled="tabActual === 'rechazadas'"
+          size="small"
+          @update:model-value="cambiarHistorialCompleto"
+        />
+        <span>Ver historial completo</span>
+      </label>
     </div>
 
     <FiltrosSolicitudesColaboracion
@@ -87,6 +99,15 @@
         @cambiar="cambiarPagina"
       />
     </template>
+
+    <ModalGestionSolicitudColaboracion
+      v-model="modalGestion.visible"
+      :solicitud="modalGestion.solicitud"
+      :accion="modalGestion.accion"
+      :gestionando="procesandoId != null"
+      :error="errorModal"
+      @confirmar="confirmarGestion"
+    />
   </div>
 </template>
 
@@ -94,10 +115,12 @@
 import BaseAlert from "../AlertaBase.vue";
 import PaginacionResultados from "../busqueda/PaginacionResultados.vue";
 import FiltrosSolicitudesColaboracion from "./FiltrosSolicitudesColaboracion.vue";
+import ModalGestionSolicitudColaboracion from "./ModalGestionSolicitudColaboracion.vue";
 import SolicitudColaboracionCard from "./SolicitudColaboracionCard.vue";
 import solicitudColaboracionService from "../../services/solicitudColaboracionService";
 import { cargarResumenSolicitudesColaboracion } from "../../services/solicitudColaboracionState";
 import {
+  ACCIONES_GESTION_SOLICITUD_COLABORACION,
   DIRECCIONES_SOLICITUD_COLABORACION,
   ESTADOS_SOLICITUD_COLABORACION,
   TAMANO_PAGINA_SOLICITUDES,
@@ -138,6 +161,7 @@ export default {
   components: {
     BaseAlert,
     FiltrosSolicitudesColaboracion,
+    ModalGestionSolicitudColaboracion,
     PaginacionResultados,
     SolicitudColaboracionCard,
   },
@@ -160,6 +184,12 @@ export default {
       controladorPublicaciones: null,
       procesandoId: null,
       accionProcesando: "",
+      errorModal: "",
+      modalGestion: {
+        visible: false,
+        solicitud: null,
+        accion: ACCIONES_GESTION_SOLICITUD_COLABORACION.ACEPTAR,
+      },
       conteos: {
         [TAB_TODAS]: null,
         [TAB_RECIBIDAS]: null,
@@ -448,6 +478,10 @@ export default {
 
       this.filtros = filtros;
       this.errorFechas = "";
+      this.buscar(0);
+    },
+    cambiarHistorialCompleto(valor) {
+      this.cambiarFiltro({ campo: "todosLosEstados", valor });
     },
     limpiarFiltros() {
       this.filtros = filtrosBase();
@@ -470,22 +504,39 @@ export default {
         params: { idPublicacion },
       });
     },
-    async aceptar(solicitud) {
-      await this.gestionar(solicitud, "aceptar");
+    aceptar(solicitud) {
+      this.abrirModalGestion(
+        solicitud,
+        ACCIONES_GESTION_SOLICITUD_COLABORACION.ACEPTAR
+      );
     },
-    async rechazar(solicitud) {
-      await this.gestionar(solicitud, "rechazar");
+    rechazar(solicitud) {
+      this.abrirModalGestion(
+        solicitud,
+        ACCIONES_GESTION_SOLICITUD_COLABORACION.RECHAZAR
+      );
+    },
+    abrirModalGestion(solicitud, accion) {
+      if (this.procesandoId != null || !solicitud) return;
+      this.errorModal = "";
+      this.modalGestion = {
+        visible: true,
+        solicitud,
+        accion,
+      };
+    },
+    confirmarGestion() {
+      if (!this.modalGestion?.solicitud) return;
+      return this.gestionar(
+        this.modalGestion.solicitud,
+        this.modalGestion.accion
+      );
     },
     async gestionar(solicitud, accion) {
       if (this.procesandoId != null) return;
 
-      const mensaje =
-        accion === "aceptar"
-          ? "¿Aceptar esta solicitud y agregar al perfil como colaborador?"
-          : "¿Rechazar esta solicitud de colaboración?";
-      if (!window.confirm(mensaje)) return;
-
       this.error = "";
+      this.errorModal = "";
       this.procesandoId = solicitud.idSolicitudColaboracion;
       this.accionProcesando = accion;
 
@@ -500,16 +551,20 @@ export default {
           );
         }
 
+        this.modalGestion.visible = false;
         this.toast.init({
           title:
-            accion === "aceptar"
+            accion === ACCIONES_GESTION_SOLICITUD_COLABORACION.ACEPTAR
               ? "Solicitud aceptada"
               : "Solicitud rechazada",
           message:
-            accion === "aceptar"
+            accion === ACCIONES_GESTION_SOLICITUD_COLABORACION.ACEPTAR
               ? "El perfil ya forma parte de los colaboradores."
               : "La solicitud fue rechazada.",
-          color: accion === "aceptar" ? "success" : "warning",
+          color:
+            accion === ACCIONES_GESTION_SOLICITUD_COLABORACION.ACEPTAR
+              ? "success"
+              : "warning",
           position: "top-right",
           duration: 5000,
         });
@@ -521,16 +576,21 @@ export default {
         cargarResumenSolicitudesColaboracion();
         this.$emit("actualizada");
       } catch (error) {
+        const mensaje = mensajeErrorSolicitudColaboracion(
+          error,
+          "No se pudo gestionar la solicitud."
+        );
+
         if (error?.response?.status === 409) {
+          this.modalGestion.visible = false;
           await Promise.all([
             this.buscar(this.paginacion.paginaActual),
             this.cargarConteos(),
           ]);
+          this.error = mensaje;
+        } else {
+          this.errorModal = mensaje;
         }
-        this.error = mensajeErrorSolicitudColaboracion(
-          error,
-          "No se pudo gestionar la solicitud."
-        );
       } finally {
         this.procesandoId = null;
         this.accionProcesando = "";
@@ -547,45 +607,79 @@ export default {
   gap: 0.85rem;
 }
 
+.solicitudes-colaboracion__subtabs {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
 .solicitudes-colaboracion__tabs {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--color-border-soft);
+  gap: 0.35rem;
 }
 
 .solicitudes-colaboracion__tab {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.55rem 0.75rem;
+  gap: 0.4rem;
+  padding: 0.6rem 0.7rem;
   color: var(--color-text-muted);
   background: none;
   border: 0;
   border-bottom: 2px solid transparent;
   font: inherit;
-  font-size: 0.83rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
 }
 
+.solicitudes-colaboracion__tab:hover,
+.solicitudes-colaboracion__tab:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
 .solicitudes-colaboracion__tab--activa {
-  color: var(--color-primary);
+  color: var(--color-text);
   border-bottom-color: var(--color-primary);
+  font-weight: 700;
 }
 
 .solicitudes-colaboracion__contador {
   display: inline-flex;
-  min-width: 1.15rem;
-  height: 1.15rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
   align-items: center;
   justify-content: center;
-  padding: 0 0.3rem;
+  padding: 0 0.35rem;
   color: var(--color-text-muted);
   background: var(--color-surface-muted);
   border-radius: 999px;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.solicitudes-colaboracion__tab--activa .solicitudes-colaboracion__contador {
+  color: var(--color-primary);
+  background: var(--color-surface-muted);
+}
+
+.solicitudes-colaboracion__historial {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.55rem;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .solicitudes-colaboracion__resumen {

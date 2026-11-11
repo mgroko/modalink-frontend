@@ -22,14 +22,15 @@ export const PUBLICACION_QUERY_KEYS = {
   DESDE: "pubDesde",
   HASTA: "pubHasta",
   PROYECTO: "pubProyecto",
+  TEXTO: "pubTexto",
+  // Claves anteriores, se conservan para leer enlaces viejos.
   TITULO: "pubTitulo",
   DESCRIPCION: "pubDescripcion",
 };
 
 export function filtrosPublicacionVacios() {
   return {
-    titulo: "",
-    descripcion: "",
+    texto: "",
     fechaDesde: "",
     fechaHasta: "",
     idProyecto: null,
@@ -38,8 +39,7 @@ export function filtrosPublicacionVacios() {
 
 export function hayFiltrosPublicacion(filtros = {}) {
   return !!(
-    String(filtros.titulo || "").trim() ||
-    String(filtros.descripcion || "").trim() ||
+    String(filtros.texto || "").trim() ||
     filtros.fechaDesde ||
     filtros.fechaHasta ||
     (filtros.idProyecto != null && filtros.idProyecto !== "")
@@ -62,10 +62,18 @@ export function leerFiltrosPublicacionQuery(query = {}) {
     10
   );
 
+  const texto =
+    textoQuery(query[PUBLICACION_QUERY_KEYS.TEXTO]) ||
+    [
+      textoQuery(query[PUBLICACION_QUERY_KEYS.TITULO]),
+      textoQuery(query[PUBLICACION_QUERY_KEYS.DESCRIPCION]),
+    ]
+      .filter(Boolean)
+      .join(" ");
+
   return {
     filtros: {
-      titulo: textoQuery(query[PUBLICACION_QUERY_KEYS.TITULO]),
-      descripcion: textoQuery(query[PUBLICACION_QUERY_KEYS.DESCRIPCION]),
+      texto,
       fechaDesde: textoQuery(query[PUBLICACION_QUERY_KEYS.DESDE]),
       fechaHasta: textoQuery(query[PUBLICACION_QUERY_KEYS.HASTA]),
       idProyecto: Number.isFinite(idProyecto) ? idProyecto : null,
@@ -90,14 +98,13 @@ export function construirQueryPublicaciones(
 ) {
   const query = { ...queryActual };
 
-  const titulo = String(filtros.titulo || "").trim();
-  const descripcion = String(filtros.descripcion || "").trim();
+  const texto = String(filtros.texto || "").trim();
 
-  if (titulo) query[PUBLICACION_QUERY_KEYS.TITULO] = titulo;
-  else delete query[PUBLICACION_QUERY_KEYS.TITULO];
+  if (texto) query[PUBLICACION_QUERY_KEYS.TEXTO] = texto;
+  else delete query[PUBLICACION_QUERY_KEYS.TEXTO];
 
-  if (descripcion) query[PUBLICACION_QUERY_KEYS.DESCRIPCION] = descripcion;
-  else delete query[PUBLICACION_QUERY_KEYS.DESCRIPCION];
+  delete query[PUBLICACION_QUERY_KEYS.TITULO];
+  delete query[PUBLICACION_QUERY_KEYS.DESCRIPCION];
 
   if (filtros.fechaDesde) query[PUBLICACION_QUERY_KEYS.DESDE] = filtros.fechaDesde;
   else delete query[PUBLICACION_QUERY_KEYS.DESDE];
@@ -123,8 +130,7 @@ export function construirQueryPublicaciones(
  */
 export function firmarFiltrosPublicacion(filtros = {}, pagina = 0) {
   return JSON.stringify({
-    titulo: String(filtros.titulo || "").trim(),
-    descripcion: String(filtros.descripcion || "").trim(),
+    texto: String(filtros.texto || "").trim(),
     fechaDesde: filtros.fechaDesde || "",
     fechaHasta: filtros.fechaHasta || "",
     idProyecto:

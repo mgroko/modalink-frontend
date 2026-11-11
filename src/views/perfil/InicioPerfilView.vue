@@ -155,8 +155,6 @@
                 :error-proyectos="errorProyectosPublicaciones"
                 :error-fechas="errorFechasPublicaciones"
                 :hay-filtros="hayFiltrosPublicaciones"
-                :pagina="paginacionPublicaciones.paginaActual || 0"
-                :cargando="cargandoPublicaciones"
                 @cambio="cambiarFiltroPublicacion"
                 @buscar="buscarPublicaciones"
                 @limpiar="limpiarFiltrosPublicaciones"
@@ -189,11 +187,12 @@
               </p>
 
               <div v-else class="inicio-perfil__publicaciones-grid">
-                <PublicacionCardCompacta
+                <PublicacionCardGaleria
                   v-for="publicacion in publicaciones"
                   :key="publicacion.idPublicacion"
                   :publicacion="publicacion"
                   @abrir="abrirPublicacion"
+                  @abrir-galeria="abrirGaleriaPublicacion"
                 />
               </div>
 
@@ -518,7 +517,7 @@ import { cargarConteosSolicitudesConexion } from "../../services/solicitudConexi
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
 import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
 import PublicacionCard from "../../components/perfil/PublicacionCard.vue";
-import PublicacionCardCompacta from "../../components/perfil/PublicacionCardCompacta.vue";
+import PublicacionCardGaleria from "../../components/perfil/PublicacionCardGaleria.vue";
 import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
@@ -593,6 +592,10 @@ const SECCIONES_NO_DISPONIBLES = {
 const PUBLICACIONES_PERFIL_PREVIEW = 2;
 const HISTORIAL_PREVIEW_SIZE = 3;
 const HISTORIAL_PAGE_SIZE = 10;
+const PUBLICACIONES_PAGE_SIZE = 10;
+const PUBLICACIONES_TEXTO_QUERY_SIZE = 50;
+const PUBLICACIONES_TEXTO_MAX_PAGINAS = 20;
+const DEBOUNCE_FILTROS_PUBLICACIONES = 400;
 
 export default {
   name: "InicioPerfilView",
@@ -609,7 +612,7 @@ export default {
     PerfilSidebarNav,
     ProximosEventos,
     PublicacionCard,
-    PublicacionCardCompacta,
+    PublicacionCardGaleria,
     PublicacionDetalleModal,
     ReportarPerfilModal,
     ModalEnviarSolicitudConexion,
@@ -665,6 +668,7 @@ export default {
       },
       controladorPublicaciones: null,
       controladorProyectosPublicaciones: null,
+      temporalizadorFiltrosPublicaciones: null,
       sincronizandoQueryPublicaciones: false,
       modalNuevaPublicacionVisible: false,
       modalEditarPublicacionVisible: false,
@@ -822,6 +826,9 @@ export default {
   },
   beforeUnmount() {
     if (this.intervaloContador) clearInterval(this.intervaloContador);
+    if (this.temporalizadorFiltrosPublicaciones) {
+      clearTimeout(this.temporalizadorFiltrosPublicaciones);
+    }
     this.abortarTerminos();
     this.abortarResenasDestacadas();
     this.abortarPublicaciones();
@@ -1192,35 +1199,51 @@ export default {
       this.errorFechasPublicaciones = "";
 
       try {
-        const filtros = this.filtrosPublicaciones;
-        const response = await publicacionService.listarPorPerfil(
-          idPerfil,
-          {
-            page: pagina,
-            size: 10,
-            fechaDesde: filtros.fechaDesde,
-            fechaHasta: filtros.fechaHasta,
-            idProyecto: filtros.idProyecto,
-            titulo: String(filtros.titulo || "").trim(),
-            descripcion: String(filtros.descripcion || "").trim(),
-          },
-          controller.signal
-        );
+        const filtros = { ...this.filtrosPublicaciones };
+        const texto = String(filtros.texto || "").trim();
 
-        if (this.controladorPublicaciones !== controller) return;
+        if (texto) {
+          const resultado = await this.cargarPublicacionesPorTexto(
+            idPerfil,
+            filtros,
+            texto,
+            pagina,
+            controller.signal
+          );
+          if (this.controladorPublicaciones !== controller) return;
 
-        const data = response?.data || {};
-        const contenido = Array.isArray(data.contenido) ? data.contenido : [];
-        this.publicaciones = contenido
-          .map(normalizarPublicacion)
-          .filter(Boolean);
-        this.paginacionPublicaciones = {
-          paginaActual: Number(data.paginaActual) || 0,
-          totalPaginas: Number(data.totalPaginas) || 1,
-          totalElementos: Number(data.totalElementos) || 0,
-          primera: data.primera !== false,
-          ultima: data.ultima !== false,
-        };
+          this.publicaciones = resultado.publicaciones;
+          this.paginacionPublicaciones = resultado.paginacion;
+        } else {
+          const response = await publicacionService.listarPorPerfil(
+            idPerfil,
+            {
+              page: pagina,
+              size: PUBLICACIONES_PAGE_SIZE,
+              fechaDesde: filtros.fechaDesde,
+              fechaHasta: filtros.fechaHasta,
+              idProyecto: filtros.idProyecto,
+            },
+            controller.signal
+          );
+
+          if (this.controladorPublicaciones !== controller) return;
+
+          const data = response?.data || {};
+          const contenido = Array.isArray(data.contenido)
+            ? data.contenido
+            : [];
+          this.publicaciones = contenido
+            .map(normalizarPublicacion)
+            .filter(Boolean);
+          this.paginacionPublicaciones = {
+            paginaActual: Number(data.paginaActual) || 0,
+            totalPaginas: Number(data.totalPaginas) || 1,
+            totalElementos: Number(data.totalElementos) || 0,
+            primera: data.primera !== false,
+            ultima: data.ultima !== false,
+          };
+        }
       } catch (error) {
         if (
           this.controladorPublicaciones !== controller ||
@@ -1254,6 +1277,105 @@ export default {
           this.controladorPublicaciones = null;
         }
       }
+    },
+    async cargarPublicacionesPorTexto(
+      idPerfil,
+      filtros,
+      texto,
+      pagina,
+      signal
+    ) {
+      const base = {
+        fechaDesde: filtros.fechaDesde,
+        fechaHasta: filtros.fechaHasta,
+        idProyecto: filtros.idProyecto,
+      };
+
+      const [porTitulo, porDescripcion] = await Promise.all([
+        this.listarTodasLasPublicaciones(
+          idPerfil,
+          { ...base, titulo: texto },
+          signal
+        ),
+        this.listarTodasLasPublicaciones(
+          idPerfil,
+          { ...base, descripcion: texto },
+          signal
+        ),
+      ]);
+
+      const publicacionesPorId = new Map();
+      for (const item of [...porTitulo, ...porDescripcion]) {
+        const normalizada = normalizarPublicacion(item);
+        if (normalizada?.idPublicacion != null) {
+          publicacionesPorId.set(
+            String(normalizada.idPublicacion),
+            normalizada
+          );
+        }
+      }
+
+      const lista = [...publicacionesPorId.values()].sort((a, b) => {
+        const fecha = String(b.fechaPublicacion || "").localeCompare(
+          String(a.fechaPublicacion || "")
+        );
+        if (fecha !== 0) return fecha;
+        return (
+          (Number(b.idPublicacion) || 0) - (Number(a.idPublicacion) || 0)
+        );
+      });
+
+      const totalElementos = lista.length;
+      const totalPaginas = Math.max(
+        1,
+        Math.ceil(totalElementos / PUBLICACIONES_PAGE_SIZE)
+      );
+      const paginaActual = Math.min(
+        Math.max(0, Number(pagina) || 0),
+        totalPaginas - 1
+      );
+      const inicio = paginaActual * PUBLICACIONES_PAGE_SIZE;
+
+      return {
+        publicaciones: lista.slice(
+          inicio,
+          inicio + PUBLICACIONES_PAGE_SIZE
+        ),
+        paginacion: {
+          paginaActual,
+          totalPaginas,
+          totalElementos,
+          primera: paginaActual === 0,
+          ultima: paginaActual >= totalPaginas - 1,
+        },
+      };
+    },
+    async listarTodasLasPublicaciones(idPerfil, params, signal) {
+      const acumulado = [];
+      let pagina = 0;
+      let totalPaginas = 1;
+
+      do {
+        const response = await publicacionService.listarPorPerfil(
+          idPerfil,
+          {
+            ...params,
+            page: pagina,
+            size: PUBLICACIONES_TEXTO_QUERY_SIZE,
+          },
+          signal
+        );
+        const data = response?.data || {};
+        const contenido = Array.isArray(data.contenido) ? data.contenido : [];
+        acumulado.push(...contenido);
+        totalPaginas = Number(data.totalPaginas) || 1;
+        pagina += 1;
+      } while (
+        pagina < totalPaginas &&
+        pagina < PUBLICACIONES_TEXTO_MAX_PAGINAS
+      );
+
+      return acumulado;
     },
     async cargarProyectosFiltroPublicaciones() {
       const idPerfil = this.perfil?.idPerfil;
@@ -1362,8 +1484,24 @@ export default {
       if (campo === "fechaDesde" || campo === "fechaHasta") {
         this.errorFechasPublicaciones = "";
       }
+      this.programarBusquedaPublicaciones();
+    },
+    cancelarBusquedaProgramada() {
+      if (this.temporalizadorFiltrosPublicaciones) {
+        clearTimeout(this.temporalizadorFiltrosPublicaciones);
+        this.temporalizadorFiltrosPublicaciones = null;
+      }
+    },
+    programarBusquedaPublicaciones() {
+      this.cancelarBusquedaProgramada();
+      this.temporalizadorFiltrosPublicaciones = setTimeout(() => {
+        this.temporalizadorFiltrosPublicaciones = null;
+        this.buscarPublicaciones();
+      }, DEBOUNCE_FILTROS_PUBLICACIONES);
     },
     buscarPublicaciones() {
+      this.cancelarBusquedaProgramada();
+
       const errorFechas = validarRangoFechas(
         this.filtrosPublicaciones.fechaDesde,
         this.filtrosPublicaciones.fechaHasta
@@ -1382,6 +1520,7 @@ export default {
       this.cargarPublicaciones({ pagina: 0 });
     },
     limpiarFiltrosPublicaciones() {
+      this.cancelarBusquedaProgramada();
       this.filtrosPublicaciones = filtrosPublicacionVacios();
       this.errorFechasPublicaciones = "";
       this.paginacionPublicaciones = {
@@ -1392,6 +1531,7 @@ export default {
       this.cargarPublicaciones({ pagina: 0 });
     },
     cambiarPaginaPublicaciones(delta) {
+      this.cancelarBusquedaProgramada();
       const paginaActual =
         Number(this.paginacionPublicaciones.paginaActual) || 0;
       const destino = paginaActual + Number(delta || 0);
@@ -2207,8 +2347,8 @@ export default {
 
 .inicio-perfil__publicaciones-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.85rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 .inicio-perfil__publicaciones-lista {
@@ -2372,13 +2512,7 @@ export default {
   }
 }
 
-@media (max-width: 900px) {
-  .inicio-perfil__publicaciones-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   .inicio-perfil__publicaciones-grid {
     grid-template-columns: 1fr;
   }

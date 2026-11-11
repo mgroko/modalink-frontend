@@ -5,40 +5,11 @@
   >
     <div class="filtros-colaboracion__grilla">
       <VaSelect
-        :model-value="filtros.idPublicacion"
-        label="Publicación"
-        placeholder="Todas las publicaciones"
-        :options="publicaciones"
-        value-by="idPublicacion"
-        text-by="titulo"
-        :loading="cargandoPublicaciones"
-        clearable
-        searchable
-        no-options-text="No hay publicaciones con solicitudes"
-        @update:model-value="cambiar('idPublicacion', $event)"
-      />
-
-      <VaInput
-        :model-value="filtros.fechaDesde"
-        label="Enviada desde"
-        type="date"
-        :error="!!errorFechas"
-        @update:model-value="cambiar('fechaDesde', $event)"
-      />
-
-      <VaInput
-        :model-value="filtros.fechaHasta"
-        label="Hasta"
-        type="date"
-        :error="!!errorFechas"
-        @update:model-value="cambiar('fechaHasta', $event)"
-      />
-
-      <VaSelect
         v-if="mostrarPerfil"
         :model-value="filtros.idPerfil"
-        :label="etiquetaPerfil"
-        placeholder="Buscar por nombre artístico"
+        class="filtros-colaboracion__campo"
+        :placeholder="placeholderPerfil"
+        :aria-label="placeholderPerfil"
         :options="opcionesPerfiles"
         value-by="idPerfil"
         text-by="nombreArtistico"
@@ -49,42 +20,74 @@
         no-options-text="No hay perfiles"
         @update:model-value="cambiarPerfil"
         @update:search="programarBusquedaPerfiles"
-      />
+      >
+        <template #prependInner>
+          <span class="material-symbols-outlined filtros-colaboracion__icono">
+            search
+          </span>
+        </template>
+      </VaSelect>
 
       <VaSelect
-        :model-value="filtros.estado"
-        label="Estado"
-        placeholder="Todos"
-        :options="opcionesEstado"
-        value-by="value"
-        text-by="text"
-        :disabled="filtros.todosLosEstados || filtros.estadoForzado"
+        :model-value="filtros.idPublicacion"
+        class="filtros-colaboracion__campo"
+        placeholder="Todas las publicaciones"
+        aria-label="Publicación"
+        :options="publicaciones"
+        value-by="idPublicacion"
+        text-by="titulo"
+        :loading="cargandoPublicaciones"
         clearable
-        @update:model-value="cambiar('estado', $event)"
+        searchable
+        no-options-text="No hay publicaciones con solicitudes"
+        @update:model-value="cambiar('idPublicacion', $event)"
       />
 
-      <label class="filtros-colaboracion__historial">
-        <input
-          type="checkbox"
-          :checked="filtros.todosLosEstados"
-          :disabled="filtros.estadoForzado"
-          @change="cambiar('todosLosEstados', $event.target.checked)"
+      <div class="filtros-colaboracion__fechas">
+        <VaInput
+          :model-value="filtros.fechaDesde"
+          class="filtros-colaboracion__fecha"
+          type="date"
+          aria-label="Fecha desde"
+          :error="!!errorFechas"
+          @update:model-value="cambiar('fechaDesde', $event)"
         />
-        Ver historial completo
-      </label>
-
-      <div class="filtros-colaboracion__acciones">
-        <VaButton
-          preset="secondary"
-          :disabled="cargando"
-          @click="$emit('limpiar')"
-        >
-          Limpiar
-        </VaButton>
-        <VaButton :loading="cargando" :disabled="cargando" @click="$emit('buscar')">
-          Buscar
-        </VaButton>
+        <span class="filtros-colaboracion__separador" aria-hidden="true">—</span>
+        <VaInput
+          :model-value="filtros.fechaHasta"
+          class="filtros-colaboracion__fecha"
+          type="date"
+          aria-label="Fecha hasta"
+          :error="!!errorFechas"
+          @update:model-value="cambiar('fechaHasta', $event)"
+        />
       </div>
+    </div>
+
+    <div class="filtros-colaboracion__estados">
+      <span class="filtros-colaboracion__estado-label">Estado</span>
+
+      <button
+        v-for="opcion in opcionesEstado"
+        :key="opcion.value"
+        type="button"
+        class="filtros-colaboracion__chip"
+        :class="{
+          'filtros-colaboracion__chip--activo': filtros.estado === opcion.value,
+        }"
+        :disabled="filtros.todosLosEstados || filtros.estadoForzado"
+        @click="cambiar('estado', opcion.value)"
+      >
+        {{ opcion.text }}
+      </button>
+
+      <button
+        type="button"
+        class="filtros-colaboracion__limpiar"
+        @click="$emit('limpiar')"
+      >
+        Limpiar
+      </button>
     </div>
 
     <p v-if="errorFechas" class="filtros-colaboracion__error" role="alert">
@@ -152,6 +155,9 @@ export default {
         value,
         text: ETIQUETAS_ESTADO_SOLICITUD_COLABORACION[value],
       }));
+    },
+    placeholderPerfil() {
+      return `Buscar por ${String(this.etiquetaPerfil || "perfil").toLowerCase()}`;
     },
     opcionesPerfiles() {
       const idActual = this.filtros?.idPerfil;
@@ -262,33 +268,109 @@ export default {
 
 <style scoped>
 .filtros-colaboracion {
-  display: grid;
-  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 0.9rem;
   background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
 }
 
 .filtros-colaboracion__grilla {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: end;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.65rem;
+  align-items: center;
 }
 
-.filtros-colaboracion__historial {
+.filtros-colaboracion__campo {
+  min-width: 0;
+}
+
+.filtros-colaboracion__icono {
+  color: var(--color-text-subtle);
+  font-size: 1.05rem;
+}
+
+.filtros-colaboracion__fechas {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: var(--color-text-muted);
-  font-size: 0.76rem;
+  min-width: 0;
 }
 
-.filtros-colaboracion__acciones {
+.filtros-colaboracion__fecha {
+  flex: 1;
+  min-width: 0;
+}
+
+.filtros-colaboracion__separador {
+  color: var(--color-text-subtle);
+  font-size: 0.8rem;
+}
+
+.filtros-colaboracion__estados {
   display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.filtros-colaboracion__estado-label {
+  margin-right: 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.filtros-colaboracion__chip {
+  padding: 0.3rem 0.75rem;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.filtros-colaboracion__chip:hover:not(:disabled),
+.filtros-colaboracion__chip:focus-visible:not(:disabled) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  outline: none;
+}
+
+.filtros-colaboracion__chip--activo {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.filtros-colaboracion__chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.filtros-colaboracion__limpiar {
+  margin-left: auto;
+  padding: 0;
+  color: var(--color-primary);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filtros-colaboracion__limpiar:hover {
+  text-decoration: underline;
 }
 
 .filtros-colaboracion__error {
@@ -308,8 +390,12 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .filtros-colaboracion__acciones {
-    justify-content: stretch;
+  .filtros-colaboracion__fechas {
+    flex-wrap: wrap;
+  }
+
+  .filtros-colaboracion__fecha {
+    flex: 1 1 120px;
   }
 }
 </style>

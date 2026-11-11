@@ -38,6 +38,11 @@ export const COLORES_ESTADO_SOLICITUD_COLABORACION = {
   },
 };
 
+export const ACCIONES_GESTION_SOLICITUD_COLABORACION = {
+  ACEPTAR: "aceptar",
+  RECHAZAR: "rechazar",
+};
+
 export const TAMANO_PAGINA_SOLICITUDES = 20;
 
 export const OPCIONES_TAMANO_SOLICITUDES = [
