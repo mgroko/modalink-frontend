@@ -27,11 +27,19 @@
         <span class="material-symbols-outlined">chevron_left</span>
       </button>
 
-      <img
-        class="galeria-publicacion__imagen"
-        :src="imagenActual"
-        :alt="`${titulo} — imagen ${indice + 1}`"
-      />
+      <div
+        ref="zoom"
+        class="galeria-publicacion__zoom"
+        @wheel.prevent="alRueda"
+        @dblclick="alternarZoom"
+      >
+        <img
+          class="galeria-publicacion__imagen"
+          :style="estiloImagen"
+          :src="imagenActual"
+          :alt="`${titulo} — imagen ${indice + 1}`"
+        />
+      </div>
 
       <button
         type="button"
@@ -47,6 +55,36 @@
 
     <template #footer>
       <div class="galeria-publicacion__acciones">
+        <div class="galeria-publicacion__zoom-acciones">
+          <VaButton
+            preset="secondary"
+            size="small"
+            icon="mso-zoom_out"
+            :disabled="escala <= ZOOM_MIN"
+            @click="alejar"
+          >
+            Alejar
+          </VaButton>
+          <VaButton
+            preset="secondary"
+            size="small"
+            icon="mso-restart_alt"
+            :disabled="escala === ZOOM_MIN"
+            @click="restablecerZoom"
+          >
+            Restablecer
+          </VaButton>
+          <VaButton
+            preset="secondary"
+            size="small"
+            icon="mso-zoom_in"
+            :disabled="escala >= ZOOM_MAX"
+            @click="acercar"
+          >
+            Acercar
+          </VaButton>
+        </div>
+
         <VaButton preset="secondary" @click="$emit('update:modelValue', false)">
           Cerrar
         </VaButton>
@@ -57,6 +95,10 @@
 
 <script>
 import { resolverFotoUrl } from "../../utils/fotos.js";
+
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 3;
+const ZOOM_PASO = 0.25;
 
 export default {
   name: "GaleriaPublicacionModal",
@@ -78,6 +120,9 @@ export default {
   data() {
     return {
       indice: 0,
+      escala: 1,
+      ZOOM_MIN,
+      ZOOM_MAX,
     };
   },
   computed: {
@@ -89,16 +134,66 @@ export default {
     imagenActual() {
       return resolverFotoUrl(this.imagenesOrdenadas[this.indice]?.url);
     },
+    estiloImagen() {
+      if (this.escala <= ZOOM_MIN) {
+        return { width: "100%" };
+      }
+      return {
+        width: `${this.escala * 100}%`,
+        maxWidth: "none",
+        maxHeight: "none",
+      };
+    },
   },
   watch: {
     modelValue(abierto) {
-      if (abierto) this.indice = 0;
+      if (abierto) {
+        this.indice = 0;
+        this.escala = 1;
+      }
     },
     imagenes() {
       if (this.indice >= this.imagenesOrdenadas.length) this.indice = 0;
     },
+    indice() {
+      this.escala = 1;
+      this.$nextTick(() => this.reiniciarScroll());
+    },
   },
   methods: {
+    reiniciarScroll() {
+      const contenedor = this.$refs.zoom;
+      if (!contenedor) return;
+      contenedor.scrollTop = 0;
+      contenedor.scrollLeft = 0;
+    },
+    cambiarEscala(valor) {
+      const siguiente = Math.min(
+        ZOOM_MAX,
+        Math.max(ZOOM_MIN, Number(valor) || ZOOM_MIN)
+      );
+      this.escala = siguiente;
+      if (siguiente === ZOOM_MIN) {
+        this.$nextTick(() => this.reiniciarScroll());
+      }
+    },
+    acercar() {
+      this.cambiarEscala(this.escala + ZOOM_PASO);
+    },
+    alejar() {
+      this.cambiarEscala(this.escala - ZOOM_PASO);
+    },
+    restablecerZoom() {
+      this.cambiarEscala(ZOOM_MIN);
+    },
+    alRueda(evento) {
+      if (!evento) return;
+      const delta = evento.deltaY < 0 ? ZOOM_PASO : -ZOOM_PASO;
+      this.cambiarEscala(this.escala + delta);
+    },
+    alternarZoom() {
+      this.cambiarEscala(this.escala > ZOOM_MIN ? ZOOM_MIN : 2);
+    },
     anterior() {
       if (this.imagenesOrdenadas.length <= 1) return;
       this.indice =
@@ -137,9 +232,18 @@ export default {
   gap: 0.75rem;
 }
 
+.galeria-publicacion__zoom {
+  overflow: auto;
+  max-height: 68vh;
+  background: var(--color-surface-muted);
+  border-radius: 10px;
+}
+
 .galeria-publicacion__imagen {
+  display: block;
   width: 100%;
   max-height: 68vh;
+  margin: 0 auto;
   border-radius: 10px;
   object-fit: contain;
   background: var(--color-surface-muted);
@@ -176,8 +280,18 @@ export default {
 
 .galeria-publicacion__acciones {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.65rem;
   width: 100%;
+}
+
+.galeria-publicacion__zoom-acciones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 @media (max-width: 560px) {

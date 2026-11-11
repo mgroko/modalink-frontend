@@ -187,11 +187,17 @@
               </p>
 
               <div v-else class="inicio-perfil__publicaciones-lista">
-                <PublicacionCardGaleria
+                <PublicacionCard
                   v-for="publicacion in publicaciones"
                   :key="publicacion.idPublicacion"
                   :publicacion="publicacion"
                   :mostrar-acciones-baja="esPropio"
+                  clickable
+                  @abrir="abrirDetallePublicacion"
+                  @abrir-galeria="abrirDetallePublicacion"
+                  @ver-proyecto="irAProyectoPublicacion"
+                  @editar="editarPublicacion"
+                  @invitar="abrirInvitarColaborador"
                   @eliminar="abrirEliminarPublicacion"
                 />
               </div>
@@ -463,6 +469,17 @@
         @confirmar="confirmarEliminarPublicacion"
       />
 
+      <PublicacionDetalleModal
+        v-model="modalPublicacionVisible"
+        :publicacion="publicacionSeleccionada"
+        :mostrar-acciones-baja="esPropio"
+        @abrir-galeria="abrirGaleriaPublicacion"
+        @ver-proyecto="irAProyectoPublicacion"
+        @editar="editarPublicacion"
+        @invitar="abrirInvitarColaborador"
+        @eliminar="abrirEliminarDesdeDetalle"
+      />
+
       <GaleriaPublicacionModal
         v-model="modalGaleriaPublicacionVisible"
         :imagenes="imagenesGaleria"
@@ -490,7 +507,7 @@ import { cargarConteosSolicitudesConexion } from "../../services/solicitudConexi
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
 import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
 import PublicacionCard from "../../components/perfil/PublicacionCard.vue";
-import PublicacionCardGaleria from "../../components/perfil/PublicacionCardGaleria.vue";
+import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
@@ -585,7 +602,7 @@ export default {
     PolaroidsPerfilPanel,
     ProximosEventos,
     PublicacionCard,
-    PublicacionCardGaleria,
+    PublicacionDetalleModal,
     ReportarPerfilModal,
     ModalEnviarSolicitudConexion,
     ModalCancelarSolicitudConexion,
@@ -653,6 +670,8 @@ export default {
       eliminandoPublicacion: false,
       errorEliminarPublicacion: "",
       modalGaleriaPublicacionVisible: false,
+      modalPublicacionVisible: false,
+      publicacionSeleccionada: null,
       imagenesGaleria: [],
       tituloGaleria: "",
       resenasResumen: null,
@@ -1525,12 +1544,22 @@ export default {
         });
       });
     },
+    abrirDetallePublicacion(publicacion) {
+      if (!publicacion) return;
+      this.publicacionSeleccionada = publicacion;
+      this.modalPublicacionVisible = true;
+    },
+    abrirEliminarDesdeDetalle(publicacion) {
+      this.modalPublicacionVisible = false;
+      this.$nextTick(() => this.abrirEliminarPublicacion(publicacion));
+    },
     abrirGaleriaPublicacion(publicacion) {
       if (!Array.isArray(publicacion?.imagenes) || !publicacion.imagenes.length) {
         return;
       }
       this.imagenesGaleria = publicacion.imagenes;
       this.tituloGaleria = publicacion.titulo;
+      this.modalPublicacionVisible = false;
       this.modalGaleriaPublicacionVisible = true;
     },
     irAProyectoPublicacion(proyecto) {
@@ -1555,11 +1584,13 @@ export default {
     editarPublicacion(publicacion) {
       if (!publicacion?.idPublicacion) return;
       this.publicacionEditando = publicacion;
+      this.modalPublicacionVisible = false;
       this.modalEditarPublicacionVisible = true;
     },
     abrirInvitarColaborador(publicacion) {
       if (!publicacion?.idPublicacion) return;
       this.publicacionInvitar = publicacion;
+      this.modalPublicacionVisible = false;
       this.modalInvitarColaboradorVisible = true;
     },
     alEnviarInvitacion(invitacion) {
@@ -2368,11 +2399,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-}
-
-.inicio-perfil__publicaciones-lista :deep(.publicacion-galeria__miniatura) {
-  flex: 0 0 72px;
-  width: 72px;
 }
 
 .inicio-perfil__publicaciones-mas {

@@ -1,5 +1,17 @@
 <template>
-  <article v-if="publicacion" class="publicacion-card" :class="`publicacion-card--${modo}`">
+  <article
+    v-if="publicacion"
+    class="publicacion-card"
+    :class="[
+      `publicacion-card--${modo}`,
+      { 'publicacion-card--clickable': clickable },
+    ]"
+    :role="clickable ? 'button' : undefined"
+    :tabindex="clickable ? 0 : undefined"
+    @click="alClickTarjeta"
+    @keydown.enter.self="alClickTarjeta"
+    @keydown.space.self.prevent="alClickTarjeta"
+  >
     <header class="publicacion-card__autor">
       <span class="publicacion-card__avatar">
         <img
@@ -16,6 +28,7 @@
           v-if="autorId != null"
           :to="{ name: 'ver-perfil', params: { id: autorId } }"
           class="publicacion-card__autor-nombre"
+          @click.stop
         >
           {{ autorNombre }}
         </RouterLink>
@@ -32,7 +45,7 @@
         class="publicacion-card__editar"
         title="Editar publicación"
         aria-label="Editar publicación"
-        @click="$emit('editar', publicacion)"
+        @click.stop="$emit('editar', publicacion)"
       >
         <span class="material-symbols-outlined">edit</span>
       </button>
@@ -58,9 +71,9 @@
       role="button"
       tabindex="0"
       aria-label="Abrir visor de imágenes"
-      @click="$emit('abrir-galeria', publicacion)"
-      @keydown.enter.prevent="$emit('abrir-galeria', publicacion)"
-      @keydown.space.prevent="$emit('abrir-galeria', publicacion)"
+      @click.stop="$emit('abrir-galeria', publicacion)"
+      @keydown.enter.stop.prevent="$emit('abrir-galeria', publicacion)"
+      @keydown.space.stop.prevent="$emit('abrir-galeria', publicacion)"
     >
       <figure
         v-for="(imagen, indice) in imagenesVisibles"
@@ -90,7 +103,7 @@
         type="button"
         class="publicacion-card__ver-mas"
         :aria-expanded="expandida ? 'true' : 'false'"
-        @click="expandida = !expandida"
+        @click.stop="expandida = !expandida"
       >
         {{ expandida ? "ver menos" : "ver más" }}
       </button>
@@ -136,7 +149,7 @@
         preset="secondary"
         size="small"
         icon="mso-person_add"
-        @click="$emit('invitar', publicacion)"
+        @click.stop="$emit('invitar', publicacion)"
       >
         Invitar a colaborar
       </VaButton>
@@ -153,7 +166,7 @@
         color="danger"
         size="small"
         icon="mso-delete"
-        @click="$emit('eliminar', publicacion)"
+        @click.stop="$emit('eliminar', publicacion)"
       >
         {{ etiquetaBaja }}
       </VaButton>
@@ -161,7 +174,7 @@
       <VaButton
         v-if="modo === 'modal'"
         preset="secondary"
-        @click="$emit('cerrar')"
+        @click.stop="$emit('cerrar')"
       >
         Cerrar
       </VaButton>
@@ -169,7 +182,7 @@
         v-if="proyectoVisible"
         color="primary"
         icon-right="mso-arrow_forward"
-        @click="$emit('ver-proyecto', publicacion.proyecto)"
+        @click.stop="$emit('ver-proyecto', publicacion.proyecto)"
       >
         Ver proyecto
       </VaButton>
@@ -208,8 +221,13 @@ export default {
       type: Boolean,
       default: true,
     },
+    clickable: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: [
+    "abrir",
     "abrir-galeria",
     "ver-proyecto",
     "cerrar",
@@ -314,6 +332,10 @@ export default {
     },
   },
   methods: {
+    alClickTarjeta() {
+      if (!this.clickable) return;
+      this.$emit("abrir", this.publicacion);
+    },
     resolverImagen(imagen) {
       return resolverFotoUrl(imagen?.url);
     },
@@ -348,6 +370,18 @@ export default {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
+}
+
+.publicacion-card--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.publicacion-card--clickable:hover,
+.publicacion-card--clickable:focus-visible {
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0.4rem 1.2rem rgba(35, 33, 52, 0.08);
+  outline: none;
 }
 
 .publicacion-card--modal {
@@ -468,16 +502,20 @@ export default {
 .publicacion-card__collage {
   display: grid;
   gap: 0.5rem;
-  height: 340px;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  max-height: 520px;
   border-radius: 10px;
   cursor: zoom-in;
 }
 
 .publicacion-card__collage--1 {
+  aspect-ratio: 4 / 3;
   grid-template-columns: 1fr;
 }
 
 .publicacion-card__collage--2 {
+  aspect-ratio: 2 / 1;
   grid-template-columns: repeat(2, 1fr);
 }
 
@@ -622,8 +660,12 @@ export default {
     padding: 0.9rem;
   }
 
-  .publicacion-card__collage {
-    height: 240px;
+  .publicacion-card__collage--1 {
+    aspect-ratio: 1 / 1;
+  }
+
+  .publicacion-card__collage--2 {
+    aspect-ratio: 3 / 2;
   }
 
   .publicacion-card__footer {

@@ -34,7 +34,6 @@
           :key="publicacion.idPublicacion"
           :publicacion="publicacion"
           mostrar-acciones-baja
-          :permitir-baja-colaborador="false"
           @abrir-galeria="$emit('abrir-galeria', $event)"
           @ver-proyecto="$emit('ver-proyecto', $event)"
           @editar="$emit('editar', $event)"
@@ -102,6 +101,9 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
   padding: 1.15rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
