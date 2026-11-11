@@ -1,14 +1,5 @@
 <template>
   <div class="publicacion-detalle">
-    <VaButton
-      preset="secondary"
-      icon="mso-arrow_back"
-      class="publicacion-detalle__volver"
-      @click="volver"
-    >
-      Volver
-    </VaButton>
-
     <div
       v-if="cargando"
       class="publicacion-detalle__estado"
@@ -23,48 +14,27 @@
 
     <div v-else-if="error" class="publicacion-detalle__estado">
       <BaseAlert :message="error" type="error" />
-      <VaButton preset="secondary" icon="mso-refresh" @click="cargar">
-        Reintentar
-      </VaButton>
+      <div class="publicacion-detalle__acciones">
+        <VaButton preset="secondary" icon="mso-arrow_back" @click="volver">
+          Volver
+        </VaButton>
+        <VaButton preset="secondary" icon="mso-refresh" @click="cargar">
+          Reintentar
+        </VaButton>
+      </div>
     </div>
 
-    <PublicacionCard
+    <PublicacionDetalleModal
       v-else-if="publicacion"
+      v-model="modalVisible"
       :publicacion="publicacion"
-      mostrar-acciones-baja
-      @abrir-galeria="abrirGaleria"
+      :id-publicacion="idPublicacion"
+      :enfocar-comentarios="enfocarComentarios"
       @ver-proyecto="irAProyecto"
-      @editar="abrirEdicion"
-      @invitar="abrirInvitarColaborador"
-      @eliminar="abrirEliminarPublicacion"
-    />
-
-    <GaleriaPublicacionModal
-      v-model="modalGaleriaVisible"
-      :imagenes="imagenesGaleria"
-      :titulo="tituloGaleria"
-    />
-
-    <ModalNuevaPublicacion
-      v-model="modalEditarVisible"
-      modo="editar"
-      :publicacion="publicacion"
-      @actualizada="alActualizar"
-    />
-
-    <ModalInvitarColaborador
-      v-model="modalInvitarVisible"
-      :publicacion="publicacion"
-      @enviada="alEnviarInvitacion"
-    />
-
-    <ModalEliminarPublicacion
-      v-model="modalEliminarVisible"
-      :publicacion="publicacion"
-      :modo="modoEliminarPublicacion"
-      :eliminando="eliminandoPublicacion"
-      :error="errorEliminarPublicacion"
-      @confirmar="confirmarEliminarPublicacion"
+      @no-disponible="alNoDisponible"
+      @sin-perfil="alSinPerfil"
+      @perfil-inactivo="alPerfilInactivo"
+      @cerrar="volver"
     />
   </div>
 </template>
@@ -72,31 +42,20 @@
 <script>
 import publicacionService from "../../services/publicacionService";
 import BaseAlert from "../../components/AlertaBase.vue";
-import PublicacionCard from "../../components/perfil/PublicacionCard.vue";
-import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
-import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
-import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
-import ModalEliminarPublicacion from "../../components/perfil/ModalEliminarPublicacion.vue";
-import { idPerfilActivo } from "../../services/authState";
+import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
+import { idPerfilActivo, refrescarSesion } from "../../services/authState";
+import { sincronizarPublicacion } from "../../services/publicacionInteraccionState.js";
+import { normalizarPublicacion } from "../../utils/publicacionConstants.js";
 import {
-  accionBajaPublicacion,
-  normalizarPublicacion,
-} from "../../utils/publicacionConstants.js";
-import { mensajeErrorApi } from "../../utils/apiError";
-import { useToast } from "vuestic-ui";
+  clasificarErrorPublicacion,
+  mensajeErrorApi,
+} from "../../utils/apiError";
 
 export default {
   name: "PublicacionDetalleView",
   components: {
     BaseAlert,
-    GaleriaPublicacionModal,
-    ModalEliminarPublicacion,
-    ModalInvitarColaborador,
-    ModalNuevaPublicacion,
-    PublicacionCard,
-  },
-  setup() {
-    return { toast: useToast() };
+    PublicacionDetalleModal,
   },
   data() {
     return {
@@ -104,19 +63,25 @@ export default {
       cargando: true,
       error: "",
       controlador: null,
-      modalGaleriaVisible: false,
-      imagenesGaleria: [],
-      tituloGaleria: "",
-      modalEditarVisible: false,
-      modalInvitarVisible: false,
-      modalEliminarVisible: false,
-      modoEliminarPublicacion: "",
-      eliminandoPublicacion: false,
-      errorEliminarPublicacion: "",
+      modalVisible: false,
     };
+  },
+  computed: {
+    idPublicacion() {
+      return this.$route.params.idPublicacion;
+    },
+    enfocarComentarios() {
+      return this.$route.hash === "#comentarios";
+    },
+    idPerfilActivoActual() {
+      return idPerfilActivo();
+    },
   },
   watch: {
     "$route.params.idPublicacion"() {
+      this.cargar();
+    },
+    idPerfilActivoActual() {
       this.cargar();
     },
   },
@@ -134,7 +99,7 @@ export default {
       }
     },
     async cargar() {
-      const id = this.$route.params.idPublicacion;
+      const id = this.idPublicacion;
       if (id == null || id === "") {
         this.publicacion = null;
         this.error = "No se encontró la publicación.";
@@ -147,6 +112,7 @@ export default {
       this.controlador = controller;
       this.cargando = true;
       this.error = "";
+      this.modalVisible = false;
 
       try {
         const response = await publicacionService.obtenerDetalle(
@@ -158,7 +124,11 @@ export default {
         this.publicacion = normalizarPublicacion(response?.data);
         if (!this.publicacion) {
           this.error = "La publicación no está disponible.";
+          return;
         }
+
+        sincronizarPublicacion(this.publicacion, true);
+        this.modalVisible = true;
       } catch (error) {
         if (
           this.controlador !== controller ||
@@ -167,11 +137,26 @@ export default {
         ) {
           return;
         }
+
+        const tipo = clasificarErrorPublicacion(error);
+        if (tipo === "SIN_PERFIL") {
+          this.alSinPerfil();
+          return;
+        }
+        if (tipo === "PERFIL_INACTIVO") {
+          await this.alPerfilInactivo();
+          return;
+        }
+
         this.publicacion = null;
-        this.error = mensajeErrorApi(
-          error,
-          "La publicación no existe o no está disponible."
-        );
+        this.error =
+          tipo === "PUBLICACION_NO_DISPONIBLE"
+            ? error?.response?.data?.message ||
+              "La publicación no existe o no está disponible."
+            : mensajeErrorApi(
+                error,
+                "La publicación no existe o no está disponible."
+              );
       } finally {
         if (this.controlador === controller) {
           this.cargando = false;
@@ -183,13 +168,6 @@ export default {
       if (window.history.length > 1) this.$router.back();
       else this.$router.push({ name: "home" });
     },
-    abrirGaleria(publicacion) {
-      const imagenes = publicacion?.imagenes;
-      if (!Array.isArray(imagenes) || !imagenes.length) return;
-      this.imagenesGaleria = imagenes;
-      this.tituloGaleria = publicacion.titulo;
-      this.modalGaleriaVisible = true;
-    },
     irAProyecto(proyecto) {
       if (proyecto?.idProyecto == null) return;
       this.$router.push({
@@ -197,93 +175,22 @@ export default {
         params: { id: proyecto.idProyecto },
       });
     },
-    abrirEdicion(publicacion) {
-      if (!publicacion?.idPublicacion) return;
-      this.publicacion = publicacion;
-      this.modalEditarVisible = true;
+    alNoDisponible() {
+      this.publicacion = null;
+      this.modalVisible = false;
+      this.error =
+        "La publicación no está disponible o ya no podés interactuar con ella.";
     },
-    abrirInvitarColaborador(publicacion) {
-      if (!publicacion?.idPublicacion) return;
-      this.publicacion = publicacion;
-      this.modalInvitarVisible = true;
+    alSinPerfil() {
+      this.modalVisible = false;
+      this.publicacion = null;
+      this.$router.replace({ name: "dashboard-usuario" });
     },
-    alActualizar(publicacion) {
-      this.modalEditarVisible = false;
-      this.toast.init({
-        title: "Publicación actualizada",
-        message: "Los cambios se guardaron correctamente.",
-        color: "success",
-        position: "top-right",
-        duration: 5000,
-      });
-      if (publicacion) this.publicacion = normalizarPublicacion(publicacion);
-      this.cargar();
-    },
-    alEnviarInvitacion(invitacion) {
-      this.modalInvitarVisible = false;
-      this.toast.init({
-        title: "Solicitud enviada",
-        message: `Se invitó a ${
-          invitacion?.nombre || "el contacto"
-        } a colaborar.`,
-        color: "success",
-        position: "top-right",
-        duration: 5000,
-      });
-    },
-    abrirEliminarPublicacion(publicacion) {
-      if (!publicacion?.idPublicacion) return;
-      const modo = accionBajaPublicacion(publicacion, idPerfilActivo());
-      if (!modo) return;
-
-      this.modoEliminarPublicacion = modo;
-      this.errorEliminarPublicacion = "";
-      this.modalEliminarVisible = true;
-    },
-    async confirmarEliminarPublicacion() {
-      if (!this.publicacion?.idPublicacion || this.eliminandoPublicacion) {
-        return;
-      }
-
-      this.eliminandoPublicacion = true;
-      this.errorEliminarPublicacion = "";
-
-      try {
-        await publicacionService.eliminar(this.publicacion.idPublicacion);
-        this.modalEliminarVisible = false;
-
-        const esDueno = this.modoEliminarPublicacion === "dueno";
-        this.toast.init({
-          title: esDueno
-            ? "Publicación eliminada"
-            : "Publicación quitada de tu perfil",
-          message: esDueno
-            ? "La publicación se eliminó definitivamente."
-            : "La publicación sigue disponible para el dueño y los demás colaboradores.",
-          color: "success",
-          position: "top-right",
-          duration: 5000,
-        });
-
-        if (esDueno) {
-          this.volver();
-          return;
-        }
-        await this.cargar();
-      } catch (error) {
-        const status = error?.response?.status;
-        if (status === 404) {
-          this.modalEliminarVisible = false;
-          this.volver();
-          return;
-        }
-        this.errorEliminarPublicacion = mensajeErrorApi(
-          error,
-          "No se pudo eliminar la publicación."
-        );
-      } finally {
-        this.eliminandoPublicacion = false;
-      }
+    async alPerfilInactivo() {
+      this.modalVisible = false;
+      this.publicacion = null;
+      await refrescarSesion();
+      this.$router.replace({ name: "dashboard-usuario" });
     },
   },
 };
@@ -295,12 +202,8 @@ export default {
   flex-direction: column;
   gap: 1rem;
   width: 100%;
-  max-width: 900px;
+  min-height: 70vh;
   margin: 0 auto;
-}
-
-.publicacion-detalle__volver {
-  align-self: flex-start;
 }
 
 .publicacion-detalle__estado {
@@ -312,5 +215,13 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.9rem;
   text-align: center;
+}
+
+.publicacion-detalle__acciones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
 }
 </style>

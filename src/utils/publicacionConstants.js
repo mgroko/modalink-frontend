@@ -6,6 +6,7 @@
 export const LIMITES_PUBLICACION = {
   TITULO: 150,
   DESCRIPCION: 1000,
+  COMENTARIO: 1000,
 };
 
 export const PUBLICACION_IMAGENES = {
@@ -286,7 +287,115 @@ export function normalizarPublicacion(publicacion) {
       : [],
     cantidadMeGusta: Number(publicacion.cantidadMeGusta) || 0,
     cantidadComentarios: Number(publicacion.cantidadComentarios) || 0,
+    meGusta: publicacion.meGusta === true,
   };
+}
+
+/**
+ * Valida el texto de un comentario antes de enviarlo.
+ * El backend también valida; esto evita requests innecesarias.
+ * @param {string|null|undefined} texto
+ * @returns {boolean}
+ */
+export function textoComentarioValido(texto) {
+  const limpio = String(texto || "").trim();
+  return (
+    limpio.length > 0 &&
+    limpio.length <= LIMITES_PUBLICACION.COMENTARIO
+  );
+}
+
+/**
+ * Normaliza un comentario para que la UI no dependa de nulos.
+ * @param {object|null|undefined} comentario
+ * @returns {object|null}
+ */
+export function normalizarComentario(comentario) {
+  if (!comentario) return null;
+
+  const idComentario = Number(comentario.idComentario);
+  if (!Number.isFinite(idComentario)) return null;
+
+  return {
+    ...comentario,
+    idComentario,
+    idPublicacion: Number(comentario.idPublicacion) || null,
+    autor: comentario.autor || null,
+    texto: String(comentario.texto || ""),
+    fechaComentario: comentario.fechaComentario || null,
+  };
+}
+
+/**
+ * Normaliza la respuesta paginada de comentarios.
+ * @param {object|null|undefined} data
+ * @returns {{
+ *   contenido: object[],
+ *   paginaActual: number,
+ *   tamanoPagina: number,
+ *   totalElementos: number,
+ *   totalPaginas: number,
+ *   primera: boolean,
+ *   ultima: boolean
+ * }}
+ */
+export function normalizarPaginaComentarios(data) {
+  const contenido = (Array.isArray(data?.contenido) ? data.contenido : [])
+    .map(normalizarComentario)
+    .filter(Boolean);
+
+  return {
+    contenido,
+    paginaActual: Number(data?.paginaActual) || 0,
+    tamanoPagina: Number(data?.tamanoPagina) || contenido.length || 10,
+    totalElementos: Number(data?.totalElementos) || contenido.length,
+    totalPaginas: Number(data?.totalPaginas) || 0,
+    primera: data?.primera !== false,
+    ultima: data?.ultima !== false,
+  };
+}
+
+/**
+ * Fusiona comentarios sin duplicar por idComentario.
+ * Respeta el orden en que llegan (el backend ya devuelve ASC) y no reordena
+ * el listado en el frontend.
+ * @param {object[]} existentes
+ * @param {object[]} nuevos
+ * @returns {object[]}
+ */
+export function fusionarComentarios(existentes = [], nuevos = []) {
+  const resultado = [];
+  const posicionPorId = new Map();
+
+  for (const comentario of [...existentes, ...nuevos]) {
+    const normalizado = normalizarComentario(comentario);
+    if (!normalizado) continue;
+
+    const posicion = posicionPorId.get(normalizado.idComentario);
+    if (posicion == null) {
+      posicionPorId.set(normalizado.idComentario, resultado.length);
+      resultado.push(normalizado);
+    } else {
+      resultado[posicion] = normalizado;
+    }
+  }
+
+  return resultado;
+}
+
+/**
+ * Indica si el comentario pertenece al perfil activo.
+ * @param {object|null|undefined} comentario
+ * @param {number|string|null|undefined} idPerfil
+ * @returns {boolean}
+ */
+export function esComentarioPropio(comentario, idPerfil) {
+  const idAutor = comentario?.autor?.idPerfil ?? null;
+  return (
+    idPerfil != null &&
+    idAutor != null &&
+    String(idPerfil) === String(idAutor)
+  );
 }
 
 /**

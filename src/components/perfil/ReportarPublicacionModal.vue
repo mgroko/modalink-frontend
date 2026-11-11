@@ -85,7 +85,10 @@
 import reporteService from "../../services/reporteService";
 import BaseAlert from "../AlertaBase.vue";
 import { reglasPerfil } from "../../utils/reglas.js";
-import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  esErrorPublicacionNoDisponible,
+  mensajeErrorApi,
+} from "../../utils/apiError";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
   LIMITE_DESCRIPCION_REPORTE_PUBLICACION,
@@ -221,8 +224,14 @@ export default {
         if (/perfil activo|perfil.*sesi[oó]n/i.test(mensaje)) {
           return "No hay un perfil activo seleccionado en la sesión.";
         }
-        this.$emit("no-disponible");
-        return mensaje || "La publicación ya no está disponible.";
+        if (esErrorPublicacionNoDisponible(error)) {
+          this.$emit("no-disponible");
+          return mensaje || "La publicación ya no está disponible.";
+        }
+        return mensajeErrorApi(
+          error,
+          "No se pudo procesar el reporte. Intentá nuevamente."
+        );
       }
       if (status === 409) {
         if (/propia/i.test(mensaje)) {

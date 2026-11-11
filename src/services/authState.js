@@ -5,21 +5,56 @@ const state = reactive({
   usuario: null,
 });
 
+const perfilActivoListeners = new Set();
+
+/**
+ * Registra un callback para invalidar estado derivado del perfil activo.
+ * @param {(idPerfil: number|null) => void} listener
+ * @returns {() => void} desuscripción
+ */
+function onPerfilActivoChange(listener) {
+  if (typeof listener !== "function") return () => {};
+  perfilActivoListeners.add(listener);
+  return () => perfilActivoListeners.delete(listener);
+}
+
+function notificarPerfilActivo() {
+  const idPerfil = state.usuario?.idPerfilActivo ?? null;
+  for (const listener of perfilActivoListeners) {
+    try {
+      listener(idPerfil);
+    } catch {
+      // Un listener no debe romper el cambio de perfil.
+    }
+  }
+}
+
 function setUsuario(usuario) {
+  const anterior = state.usuario?.idPerfilActivo ?? null;
   state.usuario = usuario;
+  if ((usuario?.idPerfilActivo ?? null) !== anterior) {
+    notificarPerfilActivo();
+  }
 }
 
 function clearUsuario() {
+  const anterior = state.usuario?.idPerfilActivo ?? null;
   state.usuario = null;
+  if (anterior != null) notificarPerfilActivo();
 }
 
 function setPerfilActivo(perfil) {
   if (!state.usuario) return;
+  const anterior = state.usuario.idPerfilActivo ?? null;
+  const siguiente = perfil?.idPerfil ?? null;
   state.usuario = {
     ...state.usuario,
-    idPerfilActivo: perfil?.idPerfil ?? null,
+    idPerfilActivo: siguiente,
     nombreArtisticoActivo: perfil?.nombreArtistico ?? null,
   };
+  if (String(anterior) !== String(siguiente)) {
+    notificarPerfilActivo();
+  }
 }
 
 function idPerfilActivo() {
@@ -157,4 +192,4 @@ function limpiarBajaCuenta() {
   }
 }
 
-export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, idUsuarioActivo, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion, finalizarSesion, guardarBajaCuenta, consumirAvisoBajaCuenta, limpiarBajaCuenta };
+export { state, setUsuario, clearUsuario, esAdmin, tienePermiso, setPerfilActivo, idPerfilActivo, idUsuarioActivo, onPerfilActivoChange, restaurarSesion, refrescarSesion, marcarSesionRestaurada, limpiarSesion, finalizarSesion, guardarBajaCuenta, consumirAvisoBajaCuenta, limpiarBajaCuenta };

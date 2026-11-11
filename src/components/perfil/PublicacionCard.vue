@@ -6,11 +6,7 @@
       `publicacion-card--${modo}`,
       { 'publicacion-card--clickable': clickable },
     ]"
-    :role="clickable ? 'button' : undefined"
-    :tabindex="clickable ? 0 : undefined"
     @click="alClickTarjeta"
-    @keydown.enter.self="alClickTarjeta"
-    @keydown.space.self.prevent="alClickTarjeta"
   >
     <header class="publicacion-card__autor">
       <span class="publicacion-card__avatar">
@@ -39,19 +35,28 @@
         </span>
       </div>
 
-      <button
-        v-if="esPropia"
-        type="button"
-        class="publicacion-card__editar"
-        title="Editar publicación"
-        aria-label="Editar publicación"
-        @click.stop="$emit('editar', publicacion)"
-      >
-        <span class="material-symbols-outlined">edit</span>
-      </button>
+      <PublicacionMenuAcciones
+        :publicacion="publicacion"
+        :mostrar-acciones-baja="mostrarAccionesBaja"
+        :permitir-baja-colaborador="permitirBajaColaborador"
+        @editar="$emit('editar', $event)"
+        @invitar="$emit('invitar', $event)"
+        @eliminar="$emit('eliminar', $event)"
+        @no-disponible="$emit('no-disponible', $event)"
+      />
     </header>
 
-    <h2 class="publicacion-card__titulo">{{ publicacion.titulo }}</h2>
+    <h2 class="publicacion-card__titulo">
+      <button
+        v-if="clickable"
+        type="button"
+        class="publicacion-card__titulo-boton"
+        @click.stop="alClickTarjeta"
+      >
+        {{ publicacion.titulo }}
+      </button>
+      <template v-else>{{ publicacion.titulo }}</template>
+    </h2>
 
     <div v-if="ubicacionTexto || publicacion.proyecto" class="publicacion-card__chips">
       <span v-if="ubicacionTexto" class="publicacion-card__chip">
@@ -70,15 +75,16 @@
       :class="`publicacion-card__collage--${imagenesVisibles.length}`"
       role="button"
       tabindex="0"
-      aria-label="Abrir visor de imágenes"
-      @click.stop="$emit('abrir-galeria', publicacion)"
-      @keydown.enter.stop.prevent="$emit('abrir-galeria', publicacion)"
-      @keydown.space.stop.prevent="$emit('abrir-galeria', publicacion)"
+      aria-label="Abrir detalle de la publicación"
+      @click.stop="abrirConIndice(0)"
+      @keydown.enter.stop.prevent="abrirConIndice(0)"
+      @keydown.space.stop.prevent="abrirConIndice(0)"
     >
       <figure
         v-for="(imagen, indice) in imagenesVisibles"
         :key="imagen.idImagen || indice"
         class="publicacion-card__figura"
+        @click.stop="abrirConIndice(indice)"
       >
         <img
           class="publicacion-card__imagen"
@@ -110,7 +116,7 @@
     </div>
 
     <div
-      v-if="colaboradores.length || esPropia"
+      v-if="colaboradores.length"
       class="publicacion-card__colaboradores"
     >
       <span
@@ -142,50 +148,38 @@
       >
         y {{ colaboradoresRestantes }} más
       </span>
-
-      <VaButton
-        v-if="esPropia"
-        class="publicacion-card__invitar"
-        preset="secondary"
-        size="small"
-        icon="mso-person_add"
-        @click.stop="$emit('invitar', publicacion)"
-      >
-        Invitar a colaborar
-      </VaButton>
     </div>
 
     <footer
-      v-if="modo === 'modal' || proyectoVisible || mostrarAccionBaja"
+      v-if="mostrarInteracciones || modo === 'modal' || proyectoVisible"
       class="publicacion-card__footer"
     >
-      <VaButton
-        v-if="mostrarAccionBaja"
-        class="publicacion-card__baja"
-        preset="secondary"
-        color="danger"
-        size="small"
-        icon="mso-delete"
-        @click.stop="$emit('eliminar', publicacion)"
-      >
-        {{ etiquetaBaja }}
-      </VaButton>
+      <PublicacionInteracciones
+        v-if="mostrarInteracciones"
+        :publicacion="publicacion"
+        @ver-comentarios="$emit('ver-comentarios', $event)"
+        @no-disponible="$emit('no-disponible', $event)"
+        @sin-perfil="$emit('sin-perfil', $event)"
+        @perfil-inactivo="$emit('perfil-inactivo', $event)"
+      />
 
-      <VaButton
-        v-if="modo === 'modal'"
-        preset="secondary"
-        @click.stop="$emit('cerrar')"
-      >
-        Cerrar
-      </VaButton>
-      <VaButton
-        v-if="proyectoVisible"
-        color="primary"
-        icon-right="mso-arrow_forward"
-        @click.stop="$emit('ver-proyecto', publicacion.proyecto)"
-      >
-        Ver proyecto
-      </VaButton>
+      <div class="publicacion-card__acciones">
+        <VaButton
+          v-if="modo === 'modal'"
+          preset="secondary"
+          @click.stop="$emit('cerrar')"
+        >
+          Cerrar
+        </VaButton>
+        <VaButton
+          v-if="proyectoVisible"
+          color="primary"
+          icon-right="mso-arrow_forward"
+          @click.stop="$emit('ver-proyecto', publicacion.proyecto)"
+        >
+          Ver proyecto
+        </VaButton>
+      </div>
     </footer>
   </article>
 </template>
@@ -194,15 +188,12 @@
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatearTiempoRelativo } from "../../utils/fechas.js";
 import { formatUbicacionPublicacion } from "../../utils/ubicacion.js";
-import {
-  ACCIONES_BAJA_PUBLICACION,
-  accionBajaPublicacion,
-  etiquetaAccionBaja,
-} from "../../utils/publicacionConstants.js";
-import { idPerfilActivo } from "../../services/authState";
+import PublicacionInteracciones from "./PublicacionInteracciones.vue";
+import PublicacionMenuAcciones from "./PublicacionMenuAcciones.vue";
 
 export default {
   name: "PublicacionCard",
+  components: { PublicacionInteracciones, PublicacionMenuAcciones },
   props: {
     publicacion: {
       type: Object,
@@ -225,10 +216,17 @@ export default {
       type: Boolean,
       default: false,
     },
+    mostrarInteracciones: {
+      type: Boolean,
+      default: true,
+    },
   },
   emits: [
     "abrir",
-    "abrir-galeria",
+    "ver-comentarios",
+    "no-disponible",
+    "sin-perfil",
+    "perfil-inactivo",
     "ver-proyecto",
     "cerrar",
     "editar",
@@ -256,30 +254,6 @@ export default {
     },
     autorId() {
       return this.publicacion?.autor?.idPerfil ?? null;
-    },
-    esPropia() {
-      const idActivo = idPerfilActivo();
-      return (
-        idActivo != null &&
-        this.autorId != null &&
-        String(this.autorId) === String(idActivo)
-      );
-    },
-    accionBaja() {
-      return accionBajaPublicacion(this.publicacion, idPerfilActivo());
-    },
-    mostrarAccionBaja() {
-      if (!this.mostrarAccionesBaja || !this.accionBaja) return false;
-      if (
-        this.accionBaja === ACCIONES_BAJA_PUBLICACION.COLABORADOR &&
-        !this.permitirBajaColaborador
-      ) {
-        return false;
-      }
-      return true;
-    },
-    etiquetaBaja() {
-      return etiquetaAccionBaja(this.accionBaja);
     },
     autorNombre() {
       return (
@@ -334,7 +308,13 @@ export default {
   methods: {
     alClickTarjeta() {
       if (!this.clickable) return;
-      this.$emit("abrir", this.publicacion);
+      this.abrirConIndice(0);
+    },
+    abrirConIndice(indice) {
+      this.$emit("abrir", {
+        publicacion: this.publicacion,
+        indice: Number(indice) || 0,
+      });
     },
     resolverImagen(imagen) {
       return resolverFotoUrl(imagen?.url);
@@ -418,32 +398,15 @@ export default {
 
 .publicacion-card__autor-datos {
   display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: 0.1rem;
 }
 
-.publicacion-card__editar {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  margin-left: auto;
-  padding: 0;
-  place-items: center;
-  color: var(--color-text-muted);
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border-soft);
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.publicacion-card__editar:hover,
-.publicacion-card__editar:focus-visible {
-  color: var(--color-primary);
-  border-color: var(--color-primary-light);
-  outline: none;
-}
-
-.publicacion-card__editar .material-symbols-outlined {
-  font-size: 1rem;
+.publicacion-card__autor-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .publicacion-card__autor-datos strong,
@@ -473,6 +436,23 @@ export default {
   font-size: 1.35rem;
   font-weight: 750;
   line-height: 1.25;
+}
+
+.publicacion-card__titulo-boton {
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.publicacion-card__titulo-boton:hover,
+.publicacion-card__titulo-boton:focus-visible {
+  color: var(--color-primary);
+  outline: none;
+  text-decoration: underline;
 }
 
 .publicacion-card__chips {
@@ -637,22 +617,22 @@ export default {
   font-size: 0.72rem;
 }
 
-.publicacion-card__invitar {
-  margin-left: auto;
-}
-
-.publicacion-card__baja {
-  margin-right: auto;
-}
-
 .publicacion-card__footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.65rem;
   margin-top: 0.15rem;
   padding-top: 0.8rem;
   border-top: 1px solid var(--color-border-soft);
+}
+
+.publicacion-card__acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-left: auto;
 }
 
 @media (max-width: 560px) {
@@ -669,7 +649,12 @@ export default {
   }
 
   .publicacion-card__footer {
-    flex-direction: column-reverse;
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .publicacion-card__acciones {
+    margin-left: auto;
   }
 }
 </style>

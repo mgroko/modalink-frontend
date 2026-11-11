@@ -194,7 +194,10 @@
                   :mostrar-acciones-baja="esPropio"
                   clickable
                   @abrir="abrirDetallePublicacion"
-                  @abrir-galeria="abrirDetallePublicacion"
+                  @ver-comentarios="abrirComentariosPublicacion"
+                  @no-disponible="alPublicacionNoDisponible"
+                  @sin-perfil="alSinPerfilActivo"
+                  @perfil-inactivo="alPerfilInactivo"
                   @ver-proyecto="irAProyectoPublicacion"
                   @editar="editarPublicacion"
                   @invitar="abrirInvitarColaborador"
@@ -291,7 +294,12 @@
                     :key="publicacion.idPublicacion"
                     :publicacion="publicacion"
                     :mostrar-acciones-baja="esPropio"
-                    @abrir-galeria="abrirGaleriaPublicacion"
+                    clickable
+                    @abrir="abrirDetallePublicacion"
+                    @ver-comentarios="abrirComentariosPublicacion"
+                    @no-disponible="alPublicacionNoDisponible"
+                    @sin-perfil="alSinPerfilActivo"
+                    @perfil-inactivo="alPerfilInactivo"
                     @ver-proyecto="irAProyectoPublicacion"
                     @editar="editarPublicacion"
                     @invitar="abrirInvitarColaborador"
@@ -472,18 +480,13 @@
       <PublicacionDetalleModal
         v-model="modalPublicacionVisible"
         :publicacion="publicacionSeleccionada"
-        :mostrar-acciones-baja="esPropio"
-        @abrir-galeria="abrirGaleriaPublicacion"
+        :id-publicacion="publicacionSeleccionada?.idPublicacion"
+        :indice-inicial="indicePublicacionSeleccionada"
+        :enfocar-comentarios="enfocarComentariosDetalle"
         @ver-proyecto="irAProyectoPublicacion"
-        @editar="editarPublicacion"
-        @invitar="abrirInvitarColaborador"
-        @eliminar="abrirEliminarDesdeDetalle"
-      />
-
-      <GaleriaPublicacionModal
-        v-model="modalGaleriaPublicacionVisible"
-        :imagenes="imagenesGaleria"
-        :titulo="tituloGaleria"
+        @no-disponible="alPublicacionNoDisponible"
+        @sin-perfil="alSinPerfilActivo"
+        @perfil-inactivo="alPerfilInactivo"
       />
 
       <ModalNuevaPublicacion
@@ -508,7 +511,6 @@ import PaginacionResultados from "../../components/busqueda/PaginacionResultados
 import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
 import PublicacionCard from "../../components/perfil/PublicacionCard.vue";
 import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
-import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
 import ModalEliminarPublicacion from "../../components/perfil/ModalEliminarPublicacion.vue";
@@ -516,6 +518,7 @@ import {
   esAdmin,
   idPerfilActivo,
   limpiarSesion,
+  refrescarSesion,
   state as authState,
 } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
@@ -538,7 +541,10 @@ import ModalEliminarConexion from "../../components/conexion/ModalEliminarConexi
 import SkeletonPerfil from "../../components/perfil/SkeletonPerfil.vue";
 import TerminosCondicionesPanel from "../../components/perfil/TerminosCondicionesPanel.vue";
 import { diasRestantes, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
-import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  clasificarErrorPublicacion,
+  mensajeErrorApi,
+} from "../../utils/apiError";
 import {
   CODIGOS_ERROR_CONEXION,
   ESTADOS_CONEXION,
@@ -565,6 +571,10 @@ import {
   normalizarPublicacion,
 } from "../../utils/publicacionConstants.js";
 import {
+  marcarNoDisponible,
+  sincronizarPublicaciones,
+} from "../../services/publicacionInteraccionState.js";
+import {
   esPerfilActivo,
   esPerfilModelo,
 } from "../../utils/polaroidConstants.js";
@@ -590,7 +600,6 @@ export default {
     CalendarioProfesional,
     CaracteristicasTecnicasCard,
     FiltrosPublicaciones,
-    GaleriaPublicacionModal,
     HistorialProyectosLista,
     ModalEliminarPublicacion,
     ModalInvitarColaborador,
@@ -669,11 +678,10 @@ export default {
       modoEliminarPublicacion: "",
       eliminandoPublicacion: false,
       errorEliminarPublicacion: "",
-      modalGaleriaPublicacionVisible: false,
       modalPublicacionVisible: false,
       publicacionSeleccionada: null,
-      imagenesGaleria: [],
-      tituloGaleria: "",
+      indicePublicacionSeleccionada: 0,
+      enfocarComentariosDetalle: false,
       resenasResumen: null,
       resenasDestacadas: [],
       cargandoResenas: false,
@@ -711,6 +719,9 @@ export default {
     };
   },
   computed: {
+    idPerfilActivoActual() {
+      return idPerfilActivo();
+    },
     idResena() {
       const id = this.$route.params.idCalificacion;
       if (id == null || id === "") return null;
@@ -845,6 +856,10 @@ export default {
     },
     "$route.query"() {
       this.sincronizarPublicacionesDesdeRuta();
+    },
+    idPerfilActivoActual() {
+      this.cargarPublicaciones();
+      this.cargarPublicacionesPerfil();
     },
   },
   methods: {
@@ -1015,6 +1030,7 @@ export default {
         this.publicacionesPerfil = contenido
           .map(normalizarPublicacion)
           .filter(Boolean);
+        sincronizarPublicaciones(this.publicacionesPerfil);
       } catch (error) {
         if (
           this.controladorPublicacionesPerfil !== controller ||
@@ -1022,6 +1038,16 @@ export default {
         ) {
           return;
         }
+        const tipo = clasificarErrorPublicacion(error);
+        if (tipo === "SIN_PERFIL") {
+          this.alSinPerfilActivo();
+          return;
+        }
+        if (tipo === "PERFIL_INACTIVO") {
+          await this.alPerfilInactivo();
+          return;
+        }
+
         this.publicacionesPerfil = [];
         this.errorPublicacionesPerfil = mensajeErrorApi(
           error,
@@ -1205,6 +1231,7 @@ export default {
           if (this.controladorPublicaciones !== controller) return;
 
           this.publicaciones = resultado.publicaciones;
+          sincronizarPublicaciones(this.publicaciones);
           this.paginacionPublicaciones = resultado.paginacion;
         } else {
           const response = await publicacionService.listarPorPerfil(
@@ -1228,6 +1255,7 @@ export default {
           this.publicaciones = contenido
             .map(normalizarPublicacion)
             .filter(Boolean);
+          sincronizarPublicaciones(this.publicaciones);
           this.paginacionPublicaciones = {
             paginaActual: Number(data.paginaActual) || 0,
             totalPaginas: Number(data.totalPaginas) || 1,
@@ -1246,6 +1274,16 @@ export default {
 
         const status = error?.response?.status;
         const mensaje = error?.response?.data?.message || "";
+        const tipo = clasificarErrorPublicacion(error);
+
+        if (tipo === "SIN_PERFIL") {
+          this.alSinPerfilActivo();
+          return;
+        }
+        if (tipo === "PERFIL_INACTIVO") {
+          await this.alPerfilInactivo();
+          return;
+        }
 
         if (status === 400) {
           this.errorFechasPublicaciones =
@@ -1316,6 +1354,8 @@ export default {
           (Number(b.idPublicacion) || 0) - (Number(a.idPublicacion) || 0)
         );
       });
+
+      sincronizarPublicaciones(lista);
 
       const totalElementos = lista.length;
       const totalPaginas = Math.max(
@@ -1544,23 +1584,64 @@ export default {
         });
       });
     },
-    abrirDetallePublicacion(publicacion) {
-      if (!publicacion) return;
+    abrirDetallePublicacion(payload) {
+      const publicacion = payload?.publicacion || payload;
+      if (!publicacion?.idPublicacion) return;
       this.publicacionSeleccionada = publicacion;
+      this.indicePublicacionSeleccionada = Number(payload?.indice) || 0;
+      this.enfocarComentariosDetalle = false;
       this.modalPublicacionVisible = true;
     },
-    abrirEliminarDesdeDetalle(publicacion) {
-      this.modalPublicacionVisible = false;
-      this.$nextTick(() => this.abrirEliminarPublicacion(publicacion));
+    abrirComentariosPublicacion(publicacion) {
+      this.abrirDetallePublicacion({ publicacion, indice: 0 });
+      this.enfocarComentariosDetalle = true;
     },
-    abrirGaleriaPublicacion(publicacion) {
-      if (!Array.isArray(publicacion?.imagenes) || !publicacion.imagenes.length) {
-        return;
+    alPublicacionNoDisponible(publicacion) {
+      const id = publicacion?.idPublicacion;
+      if (id != null) {
+        marcarNoDisponible(id);
+        this.quitarPublicacionDeListas(id);
       }
-      this.imagenesGaleria = publicacion.imagenes;
-      this.tituloGaleria = publicacion.titulo;
+      this.alPublicacionDetalleNoDisponible();
+    },
+    alPublicacionDetalleNoDisponible() {
       this.modalPublicacionVisible = false;
-      this.modalGaleriaPublicacionVisible = true;
+      this.publicacionSeleccionada = null;
+      this.enfocarComentariosDetalle = false;
+      this.toast.init({
+        title: "Publicación no disponible",
+        message: "La publicación fue eliminada o ya no está visible.",
+        color: "warning",
+        position: "top-right",
+        duration: 5000,
+      });
+    },
+    alSinPerfilActivo() {
+      this.modalPublicacionVisible = false;
+      this.publicacionSeleccionada = null;
+      this.enfocarComentariosDetalle = false;
+      this.toast.init({
+        title: "Seleccioná un perfil",
+        message: "Para interactuar con publicaciones necesitás un perfil activo.",
+        color: "warning",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.$router.push({ name: "dashboard-usuario" });
+    },
+    async alPerfilInactivo() {
+      this.modalPublicacionVisible = false;
+      this.publicacionSeleccionada = null;
+      this.enfocarComentariosDetalle = false;
+      await refrescarSesion();
+      this.toast.init({
+        title: "Perfil no disponible",
+        message: "El perfil activo se encuentra en baja. Elegí otro perfil.",
+        color: "warning",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.$router.push({ name: "dashboard-usuario" });
     },
     irAProyectoPublicacion(proyecto) {
       if (proyecto?.idProyecto == null) return;

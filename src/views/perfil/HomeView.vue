@@ -27,7 +27,11 @@
       @ver-todos-proyectos="irAProyectos"
       @ver-todas-oportunidades="irABuscarOportunidades"
       @nueva-publicacion="abrirNuevaPublicacion"
-      @abrir-galeria-publicacion="abrirGaleriaPublicacion"
+      @abrir-publicacion="abrirDetallePublicacion"
+      @ver-comentarios="abrirComentariosPublicacion"
+      @no-disponible="alPublicacionNoDisponible"
+      @sin-perfil="alSinPerfilActivo"
+      @perfil-inactivo="alPerfilInactivo"
       @ver-proyecto-publicacion="irAProyectoPublicacion"
       @editar-publicacion="editarPublicacion"
       @invitar-colaborador="abrirInvitarColaborador"
@@ -89,10 +93,16 @@
       @confirmar="confirmarEliminarPublicacion"
     />
 
-    <GaleriaPublicacionModal
-      v-model="modalGaleriaPublicacionVisible"
-      :imagenes="imagenesGaleria"
-      :titulo="tituloGaleria"
+    <PublicacionDetalleModal
+      v-model="modalDetallePublicacionVisible"
+      :publicacion="publicacionDetalle"
+      :id-publicacion="publicacionDetalle?.idPublicacion"
+      :indice-inicial="indiceDetallePublicacion"
+      :enfocar-comentarios="enfocarComentariosDetalle"
+      @ver-proyecto="irAProyectoPublicacion"
+      @no-disponible="alPublicacionNoDisponible"
+      @sin-perfil="alSinPerfilActivo"
+      @perfil-inactivo="alPerfilInactivo"
     />
   </div>
 </template>
@@ -107,14 +117,26 @@ import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
 import ModalEliminarPublicacion from "../../components/perfil/ModalEliminarPublicacion.vue";
-import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
+import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
 import {
   accionBajaPublicacion,
   normalizarPublicacion,
 } from "../../utils/publicacionConstants.js";
-import { setPerfilActivo, refrescarSesion } from "../../services/authState.js";
+import {
+  marcarNoDisponible,
+  sincronizarPublicacion,
+  sincronizarPublicaciones,
+} from "../../services/publicacionInteraccionState.js";
+import {
+  idPerfilActivo,
+  setPerfilActivo,
+  refrescarSesion,
+} from "../../services/authState.js";
 import { useToast } from "vuestic-ui";
-import { mensajeErrorApi } from "../../utils/apiError";
+import {
+  clasificarErrorPublicacion,
+  mensajeErrorApi,
+} from "../../utils/apiError";
 import { clasificarErrorProyecto } from "../../utils/erroresProyecto.js";
 import { ordenarProyectosInicio } from "../../utils/proyectoConstants.js";
 import {
@@ -142,12 +164,12 @@ export default {
   name: "HomeView",
   components: {
     BaseAlert,
-    GaleriaPublicacionModal,
     HomeFeed,
     ModalEliminarPublicacion,
     ModalInvitarColaborador,
     ModalNuevaPublicacion,
     ModalPostulacion,
+    PublicacionDetalleModal,
   },
   setup() {
     return { toast: useToast() };
@@ -184,14 +206,23 @@ export default {
       hayMasPublicacionesFeed: false,
       cargandoMasPublicacionesFeed: false,
       controladorFeedPublicaciones: null,
-      modalGaleriaPublicacionVisible: false,
-      imagenesGaleria: [],
-      tituloGaleria: "",
+      modalDetallePublicacionVisible: false,
+      publicacionDetalle: null,
+      indiceDetallePublicacion: 0,
+      enfocarComentariosDetalle: false,
     };
   },
   computed: {
     modalPostulacionSinFechaEntrega() {
       return !this.modalPostulacion.fechaEntrega;
+    },
+    idPerfilActivoActual() {
+      return idPerfilActivo();
+    },
+  },
+  watch: {
+    idPerfilActivoActual() {
+      this.cargarFeedPublicaciones();
     },
   },
   mounted() {
@@ -423,6 +454,7 @@ export default {
         this.publicacionesFeed = append
           ? [...this.publicacionesFeed, ...normalizadas]
           : normalizadas;
+        sincronizarPublicaciones(normalizadas);
         this.paginaPublicacionesFeed = Number(data.paginaActual) || pagina;
         this.hayMasPublicacionesFeed = data.ultima === false;
       } catch (error) {
@@ -436,6 +468,15 @@ export default {
 
         const status = error?.response?.status;
         const mensaje = error?.response?.data?.message || "";
+        const tipo = clasificarErrorPublicacion(error);
+        if (tipo === "SIN_PERFIL") {
+          this.alSinPerfilActivo();
+          return;
+        }
+        if (tipo === "PERFIL_INACTIVO") {
+          await this.alPerfilInactivo();
+          return;
+        }
         if (status === 404) {
           this.errorPublicacionesFeed =
             mensaje || "No hay un perfil activo para cargar el feed.";
@@ -469,13 +510,63 @@ export default {
         append: true,
       });
     },
-    abrirGaleriaPublicacion(publicacion) {
-      if (!Array.isArray(publicacion?.imagenes) || !publicacion.imagenes.length) {
-        return;
+    abrirDetallePublicacion(payload) {
+      const publicacion = payload?.publicacion || payload;
+      if (!publicacion?.idPublicacion) return;
+
+      this.publicacionDetalle = publicacion;
+      this.indiceDetallePublicacion = Number(payload?.indice) || 0;
+      this.enfocarComentariosDetalle = false;
+      sincronizarPublicacion(publicacion);
+      this.modalDetallePublicacionVisible = true;
+    },
+    abrirComentariosPublicacion(publicacion) {
+      this.abrirDetallePublicacion({ publicacion, indice: 0 });
+      this.enfocarComentariosDetalle = true;
+    },
+    alPublicacionNoDisponible(publicacion) {
+      const id = publicacion?.idPublicacion;
+      if (id != null) {
+        marcarNoDisponible(id);
+        this.quitarPublicacionDelFeed(id);
       }
-      this.imagenesGaleria = publicacion.imagenes;
-      this.tituloGaleria = publicacion.titulo;
-      this.modalGaleriaPublicacionVisible = true;
+      this.modalDetallePublicacionVisible = false;
+      this.publicacionDetalle = null;
+      this.enfocarComentariosDetalle = false;
+      this.toast.init({
+        title: "Publicación no disponible",
+        message: "La publicación fue eliminada o ya no está visible.",
+        color: "info",
+        position: "top-right",
+        duration: 5000,
+      });
+    },
+    alSinPerfilActivo() {
+      this.modalDetallePublicacionVisible = false;
+      this.publicacionDetalle = null;
+      this.enfocarComentariosDetalle = false;
+      this.toast.init({
+        title: "Seleccioná un perfil",
+        message: "Para interactuar con publicaciones necesitás un perfil activo.",
+        color: "warning",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.$router.push({ name: "dashboard-usuario" });
+    },
+    async alPerfilInactivo() {
+      this.modalDetallePublicacionVisible = false;
+      this.publicacionDetalle = null;
+      this.enfocarComentariosDetalle = false;
+      await refrescarSesion();
+      this.toast.init({
+        title: "Perfil no disponible",
+        message: "El perfil activo se encuentra en baja. Elegí otro perfil.",
+        color: "warning",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.$router.push({ name: "dashboard-usuario" });
     },
     irAProyectoPublicacion(proyecto) {
       if (proyecto?.idProyecto == null) return;

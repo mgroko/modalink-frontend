@@ -80,7 +80,11 @@
           :error="errorPublicaciones"
           :hay-mas="hayMasPublicaciones"
           :cargando-mas="cargandoMasPublicaciones"
-          @abrir-galeria="$emit('abrir-galeria-publicacion', $event)"
+          @abrir-publicacion="$emit('abrir-publicacion', $event)"
+          @ver-comentarios="$emit('ver-comentarios', $event)"
+          @no-disponible="$emit('no-disponible', $event)"
+          @sin-perfil="$emit('sin-perfil', $event)"
+          @perfil-inactivo="$emit('perfil-inactivo', $event)"
           @ver-proyecto="$emit('ver-proyecto-publicacion', $event)"
           @editar="$emit('editar-publicacion', $event)"
           @invitar="$emit('invitar-colaborador', $event)"
@@ -180,7 +184,11 @@ export default {
     "ver-todos-proyectos",
     "ver-todas-oportunidades",
     "nueva-publicacion",
-    "abrir-galeria-publicacion",
+    "abrir-publicacion",
+    "ver-comentarios",
+    "no-disponible",
+    "sin-perfil",
+    "perfil-inactivo",
     "ver-proyecto-publicacion",
     "editar-publicacion",
     "invitar-colaborador",

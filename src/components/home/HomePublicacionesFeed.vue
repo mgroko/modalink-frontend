@@ -34,7 +34,12 @@
           :key="publicacion.idPublicacion"
           :publicacion="publicacion"
           mostrar-acciones-baja
-          @abrir-galeria="$emit('abrir-galeria', $event)"
+          clickable
+          @abrir="$emit('abrir-publicacion', $event)"
+          @ver-comentarios="$emit('ver-comentarios', $event)"
+          @no-disponible="$emit('no-disponible', $event)"
+          @sin-perfil="$emit('sin-perfil', $event)"
+          @perfil-inactivo="$emit('perfil-inactivo', $event)"
           @ver-proyecto="$emit('ver-proyecto', $event)"
           @editar="$emit('editar', $event)"
           @invitar="$emit('invitar', $event)"
@@ -85,7 +90,11 @@ export default {
     },
   },
   emits: [
-    "abrir-galeria",
+    "abrir-publicacion",
+    "ver-comentarios",
+    "no-disponible",
+    "sin-perfil",
+    "perfil-inactivo",
     "ver-proyecto",
     "editar",
     "invitar",

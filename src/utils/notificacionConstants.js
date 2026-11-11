@@ -51,6 +51,8 @@ export const TIPOS_NOTIFICACION = {
   SOLICITUD_COLABORACION_RECIBIDA: "SOLICITUD_COLABORACION_RECIBIDA",
   SOLICITUD_COLABORACION_ACEPTADA: "SOLICITUD_COLABORACION_ACEPTADA",
   SOLICITUD_COLABORACION_RECHAZADA: "SOLICITUD_COLABORACION_RECHAZADA",
+  PUBLICACION_MEGUSTA: "PUBLICACION_MEGUSTA",
+  PUBLICACION_COMENTARIO: "PUBLICACION_COMENTARIO",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -125,6 +127,10 @@ const ETIQUETAS_TIPO = {
     "Solicitud de colaboración aceptada",
   [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECHAZADA]:
     "Solicitud de colaboración rechazada",
+  [TIPOS_NOTIFICACION.PUBLICACION_MEGUSTA]:
+    "Nueva interacción en publicación",
+  [TIPOS_NOTIFICACION.PUBLICACION_COMENTARIO]:
+    "Nuevo comentario en publicación",
 };
 
 const ICONOS_TIPO = {
@@ -171,6 +177,8 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECIBIDA]: "person_add",
   [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_ACEPTADA]: "check_circle",
   [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECHAZADA]: "cancel",
+  [TIPOS_NOTIFICACION.PUBLICACION_MEGUSTA]: "favorite",
+  [TIPOS_NOTIFICACION.PUBLICACION_COMENTARIO]: "chat_bubble",
 };
 
 /**
@@ -325,6 +333,29 @@ export function destinoNotificacion(notificacion) {
             ruta: {
               name: RUTAS_NOTIFICACION.PUBLICACION,
               params: { idPublicacion: id },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.PUBLICACION_MEGUSTA:
+    case TIPOS_NOTIFICACION.PUBLICACION_COMENTARIO: {
+      // El backend de UC-66 envía entidadTipo=PUBLICACION y entidadId.
+      // No usa idProyecto para estos tipos.
+      const id =
+        (notificacion.entidadTipo === "PUBLICACION"
+          ? idValido(notificacion.entidadId)
+          : null) ?? idValido(notificacion.idPublicacion);
+
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver publicación",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PUBLICACION,
+              params: { idPublicacion: id },
+              ...(tipo === TIPOS_NOTIFICACION.PUBLICACION_COMENTARIO
+                ? { hash: "#comentarios" }
+                : {}),
             },
           };
     }

@@ -53,6 +53,47 @@ import http from "./http";
  * @property {Array<object>} colaboradores
  * @property {number} cantidadMeGusta
  * @property {number} cantidadComentarios
+ * @property {boolean} meGusta relativo al perfil activo
+ */
+
+/**
+ * @typedef {Object} MeGustaResponse
+ * @property {number} idPublicacion
+ * @property {boolean} meGusta
+ * @property {number} cantidadMeGusta
+ */
+
+/**
+ * @typedef {Object} ComentarioAutorResponse
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string} profesion
+ * @property {string|null} [fotoUrl]
+ */
+
+/**
+ * @typedef {Object} ComentarioResponse
+ * @property {number} idComentario
+ * @property {number} idPublicacion
+ * @property {ComentarioAutorResponse} autor
+ * @property {string} texto
+ * @property {string} fechaComentario
+ */
+
+/**
+ * @typedef {Object} PaginaComentariosResponse
+ * @property {ComentarioResponse[]} contenido
+ * @property {number} paginaActual
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} CrearComentarioRequest
+ * @property {string} texto
  */
 
 /**
@@ -150,6 +191,62 @@ const publicacionService = {
    */
   obtenerDetalle(idPublicacion, signal) {
     return http.get(`/publicaciones/${idPublicacion}/detalle`, {
+      signal,
+    });
+  },
+
+  /**
+   * POST /publicaciones/{idPublicacion}/me-gusta — UC-66.
+   * Idempotente: si el perfil ya dio Me gusta, devuelve el mismo estado.
+   *
+   * @param {number|string} idPublicacion
+   * @returns {Promise<{data: MeGustaResponse}>} 200 OK
+   */
+  darMeGusta(idPublicacion) {
+    return http.post(`/publicaciones/${idPublicacion}/me-gusta`);
+  },
+
+  /**
+   * DELETE /publicaciones/{idPublicacion}/me-gusta — UC-66.
+   * Idempotente: si el perfil no había dado Me gusta, devuelve el estado
+   * actual sin error.
+   *
+   * @param {number|string} idPublicacion
+   * @returns {Promise<{data: MeGustaResponse}>} 200 OK
+   */
+  quitarMeGusta(idPublicacion) {
+    return http.delete(`/publicaciones/${idPublicacion}/me-gusta`);
+  },
+
+  /**
+   * POST /publicaciones/{idPublicacion}/comentarios — UC-66.
+   * El backend aplica trim y valida hasta 1000 caracteres.
+   *
+   * @param {number|string} idPublicacion
+   * @param {CrearComentarioRequest} request
+   * @returns {Promise<{data: ComentarioResponse}>} 201 Created
+   */
+  crearComentario(idPublicacion, request) {
+    return http.post(`/publicaciones/${idPublicacion}/comentarios`, {
+      texto: String(request?.texto || "").trim(),
+    });
+  },
+
+  /**
+   * GET /publicaciones/{idPublicacion}/comentarios — UC-66.
+   * Orden ascendente por fecha e id. `size` entre 1 y 50.
+   *
+   * @param {number|string} idPublicacion
+   * @param {{page?:number,size?:number}} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PaginaComentariosResponse}>} 200 OK
+   */
+  listarComentarios(idPublicacion, params = {}, signal) {
+    const page = Math.max(0, Number(params.page) || 0);
+    const size = Math.min(50, Math.max(1, Number(params.size) || 10));
+
+    return http.get(`/publicaciones/${idPublicacion}/comentarios`, {
+      params: { page, size },
       signal,
     });
   },
