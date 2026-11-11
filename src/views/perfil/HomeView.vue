@@ -30,6 +30,7 @@
       @abrir-galeria-publicacion="abrirGaleriaPublicacion"
       @ver-proyecto-publicacion="irAProyectoPublicacion"
       @editar-publicacion="editarPublicacion"
+      @invitar-colaborador="abrirInvitarColaborador"
       @reintentar-publicaciones="cargarFeedPublicaciones()"
       @cargar-mas-publicaciones="cargarMasPublicaciones"
     />
@@ -72,6 +73,12 @@
       @actualizada="alActualizarPublicacion"
     />
 
+    <ModalInvitarColaborador
+      v-model="modalInvitarColaboradorVisible"
+      :publicacion="publicacionInvitar"
+      @enviada="alEnviarInvitacion"
+    />
+
     <GaleriaPublicacionModal
       v-model="modalGaleriaPublicacionVisible"
       :imagenes="imagenesGaleria"
@@ -88,6 +95,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import HomeFeed from "../../components/home/HomeFeed.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
+import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import { normalizarPublicacion } from "../../utils/publicacionConstants.js";
 import { setPerfilActivo, refrescarSesion } from "../../services/authState.js";
@@ -122,6 +130,7 @@ export default {
     BaseAlert,
     GaleriaPublicacionModal,
     HomeFeed,
+    ModalInvitarColaborador,
     ModalNuevaPublicacion,
     ModalPostulacion,
   },
@@ -146,6 +155,8 @@ export default {
       modalNuevaPublicacionVisible: false,
       modalEditarPublicacionVisible: false,
       publicacionEditando: null,
+      modalInvitarColaboradorVisible: false,
+      publicacionInvitar: null,
       publicacionesFeed: [],
       cargandoPublicacionesFeed: false,
       errorPublicacionesFeed: "",
@@ -271,6 +282,23 @@ export default {
       if (!publicacion?.idPublicacion) return;
       this.publicacionEditando = publicacion;
       this.modalEditarPublicacionVisible = true;
+    },
+    abrirInvitarColaborador(publicacion) {
+      if (!publicacion?.idPublicacion) return;
+      this.publicacionInvitar = publicacion;
+      this.modalInvitarColaboradorVisible = true;
+    },
+    alEnviarInvitacion(invitacion) {
+      this.modalInvitarColaboradorVisible = false;
+      this.toast.init({
+        title: "Solicitud enviada",
+        message: `Se invitó a ${
+          invitacion?.nombre || "el contacto"
+        } a colaborar.`,
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
     },
     alActualizarPublicacion() {
       this.modalEditarPublicacionVisible = false;

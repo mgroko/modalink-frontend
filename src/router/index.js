@@ -32,7 +32,8 @@ import BuscarContratosView from "../views/contrato/BuscarContratosView.vue";
 import ContratosPendientesView from "../views/contrato/ContratosPendientesView.vue";
 import DetalleContratoView from "../views/contrato/DetalleContratoView.vue";
 import ModificarContratoView from "../views/contrato/ModificarContratoView.vue";
-import InvitacionesView from "../views/proyecto/InvitacionesView.vue";
+import SolicitudesView from "../views/proyecto/SolicitudesView.vue";
+import PublicacionDetalleView from "../views/perfil/PublicacionDetalleView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
@@ -273,10 +274,20 @@ const routes = [
     meta: { layout: HomeLayout, titulo: "Detalle del contrato", requiresActiveProfile: true, navActiva: "contratos" },
   },
   {
+    path: "/solicitudes",
+    name: "solicitudes",
+    component: SolicitudesView,
+    meta: { layout: HomeLayout, titulo: "Solicitudes", requiresActiveProfile: true, navActiva: "solicitudes" },
+  },
+  {
     path: "/invitaciones",
-    name: "invitaciones",
-    component: InvitacionesView,
-    meta: { layout: HomeLayout, titulo: "Invitaciones", requiresActiveProfile: true, navActiva: "invitaciones" },
+    redirect: (to) => ({ name: "solicitudes", query: to.query }),
+  },
+  {
+    path: "/publicaciones/:idPublicacion",
+    name: "publicacion-detalle",
+    component: PublicacionDetalleView,
+    meta: { layout: HomeLayout, titulo: "Publicación", requiresActiveProfile: true, sinFondoBlanco: true },
   },
   {
     path: "/proyectos/:id/actividades/crear",

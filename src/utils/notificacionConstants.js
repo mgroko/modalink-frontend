@@ -47,6 +47,9 @@ export const TIPOS_NOTIFICACION = {
   CONTRATO_ACTIVO: "CONTRATO_ACTIVO",
   CONTRATO_RECHAZADO: "CONTRATO_RECHAZADO",
   CONTRATO_ELIMINADO: "CONTRATO_ELIMINADO",
+  SOLICITUD_COLABORACION_RECIBIDA: "SOLICITUD_COLABORACION_RECIBIDA",
+  SOLICITUD_COLABORACION_ACEPTADA: "SOLICITUD_COLABORACION_ACEPTADA",
+  SOLICITUD_COLABORACION_RECHAZADA: "SOLICITUD_COLABORACION_RECHAZADA",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -55,7 +58,8 @@ export const RUTAS_NOTIFICACION = {
   ACTIVIDAD: "actividad-proyecto",
   ADMIN_REPORTE_PERFIL: "admin-reporte-perfil",
   CALIFICACIONES: "calificaciones-proyecto",
-  INVITACIONES: "invitaciones",
+  INVITACIONES: "solicitudes",
+  PUBLICACION: "publicacion-detalle",
   CONTRATO: "detalle-contrato",
   MI_RED: "mi-red",
   MENSAJES: "mensajes",
@@ -112,6 +116,12 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.CONTRATO_ACTIVO]: "Contrato activo",
   [TIPOS_NOTIFICACION.CONTRATO_RECHAZADO]: "Contrato rechazado",
   [TIPOS_NOTIFICACION.CONTRATO_ELIMINADO]: "Contrato eliminado",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECIBIDA]:
+    "Solicitud de colaboración recibida",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_ACEPTADA]:
+    "Solicitud de colaboración aceptada",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECHAZADA]:
+    "Solicitud de colaboración rechazada",
 };
 
 const ICONOS_TIPO = {
@@ -154,6 +164,9 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.CONTRATO_ACTIVO]: "verified",
   [TIPOS_NOTIFICACION.CONTRATO_RECHAZADO]: "cancel",
   [TIPOS_NOTIFICACION.CONTRATO_ELIMINADO]: "delete",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECIBIDA]: "person_add",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_ACEPTADA]: "check_circle",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECHAZADA]: "cancel",
 };
 
 /**
@@ -288,6 +301,26 @@ export function destinoNotificacion(notificacion) {
           },
         },
       };
+    }
+
+    case TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECIBIDA:
+    case TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_ACEPTADA:
+    case TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECHAZADA: {
+      const id =
+        idValido(notificacion.idPublicacion) ??
+        (notificacion.entidadTipo === "PUBLICACION"
+          ? idValido(notificacion.entidadId)
+          : null);
+
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver publicación",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PUBLICACION,
+              params: { idPublicacion: id },
+            },
+          };
     }
 
     case TIPOS_NOTIFICACION.CONEXION_ELIMINADA: {

@@ -140,6 +140,21 @@ const publicacionService = {
   },
 
   /**
+   * GET /publicaciones/{idPublicacion}/detalle
+   * Detalle visible para cualquier perfil activo, no sólo el dueño. Es el
+   * endpoint que usan las notificaciones al abrir /publicaciones/{id}.
+   *
+   * @param {number|string} idPublicacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PublicacionResponse}>} 200 OK
+   */
+  obtenerDetalle(idPublicacion, signal) {
+    return http.get(`/publicaciones/${idPublicacion}/detalle`, {
+      signal,
+    });
+  },
+
+  /**
    * PUT /publicaciones/{idPublicacion} — UC-21.
    * Reemplazo total. Hay que reenviar título, descripción, proyecto,
    * ubicación e IDs de imágenes conservadas en cada request.

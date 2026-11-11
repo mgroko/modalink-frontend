@@ -83,6 +83,7 @@
           @abrir-galeria="$emit('abrir-galeria-publicacion', $event)"
           @ver-proyecto="$emit('ver-proyecto-publicacion', $event)"
           @editar="$emit('editar-publicacion', $event)"
+          @invitar="$emit('invitar-colaborador', $event)"
           @reintentar="$emit('reintentar-publicaciones')"
           @cargar-mas="$emit('cargar-mas-publicaciones')"
         />
@@ -181,6 +182,7 @@ export default {
     "abrir-galeria-publicacion",
     "ver-proyecto-publicacion",
     "editar-publicacion",
+    "invitar-colaborador",
     "reintentar-publicaciones",
     "cargar-mas-publicaciones",
   ],

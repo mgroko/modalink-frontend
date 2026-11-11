@@ -96,6 +96,52 @@
       </button>
     </div>
 
+    <div
+      v-if="colaboradores.length || esPropia"
+      class="publicacion-card__colaboradores"
+    >
+      <span
+        class="material-symbols-outlined publicacion-card__colaboradores-icono"
+        aria-hidden="true"
+      >
+        group
+      </span>
+
+      <span
+        v-for="colaborador in colaboradoresVisibles"
+        :key="colaborador.idPerfil || colaborador.nombreArtistico"
+        class="publicacion-card__colaborador"
+      >
+        <span class="publicacion-card__colaborador-avatar" aria-hidden="true">
+          <img
+            v-if="colaboradorFoto(colaborador)"
+            :src="colaboradorFoto(colaborador)"
+            :alt="colaboradorNombre(colaborador)"
+          />
+          <template v-else>{{ inicialesColaborador(colaborador) }}</template>
+        </span>
+        {{ colaboradorNombre(colaborador) }}
+      </span>
+
+      <span
+        v-if="colaboradoresRestantes > 0"
+        class="publicacion-card__colaboradores-mas"
+      >
+        y {{ colaboradoresRestantes }} más
+      </span>
+
+      <VaButton
+        v-if="esPropia"
+        class="publicacion-card__invitar"
+        preset="secondary"
+        size="small"
+        icon="mso-person_add"
+        @click="$emit('invitar', publicacion)"
+      >
+        Invitar a colaborar
+      </VaButton>
+    </div>
+
     <footer
       v-if="modo === 'modal' || proyectoVisible"
       class="publicacion-card__footer"
@@ -138,7 +184,7 @@ export default {
       validator: (valor) => ["inline", "modal"].includes(valor),
     },
   },
-  emits: ["abrir-galeria", "ver-proyecto", "cerrar", "editar"],
+  emits: ["abrir-galeria", "ver-proyecto", "cerrar", "editar", "invitar"],
   data() {
     return {
       expandida: false,
@@ -202,6 +248,17 @@ export default {
     descripcionLarga() {
       return String(this.publicacion?.descripcion || "").length > 240;
     },
+    colaboradores() {
+      return Array.isArray(this.publicacion?.colaboradores)
+        ? this.publicacion.colaboradores
+        : [];
+    },
+    colaboradoresVisibles() {
+      return this.colaboradores.slice(0, 3);
+    },
+    colaboradoresRestantes() {
+      return Math.max(0, this.colaboradores.length - 3);
+    },
   },
   watch: {
     "publicacion.idPublicacion"() {
@@ -211,6 +268,24 @@ export default {
   methods: {
     resolverImagen(imagen) {
       return resolverFotoUrl(imagen?.url);
+    },
+    colaboradorNombre(colaborador) {
+      return (
+        colaborador?.nombreArtistico ||
+        colaborador?.nombre ||
+        "Colaborador"
+      );
+    },
+    colaboradorFoto(colaborador) {
+      return resolverFotoUrl(colaborador?.fotoUrl);
+    },
+    inicialesColaborador(colaborador) {
+      return this.colaboradorNombre(colaborador)
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((parte) => parte.charAt(0).toUpperCase())
+        .join("");
     },
   },
 };
@@ -425,6 +500,59 @@ export default {
 
 .publicacion-card__ver-mas:hover {
   text-decoration: underline;
+}
+
+.publicacion-card__colaboradores {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-top: 0.1rem;
+}
+
+.publicacion-card__colaboradores-icono {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+}
+
+.publicacion-card__colaborador {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.45rem 0.15rem 0.2rem;
+  color: var(--color-text);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  font-size: 0.72rem;
+}
+
+.publicacion-card__colaborador-avatar {
+  display: grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  place-items: center;
+  overflow: hidden;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border-radius: 50%;
+  font-size: 0.5rem;
+  font-weight: 700;
+}
+
+.publicacion-card__colaborador-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.publicacion-card__colaboradores-mas {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.publicacion-card__invitar {
+  margin-left: auto;
 }
 
 .publicacion-card__footer {

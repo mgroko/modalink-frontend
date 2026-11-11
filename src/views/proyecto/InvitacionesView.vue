@@ -1,6 +1,6 @@
 <template>
   <div class="invitaciones">
-    <header class="invitaciones__cabecera">
+    <header v-if="!embebido" class="invitaciones__cabecera">
       <h1 class="invitaciones__titulo">Invitaciones</h1>
       <p class="invitaciones__subtitulo">
         Revisá las invitaciones a proyectos y las invitaciones de reemplazo.
@@ -420,6 +420,12 @@ export default {
     ModalDetalleInvitacionReemplazo,
     ModalGestionInvitacionReemplazo,
   },
+  props: {
+    embebido: {
+      type: Boolean,
+      default: false,
+    },
+  },
   setup() {
     return { toast: useToast() };
   },
@@ -714,7 +720,7 @@ export default {
       if (direccion === SECCION_REEMPLAZOS) query.seccion = "reemplazos";
       else if (direccion === SECCION_RECHAZADAS) query.seccion = "rechazadas";
       else delete query.seccion;
-      this.$router.replace({ name: "invitaciones", query }).catch(() => {});
+      this.$router.replace({ name: "solicitudes", query }).catch(() => {});
 
       if (direccion === SECCION_REEMPLAZOS) {
         this.cargarReemplazos();

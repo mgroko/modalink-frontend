@@ -36,6 +36,7 @@
           @abrir-galeria="$emit('abrir-galeria', $event)"
           @ver-proyecto="$emit('ver-proyecto', $event)"
           @editar="$emit('editar', $event)"
+          @invitar="$emit('invitar', $event)"
         />
       </div>
 
@@ -81,7 +82,7 @@ export default {
       default: false,
     },
   },
-  emits: ["abrir-galeria", "ver-proyecto", "editar", "reintentar", "cargar-mas"],
+  emits: ["abrir-galeria", "ver-proyecto", "editar", "invitar", "reintentar", "cargar-mas"],
 };
 </script>
 

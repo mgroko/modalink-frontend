@@ -356,6 +356,7 @@
                     @abrir-galeria="abrirGaleriaPublicacion"
                     @ver-proyecto="irAProyectoPublicacion"
                     @editar="editarPublicacion"
+                    @invitar="abrirInvitarColaborador"
                   />
                 </div>
 
@@ -517,6 +518,7 @@
         @abrir-galeria="abrirGaleriaPublicacion"
         @ver-proyecto="irAProyectoPublicacion"
         @editar="editarPublicacion"
+        @invitar="abrirInvitarColaborador"
       />
 
       <ModalNuevaPublicacion
@@ -524,6 +526,12 @@
         modo="editar"
         :publicacion="publicacionEditando"
         @actualizada="alActualizarPublicacion"
+      />
+
+      <ModalInvitarColaborador
+        v-model="modalInvitarColaboradorVisible"
+        :publicacion="publicacionInvitar"
+        @enviada="alEnviarInvitacion"
       />
 
       <GaleriaPublicacionModal
@@ -557,6 +565,7 @@ import PublicacionCardCompacta from "../../components/perfil/PublicacionCardComp
 import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
+import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
 import {
   esAdmin,
   idPerfilActivo,
@@ -640,6 +649,7 @@ export default {
     EstadoProyectoBadge,
     FiltrosPublicaciones,
     GaleriaPublicacionModal,
+    ModalInvitarColaborador,
     ModalNuevaPublicacion,
     PaginacionResultados,
     PerfilHero,
@@ -694,6 +704,8 @@ export default {
       modalNuevaPublicacionVisible: false,
       modalEditarPublicacionVisible: false,
       publicacionEditando: null,
+      modalInvitarColaboradorVisible: false,
+      publicacionInvitar: null,
       modalPublicacionVisible: false,
       publicacionSeleccionada: null,
       modalGaleriaPublicacionVisible: false,
@@ -1411,6 +1423,24 @@ export default {
       this.publicacionEditando = publicacion;
       this.modalPublicacionVisible = false;
       this.modalEditarPublicacionVisible = true;
+    },
+    abrirInvitarColaborador(publicacion) {
+      if (!publicacion?.idPublicacion) return;
+      this.publicacionInvitar = publicacion;
+      this.modalPublicacionVisible = false;
+      this.modalInvitarColaboradorVisible = true;
+    },
+    alEnviarInvitacion(invitacion) {
+      this.modalInvitarColaboradorVisible = false;
+      this.toast.init({
+        title: "Solicitud enviada",
+        message: `Se invitó a ${
+          invitacion?.nombre || "el contacto"
+        } a colaborar.`,
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
     },
     alActualizarPublicacion() {
       this.modalEditarPublicacionVisible = false;
