@@ -58,7 +58,7 @@
 
         <HomeFeedSection
           v-if="mostrarOportunidades"
-          titulo="Postulaciones disponibles"
+          titulo="Oportunidades disponibles"
           :hay-items="oportunidadesVisibles.length > 0"
           texto-vacio="No hay oportunidades abiertas para tu perfil por ahora."
           :ver-todo="true"
@@ -102,13 +102,13 @@ import HomePublicacionesFeed from "./HomePublicacionesFeed.vue";
 const TABS = [
   { id: "todo", label: "Todo", icon: "grid_view" },
   { id: "proyectos", label: "Proyectos", icon: "business_center" },
-  { id: "postulaciones", label: "Postulaciones", icon: "send" },
+  { id: "oportunidades", label: "Oportunidades", icon: "send" },
 ];
 
 const SUBTITULOS = {
   todo: "Proyectos, oportunidades y publicaciones de tus contactos",
   proyectos: "Proyectos visibles para tu perfil",
-  postulaciones: "Búsquedas abiertas que coinciden con tu perfil",
+  oportunidades: "Oportunidades abiertas que coinciden con tu perfil",
 };
 
 export default {
@@ -193,7 +193,7 @@ export default {
             count: Number(this.totalProyectos) || this.proyectos.length,
           };
         }
-        if (tab.id === "postulaciones") {
+        if (tab.id === "oportunidades") {
           return {
             ...tab,
             count: Number(this.totalOportunidades) || this.oportunidades.length,
@@ -209,7 +209,7 @@ export default {
       return this.tabActiva === "todo" || this.tabActiva === "proyectos";
     },
     mostrarOportunidades() {
-      return this.tabActiva === "todo" || this.tabActiva === "postulaciones";
+      return this.tabActiva === "todo" || this.tabActiva === "oportunidades";
     },
     mostrarPublicaciones() {
       return this.tabActiva === "todo";
