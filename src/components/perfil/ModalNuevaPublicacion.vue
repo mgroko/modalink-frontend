@@ -8,7 +8,12 @@
     @update:model-value="cambiarVisibilidad"
   >
     <template #header>
-      <h3 class="va-h5 nueva-publicacion__titulo">Nueva publicación</h3>
+      <div class="nueva-publicacion__cabecera">
+        <h3 class="va-h5 nueva-publicacion__titulo">Nueva publicación</h3>
+        <p class="nueva-publicacion__subtitulo">
+          Mostrá tu trabajo a la red de ModaLink.
+        </p>
+      </div>
     </template>
 
     <BaseAlert :message="errorGeneral" type="error" />
@@ -55,23 +60,9 @@
         />
 
         <div class="nueva-publicacion__ubicacion">
-          <div class="nueva-publicacion__ubicacion-cabecera">
-            <span class="nueva-publicacion__label">Ubicación (opcional)</span>
-            <VaButton
-              v-if="form.ubicacion"
-              preset="secondary"
-              size="small"
-              color="danger"
-              icon="mso-close"
-              :disabled="subiendo"
-              @click="quitarUbicacion"
-            >
-              Quitar
-            </VaButton>
-          </div>
-
           <SelectorUbicacion
             v-model="form.ubicacion"
+            horizontal
             :disabled="subiendo"
             :error="!!errores.ubicacion"
             :error-message="errores.ubicacion || ''"
@@ -83,13 +74,25 @@
         {{ errorProyectos }}
       </p>
 
+      <div v-if="form.ubicacion" class="nueva-publicacion__quitar-ubicacion">
+        <VaButton
+          preset="secondary"
+          size="small"
+          color="danger"
+          icon="mso-close"
+          :disabled="subiendo"
+          @click="quitarUbicacion"
+        >
+          Quitar ubicación
+        </VaButton>
+      </div>
+
       <section class="nueva-publicacion__imagenes">
         <div class="nueva-publicacion__imagenes-cabecera">
-          <div>
+          <div class="nueva-publicacion__imagenes-titulo">
             <h4 class="nueva-publicacion__label">Imágenes*</h4>
             <p class="nueva-publicacion__ayuda">
-              De 1 a {{ PUBLICACION_IMAGENES.MAX_IMAGENES }} imágenes. La primera
-              será la portada.
+              La primera será la portada.
             </p>
           </div>
           <span class="nueva-publicacion__contador">
@@ -97,13 +100,7 @@
           </span>
         </div>
 
-        <DropzoneImagenes
-          :compacta="archivos.length > 0"
-          :deshabilitada="subiendo || archivos.length >= PUBLICACION_IMAGENES.MAX_IMAGENES"
-          @agregar="agregarArchivos"
-        />
-
-        <div v-if="archivos.length" class="nueva-publicacion__previews">
+        <div class="nueva-publicacion__previews">
           <figure
             v-for="(imagen, indice) in archivos"
             :key="imagen.id"
@@ -128,7 +125,32 @@
               <span class="material-symbols-outlined">close</span>
             </button>
           </figure>
+
+          <button
+            v-if="archivos.length < PUBLICACION_IMAGENES.MAX_IMAGENES"
+            type="button"
+            class="nueva-publicacion__agregar"
+            :disabled="subiendo"
+            @click="seleccionarArchivos"
+          >
+            <span class="material-symbols-outlined">upload</span>
+            <span>Agregar</span>
+          </button>
         </div>
+
+        <input
+          ref="inputArchivos"
+          class="nueva-publicacion__input"
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+          :disabled="subiendo"
+          @change="alSeleccionarArchivos"
+        />
+
+        <p class="nueva-publicacion__ayuda">
+          JPG, PNG o WEBP · hasta 10 MB por imagen
+        </p>
 
         <ul v-if="rechazadas.length" class="nueva-publicacion__rechazadas">
           <li v-for="(rechazada, i) in rechazadas" :key="i">
@@ -180,7 +202,6 @@
 import publicacionService from "../../services/publicacionService";
 import proyectoService from "../../services/proyectoService";
 import BaseAlert from "../AlertaBase.vue";
-import DropzoneImagenes from "../proyecto/DropzoneImagenes.vue";
 import SelectorUbicacion from "../proyecto/SelectorUbicacion.vue";
 import {
   LIMITES_PUBLICACION,
@@ -205,7 +226,6 @@ export default {
   name: "ModalNuevaPublicacion",
   components: {
     BaseAlert,
-    DropzoneImagenes,
     SelectorUbicacion,
   },
   props: {
@@ -298,6 +318,15 @@ export default {
     quitarUbicacion() {
       this.form.ubicacion = null;
       this.limpiarError("ubicacion");
+    },
+    seleccionarArchivos() {
+      if (this.subiendo) return;
+      this.$refs.inputArchivos?.click();
+    },
+    alSeleccionarArchivos(evento) {
+      const archivos = Array.from(evento.target.files || []);
+      if (archivos.length) this.agregarArchivos(archivos);
+      evento.target.value = "";
     },
     async cargarProyectos() {
       if (this.controladorProyectos) this.controladorProyectos.abort();
@@ -487,8 +516,19 @@ export default {
 </script>
 
 <style scoped>
+.nueva-publicacion__cabecera {
+  display: grid;
+  gap: 0.2rem;
+}
+
 .nueva-publicacion__titulo {
   margin: 0;
+}
+
+.nueva-publicacion__subtitulo {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .nueva-publicacion__form {
@@ -499,23 +539,19 @@ export default {
 
 .nueva-publicacion__fila {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: start;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .nueva-publicacion__ubicacion {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  grid-column: span 2;
+  min-width: 0;
 }
 
-.nueva-publicacion__ubicacion-cabecera {
+.nueva-publicacion__quitar-ubicacion {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 1.6rem;
+  justify-content: flex-end;
 }
 
 .nueva-publicacion__label {
@@ -550,6 +586,13 @@ export default {
   gap: 0.75rem;
 }
 
+.nueva-publicacion__imagenes-titulo {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .nueva-publicacion__contador {
   padding: 0.15rem 0.5rem;
   color: var(--color-text-muted);
@@ -562,8 +605,8 @@ export default {
 
 .nueva-publicacion__previews {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 0.55rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
 }
 
 .nueva-publicacion__preview {
@@ -573,10 +616,41 @@ export default {
 
 .nueva-publicacion__preview-img {
   width: 100%;
-  height: 100px;
+  height: 120px;
   border-radius: 8px;
   object-fit: cover;
   background: var(--color-surface-muted);
+}
+
+.nueva-publicacion__agregar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 120px;
+  padding: 0.5rem;
+  color: var(--color-primary);
+  background: var(--color-surface-soft);
+  border: 1.5px dashed var(--color-primary-light);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nueva-publicacion__agregar:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.nueva-publicacion__agregar .material-symbols-outlined {
+  font-size: 1.35rem;
+}
+
+.nueva-publicacion__input {
+  display: none;
 }
 
 .nueva-publicacion__portada {
@@ -665,9 +739,17 @@ export default {
   width: 100%;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 760px) {
   .nueva-publicacion__fila {
     grid-template-columns: 1fr;
+  }
+
+  .nueva-publicacion__ubicacion {
+    grid-column: auto;
+  }
+
+  .nueva-publicacion__previews {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .nueva-publicacion__acciones {

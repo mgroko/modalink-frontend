@@ -22,6 +22,13 @@
         <span v-if="item.contador > 0" class="perfil-nav__badge">
           {{ item.contador }}
         </span>
+        <span
+          v-else-if="!esPropio"
+          class="material-symbols-outlined perfil-nav__chevron"
+          aria-hidden="true"
+        >
+          chevron_right
+        </span>
       </button>
 
       <button
@@ -108,7 +115,7 @@ export default {
     },
     seccionActiva: {
       type: String,
-      default: "publicaciones",
+      default: "perfil",
     },
     /** Estado de la relación entre el perfil activo y el perfil consultado. */
     estadoConexion: {
@@ -158,6 +165,13 @@ export default {
   computed: {
     itemsVisibles() {
       const itemsPropio = [
+        { key: "perfil", label: "Perfil", icono: "person", tipo: "seccion" },
+        {
+          key: "publicaciones",
+          label: "Publicaciones",
+          icono: "photo_library",
+          tipo: "seccion",
+        },
         { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "proyectos-inicio" },
         {
           key: "invitaciones",
@@ -187,6 +201,13 @@ export default {
       ];
 
       const itemsAjeno = [
+        { key: "perfil", label: "Perfil", icono: "person", tipo: "seccion" },
+        {
+          key: "publicaciones",
+          label: "Publicaciones",
+          icono: "photo_library",
+          tipo: "seccion",
+        },
         { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "no-disponible" },
         { key: "participaciones", label: "Participaciones", icono: "groups", tipo: "no-disponible" },
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
@@ -279,6 +300,12 @@ export default {
   font-size: 0.62rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.perfil-nav__chevron {
+  margin-left: auto;
+  color: var(--color-text-subtle);
+  font-size: 1.1rem;
 }
 
 .perfil-nav__item--activo .material-symbols-outlined {

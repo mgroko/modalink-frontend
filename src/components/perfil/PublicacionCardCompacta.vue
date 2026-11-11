@@ -26,6 +26,10 @@
 
     <div class="publicacion-compacta__cuerpo">
       <h3 class="publicacion-compacta__titulo">{{ publicacion.titulo }}</h3>
+      <p v-if="ubicacionTexto" class="publicacion-compacta__ubicacion">
+        <span class="material-symbols-outlined">location_on</span>
+        {{ ubicacionTexto }}
+      </p>
       <p class="publicacion-compacta__fecha">
         {{ fechaRelativa }}
       </p>
@@ -36,6 +40,7 @@
 <script>
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatearTiempoRelativo } from "../../utils/fechas.js";
+import { formatUbicacionPublicacion } from "../../utils/ubicacion.js";
 
 export default {
   name: "PublicacionCardCompacta",
@@ -60,6 +65,9 @@ export default {
     },
     fechaRelativa() {
       return formatearTiempoRelativo(this.publicacion?.fechaPublicacion);
+    },
+    ubicacionTexto() {
+      return formatUbicacionPublicacion(this.publicacion?.ubicacion);
     },
   },
 };
@@ -140,6 +148,24 @@ export default {
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.publicacion-compacta__ubicacion {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publicacion-compacta__ubicacion .material-symbols-outlined {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  color: var(--color-primary);
 }
 
 .publicacion-compacta__fecha {

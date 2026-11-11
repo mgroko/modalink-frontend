@@ -73,18 +73,18 @@
         comunidad.
       </VaAlert>
 
+      <div class="inicio-perfil__hero-cabecera">
+        <PerfilHero
+          :perfil="perfil"
+          :es-propio="esPropio"
+          @editar="irAEditar"
+        />
+      </div>
+
       <div class="inicio-perfil__layout">
         <div class="inicio-perfil__contenido">
-          <PerfilHero
-            v-if="seccion !== 'calendario' && seccion !== 'resenas'"
-            :perfil="perfil"
-            :es-propio="esPropio"
-            @editar="irAEditar"
-          />
-
           <!-- Sección: Calendario -->
           <template v-if="seccion === 'calendario'">
-            <PerfilHero :perfil="perfil" compacto />
             <section class="inicio-perfil__panel">
               <h2 class="inicio-perfil__panel-titulo">Calendario profesional</h2>
               <div v-if="esPropio" class="inicio-perfil__calendario-wrap">
@@ -131,8 +131,8 @@
             @configurar="irAConfigurarTerminos"
           />
 
-          <!-- Sección: Publicaciones (default) -->
-          <template v-else>
+          <!-- Sección: Publicaciones -->
+          <template v-else-if="seccion === 'publicaciones'">
             <section ref="publicacionesRef" class="inicio-perfil__panel">
               <div class="inicio-perfil__panel-header">
                 <h2 class="inicio-perfil__panel-titulo">Publicaciones</h2>
@@ -203,7 +203,10 @@
                 @cambiar="cambiarPaginaPublicaciones"
               />
             </section>
+          </template>
 
+          <!-- Sección: Perfil (default) -->
+          <template v-else>
             <section v-if="habilidades.length" class="inicio-perfil__panel">
               <h2 class="inicio-perfil__panel-titulo">Habilidades</h2>
               <div class="inicio-perfil__habilidades">
@@ -268,6 +271,89 @@
                     {{ valorCarac(carac) }}{{ unidadCarac(carac) }}
                   </span>
                 </div>
+              </div>
+            </section>
+
+            <section class="inicio-perfil__panel">
+              <div class="inicio-perfil__panel-header">
+                <h2 class="inicio-perfil__panel-titulo">Publicaciones</h2>
+                <VaButton
+                  preset="secondary"
+                  size="small"
+                  icon-right="mso-arrow_forward"
+                  @click="irAPublicaciones"
+                >
+                  Ver todas
+                </VaButton>
+              </div>
+
+              <div
+                v-if="cargandoPublicacionesPerfil"
+                class="inicio-perfil__estado-publicaciones"
+                role="status"
+                aria-live="polite"
+              >
+                <span class="inicio-perfil__spinner" aria-hidden="true"></span>
+                Cargando publicaciones...
+              </div>
+
+              <div
+                v-else-if="errorPublicacionesPerfil"
+                class="inicio-perfil__estado-publicaciones"
+              >
+                <p class="inicio-perfil__estado-publicaciones-texto">
+                  {{ errorPublicacionesPerfil }}
+                </p>
+                <VaButton preset="secondary" icon="mso-refresh" @click="cargarPublicacionesPerfil()">
+                  Reintentar
+                </VaButton>
+              </div>
+
+              <p v-else-if="!publicacionesPerfil.length" class="inicio-perfil__vacio">
+                Todavía no hay publicaciones.
+              </p>
+
+              <div v-else class="inicio-perfil__publicaciones-grid inicio-perfil__publicaciones-grid--perfil">
+                <PublicacionCardCompacta
+                  v-for="publicacion in publicacionesPerfil"
+                  :key="publicacion.idPublicacion"
+                  :publicacion="publicacion"
+                  @abrir="abrirPublicacion"
+                />
+              </div>
+            </section>
+
+            <!-- TODO: mostrar historial en perfiles ajenos cuando exista el endpoint. -->
+            <section v-if="esPropio" class="inicio-perfil__panel">
+              <h2 class="inicio-perfil__panel-titulo">Historial de proyectos</h2>
+
+              <div v-if="cargandoHistorial" class="inicio-perfil__estado-publicaciones">
+                <span class="inicio-perfil__spinner" aria-hidden="true"></span>
+                Cargando historial...
+              </div>
+              <p v-else-if="errorHistorial" class="inicio-perfil__vacio">
+                {{ errorHistorial }}
+              </p>
+              <p v-else-if="!proyectosHistorial.length" class="inicio-perfil__vacio">
+                Todavía no hay proyectos finalizados.
+              </p>
+              <div v-else class="inicio-perfil__historial">
+                <article
+                  v-for="proyecto in proyectosHistorial"
+                  :key="proyecto.idProyecto"
+                  class="inicio-perfil__historial-item"
+                >
+                  <div class="inicio-perfil__historial-principal">
+                    <strong>{{ proyecto.nombre }}</strong>
+                    <EstadoProyectoBadge :estado="proyecto.estado" />
+                  </div>
+                  <p class="inicio-perfil__historial-meta">
+                    {{ etiquetaRolProyecto(proyecto.rolUsuario) }}
+                    <template v-if="mesAnioProyecto(proyecto)">
+                      · {{ mesAnioProyecto(proyecto) }}
+                    </template>
+                  </p>
+                </article>
               </div>
             </section>
           </template>
@@ -390,6 +476,7 @@
 <script>
 import perfilService from "../../services/perfilService";
 import publicacionService from "../../services/publicacionService";
+import proyectoService from "../../services/proyectoService";
 import authService from "../../services/authService";
 import calificacionPerfilService from "../../services/calificacionPerfilService";
 import solicitudConexionService from "../../services/solicitudConexionService";
@@ -410,6 +497,7 @@ import {
 } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
+import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.vue";
 import PerfilHero from "../../components/perfil/PerfilHero.vue";
 import PerfilSidebarNav from "../../components/perfil/PerfilSidebarNav.vue";
 import ProximosEventos from "../../components/perfil/ProximosEventos.vue";
@@ -453,6 +541,11 @@ import { normalizarResena, normalizarResumen } from "../../utils/resenasConstant
 import { normalizarTerminos } from "../../utils/terminosCondiciones.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import {
+  ESTADOS_PROYECTO,
+  etiquetaRolProyecto,
+  normalizarEstadoProyecto,
+} from "../../utils/proyectoConstants.js";
+import {
   construirQueryPublicaciones,
   filtrosPublicacionVacios,
   firmarFiltrosPublicacion,
@@ -474,6 +567,7 @@ export default {
   components: {
     BaseAlert,
     CalendarioProfesional,
+    EstadoProyectoBadge,
     FiltrosPublicaciones,
     GaleriaPublicacionModal,
     ModalNuevaPublicacion,
@@ -501,6 +595,14 @@ export default {
     return {
       perfil: null,
       publicaciones: [],
+      publicacionesPerfil: [],
+      cargandoPublicacionesPerfil: false,
+      errorPublicacionesPerfil: "",
+      controladorPublicacionesPerfil: null,
+      proyectosHistorial: [],
+      cargandoHistorial: false,
+      errorHistorial: "",
+      controladorHistorial: null,
       filtrosPublicaciones: filtrosPublicacionVacios(),
       proyectosFiltroPublicaciones: [],
       cargandoProyectosPublicaciones: false,
@@ -571,8 +673,8 @@ export default {
       if (this.idResena != null) return "resenas";
 
       const seccionRuta = this.$route.params.seccion;
-      const validas = ["calendario", "resenas", "terminos"];
-      return validas.includes(seccionRuta) ? seccionRuta : "publicaciones";
+      const validas = ["perfil", "publicaciones", "calendario", "resenas", "terminos"];
+      return validas.includes(seccionRuta) ? seccionRuta : "perfil";
     },
     hayFiltrosPublicaciones() {
       return hayFiltrosPublicacion(this.filtrosPublicaciones);
@@ -667,6 +769,8 @@ export default {
     this.abortarResenasDestacadas();
     this.abortarPublicaciones();
     this.abortarProyectosPublicaciones();
+    this.abortarPublicacionesPerfil();
+    this.abortarHistorialProyectos();
   },
   watch: {
     "$route.params.id"() {
@@ -706,7 +810,15 @@ export default {
       this.abortarResenasDestacadas();
       this.abortarPublicaciones();
       this.abortarProyectosPublicaciones();
+      this.abortarPublicacionesPerfil();
+      this.abortarHistorialProyectos();
       this.publicaciones = [];
+      this.publicacionesPerfil = [];
+      this.cargandoPublicacionesPerfil = false;
+      this.errorPublicacionesPerfil = "";
+      this.proyectosHistorial = [];
+      this.cargandoHistorial = false;
+      this.errorHistorial = "";
       this.cargandoPublicaciones = false;
       this.errorPublicaciones = "";
       this.errorFechasPublicaciones = "";
@@ -766,7 +878,9 @@ export default {
           paginaActual: consultaPublicaciones.pagina,
         };
         this.cargarPublicaciones({ pagina: consultaPublicaciones.pagina });
+        this.cargarPublicacionesPerfil();
         this.cargarProyectosFiltroPublicaciones();
+        if (this.esPropio) this.cargarHistorialProyectos();
       } catch (error) {
         const status = error?.response?.status;
         if (status === 401) {
@@ -799,6 +913,129 @@ export default {
         this.controladorProyectosPublicaciones.abort();
         this.controladorProyectosPublicaciones = null;
       }
+    },
+    abortarPublicacionesPerfil() {
+      if (this.controladorPublicacionesPerfil) {
+        this.controladorPublicacionesPerfil.abort();
+        this.controladorPublicacionesPerfil = null;
+      }
+    },
+    abortarHistorialProyectos() {
+      if (this.controladorHistorial) {
+        this.controladorHistorial.abort();
+        this.controladorHistorial = null;
+      }
+    },
+    async cargarPublicacionesPerfil() {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
+
+      this.abortarPublicacionesPerfil();
+      const controller = new AbortController();
+      this.controladorPublicacionesPerfil = controller;
+      this.cargandoPublicacionesPerfil = true;
+      this.errorPublicacionesPerfil = "";
+
+      try {
+        const response = await publicacionService.listarPorPerfil(
+          idPerfil,
+          { page: 0, size: 3 },
+          controller.signal
+        );
+        if (this.controladorPublicacionesPerfil !== controller) return;
+
+        const contenido = Array.isArray(response?.data?.contenido)
+          ? response.data.contenido
+          : [];
+        this.publicacionesPerfil = contenido
+          .map(normalizarPublicacion)
+          .filter(Boolean);
+      } catch (error) {
+        if (
+          this.controladorPublicacionesPerfil !== controller ||
+          this.esCancelacion(error)
+        ) {
+          return;
+        }
+        this.publicacionesPerfil = [];
+        this.errorPublicacionesPerfil = mensajeErrorApi(
+          error,
+          "No se pudieron cargar las publicaciones."
+        );
+      } finally {
+        if (this.controladorPublicacionesPerfil === controller) {
+          this.cargandoPublicacionesPerfil = false;
+          this.controladorPublicacionesPerfil = null;
+        }
+      }
+    },
+    async cargarHistorialProyectos() {
+      if (!this.esPropio) return;
+
+      this.abortarHistorialProyectos();
+      const controller = new AbortController();
+      this.controladorHistorial = controller;
+      this.cargandoHistorial = true;
+      this.errorHistorial = "";
+
+      try {
+        const response = await proyectoService.propios(
+          { todos: true },
+          controller.signal
+        );
+        if (this.controladorHistorial !== controller) return;
+
+        const contenido = Array.isArray(response?.data?.contenido)
+          ? response.data.contenido
+          : [];
+        this.proyectosHistorial = contenido.filter(
+          (proyecto) =>
+            normalizarEstadoProyecto(proyecto?.estado) ===
+            ESTADOS_PROYECTO.FINALIZADO
+        );
+      } catch (error) {
+        if (this.controladorHistorial !== controller || this.esCancelacion(error)) {
+          return;
+        }
+        this.proyectosHistorial = [];
+        this.errorHistorial = mensajeErrorApi(
+          error,
+          "No se pudo cargar el historial de proyectos."
+        );
+      } finally {
+        if (this.controladorHistorial === controller) {
+          this.cargandoHistorial = false;
+          this.controladorHistorial = null;
+        }
+      }
+    },
+    irAPublicaciones() {
+      this.cambiarSeccion("publicaciones");
+    },
+    etiquetaRolProyecto(rol) {
+      return etiquetaRolProyecto(rol);
+    },
+    mesAnioProyecto(proyecto) {
+      const valor = proyecto?.fechaFinalizacion || proyecto?.fechaInicio;
+      if (!valor) return "";
+      const [anio, mes] = String(valor).split("T")[0].split("-");
+      const indice = Number(mes) - 1;
+      if (!anio || indice < 0 || indice > 11) return "";
+      const meses = [
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre",
+      ];
+      return `${meses[indice]} ${anio}`;
     },
     esCancelacion(error) {
       return (
@@ -1072,6 +1309,7 @@ export default {
         duration: 5000,
       });
       this.limpiarFiltrosPublicaciones();
+      this.cargarPublicacionesPerfil();
     },
     resetearTerminos() {
       this.abortarTerminos();
@@ -1272,6 +1510,15 @@ export default {
       }
 
       const idDeRuta = this.$route.params.id;
+      if (seccion === "perfil") {
+        if (idDeRuta) {
+          this.$router.push({ name: "ver-perfil", params: { id: idDeRuta } });
+        } else {
+          this.$router.push({ name: "inicioperfil" });
+        }
+        return;
+      }
+
       if (idDeRuta) {
         this.$router.push({ name: "ver-perfil-seccion", params: { id: idDeRuta, seccion } });
       } else {
@@ -1730,6 +1977,10 @@ export default {
   margin: 0 auto;
 }
 
+.inicio-perfil__hero-cabecera {
+  margin-bottom: 1rem;
+}
+
 .inicio-perfil__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -1786,8 +2037,39 @@ export default {
 
 .inicio-perfil__publicaciones-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
+}
+
+.inicio-perfil__historial {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.inicio-perfil__historial-item {
+  padding: 0.75rem 0.85rem;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+}
+
+.inicio-perfil__historial-principal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.inicio-perfil__historial-principal strong {
+  color: var(--color-text);
+  font-size: 0.86rem;
+}
+
+.inicio-perfil__historial-meta {
+  margin: 0.2rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
 }
 
 .inicio-perfil__estado-publicaciones {
@@ -1936,6 +2218,12 @@ export default {
   .inicio-perfil__sidebar {
     position: static;
     order: -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .inicio-perfil__publicaciones-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

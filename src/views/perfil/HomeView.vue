@@ -16,12 +16,21 @@
       :total-oportunidades="totalOportunidades"
       :cargando="cargando"
       :error-proyectos="errorProyectos"
+      :publicaciones="publicacionesFeed"
+      :cargando-publicaciones="cargandoPublicacionesFeed"
+      :error-publicaciones="errorPublicacionesFeed"
+      :hay-mas-publicaciones="hayMasPublicacionesFeed"
+      :cargando-mas-publicaciones="cargandoMasPublicacionesFeed"
       @cambiar-tab="tabActiva = $event"
       @postular="abrirPostulacion"
       @abrir-proyecto="irAProyecto"
       @ver-todos-proyectos="irAProyectos"
       @ver-todas-oportunidades="irABuscarOportunidades"
       @nueva-publicacion="abrirNuevaPublicacion"
+      @abrir-galeria-publicacion="abrirGaleriaPublicacion"
+      @ver-proyecto-publicacion="irAProyectoPublicacion"
+      @reintentar-publicaciones="cargarFeedPublicaciones()"
+      @cargar-mas-publicaciones="cargarMasPublicaciones"
     />
 
     <div v-else-if="!mensajeError" class="home-view__estado">
@@ -54,16 +63,25 @@
       v-model="modalNuevaPublicacionVisible"
       @creada="alCrearPublicacion"
     />
+
+    <GaleriaPublicacionModal
+      v-model="modalGaleriaPublicacionVisible"
+      :imagenes="imagenesGaleria"
+      :titulo="tituloGaleria"
+    />
   </div>
 </template>
 
 <script>
 import homeService from "../../services/homeService.js";
 import proyectoService from "../../services/proyectoService.js";
+import publicacionService from "../../services/publicacionService.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import HomeFeed from "../../components/home/HomeFeed.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
+import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
+import { normalizarPublicacion } from "../../utils/publicacionConstants.js";
 import { setPerfilActivo, refrescarSesion } from "../../services/authState.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -94,6 +112,7 @@ export default {
   name: "HomeView",
   components: {
     BaseAlert,
+    GaleriaPublicacionModal,
     HomeFeed,
     ModalNuevaPublicacion,
     ModalPostulacion,
@@ -117,6 +136,16 @@ export default {
       errorPostulacion: "",
       errorPostulacionEsDisponibilidad: false,
       modalNuevaPublicacionVisible: false,
+      publicacionesFeed: [],
+      cargandoPublicacionesFeed: false,
+      errorPublicacionesFeed: "",
+      paginaPublicacionesFeed: 0,
+      hayMasPublicacionesFeed: false,
+      cargandoMasPublicacionesFeed: false,
+      controladorFeedPublicaciones: null,
+      modalGaleriaPublicacionVisible: false,
+      imagenesGaleria: [],
+      tituloGaleria: "",
     };
   },
   computed: {
@@ -126,6 +155,9 @@ export default {
   },
   mounted() {
     this.cargarHome();
+  },
+  beforeUnmount() {
+    this.abortarFeedPublicaciones();
   },
   methods: {
     async cargarHome() {
@@ -144,6 +176,7 @@ export default {
 
         if (this.perfilActivo) {
           setPerfilActivo(this.perfilActivo);
+          this.cargarFeedPublicaciones();
         }
       } finally {
         this.cargando = false;
@@ -223,6 +256,98 @@ export default {
         duration: 5000,
       });
       this.$router.push({ name: "inicioperfil" });
+    },
+    abortarFeedPublicaciones() {
+      if (this.controladorFeedPublicaciones) {
+        this.controladorFeedPublicaciones.abort();
+        this.controladorFeedPublicaciones = null;
+      }
+    },
+    async cargarFeedPublicaciones({ pagina = 0, append = false } = {}) {
+      this.abortarFeedPublicaciones();
+      const controller = new AbortController();
+      this.controladorFeedPublicaciones = controller;
+
+      if (append) this.cargandoMasPublicacionesFeed = true;
+      else this.cargandoPublicacionesFeed = true;
+      this.errorPublicacionesFeed = "";
+
+      try {
+        const response = await publicacionService.listarFeed(
+          { page: pagina, size: 10, incluirPropias: true },
+          controller.signal
+        );
+        if (this.controladorFeedPublicaciones !== controller) return;
+
+        const data = response?.data || {};
+        const contenido = Array.isArray(data.contenido) ? data.contenido : [];
+        const normalizadas = contenido
+          .map(normalizarPublicacion)
+          .filter(Boolean);
+
+        this.publicacionesFeed = append
+          ? [...this.publicacionesFeed, ...normalizadas]
+          : normalizadas;
+        this.paginaPublicacionesFeed = Number(data.paginaActual) || pagina;
+        this.hayMasPublicacionesFeed = data.ultima === false;
+      } catch (error) {
+        if (
+          this.controladorFeedPublicaciones !== controller ||
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+
+        const status = error?.response?.status;
+        const mensaje = error?.response?.data?.message || "";
+        if (status === 404) {
+          this.errorPublicacionesFeed =
+            mensaje || "No hay un perfil activo para cargar el feed.";
+        } else if (status === 409) {
+          this.errorPublicacionesFeed =
+            mensaje || "El perfil no está activo para cargar el feed.";
+        } else {
+          this.errorPublicacionesFeed = mensajeErrorApi(
+            error,
+            "No se pudieron cargar las publicaciones."
+          );
+        }
+      } finally {
+        if (this.controladorFeedPublicaciones === controller) {
+          this.cargandoPublicacionesFeed = false;
+          this.cargandoMasPublicacionesFeed = false;
+          this.controladorFeedPublicaciones = null;
+        }
+      }
+    },
+    cargarMasPublicaciones() {
+      if (
+        !this.hayMasPublicacionesFeed ||
+        this.cargandoPublicacionesFeed ||
+        this.cargandoMasPublicacionesFeed
+      ) {
+        return;
+      }
+      this.cargarFeedPublicaciones({
+        pagina: this.paginaPublicacionesFeed + 1,
+        append: true,
+      });
+    },
+    abrirGaleriaPublicacion(publicacion) {
+      if (!Array.isArray(publicacion?.imagenes) || !publicacion.imagenes.length) {
+        return;
+      }
+      this.imagenesGaleria = publicacion.imagenes;
+      this.tituloGaleria = publicacion.titulo;
+      this.modalGaleriaPublicacionVisible = true;
+    },
+    irAProyectoPublicacion(proyecto) {
+      if (proyecto?.idProyecto == null) return;
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: proyecto.idProyecto },
+      });
     },
     async refrescarResumen() {
       const postuladas = new Set(

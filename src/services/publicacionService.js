@@ -181,6 +181,30 @@ const publicacionService = {
       signal,
     });
   },
+
+  /**
+   * GET /publicaciones/feed — publicaciones de contactos activos.
+   * `incluirPropias=true` agrega las del perfil activo.
+   * @param {{page?:number,size?:number,incluirPropias?:boolean}} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: {
+   *   contenido: PublicacionResponse[],
+   *   paginaActual: number,
+   *   tamanoPagina: number,
+   *   totalElementos: number,
+   *   totalPaginas: number,
+   *   primera: boolean,
+   *   ultima: boolean
+   * }}>} 200 OK
+   */
+  listarFeed(params = {}, signal) {
+    const query = {
+      page: params.page ?? 0,
+      size: params.size ?? 10,
+      incluirPropias: params.incluirPropias !== false,
+    };
+    return http.get("/publicaciones/feed", { params: query, signal });
+  },
 };
 
 export default publicacionService;

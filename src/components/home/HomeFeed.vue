@@ -72,6 +72,19 @@
             @postular="$emit('postular', $event)"
           />
         </HomeFeedSection>
+
+        <HomePublicacionesFeed
+          v-if="mostrarPublicaciones"
+          :publicaciones="publicaciones"
+          :cargando="cargandoPublicaciones"
+          :error="errorPublicaciones"
+          :hay-mas="hayMasPublicaciones"
+          :cargando-mas="cargandoMasPublicaciones"
+          @abrir-galeria="$emit('abrir-galeria-publicacion', $event)"
+          @ver-proyecto="$emit('ver-proyecto-publicacion', $event)"
+          @reintentar="$emit('reintentar-publicaciones')"
+          @cargar-mas="$emit('cargar-mas-publicaciones')"
+        />
       </template>
     </div>
   </div>
@@ -83,6 +96,7 @@ import HomeFeedTabs from "./HomeFeedTabs.vue";
 import HomeFeedSection from "./HomeFeedSection.vue";
 import ProyectoHomeCard from "./ProyectoHomeCard.vue";
 import OportunidadCard from "./OportunidadCard.vue";
+import HomePublicacionesFeed from "./HomePublicacionesFeed.vue";
 
 const TABS = [
   { id: "todo", label: "Todo", icon: "grid_view" },
@@ -91,7 +105,7 @@ const TABS = [
 ];
 
 const SUBTITULOS = {
-  todo: "Proyectos y oportunidades para tu perfil",
+  todo: "Proyectos, oportunidades y publicaciones de tus contactos",
   proyectos: "Proyectos visibles para tu perfil",
   postulaciones: "Búsquedas abiertas que coinciden con tu perfil",
 };
@@ -104,6 +118,7 @@ export default {
     HomeFeedSection,
     ProyectoHomeCard,
     OportunidadCard,
+    HomePublicacionesFeed,
   },
   props: {
     tabActiva: {
@@ -134,6 +149,26 @@ export default {
       type: String,
       default: "",
     },
+    publicaciones: {
+      type: Array,
+      default: () => [],
+    },
+    cargandoPublicaciones: {
+      type: Boolean,
+      default: false,
+    },
+    errorPublicaciones: {
+      type: String,
+      default: "",
+    },
+    hayMasPublicaciones: {
+      type: Boolean,
+      default: false,
+    },
+    cargandoMasPublicaciones: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: [
     "cambiar-tab",
@@ -142,6 +177,10 @@ export default {
     "ver-todos-proyectos",
     "ver-todas-oportunidades",
     "nueva-publicacion",
+    "abrir-galeria-publicacion",
+    "ver-proyecto-publicacion",
+    "reintentar-publicaciones",
+    "cargar-mas-publicaciones",
   ],
   computed: {
     tabs() {
@@ -169,6 +208,9 @@ export default {
     },
     mostrarOportunidades() {
       return this.tabActiva === "todo" || this.tabActiva === "postulaciones";
+    },
+    mostrarPublicaciones() {
+      return this.tabActiva === "todo";
     },
     proyectosVisibles() {
       return this.tabActiva === "todo"
