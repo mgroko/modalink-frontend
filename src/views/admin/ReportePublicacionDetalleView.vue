@@ -1,0 +1,618 @@
+<template>
+  <div class="reporte-publicacion-detalle">
+    <div class="reporte-publicacion-detalle__volver">
+      <VaButton
+        preset="secondary"
+        size="small"
+        icon="mso-arrow_back"
+        @click="volver"
+      >
+        Volver a reportes
+      </VaButton>
+    </div>
+
+    <BaseAlert v-if="mensajeExito" :message="mensajeExito" type="success" />
+    <BaseAlert
+      v-if="mensajeError && !noEncontrado"
+      :message="mensajeError"
+      type="error"
+    />
+
+    <div v-if="puedeReintentar" class="reporte-publicacion-detalle__reintento">
+      <VaButton preset="primary" icon="mso-refresh" @click="cargar">
+        Reintentar
+      </VaButton>
+    </div>
+
+    <div v-if="cargando" class="reporte-publicacion-detalle__estado">
+      <span class="material-symbols-outlined">hourglass_empty</span>
+      Cargando reporte...
+    </div>
+
+    <div
+      v-else-if="noEncontrado"
+      class="reporte-publicacion-detalle__estado"
+    >
+      <span class="material-symbols-outlined">search_off</span>
+      {{ mensajeError || "El reporte no existe o ya no está disponible." }}
+    </div>
+
+    <template v-else-if="reporte">
+      <header class="reporte-publicacion-detalle__cabecera">
+        <div>
+          <h1>Reporte #{{ reporte.idReporte }}</h1>
+          <p class="reporte-publicacion-detalle__fecha">
+            {{ formatearFecha(reporte.fechaReporte) }} ·
+            {{ etiquetaMotivo(reporte.motivo) }}
+          </p>
+        </div>
+        <VaBadge
+          :text="etiquetaEstado(reporte.estado)"
+          :color="colorEstado(reporte.estado)"
+          outline
+        />
+      </header>
+
+      <section class="reporte-publicacion-detalle__panel">
+        <h2 class="reporte-publicacion-detalle__titulo">Motivo del reporte</h2>
+        <p class="reporte-publicacion-detalle__motivo">
+          {{ reporte.motivoDescripcion || etiquetaMotivo(reporte.motivo) }}
+        </p>
+        <p class="reporte-publicacion-detalle__descripcion">
+          {{ reporte.descripcion || "Sin descripción." }}
+        </p>
+      </section>
+
+      <div class="reporte-publicacion-detalle__grid">
+        <section class="reporte-publicacion-detalle__panel">
+          <h2 class="reporte-publicacion-detalle__titulo">
+            Publicación reportada
+          </h2>
+
+          <p
+            v-if="reporte.publicacionEliminada"
+            class="reporte-publicacion-detalle__nota reporte-publicacion-detalle__nota--warning"
+          >
+            La publicación fue eliminada. El reporte se conserva como
+            evidencia.
+          </p>
+
+          <template v-else-if="reporte.publicacion">
+            <dl class="reporte-publicacion-detalle__datos">
+              <div>
+                <dt>Título</dt>
+                <dd>{{ reporte.publicacion.titulo || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Descripción</dt>
+                <dd>{{ reporte.publicacion.descripcion || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Fecha de publicación</dt>
+                <dd>{{ formatearFecha(reporte.publicacion.fechaPublicacion) }}</dd>
+              </div>
+              <div>
+                <dt>Estado</dt>
+                <dd>
+                  <VaBadge
+                    :text="reporte.publicacion.estado || '—'"
+                    :color="
+                      reporte.publicacion.estado === 'OCULTA'
+                        ? 'warning'
+                        : 'success'
+                    "
+                    outline
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt>Perfil dueño</dt>
+                <dd>{{ reporte.publicacion.nombreArtistico || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Usuario dueño</dt>
+                <dd>{{ reporte.publicacion.nombreUsuario || "—" }}</dd>
+              </div>
+            </dl>
+          </template>
+
+          <p v-else class="reporte-publicacion-detalle__nota">
+            No hay datos de la publicación.
+          </p>
+        </section>
+
+        <section class="reporte-publicacion-detalle__panel">
+          <h2 class="reporte-publicacion-detalle__titulo">
+            Autor del reporte
+          </h2>
+          <dl class="reporte-publicacion-detalle__datos">
+            <div>
+              <dt>Nombre</dt>
+              <dd>{{ nombreCompleto(reporte.autor) }}</dd>
+            </div>
+            <div>
+              <dt>Correo</dt>
+              <dd>{{ reporte.autor?.correo || "—" }}</dd>
+            </div>
+            <div>
+              <dt>Perfil artístico</dt>
+              <dd>{{ reporte.autor?.nombreArtistico || "—" }}</dd>
+            </div>
+            <div>
+              <dt>ID de perfil</dt>
+              <dd>{{ reporte.autor?.idPerfil ?? "—" }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="reporte-publicacion-detalle__panel">
+          <h2 class="reporte-publicacion-detalle__titulo">Gestión</h2>
+          <dl class="reporte-publicacion-detalle__datos">
+            <div>
+              <dt>Administrador revisor</dt>
+              <dd>{{ reporte.nombreAdminRevisor || "Sin asignar" }}</dd>
+            </div>
+            <div v-if="reporte.idAdminRevisor != null">
+              <dt>ID administrador</dt>
+              <dd>{{ reporte.idAdminRevisor }}</dd>
+            </div>
+            <div>
+              <dt>Fecha de resolución</dt>
+              <dd>
+                {{
+                  reporte.fechaResolucion
+                    ? formatearFecha(reporte.fechaResolucion)
+                    : "—"
+                }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+
+      <section
+        v-if="reporte.estado === ESTADOS_REPORTE_PUBLICACION.PENDIENTE"
+        class="reporte-publicacion-detalle__panel reporte-publicacion-detalle__acciones"
+      >
+        <div>
+          <h2 class="reporte-publicacion-detalle__titulo">
+            Resolver reporte
+          </h2>
+          <p class="reporte-publicacion-detalle__nota">
+            Podés marcar el reporte como resuelto o descartarlo. La acción no
+            se puede revertir.
+          </p>
+        </div>
+        <div class="reporte-publicacion-detalle__botones">
+          <VaButton
+            color="success"
+            :disabled="cambiandoEstado"
+            @click="abrirConfirmacion(ESTADOS_REPORTE_PUBLICACION.RESUELTO)"
+          >
+            Marcar como resuelto
+          </VaButton>
+          <VaButton
+            color="danger"
+            preset="secondary"
+            :disabled="cambiandoEstado"
+            @click="abrirConfirmacion(ESTADOS_REPORTE_PUBLICACION.DESCARTADO)"
+          >
+            Descartar
+          </VaButton>
+        </div>
+      </section>
+
+      <section v-else class="reporte-publicacion-detalle__panel">
+        <p class="reporte-publicacion-detalle__nota">
+          Este reporte ya fue gestionado y no admite más cambios de estado.
+        </p>
+      </section>
+    </template>
+
+    <VaModal
+      v-model="modalEstadoVisible"
+      hide-default-actions
+      blur
+      size="small"
+    >
+      <template #header>
+        <h3 class="va-h5">{{ tituloConfirmacion }}</h3>
+      </template>
+
+      <p class="reporte-publicacion-detalle__confirmacion">
+        {{ mensajeConfirmacion }}
+      </p>
+
+      <BaseAlert v-if="errorEstado" :message="errorEstado" type="error" />
+
+      <template #footer>
+        <div class="reporte-publicacion-detalle__acciones-modal">
+          <VaButton
+            preset="secondary"
+            :disabled="cambiandoEstado"
+            @click="cerrarConfirmacion"
+          >
+            Cancelar
+          </VaButton>
+          <VaButton
+            :color="
+              estadoDestino === ESTADOS_REPORTE_PUBLICACION.RESUELTO
+                ? 'success'
+                : 'danger'
+            "
+            :loading="cambiandoEstado"
+            @click="confirmarCambioEstado"
+          >
+            Confirmar
+          </VaButton>
+        </div>
+      </template>
+    </VaModal>
+  </div>
+</template>
+
+<script>
+import adminService from "../../services/adminService";
+import BaseAlert from "../../components/AlertaBase.vue";
+import { mensajeErrorApi } from "../../utils/apiError";
+import { formatearFecha } from "../../utils/fechas.js";
+import {
+  ESTADOS_REPORTE_PUBLICACION,
+  colorEstadoReportePublicacion,
+  etiquetaEstadoReportePublicacion,
+  etiquetaMotivoReportePublicacion,
+} from "../../utils/reportePublicacionConstants.js";
+
+export default {
+  name: "ReportePublicacionDetalleView",
+  components: { BaseAlert },
+  data() {
+    return {
+      ESTADOS_REPORTE_PUBLICACION,
+      reporte: null,
+      cargando: true,
+      noEncontrado: false,
+      mensajeError: "",
+      mensajeExito: "",
+      puedeReintentar: false,
+      modalEstadoVisible: false,
+      estadoDestino: ESTADOS_REPORTE_PUBLICACION.RESUELTO,
+      cambiandoEstado: false,
+      errorEstado: "",
+      idCarga: 0,
+    };
+  },
+  computed: {
+    idReporte() {
+      const id = Number(this.$route.params.id);
+      return Number.isInteger(id) && id > 0 ? id : null;
+    },
+    tituloConfirmacion() {
+      return this.estadoDestino === ESTADOS_REPORTE_PUBLICACION.RESUELTO
+        ? "Marcar reporte como resuelto"
+        : "Descartar reporte";
+    },
+    mensajeConfirmacion() {
+      return this.estadoDestino === ESTADOS_REPORTE_PUBLICACION.RESUELTO
+        ? "El reporte quedará marcado como resuelto. Esta acción no se puede revertir."
+        : "El reporte quedará descartado. Esta acción no se puede revertir.";
+    },
+  },
+  created() {
+    this.controlador = null;
+  },
+  mounted() {
+    this.cargar();
+  },
+  beforeUnmount() {
+    if (this.controlador) this.controlador.abort();
+  },
+  methods: {
+    formatearFecha,
+    etiquetaEstado: etiquetaEstadoReportePublicacion,
+    colorEstado: colorEstadoReportePublicacion,
+    etiquetaMotivo: etiquetaMotivoReportePublicacion,
+    nombreCompleto(persona) {
+      const nombre = [persona?.nombre, persona?.apellido]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      return nombre || "—";
+    },
+    async cargar() {
+      if (this.idReporte == null) {
+        this.cargando = false;
+        this.noEncontrado = true;
+        return;
+      }
+
+      const corrida = ++this.idCarga;
+      if (this.controlador) this.controlador.abort();
+      this.controlador = new AbortController();
+
+      this.cargando = true;
+      this.noEncontrado = false;
+      this.mensajeError = "";
+      this.mensajeExito = "";
+      this.puedeReintentar = false;
+
+      try {
+        const response = await adminService.obtenerReportePublicacion(
+          this.idReporte,
+          this.controlador.signal
+        );
+        if (corrida !== this.idCarga) return;
+        this.reporte = response?.data || null;
+        this.noEncontrado = !this.reporte;
+      } catch (error) {
+        if (
+          corrida !== this.idCarga ||
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+        this.manejarErrorCarga(error);
+      } finally {
+        if (corrida === this.idCarga) this.cargando = false;
+      }
+    },
+    manejarErrorCarga(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+      this.reporte = null;
+
+      if (status === 404) {
+        this.noEncontrado = true;
+        this.mensajeError =
+          mensaje || "El reporte no existe o ya no está disponible.";
+        return;
+      }
+      if (status === 403) {
+        this.mensajeError =
+          mensaje || "No tenés permisos para ver este reporte.";
+        return;
+      }
+      if (!status || status >= 500) {
+        this.puedeReintentar = true;
+        this.mensajeError =
+          "No se pudo cargar el reporte. Inténtalo nuevamente.";
+        return;
+      }
+      this.mensajeError = mensajeErrorApi(
+        error,
+        "No se pudo cargar el reporte."
+      );
+    },
+    abrirConfirmacion(estado) {
+      if (this.cambiandoEstado) return;
+      this.estadoDestino = estado;
+      this.errorEstado = "";
+      this.mensajeError = "";
+      this.modalEstadoVisible = true;
+    },
+    cerrarConfirmacion() {
+      if (this.cambiandoEstado) return;
+      this.modalEstadoVisible = false;
+      this.errorEstado = "";
+    },
+    async confirmarCambioEstado() {
+      if (this.cambiandoEstado || this.reporte?.idReporte == null) return;
+
+      this.cambiandoEstado = true;
+      this.errorEstado = "";
+      try {
+        const response = await adminService.cambiarEstadoReportePublicacion(
+          this.reporte.idReporte,
+          this.estadoDestino
+        );
+        this.reporte = response?.data || this.reporte;
+        this.modalEstadoVisible = false;
+        this.mensajeExito =
+          this.estadoDestino === ESTADOS_REPORTE_PUBLICACION.RESUELTO
+            ? "El reporte quedó marcado como resuelto."
+            : "El reporte quedó descartado.";
+        window.dispatchEvent(
+          new CustomEvent("reportes-publicacion-actualizados")
+        );
+      } catch (error) {
+        await this.manejarErrorEstado(error);
+      } finally {
+        this.cambiandoEstado = false;
+      }
+    },
+    async manejarErrorEstado(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+
+      if (status === 409) {
+        this.modalEstadoVisible = false;
+        await this.cargar();
+        this.mensajeError =
+          mensaje || "El reporte ya fue gestionado por otro administrador.";
+        return;
+      }
+      if (status === 404) {
+        this.modalEstadoVisible = false;
+        this.noEncontrado = true;
+        this.mensajeError =
+          mensaje || "El reporte no existe o ya no está disponible.";
+        return;
+      }
+      if (status === 403) {
+        this.errorEstado =
+          mensaje || "No tenés permisos para gestionar este reporte.";
+        return;
+      }
+      if (!status || status >= 500) {
+        this.errorEstado =
+          "No se pudo cambiar el estado. Inténtalo nuevamente.";
+        return;
+      }
+      this.errorEstado = mensajeErrorApi(
+        error,
+        "No se pudo cambiar el estado del reporte."
+      );
+    },
+    volver() {
+      this.$router.push({ name: "admin-reportes-publicacion" });
+    },
+  },
+};
+</script>
+
+<style scoped>
+.reporte-publicacion-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reporte-publicacion-detalle__volver {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.reporte-publicacion-detalle__reintento {
+  display: flex;
+  justify-content: center;
+}
+
+.reporte-publicacion-detalle__estado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.reporte-publicacion-detalle__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.reporte-publicacion-detalle__cabecera h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.reporte-publicacion-detalle__fecha {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.reporte-publicacion-detalle__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.reporte-publicacion-detalle__titulo {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.reporte-publicacion-detalle__motivo {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.reporte-publicacion-detalle__descripcion {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.reporte-publicacion-detalle__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.reporte-publicacion-detalle__datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.reporte-publicacion-detalle__datos div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.reporte-publicacion-detalle__datos dt {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.reporte-publicacion-detalle__datos dd {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.82rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.reporte-publicacion-detalle__acciones {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.reporte-publicacion-detalle__botones {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.reporte-publicacion-detalle__nota {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.reporte-publicacion-detalle__nota--warning {
+  color: var(--color-warning-text);
+  background: var(--color-warning-soft);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+}
+
+.reporte-publicacion-detalle__confirmacion {
+  margin: 0 0 1rem;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.reporte-publicacion-detalle__acciones-modal {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  width: 100%;
+}
+</style>

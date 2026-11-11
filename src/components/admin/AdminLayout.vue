@@ -37,14 +37,22 @@
           <span class="material-symbols-outlined">group</span>
           <span>Usuarios</span>
         </RouterLink>
-        <RouterLink to="/admin/reportes" class="admin-layout__link">
-          <span class="material-symbols-outlined">description</span>
-          <span>Reportes</span>
-          <span class="admin-layout__soon">Próximo</span>
-        </RouterLink>
         <RouterLink to="/admin/reportes-perfil" class="admin-layout__link">
           <span class="material-symbols-outlined">flag</span>
           <span>Reportes de perfil</span>
+        </RouterLink>
+        <RouterLink
+          to="/admin/reportes-publicacion"
+          class="admin-layout__link"
+        >
+          <span class="material-symbols-outlined">campaign</span>
+          <span>Reportes de publicaciones</span>
+          <span
+            v-if="reportesPublicacionPendientes > 0"
+            class="admin-layout__badge admin-layout__badge--enlace"
+          >
+            {{ reportesPublicacionPendientes }}
+          </span>
         </RouterLink>
         <RouterLink to="/admin/auditoria" class="admin-layout__link">
           <span class="material-symbols-outlined">fact_check</span>
@@ -149,6 +157,7 @@
 <script>
 import { nextTick } from "vue";
 import authService from "../../services/authService";
+import adminService from "../../services/adminService";
 import { state, limpiarSesion } from "../../services/authState";
 import {
   state as notificacionState,
@@ -168,12 +177,14 @@ export default {
     return {
       notificacionesOrigen: null,
       menuAbierto: false,
+      reportesPublicacionPendientes: 0,
     };
   },
   watch: {
     // Al navegar (tapa desde el drawer) el menú se cierra.
     $route() {
       this.cerrarMenu();
+      this.cargarReportesPublicacionPendientes();
     },
     menuAbierto(abierto) {
       if (abierto) {
@@ -185,6 +196,10 @@ export default {
   },
   beforeUnmount() {
     document.removeEventListener("keydown", this.manejarEscape);
+    window.removeEventListener(
+      "reportes-publicacion-actualizados",
+      this.cargarReportesPublicacionPendientes
+    );
   },
   computed: {
     usuario() {
@@ -224,9 +239,27 @@ export default {
       setThemeMode("dark");
     }
 
+    window.addEventListener(
+      "reportes-publicacion-actualizados",
+      this.cargarReportesPublicacionPendientes
+    );
     await cargarResumenUsuario();
+    this.cargarReportesPublicacionPendientes();
   },
   methods: {
+    async cargarReportesPublicacionPendientes() {
+      try {
+        const response = await adminService.listarReportesPublicacion({
+          estado: "PENDIENTE",
+          page: 0,
+          size: 1,
+        });
+        this.reportesPublicacionPendientes =
+          Number(response?.data?.totalElementos) || 0;
+      } catch {
+        this.reportesPublicacionPendientes = 0;
+      }
+    },
     abrirMenu() {
       this.menuAbierto = true;
     },

@@ -31,6 +31,32 @@ const reporteService = {
       descripcion: texto || null,
     });
   },
+
+  /**
+   * POST /publicaciones/{idPublicacion}/reportes — UC-69.
+   * Requiere sesión y perfil activo. El `idPublicacion` del path es la
+   * publicación reportada.
+   *
+   * Reglas:
+   * - `motivo`: SPAM | CONTENIDO_INAPROPIADO | IDENTIDAD_FALSA | OTRO
+   * - `descripcion`: opcional, máx. 200; obligatoria y no vacía si OTRO.
+   * - No se puede reportar una publicación propia.
+   * - Un mismo autor no puede tener dos reportes PENDIENTE sobre la misma
+   *   publicación.
+   * - La publicación debe estar ACTIVA.
+   *
+   * Errores: 400, 401, 403, 404, 409, 500.
+   * @param {number|string} idPublicacion publicación reportada
+   * @param {{motivo: string, descripcion?: string|null}} reporte
+   * @returns {Promise<{data: string}>} 204 No Content
+   */
+  reportarPublicacion(idPublicacion, { motivo, descripcion } = {}) {
+    const texto = String(descripcion ?? "").trim();
+    return http.post(`/publicaciones/${idPublicacion}/reportes`, {
+      motivo,
+      descripcion: texto || null,
+    });
+  },
 };
 
 export default reporteService;

@@ -71,6 +71,44 @@ const adminService = {
   },
 
   /**
+   * GET /admin/reportes-publicacion — UC-69, bandeja administrativa.
+   * Orden: fechaReporte DESC. Si no se envía `estado`, devuelve todos.
+   * @param {{estado?: string, motivo?: string, fechaDesde?: string,
+   *          fechaHasta?: string, page?: number, size?: number,
+   *          todos?: boolean}} [params]
+   * @returns {Promise<{data: object}>} PaginaResponse<AdminReportePublicacionResumen>
+   */
+  listarReportesPublicacion(params = {}, signal) {
+    return http.get("/admin/reportes-publicacion", { params, signal });
+  },
+
+  /**
+   * GET /admin/reportes-publicacion/{idReporte} — UC-69, detalle.
+   * Incluye publicación y autor embebidos; no requiere consultar el endpoint
+   * de publicación del área usuario.
+   * @param {number|string} idReporte
+   * @returns {Promise<{data: object}>} AdminReportePublicacionDetalle
+   */
+  obtenerReportePublicacion(idReporte, signal) {
+    return http.get(`/admin/reportes-publicacion/${idReporte}`, { signal });
+  },
+
+  /**
+   * PATCH /admin/reportes-publicacion/{idReporte}/estado — UC-69.
+   * Solo PENDIENTE → RESUELTO o PENDIENTE → DESCARTADO.
+   * @param {number|string} idReporte
+   * @param {"RESUELTO"|"DESCARTADO"} estado
+   * @returns {Promise<{data: object}>} detalle actualizado
+   */
+  cambiarEstadoReportePublicacion(idReporte, estado, signal) {
+    return http.patch(
+      `/admin/reportes-publicacion/${idReporte}/estado`,
+      { estado },
+      { signal }
+    );
+  },
+
+  /**
    * GET /admin/cronograma/inconsistencias — ficha §7.1.
    * `limite` limita la cantidad de proyectos procesados. Sin paginación.
    * @param {{idProyecto?: number, idActividad?: number, limite?: number}} [params]

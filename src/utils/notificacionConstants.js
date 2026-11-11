@@ -28,6 +28,7 @@ export const TIPOS_NOTIFICACION = {
   ACTIVIDAD_ASIGNADA: "ACTIVIDAD_ASIGNADA",
   ACTIVIDAD_DESASIGNADA: "ACTIVIDAD_DESASIGNADA",
   PERFIL_REPORTADO: "PERFIL_REPORTADO",
+  PUBLICACION_REPORTADA: "PUBLICACION_REPORTADA",
   INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
   INTEGRANTE_BAJA_VOLUNTARIA: "INTEGRANTE_BAJA_VOLUNTARIA",
   HABILIDAD_MODIFICADA: "HABILIDAD_MODIFICADA",
@@ -57,6 +58,7 @@ export const RUTAS_NOTIFICACION = {
   PROYECTO: "dashboard-proyecto",
   ACTIVIDAD: "actividad-proyecto",
   ADMIN_REPORTE_PERFIL: "admin-reporte-perfil",
+  ADMIN_REPORTE_PUBLICACION: "admin-reporte-publicacion",
   CALIFICACIONES: "calificaciones-proyecto",
   INVITACIONES: "solicitudes",
   PUBLICACION: "publicacion-detalle",
@@ -91,6 +93,7 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA]: "Actividad asignada",
   [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "Actividad desasignada",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
+  [TIPOS_NOTIFICACION.PUBLICACION_REPORTADA]: "Publicación reportada",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "Baja voluntaria de integrante",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "Habilidad modificada",
@@ -145,6 +148,7 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA]: "assignment",
   [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "person_remove",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
+  [TIPOS_NOTIFICACION.PUBLICACION_REPORTADA]: "campaign",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "person_remove",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "edit",
@@ -247,7 +251,9 @@ export function destinoNotificacion(notificacion) {
   if (esNotificacionSinNavegacion(notificacion.tipo)) return null;
 
   const tipo = notificacion.tipo;
-  const esReporteAdmin = tipo === TIPOS_NOTIFICACION.PERFIL_REPORTADO;
+  const esReporteAdmin =
+    tipo === TIPOS_NOTIFICACION.PERFIL_REPORTADO ||
+    tipo === TIPOS_NOTIFICACION.PUBLICACION_REPORTADA;
   if (!esReporteAdmin && notificacion.idPerfilContexto == null) return null;
 
   switch (tipo) {
@@ -544,6 +550,20 @@ export function destinoNotificacion(notificacion) {
             etiqueta: "Ver reporte",
             ruta: {
               name: RUTAS_NOTIFICACION.ADMIN_REPORTE_PERFIL,
+              params: { id },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.PUBLICACION_REPORTADA: {
+      if (notificacion.entidadTipo !== "REPORTE_PUBLICACION") return null;
+      const id = idValido(notificacion.entidadId);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver reporte",
+            ruta: {
+              name: RUTAS_NOTIFICACION.ADMIN_REPORTE_PUBLICACION,
               params: { id },
             },
           };

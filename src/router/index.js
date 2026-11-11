@@ -55,6 +55,8 @@ import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
 import ReportePerfilDetalleView from "../views/admin/ReportePerfilDetalleView.vue";
+import ReportesPublicacionView from "../views/admin/ReportesPublicacionView.vue";
+import ReportePublicacionDetalleView from "../views/admin/ReportePublicacionDetalleView.vue";
 import AuditoriaAdminView from "../views/admin/AuditoriaAdminView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
@@ -484,6 +486,26 @@ const routes = [
       layout: AdminLayout,
       requiereAdmin: true,
       titulo: "Detalle del reporte",
+    },
+  },
+  {
+    path: "/admin/reportes-publicacion",
+    name: "admin-reportes-publicacion",
+    component: ReportesPublicacionView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Reportes de publicaciones",
+    },
+  },
+  {
+    path: "/admin/reportes-publicacion/:id",
+    name: "admin-reporte-publicacion",
+    component: ReportePublicacionDetalleView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Detalle del reporte de publicación",
     },
   },
   {
