@@ -174,6 +174,12 @@ export default {
   color: var(--color-primary);
 }
 
+/* Corazón lleno al dar Me gusta. */
+.publicacion-interacciones__accion--me-gusta.publicacion-interacciones__accion--activa
+  .material-symbols-outlined {
+  color: #de1472;
+}
+
 .publicacion-interacciones__accion:disabled {
   cursor: wait;
   opacity: 0.55;

@@ -35,9 +35,10 @@
         >
           <span class="publicacion-comentarios__avatar" aria-hidden="true">
             <img
-              v-if="fotoAutor(comentario)"
+              v-if="fotoAutor(comentario) && !fotoComentarioRota(comentario)"
               :src="fotoAutor(comentario)"
               :alt="nombreAutor(comentario)"
+              @error="marcarFotoComentarioRota(comentario)"
             />
             <template v-else>{{ inicialesAutor(comentario) }}</template>
           </span>
@@ -80,7 +81,13 @@
 
       <form class="publicacion-comentarios__form" @submit.prevent="enviar">
         <span class="publicacion-comentarios__avatar" aria-hidden="true">
-          {{ inicialesPerfilActivo }}
+          <img
+            v-if="fotoPerfilActivo && !fotoPerfilRota"
+            :src="fotoPerfilActivo"
+            :alt="nombrePerfilActivo"
+            @error="fotoPerfilRota = true"
+          />
+          <template v-else>{{ inicialesPerfilActivo }}</template>
         </span>
 
         <div class="publicacion-comentarios__campo">
@@ -120,6 +127,7 @@
 
 <script>
 import publicacionService from "../../services/publicacionService";
+import perfilService from "../../services/perfilService";
 import {
   fijarCantidadComentarios,
   incrementarComentarios,
@@ -179,6 +187,10 @@ export default {
       ultima: true,
       total: 0,
       controlador: null,
+      fotoPerfilActivo: null,
+      fotoPerfilRota: false,
+      /** Fotos de comentarios que fallaron, para volver a las iniciales. */
+      fotosRotas: {},
     };
   },
   computed: {
@@ -206,12 +218,17 @@ export default {
       },
     },
     idPerfilActivoActual() {
-      // Los comentarios visibles y el marcador (vos) dependen del perfil.
+      // Los comentarios visibles, el marcador (vos) y el avatar del composer
+      // dependen del perfil activo.
       this.reiniciarYcargar();
+      this.cargarFotoPerfilActivo();
     },
     enfocarAlMontar(activo) {
       if (activo) this.enfocarComposer();
     },
+  },
+  mounted() {
+    this.cargarFotoPerfilActivo();
   },
   beforeUnmount() {
     this.abortar();
@@ -234,6 +251,7 @@ export default {
       this.errorEnvio = "";
       this.texto = "";
       this.enviando = false;
+      this.fotosRotas = {};
       if (this.idPublicacion == null || this.idPublicacion === "") {
         this.cargando = false;
         return;
@@ -416,7 +434,52 @@ export default {
       );
     },
     fotoAutor(comentario) {
-      return resolverFotoUrl(comentario?.autor?.fotoUrl);
+      const autor = comentario?.autor;
+      return resolverFotoUrl(
+        autor?.fotoUrl || autor?.urlFoto || autor?.fotoPerfil
+      );
+    },
+    fotoComentarioRota(comentario) {
+      return !!this.fotosRotas[comentario?.idComentario];
+    },
+    marcarFotoComentarioRota(comentario) {
+      const id = comentario?.idComentario;
+      if (id == null) return;
+      this.fotosRotas = { ...this.fotosRotas, [id]: true };
+    },
+    /**
+     * Foto del perfil activo para el avatar del formulario. `/usuarios/me/perfiles`
+     * es la misma fuente que usan los layouts para el switcher.
+     */
+    async cargarFotoPerfilActivo() {
+      const idSolicitado = idPerfilActivo();
+      this.fotoPerfilActivo = null;
+      this.fotoPerfilRota = false;
+      if (idSolicitado == null) return;
+
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        if (String(idPerfilActivo()) !== String(idSolicitado)) return;
+
+        const datos = response?.data;
+        const perfiles = Array.isArray(datos)
+          ? datos
+          : Array.isArray(datos?.perfiles)
+            ? datos.perfiles
+            : [];
+        const perfil = perfiles.find(
+          (item) => String(item?.idPerfil) === String(idSolicitado)
+        );
+
+        this.fotoPerfilActivo = resolverFotoUrl(
+          perfil?.urlFoto || perfil?.fotoPerfil || perfil?.fotoUrl
+        );
+        this.fotoPerfilRota = false;
+      } catch {
+        if (String(idPerfilActivo()) !== String(idSolicitado)) return;
+        this.fotoPerfilActivo = null;
+        this.fotoPerfilRota = false;
+      }
     },
     inicialesAutor(comentario) {
       return this.inicialesDe(this.nombreAutor(comentario));
