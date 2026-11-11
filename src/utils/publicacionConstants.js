@@ -140,7 +140,10 @@ export function firmarFiltrosPublicacion(filtros = {}, pagina = 0) {
  * @param {{titulo?:string, descripcion?:string, archivos?:File[], ubicacion?:object|null}} form
  * @returns {Record<string,string>}
  */
-export function validarFormularioPublicacion(form = {}) {
+export function validarFormularioPublicacion(
+  form = {},
+  totalImagenes = null
+) {
   const errores = {};
   const titulo = String(form.titulo || "").trim();
 
@@ -158,10 +161,14 @@ export function validarFormularioPublicacion(form = {}) {
   }
 
   const archivos = Array.isArray(form.archivos) ? form.archivos : [];
-  if (!archivos.length) {
-    errores.archivos = "Debés adjuntar al menos una imagen.";
-  } else if (archivos.length > PUBLICACION_IMAGENES.MAX_IMAGENES) {
-    errores.archivos = `Podés adjuntar hasta ${PUBLICACION_IMAGENES.MAX_IMAGENES} imágenes.`;
+  const cantidadImagenes =
+    totalImagenes == null ? archivos.length : Number(totalImagenes) || 0;
+
+  if (cantidadImagenes < 1) {
+    errores.archivos =
+      "Debés conservar o agregar al menos una imagen.";
+  } else if (cantidadImagenes > PUBLICACION_IMAGENES.MAX_IMAGENES) {
+    errores.archivos = `Podés tener hasta ${PUBLICACION_IMAGENES.MAX_IMAGENES} imágenes.`;
   }
 
   if (form.ubicacion?.provinciaId && !form.ubicacion?.localidadId) {

@@ -457,6 +457,14 @@
         :publicacion="publicacionSeleccionada"
         @abrir-galeria="abrirGaleriaPublicacion"
         @ver-proyecto="irAProyectoPublicacion"
+        @editar="editarPublicacion"
+      />
+
+      <ModalNuevaPublicacion
+        v-model="modalEditarPublicacionVisible"
+        modo="editar"
+        :publicacion="publicacionEditando"
+        @actualizada="alActualizarPublicacion"
       />
 
       <GaleriaPublicacionModal
@@ -621,6 +629,8 @@ export default {
       controladorProyectosPublicaciones: null,
       sincronizandoQueryPublicaciones: false,
       modalNuevaPublicacionVisible: false,
+      modalEditarPublicacionVisible: false,
+      publicacionEditando: null,
       modalPublicacionVisible: false,
       publicacionSeleccionada: null,
       modalGaleriaPublicacionVisible: false,
@@ -1309,6 +1319,24 @@ export default {
         duration: 5000,
       });
       this.limpiarFiltrosPublicaciones();
+      this.cargarPublicacionesPerfil();
+    },
+    editarPublicacion(publicacion) {
+      if (!publicacion?.idPublicacion) return;
+      this.publicacionEditando = publicacion;
+      this.modalPublicacionVisible = false;
+      this.modalEditarPublicacionVisible = true;
+    },
+    alActualizarPublicacion() {
+      this.modalEditarPublicacionVisible = false;
+      this.toast.init({
+        title: "Publicación actualizada",
+        message: "Los cambios se guardaron correctamente.",
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.cargarPublicaciones();
       this.cargarPublicacionesPerfil();
     },
     resetearTerminos() {

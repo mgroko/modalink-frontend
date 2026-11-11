@@ -25,6 +25,17 @@
           <template v-if="fechaRelativa"> · {{ fechaRelativa }}</template>
         </span>
       </div>
+
+      <button
+        v-if="esPropia"
+        type="button"
+        class="publicacion-card__editar"
+        title="Editar publicación"
+        aria-label="Editar publicación"
+        @click="$emit('editar', publicacion)"
+      >
+        <span class="material-symbols-outlined">edit</span>
+      </button>
     </header>
 
     <h2 class="publicacion-card__titulo">{{ publicacion.titulo }}</h2>
@@ -112,6 +123,7 @@
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatearTiempoRelativo } from "../../utils/fechas.js";
 import { formatUbicacionPublicacion } from "../../utils/ubicacion.js";
+import { idPerfilActivo } from "../../services/authState";
 
 export default {
   name: "PublicacionCard",
@@ -126,7 +138,7 @@ export default {
       validator: (valor) => ["inline", "modal"].includes(valor),
     },
   },
-  emits: ["abrir-galeria", "ver-proyecto", "cerrar"],
+  emits: ["abrir-galeria", "ver-proyecto", "cerrar", "editar"],
   data() {
     return {
       expandida: false,
@@ -148,6 +160,14 @@ export default {
     },
     autorId() {
       return this.publicacion?.autor?.idPerfil ?? null;
+    },
+    esPropia() {
+      const idActivo = idPerfilActivo();
+      return (
+        idActivo != null &&
+        this.autorId != null &&
+        String(this.autorId) === String(idActivo)
+      );
     },
     autorNombre() {
       return (
@@ -242,6 +262,31 @@ export default {
 .publicacion-card__autor-datos {
   display: grid;
   gap: 0.1rem;
+}
+
+.publicacion-card__editar {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  margin-left: auto;
+  padding: 0;
+  place-items: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.publicacion-card__editar:hover,
+.publicacion-card__editar:focus-visible {
+  color: var(--color-primary);
+  border-color: var(--color-primary-light);
+  outline: none;
+}
+
+.publicacion-card__editar .material-symbols-outlined {
+  font-size: 1rem;
 }
 
 .publicacion-card__autor-datos strong,

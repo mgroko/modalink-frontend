@@ -35,6 +35,7 @@
           :publicacion="publicacion"
           @abrir-galeria="$emit('abrir-galeria', $event)"
           @ver-proyecto="$emit('ver-proyecto', $event)"
+          @editar="$emit('editar', $event)"
         />
       </div>
 
@@ -80,7 +81,7 @@ export default {
       default: false,
     },
   },
-  emits: ["abrir-galeria", "ver-proyecto", "reintentar", "cargar-mas"],
+  emits: ["abrir-galeria", "ver-proyecto", "editar", "reintentar", "cargar-mas"],
 };
 </script>
 

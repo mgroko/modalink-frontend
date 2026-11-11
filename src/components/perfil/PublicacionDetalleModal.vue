@@ -12,6 +12,7 @@
       modo="modal"
       @abrir-galeria="$emit('abrir-galeria', $event)"
       @ver-proyecto="$emit('ver-proyecto', $event)"
+      @editar="$emit('editar', $event)"
       @cerrar="$emit('update:modelValue', false)"
     />
   </VaModal>
@@ -33,6 +34,6 @@ export default {
       default: null,
     },
   },
-  emits: ["update:modelValue", "abrir-galeria", "ver-proyecto"],
+  emits: ["update:modelValue", "abrir-galeria", "ver-proyecto", "editar"],
 };
 </script>

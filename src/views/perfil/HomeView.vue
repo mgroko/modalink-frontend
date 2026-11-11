@@ -29,6 +29,7 @@
       @nueva-publicacion="abrirNuevaPublicacion"
       @abrir-galeria-publicacion="abrirGaleriaPublicacion"
       @ver-proyecto-publicacion="irAProyectoPublicacion"
+      @editar-publicacion="editarPublicacion"
       @reintentar-publicaciones="cargarFeedPublicaciones()"
       @cargar-mas-publicaciones="cargarMasPublicaciones"
     />
@@ -62,6 +63,13 @@
     <ModalNuevaPublicacion
       v-model="modalNuevaPublicacionVisible"
       @creada="alCrearPublicacion"
+    />
+
+    <ModalNuevaPublicacion
+      v-model="modalEditarPublicacionVisible"
+      modo="editar"
+      :publicacion="publicacionEditando"
+      @actualizada="alActualizarPublicacion"
     />
 
     <GaleriaPublicacionModal
@@ -136,6 +144,8 @@ export default {
       errorPostulacion: "",
       errorPostulacionEsDisponibilidad: false,
       modalNuevaPublicacionVisible: false,
+      modalEditarPublicacionVisible: false,
+      publicacionEditando: null,
       publicacionesFeed: [],
       cargandoPublicacionesFeed: false,
       errorPublicacionesFeed: "",
@@ -256,6 +266,22 @@ export default {
         duration: 5000,
       });
       this.$router.push({ name: "inicioperfil" });
+    },
+    editarPublicacion(publicacion) {
+      if (!publicacion?.idPublicacion) return;
+      this.publicacionEditando = publicacion;
+      this.modalEditarPublicacionVisible = true;
+    },
+    alActualizarPublicacion() {
+      this.modalEditarPublicacionVisible = false;
+      this.toast.init({
+        title: "Publicación actualizada",
+        message: "Los cambios se guardaron correctamente.",
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.cargarFeedPublicaciones();
     },
     abortarFeedPublicaciones() {
       if (this.controladorFeedPublicaciones) {

@@ -9,16 +9,27 @@
   >
     <template #header>
       <div class="nueva-publicacion__cabecera">
-        <h3 class="va-h5 nueva-publicacion__titulo">Nueva publicación</h3>
+        <h3 class="va-h5 nueva-publicacion__titulo">{{ tituloModal }}</h3>
         <p class="nueva-publicacion__subtitulo">
-          Mostrá tu trabajo a la red de ModaLink.
+          {{ subtituloModal }}
         </p>
       </div>
     </template>
 
-    <BaseAlert :message="errorGeneral" type="error" />
+    <div v-if="cargandoDetalle" class="nueva-publicacion__cargando" role="status">
+      <span class="nueva-publicacion__spinner" aria-hidden="true"></span>
+      Cargando publicación...
+    </div>
 
-    <div class="nueva-publicacion__form">
+    <div v-else-if="errorDetalle" class="nueva-publicacion__cargando">
+      <BaseAlert :message="errorDetalle" type="error" />
+      <VaButton preset="secondary" icon="mso-refresh" @click="cargarDetalle">
+        Reintentar
+      </VaButton>
+    </div>
+
+    <div v-else class="nueva-publicacion__form">
+      <BaseAlert :message="errorGeneral" type="error" />
       <VaInput
         v-model="form.titulo"
         label="Título*"
@@ -105,11 +116,21 @@
             v-for="(imagen, indice) in archivos"
             :key="imagen.id"
             class="nueva-publicacion__preview"
+            :class="{
+              'nueva-publicacion__preview--arrastrando':
+                indiceArrastrado === indice,
+            }"
+            draggable="true"
+            @dragstart="iniciarArrastre(indice, $event)"
+            @dragover.prevent
+            @drop.prevent="soltarImagen(indice)"
+            @dragend="terminarArrastre"
           >
             <img
               :src="imagen.preview"
               :alt="imagen.nombre"
               class="nueva-publicacion__preview-img"
+              draggable="false"
             />
             <span v-if="indice === 0" class="nueva-publicacion__portada">
               Portada
@@ -187,11 +208,11 @@
         </VaButton>
         <VaButton
           :loading="subiendo"
-          :disabled="subiendo"
+          :disabled="subiendo || cargandoDetalle || !!errorDetalle || !hayImagenes"
           icon="mso-publish"
           @click="publicar"
         >
-          Publicar
+          {{ textoGuardar }}
         </VaButton>
       </div>
     </template>
@@ -216,6 +237,7 @@ import {
 } from "../../utils/publicacionImagenes.js";
 import { ESTADOS_PROYECTO, normalizarEstadoProyecto } from "../../utils/proyectoConstants.js";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 
 const ESTADOS_ASOCIABLES = [
   ESTADOS_PROYECTO.CONFIRMADO,
@@ -233,8 +255,17 @@ export default {
       type: Boolean,
       default: false,
     },
+    modo: {
+      type: String,
+      default: "crear",
+      validator: (valor) => ["crear", "editar"].includes(valor),
+    },
+    publicacion: {
+      type: Object,
+      default: null,
+    },
   },
-  emits: ["update:modelValue", "creada"],
+  emits: ["update:modelValue", "creada", "actualizada"],
   data() {
     return {
       LIMITES_PUBLICACION,
@@ -255,21 +286,57 @@ export default {
       subiendo: false,
       progreso: 0,
       controladorProyectos: null,
+      controladorDetalle: null,
+      cargandoDetalle: false,
+      errorDetalle: "",
+      detalleOriginal: null,
+      indiceArrastrado: null,
     };
+  },
+  computed: {
+    esEdicion() {
+      return this.modo === "editar";
+    },
+    tituloModal() {
+      return this.esEdicion ? "Editar publicación" : "Nueva publicación";
+    },
+    subtituloModal() {
+      return this.esEdicion
+        ? "Actualizá el contenido de tu publicación."
+        : "Mostrá tu trabajo a la red de ModaLink.";
+    },
+    textoGuardar() {
+      return this.esEdicion ? "Guardar cambios" : "Publicar";
+    },
+    imagenesExistentes() {
+      return this.archivos.filter((imagen) => imagen.tipo === "existente");
+    },
+    imagenesNuevas() {
+      return this.archivos.filter((imagen) => imagen.tipo === "nueva");
+    },
+    hayImagenes() {
+      return this.archivos.length > 0;
+    },
   },
   watch: {
     modelValue(abierto) {
       if (abierto) {
         this.reiniciarFormulario();
         this.cargarProyectos();
+        if (this.esEdicion) this.cargarDetalle();
         return;
       }
       if (this.controladorProyectos) {
         this.controladorProyectos.abort();
         this.controladorProyectos = null;
       }
+      if (this.controladorDetalle) {
+        this.controladorDetalle.abort();
+        this.controladorDetalle = null;
+      }
       this.cargandoProyectos = false;
-      revocarPreviewsPublicacion(this.archivos);
+      this.cargandoDetalle = false;
+      revocarPreviewsPublicacion(this.imagenesNuevas);
     },
     "form.titulo"() {
       this.limpiarError("titulo");
@@ -286,15 +353,107 @@ export default {
   },
   beforeUnmount() {
     if (this.controladorProyectos) this.controladorProyectos.abort();
-    revocarPreviewsPublicacion(this.archivos);
+    if (this.controladorDetalle) this.controladorDetalle.abort();
+    revocarPreviewsPublicacion(this.imagenesNuevas);
   },
   methods: {
     cambiarVisibilidad(abierto) {
       if (this.subiendo && !abierto) return;
       this.$emit("update:modelValue", abierto);
     },
+    async cargarDetalle() {
+      const idPublicacion = this.publicacion?.idPublicacion;
+      if (!idPublicacion) {
+        this.errorDetalle = "No se encontró la publicación a editar.";
+        return;
+      }
+
+      if (this.controladorDetalle) this.controladorDetalle.abort();
+      const controller = new AbortController();
+      this.controladorDetalle = controller;
+      this.cargandoDetalle = true;
+      this.errorDetalle = "";
+
+      try {
+        const response = await publicacionService.obtener(
+          idPublicacion,
+          controller.signal
+        );
+        if (this.controladorDetalle !== controller) return;
+
+        const detalle = normalizarPublicacion(response?.data);
+        if (!detalle) {
+          this.errorDetalle = "No se pudo cargar la publicación.";
+          return;
+        }
+
+        this.detalleOriginal = detalle;
+        this.form = {
+          titulo: detalle.titulo || "",
+          descripcion: detalle.descripcion || "",
+          idProyecto: detalle.proyecto?.idProyecto ?? null,
+          ubicacion: this.mapearUbicacion(detalle.ubicacion),
+        };
+        this.archivos = (detalle.imagenes || []).map((imagen) => ({
+          tipo: "existente",
+          id: `existente-${imagen.idImagen}`,
+          idImagen: imagen.idImagen,
+          nombre: `Imagen ${imagen.idImagen}`,
+          url: imagen.url,
+          preview: resolverFotoUrl(imagen.url),
+          orden: imagen.orden,
+        }));
+        this.incluirProyectoActual(detalle.proyecto);
+      } catch (error) {
+        if (
+          this.controladorDetalle !== controller ||
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError"
+        ) {
+          return;
+        }
+        const status = error?.response?.status;
+        this.errorDetalle =
+          status === 404
+            ? "La publicación no existe o no pertenece a tu perfil."
+            : mensajeErrorApi(
+                error,
+                "No se pudo cargar la publicación para editar."
+              );
+      } finally {
+        if (this.controladorDetalle === controller) {
+          this.cargandoDetalle = false;
+          this.controladorDetalle = null;
+        }
+      }
+    },
+    mapearUbicacion(ubicacion) {
+      const localidadId = ubicacion?.idExterno;
+      const provinciaId = ubicacion?.provincia?.idExterno;
+      if (!localidadId || !provinciaId) return null;
+      return {
+        localidadId: String(localidadId),
+        provinciaId: String(provinciaId),
+      };
+    },
+    incluirProyectoActual(proyecto) {
+      if (proyecto?.idProyecto == null) return;
+      const existe = this.proyectos.some(
+        (item) => String(item.idProyecto) === String(proyecto.idProyecto)
+      );
+      if (existe) return;
+      this.proyectos = [
+        ...this.proyectos,
+        {
+          idProyecto: proyecto.idProyecto,
+          nombre: `${proyecto.nombre || "Proyecto"} (actual)`,
+          estado: null,
+          actual: true,
+        },
+      ];
+    },
     reiniciarFormulario() {
-      revocarPreviewsPublicacion(this.archivos);
+      revocarPreviewsPublicacion(this.imagenesNuevas);
       this.form = {
         titulo: "",
         descripcion: "",
@@ -307,6 +466,13 @@ export default {
       this.errorGeneral = "";
       this.progreso = 0;
       this.errorProyectos = "";
+      this.detalleOriginal = null;
+      this.cargandoDetalle = false;
+      this.errorDetalle = "";
+      if (this.controladorDetalle) {
+        this.controladorDetalle.abort();
+        this.controladorDetalle = null;
+      }
     },
     limpiarError(campo) {
       if (this.errorGeneral) this.errorGeneral = "";
@@ -360,6 +526,10 @@ export default {
             nombre: proyecto.nombre,
             estado: proyecto.estado,
           }));
+
+        if (this.esEdicion) {
+          this.incluirProyectoActual(this.detalleOriginal?.proyecto);
+        }
       } catch (error) {
         if (
           this.controladorProyectos !== controller ||
@@ -386,9 +556,18 @@ export default {
       if (this.subiendo) return;
 
       this.rechazadas = [];
-      const existentes = this.archivos.map((imagen) => imagen.archivo);
+      const archivosNuevos = this.archivos
+        .filter((imagen) => imagen.tipo !== "existente" && imagen.archivo)
+        .map((imagen) => imagen.archivo);
+      const existentes = this.archivos
+        .filter((imagen) => imagen.tipo === "existente")
+        .map((_, indice) => ({
+          name: `existente-${indice}`,
+          size: 1,
+          lastModified: 0,
+        }));
       const { validas, rechazadas } = await agregarImagenesPublicacion(
-        existentes,
+        [...existentes, ...archivosNuevos],
         nuevas
       );
 
@@ -396,7 +575,10 @@ export default {
       if (validas.length) {
         this.archivos = [
           ...this.archivos,
-          ...validas.map(crearItemImagenPublicacion),
+          ...validas.map((archivo) => ({
+            ...crearItemImagenPublicacion(archivo),
+            tipo: "nueva",
+          })),
         ];
         this.limpiarError("archivos");
         this.errorGeneral = "";
@@ -405,14 +587,48 @@ export default {
     quitarImagen(indice) {
       const imagen = this.archivos[indice];
       if (!imagen || this.subiendo) return;
-      revocarPreviewsPublicacion([imagen]);
+      if (imagen.tipo !== "existente") {
+        revocarPreviewsPublicacion([imagen]);
+      }
       this.archivos = this.archivos.filter((_, i) => i !== indice);
     },
+    iniciarArrastre(indice, evento) {
+      if (this.subiendo) return;
+      this.indiceArrastrado = indice;
+      if (evento?.dataTransfer) {
+        evento.dataTransfer.effectAllowed = "move";
+        evento.dataTransfer.setData("text/plain", String(indice));
+      }
+    },
+    soltarImagen(indiceDestino) {
+      const indiceOrigen = this.indiceArrastrado;
+      this.indiceArrastrado = null;
+      if (
+        this.subiendo ||
+        indiceOrigen == null ||
+        indiceOrigen === indiceDestino ||
+        indiceOrigen < 0 ||
+        indiceOrigen >= this.archivos.length
+      ) {
+        return;
+      }
+
+      const imagenes = [...this.archivos];
+      const [movida] = imagenes.splice(indiceOrigen, 1);
+      imagenes.splice(indiceDestino, 0, movida);
+      this.archivos = imagenes;
+    },
+    terminarArrastre() {
+      this.indiceArrastrado = null;
+    },
     validar() {
-      const errores = validarFormularioPublicacion({
-        ...this.form,
-        archivos: this.archivos.map((imagen) => imagen.archivo),
-      });
+      const errores = validarFormularioPublicacion(
+        {
+          ...this.form,
+          archivos: this.imagenesNuevas.map((imagen) => imagen.archivo),
+        },
+        this.archivos.length
+      );
       this.errores = errores;
       if (Object.keys(errores).length) {
         this.errorGeneral = "Revisá los datos marcados antes de continuar.";
@@ -423,6 +639,7 @@ export default {
     },
     async publicar() {
       if (this.subiendo) return;
+      if (this.esEdicion) return this.guardarEdicion();
       if (!this.validar()) return;
 
       this.subiendo = true;
@@ -446,6 +663,134 @@ export default {
 
         this.subiendo = false;
         this.$emit("creada", normalizarPublicacion(response?.data));
+        this.$emit("update:modelValue", false);
+      } catch (error) {
+        this.manejarError(error);
+      } finally {
+        this.subiendo = false;
+      }
+    },
+    async guardarEdicion() {
+      if (!this.validar()) return;
+
+      const idPublicacion =
+        this.publicacion?.idPublicacion ||
+        this.detalleOriginal?.idPublicacion;
+      if (!idPublicacion) {
+        this.errorGeneral = "No se encontró la publicación a editar.";
+        return;
+      }
+
+      this.subiendo = true;
+      this.progreso = 0;
+      this.errorGeneral = "";
+
+      const base = {
+        titulo: this.form.titulo,
+        descripcion: this.form.descripcion,
+        idProyecto:
+          this.form.idProyecto != null && this.form.idProyecto !== ""
+            ? this.form.idProyecto
+            : "",
+        localidadId: this.form.ubicacion?.localidadId || "",
+        provinciaId: this.form.ubicacion?.provinciaId || "",
+      };
+
+      const nuevas = this.imagenesNuevas;
+      const existentes = this.imagenesExistentes;
+      const idsExistentes = existentes.map((imagen) => imagen.idImagen);
+      const originales = new Set(
+        (this.detalleOriginal?.imagenes || []).map((imagen) =>
+          String(imagen.idImagen)
+        )
+      );
+
+      const idsNuevasDesdeRespuesta = (data) =>
+        (data?.imagenes || [])
+          .filter((imagen) => !originales.has(String(imagen.idImagen)))
+          .sort((a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0))
+          .map((imagen) => imagen.idImagen);
+
+      const guardar = async (imagenesConservadas, archivos) => {
+        const response = await publicacionService.actualizar(
+          idPublicacion,
+          {
+            ...base,
+            imagenesConservadas,
+            archivos,
+          },
+          (porcentaje) => {
+            this.progreso = porcentaje;
+          }
+        );
+        return normalizarPublicacion(response?.data);
+      };
+
+      try {
+        let resultado = null;
+
+        if (!nuevas.length) {
+          resultado = await guardar(idsExistentes, []);
+        } else if (existentes.length > 0) {
+          const dataSubida = await guardar(
+            idsExistentes,
+            nuevas.map((imagen) => imagen.archivo)
+          );
+          const idsNuevas = idsNuevasDesdeRespuesta(dataSubida);
+          nuevas.forEach((imagen, indice) => {
+            imagen.idImagen = idsNuevas[indice];
+          });
+
+          const ordenFinal = this.archivos
+            .map((imagen) => imagen.idImagen)
+            .filter((id) => id != null);
+          resultado = await guardar(ordenFinal, []);
+        } else {
+          const ancla = this.detalleOriginal?.imagenes?.[0]?.idImagen;
+          if (ancla == null) {
+            throw new Error(
+              "No hay una imagen existente para iniciar el reemplazo."
+            );
+          }
+
+          if (nuevas.length <= 9) {
+            const dataSubida = await guardar(
+              [ancla],
+              nuevas.map((imagen) => imagen.archivo)
+            );
+            const idsNuevas = idsNuevasDesdeRespuesta(dataSubida);
+            nuevas.forEach((imagen, indice) => {
+              imagen.idImagen = idsNuevas[indice];
+            });
+            const ordenFinal = nuevas.map((imagen) => imagen.idImagen);
+            resultado = await guardar(ordenFinal, []);
+          } else {
+            const primeras = nuevas.slice(0, 9);
+            const restante = nuevas[9];
+            const dataPrimera = await guardar(
+              [ancla],
+              primeras.map((imagen) => imagen.archivo)
+            );
+            const idsPrimeras = idsNuevasDesdeRespuesta(dataPrimera);
+            primeras.forEach((imagen, indice) => {
+              imagen.idImagen = idsPrimeras[indice];
+            });
+
+            const dataSegunda = await guardar(idsPrimeras, [
+              restante.archivo,
+            ]);
+            const idsTodas = idsNuevasDesdeRespuesta(dataSegunda);
+            nuevas.forEach((imagen, indice) => {
+              imagen.idImagen = idsTodas[indice];
+            });
+
+            const ordenFinal = nuevas.map((imagen) => imagen.idImagen);
+            resultado = await guardar(ordenFinal, []);
+          }
+        }
+
+        this.subiendo = false;
+        this.$emit("actualizada", resultado);
         this.$emit("update:modelValue", false);
       } catch (error) {
         this.manejarError(error);
@@ -537,6 +882,32 @@ export default {
   gap: 1rem;
 }
 
+.nueva-publicacion__cargando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.nueva-publicacion__spinner {
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: nueva-publicacion-girar 0.8s linear infinite;
+}
+
+@keyframes nueva-publicacion-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .nueva-publicacion__fila {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -612,6 +983,11 @@ export default {
 .nueva-publicacion__preview {
   position: relative;
   margin: 0;
+  cursor: grab;
+}
+
+.nueva-publicacion__preview--arrastrando {
+  opacity: 0.45;
 }
 
 .nueva-publicacion__preview-img {

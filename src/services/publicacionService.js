@@ -128,6 +128,70 @@ const publicacionService = {
   },
 
   /**
+   * GET /publicaciones/{idPublicacion} — UC-21.
+   * Solo el perfil activo dueño puede obtener el detalle de edición.
+   *
+   * @param {number|string} idPublicacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PublicacionResponse}>} 200 OK
+   */
+  obtener(idPublicacion, signal) {
+    return http.get(`/publicaciones/${idPublicacion}`, { signal });
+  },
+
+  /**
+   * PUT /publicaciones/{idPublicacion} — UC-21.
+   * Reemplazo total. Hay que reenviar título, descripción, proyecto,
+   * ubicación e IDs de imágenes conservadas en cada request.
+   *
+   * @param {number|string} idPublicacion
+   * @param {{
+   *   titulo: string,
+   *   descripcion?: string,
+   *   idProyecto?: number|string|null,
+   *   localidadId?: string|null,
+   *   provinciaId?: string|null,
+   *   imagenesConservadas?: Array<number|string>,
+   *   archivos?: File[]
+   * }} request
+   * @param {(porcentaje: number) => void} [onUploadProgress]
+   * @returns {Promise<{data: PublicacionResponse}>} 200 OK
+   */
+  actualizar(idPublicacion, request, onUploadProgress) {
+    const formData = new FormData();
+
+    formData.append("titulo", String(request?.titulo || "").trim());
+    formData.append("descripcion", String(request?.descripcion || ""));
+    formData.append(
+      "idProyecto",
+      request?.idProyecto == null ? "" : String(request.idProyecto)
+    );
+    formData.append("localidadId", String(request?.localidadId || ""));
+    formData.append("provinciaId", String(request?.provinciaId || ""));
+
+    for (const idImagen of request?.imagenesConservadas || []) {
+      formData.append("imagenesConservadas", String(idImagen));
+    }
+
+    for (const archivo of request?.archivos || []) {
+      if (archivo) formData.append("archivos", archivo);
+    }
+
+    return http.put(`/publicaciones/${idPublicacion}`, formData, {
+      onUploadProgress: (evento) => {
+        if (typeof onUploadProgress !== "function") return;
+        if (!evento?.total) {
+          onUploadProgress(0);
+          return;
+        }
+        onUploadProgress(
+          Math.min(100, Math.round((evento.loaded * 100) / evento.total))
+        );
+      },
+    });
+  },
+
+  /**
    * GET /perfiles/{idPerfil}/publicaciones — UC-22.
    * Sólo devuelve publicaciones ACTIVA y aplica visibilidad de UC-14.
    *

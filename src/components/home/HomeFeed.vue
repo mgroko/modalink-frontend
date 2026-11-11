@@ -82,6 +82,7 @@
           :cargando-mas="cargandoMasPublicaciones"
           @abrir-galeria="$emit('abrir-galeria-publicacion', $event)"
           @ver-proyecto="$emit('ver-proyecto-publicacion', $event)"
+          @editar="$emit('editar-publicacion', $event)"
           @reintentar="$emit('reintentar-publicaciones')"
           @cargar-mas="$emit('cargar-mas-publicaciones')"
         />
@@ -179,6 +180,7 @@ export default {
     "nueva-publicacion",
     "abrir-galeria-publicacion",
     "ver-proyecto-publicacion",
+    "editar-publicacion",
     "reintentar-publicaciones",
     "cargar-mas-publicaciones",
   ],
