@@ -189,6 +189,75 @@ export function validarFormularioPublicacion(
  * @param {object|null|undefined} publicacion
  * @returns {object|null}
  */
+export const ACCIONES_BAJA_PUBLICACION = {
+  DUENO: "dueno",
+  COLABORADOR: "colaborador",
+};
+
+/**
+ * @param {object|null|undefined} publicacion
+ * @param {number|string|null|undefined} idPerfil
+ * @returns {boolean}
+ */
+export function esDuenoPublicacion(publicacion, idPerfil) {
+  const idAutor = publicacion?.autor?.idPerfil ?? null;
+  return (
+    idPerfil != null &&
+    idAutor != null &&
+    String(idPerfil) === String(idAutor)
+  );
+}
+
+/**
+ * @param {object|null|undefined} publicacion
+ * @param {number|string|null|undefined} idPerfil
+ * @returns {boolean}
+ */
+export function esColaboradorPublicacion(publicacion, idPerfil) {
+  if (idPerfil == null) return false;
+  const colaboradores = Array.isArray(publicacion?.colaboradores)
+    ? publicacion.colaboradores
+    : [];
+
+  return colaboradores.some((colaborador) => {
+    const id =
+      typeof colaborador === "object" && colaborador !== null
+        ? colaborador.idPerfil ?? colaborador.perfil?.idPerfil ?? null
+        : colaborador;
+    return id != null && String(id) === String(idPerfil);
+  });
+}
+
+/**
+ * Indica qué acción de baja corresponde al perfil activo.
+ * @param {object|null|undefined} publicacion
+ * @param {number|string|null|undefined} idPerfil
+ * @returns {"dueno"|"colaborador"|null}
+ */
+export function accionBajaPublicacion(publicacion, idPerfil) {
+  if (esDuenoPublicacion(publicacion, idPerfil)) {
+    return ACCIONES_BAJA_PUBLICACION.DUENO;
+  }
+  if (esColaboradorPublicacion(publicacion, idPerfil)) {
+    return ACCIONES_BAJA_PUBLICACION.COLABORADOR;
+  }
+  return null;
+}
+
+/**
+ * @param {"dueno"|"colaborador"|null} accion
+ * @returns {string}
+ */
+export function etiquetaAccionBaja(accion) {
+  if (accion === ACCIONES_BAJA_PUBLICACION.DUENO) {
+    return "Eliminar publicación";
+  }
+  if (accion === ACCIONES_BAJA_PUBLICACION.COLABORADOR) {
+    return "Quitar de mi perfil";
+  }
+  return "";
+}
+
 export function normalizarPublicacion(publicacion) {
   if (!publicacion) return null;
 

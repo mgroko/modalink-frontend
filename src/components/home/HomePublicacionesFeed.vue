@@ -33,10 +33,13 @@
           v-for="publicacion in publicaciones"
           :key="publicacion.idPublicacion"
           :publicacion="publicacion"
+          mostrar-acciones-baja
+          :permitir-baja-colaborador="false"
           @abrir-galeria="$emit('abrir-galeria', $event)"
           @ver-proyecto="$emit('ver-proyecto', $event)"
           @editar="$emit('editar', $event)"
           @invitar="$emit('invitar', $event)"
+          @eliminar="$emit('eliminar', $event)"
         />
       </div>
 
@@ -82,7 +85,15 @@ export default {
       default: false,
     },
   },
-  emits: ["abrir-galeria", "ver-proyecto", "editar", "invitar", "reintentar", "cargar-mas"],
+  emits: [
+    "abrir-galeria",
+    "ver-proyecto",
+    "editar",
+    "invitar",
+    "eliminar",
+    "reintentar",
+    "cargar-mas",
+  ],
 };
 </script>
 

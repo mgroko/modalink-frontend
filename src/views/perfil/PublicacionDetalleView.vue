@@ -31,10 +31,12 @@
     <PublicacionCard
       v-else-if="publicacion"
       :publicacion="publicacion"
+      mostrar-acciones-baja
       @abrir-galeria="abrirGaleria"
       @ver-proyecto="irAProyecto"
       @editar="abrirEdicion"
       @invitar="abrirInvitarColaborador"
+      @eliminar="abrirEliminarPublicacion"
     />
 
     <GaleriaPublicacionModal
@@ -55,6 +57,15 @@
       :publicacion="publicacion"
       @enviada="alEnviarInvitacion"
     />
+
+    <ModalEliminarPublicacion
+      v-model="modalEliminarVisible"
+      :publicacion="publicacion"
+      :modo="modoEliminarPublicacion"
+      :eliminando="eliminandoPublicacion"
+      :error="errorEliminarPublicacion"
+      @confirmar="confirmarEliminarPublicacion"
+    />
   </div>
 </template>
 
@@ -65,7 +76,12 @@ import PublicacionCard from "../../components/perfil/PublicacionCard.vue";
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
-import { normalizarPublicacion } from "../../utils/publicacionConstants.js";
+import ModalEliminarPublicacion from "../../components/perfil/ModalEliminarPublicacion.vue";
+import { idPerfilActivo } from "../../services/authState";
+import {
+  accionBajaPublicacion,
+  normalizarPublicacion,
+} from "../../utils/publicacionConstants.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { useToast } from "vuestic-ui";
 
@@ -74,6 +90,7 @@ export default {
   components: {
     BaseAlert,
     GaleriaPublicacionModal,
+    ModalEliminarPublicacion,
     ModalInvitarColaborador,
     ModalNuevaPublicacion,
     PublicacionCard,
@@ -92,6 +109,10 @@ export default {
       tituloGaleria: "",
       modalEditarVisible: false,
       modalInvitarVisible: false,
+      modalEliminarVisible: false,
+      modoEliminarPublicacion: "",
+      eliminandoPublicacion: false,
+      errorEliminarPublicacion: "",
     };
   },
   watch: {
@@ -209,6 +230,60 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+    },
+    abrirEliminarPublicacion(publicacion) {
+      if (!publicacion?.idPublicacion) return;
+      const modo = accionBajaPublicacion(publicacion, idPerfilActivo());
+      if (!modo) return;
+
+      this.modoEliminarPublicacion = modo;
+      this.errorEliminarPublicacion = "";
+      this.modalEliminarVisible = true;
+    },
+    async confirmarEliminarPublicacion() {
+      if (!this.publicacion?.idPublicacion || this.eliminandoPublicacion) {
+        return;
+      }
+
+      this.eliminandoPublicacion = true;
+      this.errorEliminarPublicacion = "";
+
+      try {
+        await publicacionService.eliminar(this.publicacion.idPublicacion);
+        this.modalEliminarVisible = false;
+
+        const esDueno = this.modoEliminarPublicacion === "dueno";
+        this.toast.init({
+          title: esDueno
+            ? "Publicación eliminada"
+            : "Publicación quitada de tu perfil",
+          message: esDueno
+            ? "La publicación se eliminó definitivamente."
+            : "La publicación sigue disponible para el dueño y los demás colaboradores.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        if (esDueno) {
+          this.volver();
+          return;
+        }
+        await this.cargar();
+      } catch (error) {
+        const status = error?.response?.status;
+        if (status === 404) {
+          this.modalEliminarVisible = false;
+          this.volver();
+          return;
+        }
+        this.errorEliminarPublicacion = mensajeErrorApi(
+          error,
+          "No se pudo eliminar la publicación."
+        );
+      } finally {
+        this.eliminandoPublicacion = false;
+      }
     },
   },
 };

@@ -143,9 +143,21 @@
     </div>
 
     <footer
-      v-if="modo === 'modal' || proyectoVisible"
+      v-if="modo === 'modal' || proyectoVisible || mostrarAccionBaja"
       class="publicacion-card__footer"
     >
+      <VaButton
+        v-if="mostrarAccionBaja"
+        class="publicacion-card__baja"
+        preset="secondary"
+        color="danger"
+        size="small"
+        icon="mso-delete"
+        @click="$emit('eliminar', publicacion)"
+      >
+        {{ etiquetaBaja }}
+      </VaButton>
+
       <VaButton
         v-if="modo === 'modal'"
         preset="secondary"
@@ -169,6 +181,11 @@
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatearTiempoRelativo } from "../../utils/fechas.js";
 import { formatUbicacionPublicacion } from "../../utils/ubicacion.js";
+import {
+  ACCIONES_BAJA_PUBLICACION,
+  accionBajaPublicacion,
+  etiquetaAccionBaja,
+} from "../../utils/publicacionConstants.js";
 import { idPerfilActivo } from "../../services/authState";
 
 export default {
@@ -183,8 +200,23 @@ export default {
       default: "inline",
       validator: (valor) => ["inline", "modal"].includes(valor),
     },
+    mostrarAccionesBaja: {
+      type: Boolean,
+      default: false,
+    },
+    permitirBajaColaborador: {
+      type: Boolean,
+      default: true,
+    },
   },
-  emits: ["abrir-galeria", "ver-proyecto", "cerrar", "editar", "invitar"],
+  emits: [
+    "abrir-galeria",
+    "ver-proyecto",
+    "cerrar",
+    "editar",
+    "invitar",
+    "eliminar",
+  ],
   data() {
     return {
       expandida: false,
@@ -214,6 +246,22 @@ export default {
         this.autorId != null &&
         String(this.autorId) === String(idActivo)
       );
+    },
+    accionBaja() {
+      return accionBajaPublicacion(this.publicacion, idPerfilActivo());
+    },
+    mostrarAccionBaja() {
+      if (!this.mostrarAccionesBaja || !this.accionBaja) return false;
+      if (
+        this.accionBaja === ACCIONES_BAJA_PUBLICACION.COLABORADOR &&
+        !this.permitirBajaColaborador
+      ) {
+        return false;
+      }
+      return true;
+    },
+    etiquetaBaja() {
+      return etiquetaAccionBaja(this.accionBaja);
     },
     autorNombre() {
       return (
@@ -553,6 +601,10 @@ export default {
 
 .publicacion-card__invitar {
   margin-left: auto;
+}
+
+.publicacion-card__baja {
+  margin-right: auto;
 }
 
 .publicacion-card__footer {

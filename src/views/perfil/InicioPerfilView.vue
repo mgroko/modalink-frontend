@@ -191,6 +191,8 @@
                   v-for="publicacion in publicaciones"
                   :key="publicacion.idPublicacion"
                   :publicacion="publicacion"
+                  :mostrar-acciones-baja="esPropio"
+                  @eliminar="abrirEliminarPublicacion"
                 />
               </div>
 
@@ -282,10 +284,12 @@
                     v-for="publicacion in publicacionesPerfil"
                     :key="publicacion.idPublicacion"
                     :publicacion="publicacion"
+                    :mostrar-acciones-baja="esPropio"
                     @abrir-galeria="abrirGaleriaPublicacion"
                     @ver-proyecto="irAProyectoPublicacion"
                     @editar="editarPublicacion"
                     @invitar="abrirInvitarColaborador"
+                    @eliminar="abrirEliminarPublicacion"
                   />
                 </div>
 
@@ -450,6 +454,15 @@
         @enviada="alEnviarInvitacion"
       />
 
+      <ModalEliminarPublicacion
+        v-model="modalEliminarPublicacionVisible"
+        :publicacion="publicacionEliminar"
+        :modo="modoEliminarPublicacion"
+        :eliminando="eliminandoPublicacion"
+        :error="errorEliminarPublicacion"
+        @confirmar="confirmarEliminarPublicacion"
+      />
+
       <GaleriaPublicacionModal
         v-model="modalGaleriaPublicacionVisible"
         :imagenes="imagenesGaleria"
@@ -481,6 +494,7 @@ import PublicacionCardGaleria from "../../components/perfil/PublicacionCardGaler
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
+import ModalEliminarPublicacion from "../../components/perfil/ModalEliminarPublicacion.vue";
 import {
   esAdmin,
   idPerfilActivo,
@@ -524,6 +538,7 @@ import { normalizarResena, normalizarResumen } from "../../utils/resenasConstant
 import { normalizarTerminos } from "../../utils/terminosCondiciones.js";
 import { mostrarNoDisponible } from "../../utils/noDisponible.js";
 import {
+  accionBajaPublicacion,
   construirQueryPublicaciones,
   filtrosPublicacionVacios,
   firmarFiltrosPublicacion,
@@ -560,6 +575,7 @@ export default {
     FiltrosPublicaciones,
     GaleriaPublicacionModal,
     HistorialProyectosLista,
+    ModalEliminarPublicacion,
     ModalInvitarColaborador,
     ModalNuevaPublicacion,
     PaginacionResultados,
@@ -631,6 +647,11 @@ export default {
       publicacionEditando: null,
       modalInvitarColaboradorVisible: false,
       publicacionInvitar: null,
+      modalEliminarPublicacionVisible: false,
+      publicacionEliminar: null,
+      modoEliminarPublicacion: "",
+      eliminandoPublicacion: false,
+      errorEliminarPublicacion: "",
       modalGaleriaPublicacionVisible: false,
       imagenesGaleria: [],
       tituloGaleria: "",
@@ -1552,6 +1573,88 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+    },
+    abrirEliminarPublicacion(publicacion) {
+      if (!publicacion?.idPublicacion) return;
+      const modo = accionBajaPublicacion(publicacion, idPerfilActivo());
+      if (!modo) return;
+
+      this.publicacionEliminar = publicacion;
+      this.modoEliminarPublicacion = modo;
+      this.errorEliminarPublicacion = "";
+      this.modalEliminarPublicacionVisible = true;
+    },
+    quitarPublicacionDeListas(idPublicacion) {
+      const coincide = (publicacion) =>
+        String(publicacion?.idPublicacion) === String(idPublicacion);
+      this.publicaciones = this.publicaciones.filter(
+        (publicacion) => !coincide(publicacion)
+      );
+      this.publicacionesPerfil = this.publicacionesPerfil.filter(
+        (publicacion) => !coincide(publicacion)
+      );
+    },
+    async confirmarEliminarPublicacion() {
+      const publicacion = this.publicacionEliminar;
+      if (!publicacion?.idPublicacion || this.eliminandoPublicacion) return;
+
+      this.eliminandoPublicacion = true;
+      this.errorEliminarPublicacion = "";
+
+      try {
+        await publicacionService.eliminar(publicacion.idPublicacion);
+
+        this.modalEliminarPublicacionVisible = false;
+        this.quitarPublicacionDeListas(publicacion.idPublicacion);
+
+        const esDueno = this.modoEliminarPublicacion === "dueno";
+        this.toast.init({
+          title: esDueno
+            ? "Publicación eliminada"
+            : "Publicación quitada de tu perfil",
+          message: esDueno
+            ? "La publicación se eliminó definitivamente."
+            : "La publicación sigue disponible para el dueño y los demás colaboradores.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        const pagina = this.paginacionPublicaciones.paginaActual || 0;
+        await this.cargarPublicaciones({ pagina });
+        if (!this.publicaciones.length && pagina > 0) {
+          await this.cargarPublicaciones({ pagina: pagina - 1 });
+        }
+        await this.cargarPublicacionesPerfil();
+      } catch (error) {
+        const status = error?.response?.status;
+        const mensaje = mensajeErrorApi(
+          error,
+          "No se pudo eliminar la publicación."
+        );
+
+        if (status === 404) {
+          this.modalEliminarPublicacionVisible = false;
+          this.quitarPublicacionDeListas(publicacion.idPublicacion);
+          this.toast.init({
+            title: "Publicación no disponible",
+            message:
+              error?.response?.data?.message ||
+              "La publicación ya no existe o ya no está asociada a tu perfil.",
+            color: "info",
+            position: "top-right",
+            duration: 5000,
+          });
+          await this.cargarPublicaciones({
+            pagina: this.paginacionPublicaciones.paginaActual || 0,
+          });
+          await this.cargarPublicacionesPerfil();
+        } else {
+          this.errorEliminarPublicacion = mensaje;
+        }
+      } finally {
+        this.eliminandoPublicacion = false;
+      }
     },
     alActualizarPublicacion() {
       this.modalEditarPublicacionVisible = false;

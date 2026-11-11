@@ -30,6 +30,19 @@
         image
       </span>
 
+      <button
+        v-if="mostrarAccionBaja"
+        type="button"
+        class="publicacion-galeria__baja"
+        :aria-label="etiquetaBaja"
+        :title="etiquetaBaja"
+        @click.stop="$emit('eliminar', publicacion)"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">
+          delete
+        </span>
+      </button>
+
       <span
         v-if="totalImagenes > 1"
         class="publicacion-galeria__contador"
@@ -130,6 +143,12 @@
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatearTiempoRelativo } from "../../utils/fechas.js";
 import { formatUbicacionPublicacion } from "../../utils/ubicacion.js";
+import {
+  ACCIONES_BAJA_PUBLICACION,
+  accionBajaPublicacion,
+  etiquetaAccionBaja,
+} from "../../utils/publicacionConstants.js";
+import { idPerfilActivo } from "../../services/authState";
 
 export default {
   name: "PublicacionCardGaleria",
@@ -138,8 +157,16 @@ export default {
       type: Object,
       default: null,
     },
+    mostrarAccionesBaja: {
+      type: Boolean,
+      default: false,
+    },
+    permitirBajaColaborador: {
+      type: Boolean,
+      default: true,
+    },
   },
-  emits: [],
+  emits: ["eliminar"],
   data() {
     return {
       indiceActual: 0,
@@ -171,6 +198,22 @@ export default {
       return this.relacionAspecto
         ? { aspectRatio: String(this.relacionAspecto) }
         : {};
+    },
+    accionBaja() {
+      return accionBajaPublicacion(this.publicacion, idPerfilActivo());
+    },
+    mostrarAccionBaja() {
+      if (!this.mostrarAccionesBaja || !this.accionBaja) return false;
+      if (
+        this.accionBaja === ACCIONES_BAJA_PUBLICACION.COLABORADOR &&
+        !this.permitirBajaColaborador
+      ) {
+        return false;
+      }
+      return true;
+    },
+    etiquetaBaja() {
+      return etiquetaAccionBaja(this.accionBaja);
     },
   },
   watch: {
@@ -267,6 +310,36 @@ export default {
 .publicacion-galeria__sin-imagen {
   color: var(--color-text-subtle);
   font-size: 2.5rem;
+}
+
+.publicacion-galeria__baja {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 3;
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  place-items: center;
+  color: var(--color-danger-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 50%;
+  box-shadow: 0 0.2rem 0.6rem rgba(35, 33, 52, 0.16);
+  cursor: pointer;
+}
+
+.publicacion-galeria__baja:hover,
+.publicacion-galeria__baja:focus-visible {
+  color: var(--color-danger-text);
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger-border);
+  outline: none;
+}
+
+.publicacion-galeria__baja .material-symbols-outlined {
+  font-size: 1.1rem;
 }
 
 .publicacion-galeria__contador {

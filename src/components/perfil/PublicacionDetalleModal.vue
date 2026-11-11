@@ -10,10 +10,13 @@
     <PublicacionCard
       :publicacion="publicacion"
       modo="modal"
+      :mostrar-acciones-baja="mostrarAccionesBaja"
+      :permitir-baja-colaborador="permitirBajaColaborador"
       @abrir-galeria="$emit('abrir-galeria', $event)"
       @ver-proyecto="$emit('ver-proyecto', $event)"
       @editar="$emit('editar', $event)"
       @invitar="$emit('invitar', $event)"
+      @eliminar="$emit('eliminar', $event)"
       @cerrar="$emit('update:modelValue', false)"
     />
   </VaModal>
@@ -34,7 +37,22 @@ export default {
       type: Object,
       default: null,
     },
+    mostrarAccionesBaja: {
+      type: Boolean,
+      default: false,
+    },
+    permitirBajaColaborador: {
+      type: Boolean,
+      default: true,
+    },
   },
-  emits: ["update:modelValue", "abrir-galeria", "ver-proyecto", "editar", "invitar"],
+  emits: [
+    "update:modelValue",
+    "abrir-galeria",
+    "ver-proyecto",
+    "editar",
+    "invitar",
+    "eliminar",
+  ],
 };
 </script>

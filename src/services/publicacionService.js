@@ -172,6 +172,18 @@ const publicacionService = {
    * @param {(porcentaje: number) => void} [onUploadProgress]
    * @returns {Promise<{data: PublicacionResponse}>} 200 OK
    */
+  /**
+   * DELETE /publicaciones/{idPublicacion} — UC-20.
+   * Si el perfil activo es el dueño, elimina la publicación completa.
+   * Si es colaborador, sólo quita su etiqueta de colaborador.
+   *
+   * @param {number|string} idPublicacion
+   * @returns {Promise<{status: number}>} 204 No Content
+   */
+  eliminar(idPublicacion) {
+    return http.delete(`/publicaciones/${idPublicacion}`);
+  },
+
   actualizar(idPublicacion, request, onUploadProgress) {
     const formData = new FormData();
 

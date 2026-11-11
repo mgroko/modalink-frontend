@@ -31,6 +31,7 @@
       @ver-proyecto-publicacion="irAProyectoPublicacion"
       @editar-publicacion="editarPublicacion"
       @invitar-colaborador="abrirInvitarColaborador"
+      @eliminar-publicacion="abrirEliminarPublicacion"
       @reintentar-publicaciones="cargarFeedPublicaciones()"
       @cargar-mas-publicaciones="cargarMasPublicaciones"
     />
@@ -79,6 +80,15 @@
       @enviada="alEnviarInvitacion"
     />
 
+    <ModalEliminarPublicacion
+      v-model="modalEliminarPublicacionVisible"
+      :publicacion="publicacionEliminar"
+      :modo="modoEliminarPublicacion"
+      :eliminando="eliminandoPublicacion"
+      :error="errorEliminarPublicacion"
+      @confirmar="confirmarEliminarPublicacion"
+    />
+
     <GaleriaPublicacionModal
       v-model="modalGaleriaPublicacionVisible"
       :imagenes="imagenesGaleria"
@@ -96,8 +106,12 @@ import HomeFeed from "../../components/home/HomeFeed.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
+import ModalEliminarPublicacion from "../../components/perfil/ModalEliminarPublicacion.vue";
 import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
-import { normalizarPublicacion } from "../../utils/publicacionConstants.js";
+import {
+  accionBajaPublicacion,
+  normalizarPublicacion,
+} from "../../utils/publicacionConstants.js";
 import { setPerfilActivo, refrescarSesion } from "../../services/authState.js";
 import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -130,6 +144,7 @@ export default {
     BaseAlert,
     GaleriaPublicacionModal,
     HomeFeed,
+    ModalEliminarPublicacion,
     ModalInvitarColaborador,
     ModalNuevaPublicacion,
     ModalPostulacion,
@@ -157,6 +172,11 @@ export default {
       publicacionEditando: null,
       modalInvitarColaboradorVisible: false,
       publicacionInvitar: null,
+      modalEliminarPublicacionVisible: false,
+      publicacionEliminar: null,
+      modoEliminarPublicacion: "",
+      eliminandoPublicacion: false,
+      errorEliminarPublicacion: "",
       publicacionesFeed: [],
       cargandoPublicacionesFeed: false,
       errorPublicacionesFeed: "",
@@ -299,6 +319,67 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+    },
+    abrirEliminarPublicacion(publicacion) {
+      if (!publicacion?.idPublicacion) return;
+      const modo = accionBajaPublicacion(
+        publicacion,
+        this.perfilActivo?.idPerfil
+      );
+      if (!modo) return;
+
+      this.publicacionEliminar = publicacion;
+      this.modoEliminarPublicacion = modo;
+      this.errorEliminarPublicacion = "";
+      this.modalEliminarPublicacionVisible = true;
+    },
+    quitarPublicacionDelFeed(idPublicacion) {
+      this.publicacionesFeed = this.publicacionesFeed.filter(
+        (publicacion) =>
+          String(publicacion.idPublicacion) !== String(idPublicacion)
+      );
+    },
+    async confirmarEliminarPublicacion() {
+      const publicacion = this.publicacionEliminar;
+      if (!publicacion?.idPublicacion || this.eliminandoPublicacion) return;
+
+      this.eliminandoPublicacion = true;
+      this.errorEliminarPublicacion = "";
+
+      try {
+        await publicacionService.eliminar(publicacion.idPublicacion);
+        this.modalEliminarPublicacionVisible = false;
+        this.quitarPublicacionDelFeed(publicacion.idPublicacion);
+        this.toast.init({
+          title: "Publicación eliminada",
+          message: "La publicación se eliminó definitivamente.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        const status = error?.response?.status;
+        if (status === 404) {
+          this.modalEliminarPublicacionVisible = false;
+          this.quitarPublicacionDelFeed(publicacion.idPublicacion);
+          this.toast.init({
+            title: "Publicación no disponible",
+            message:
+              error?.response?.data?.message ||
+              "La publicación ya no existe.",
+            color: "info",
+            position: "top-right",
+            duration: 5000,
+          });
+        } else {
+          this.errorEliminarPublicacion = mensajeErrorApi(
+            error,
+            "No se pudo eliminar la publicación."
+          );
+        }
+      } finally {
+        this.eliminandoPublicacion = false;
+      }
     },
     alActualizarPublicacion() {
       this.modalEditarPublicacionVisible = false;
