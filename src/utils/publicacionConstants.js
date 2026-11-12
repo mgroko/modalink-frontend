@@ -282,6 +282,8 @@ export function normalizarPublicacion(publicacion) {
     proyecto: publicacion.proyecto || null,
     ubicacion: publicacion.ubicacion || null,
     imagenes,
+    // Se conserva `origen` (MANUAL | AUTOMATICA | AMBOS | null) tal como
+    // llega del backend. El filtro de portfolio se aplica en el backend.
     colaboradores: Array.isArray(publicacion.colaboradores)
       ? publicacion.colaboradores
       : [],

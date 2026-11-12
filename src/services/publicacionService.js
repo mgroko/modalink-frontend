@@ -6,11 +6,29 @@ import http from "./http";
  */
 
 /**
+ * Origen de una etiqueta de colaborador.
+ * - MANUAL: colaboración creada manualmente (UC-61/62).
+ * - AUTOMATICA: colaboración creada por el módulo automático.
+ * - AMBOS: la etiqueta tiene origen manual y automático.
+ * @typedef {"MANUAL"|"AUTOMATICA"|"AMBOS"} OrigenColaboradorPublicacion
+ */
+
+/**
  * @typedef {Object} PublicacionAutorResponse
  * @property {number} idPerfil
  * @property {string} nombreArtistico
  * @property {string} profesion
  * @property {string|null} [fotoUrl]
+ * @property {OrigenColaboradorPublicacion|null} [origen] siempre null para el autor
+ */
+
+/**
+ * @typedef {Object} PublicacionColaboradorResponse
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string} profesion
+ * @property {string|null} [fotoUrl]
+ * @property {OrigenColaboradorPublicacion|null} [origen]
  */
 
 /**
@@ -50,7 +68,9 @@ import http from "./http";
  * @property {PublicacionProyectoResponse|null} proyecto
  * @property {PublicacionUbicacionResponse|null} ubicacion
  * @property {PublicacionImagenResponse[]} imagenes
- * @property {Array<object>} colaboradores
+ * @property {PublicacionColaboradorResponse[]} colaboradores incluye `origen`;
+ *           el portfolio ya viene filtrado por el backend (las colaboraciones
+ *           solo AUTOMATICA no se listan).
  * @property {number} cantidadMeGusta
  * @property {number} cantidadComentarios
  * @property {boolean} meGusta relativo al perfil activo

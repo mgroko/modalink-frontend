@@ -878,6 +878,11 @@ export default {
   },
   watch: {
     "$route.params.id"() {
+      // Al navegar a otro perfil desde un colaborador, el modal de detalle
+      // no debe quedar abierto sobre el perfil nuevo.
+      this.modalPublicacionVisible = false;
+      this.publicacionSeleccionada = null;
+      this.enfocarComentariosDetalle = false;
       this.mostrandoPublicacionesOcultas = false;
       this.resetearTerminos();
       this.cargarDatos();
