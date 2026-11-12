@@ -82,6 +82,7 @@ src/
 │   ├── admin/                  # Layout, auditoría
 │   ├── busqueda/               # Tarjetas y paginación de búsqueda
 │   ├── calendario/             # Calendario, jornada, bloqueos
+│   ├── colaboracion/           # Colaboraciones manuales y automáticas
 │   ├── conexion/               # Mi red, solicitudes, presencia, avatares
 │   ├── contrato/               # Listado, detalle, firma, rechazo, modificación
 │   ├── home/                   # HomeLayout, feed, proyectos, oportunidades
@@ -111,6 +112,10 @@ src/
 │   ├── conexionService.js
 │   ├── solicitudConexionService.js
 │   ├── solicitudConexionState.js
+│   ├── solicitudColaboracionService.js
+│   ├── solicitudColaboracionState.js
+│   ├── colaboracionAutomaticaService.js
+│   ├── colaboracionAutomaticaState.js
 │   ├── presenciaService.js
 │   ├── presenciaState.js
 │   ├── notificacionService.js
@@ -193,6 +198,9 @@ src/
 | `/mi-red` | Conexiones, solicitudes recibidas y enviadas |
 | `/solicitudes-conexion` | Redirige a Mi red con la pestaña correspondiente |
 | `/red-contactos` | Redirige a Mi red con la pestaña Conexiones |
+| `/solicitudes` | Invitaciones y colaboraciones manuales |
+| `/colaboraciones-automaticas` | Propuestas por imágenes compartidas |
+| `/colaboraciones-automaticas/:id` | Detalle de una propuesta automática |
 | `/mensajes` | Mensajería privada entre perfiles |
 | `/notificaciones` | Notificaciones del perfil activo |
 | `/dashboard-usuario/notificaciones` | Notificaciones del usuario |

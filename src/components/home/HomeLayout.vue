@@ -324,6 +324,10 @@ import {
   cargarResumenSolicitudesColaboracion,
 } from "../../services/solicitudColaboracionState";
 import {
+  state as colaboracionAutomaticaState,
+  cargarResumenColaboracionesAutomaticas,
+} from "../../services/colaboracionAutomaticaState";
+import {
   state as contratoState,
   cargarContratosPendientes,
 } from "../../services/contratoState";
@@ -400,7 +404,8 @@ export default {
     solicitudesMenuPendientes() {
       return (
         this.invitacionesPendientes +
-        (solicitudColaboracionState.pendientesRecibidas || 0)
+        (solicitudColaboracionState.pendientesRecibidas || 0) +
+        (colaboracionAutomaticaState.pendientes || 0)
       );
     },
     contratosPendientes() {
@@ -421,6 +426,7 @@ export default {
       cargarResumenInvitaciones(nuevo);
       cargarResumenReemplazos(nuevo);
       cargarResumenSolicitudesColaboracion();
+      cargarResumenColaboracionesAutomaticas();
       cargarContratosPendientes(nuevo);
       cargarPendientesRecibidas(nuevo);
       cargarResumenMensajes();
@@ -439,6 +445,7 @@ export default {
     cargarResumenInvitaciones(this.idActivo);
     cargarResumenReemplazos(this.idActivo);
     cargarResumenSolicitudesColaboracion();
+    cargarResumenColaboracionesAutomaticas();
     cargarContratosPendientes(this.idActivo);
     cargarPendientesRecibidas(this.idActivo);
     cargarResumenMensajes();
@@ -572,7 +579,10 @@ export default {
         return ruta.name === "buscar" && ruta.query.tab === "oportunidades";
       }
       if (clave === "solicitudes") {
-        return ruta.name === "solicitudes";
+        return (
+          ruta.name === "solicitudes" ||
+          ruta.meta.navActiva === "solicitudes"
+        );
       }
       if (clave === "ajustes") {
         return [

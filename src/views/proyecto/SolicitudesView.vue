@@ -8,42 +8,13 @@
       </p>
     </header>
 
-    <div
-      class="solicitudes-view__tabs"
-      role="tablist"
-      aria-label="Solicitudes"
-    >
-      <button
-        type="button"
-        class="solicitudes-view__tab"
-        :class="{
-          'solicitudes-view__tab--activa': tipoActual === 'invitaciones',
-        }"
-        role="tab"
-        :aria-selected="tipoActual === 'invitaciones' ? 'true' : 'false'"
-        @click="cambiarTipo('invitaciones')"
-      >
-        Invitaciones
-        <span class="solicitudes-view__contador">
-          {{ invitacionesPendientes }}
-        </span>
-      </button>
-      <button
-        type="button"
-        class="solicitudes-view__tab"
-        :class="{
-          'solicitudes-view__tab--activa': tipoActual === 'colaboraciones',
-        }"
-        role="tab"
-        :aria-selected="tipoActual === 'colaboraciones' ? 'true' : 'false'"
-        @click="cambiarTipo('colaboraciones')"
-      >
-        Colaboraciones
-        <span class="solicitudes-view__contador">
-          {{ colaboracionesPendientes }}
-        </span>
-      </button>
-    </div>
+    <SolicitudesTabs
+      :activa="tipoActual"
+      :invitaciones="invitacionesPendientes"
+      :colaboraciones="colaboracionesPendientes"
+      :automaticas="colaboracionesAutomaticasPendientes"
+      @cambiar="cambiarTipo"
+    />
 
     <InvitacionesView v-if="tipoActual === 'invitaciones'" embebido />
 
@@ -57,6 +28,7 @@
 <script>
 import InvitacionesView from "./InvitacionesView.vue";
 import SolicitudesColaboracionPanel from "../../components/colaboracion/SolicitudesColaboracionPanel.vue";
+import SolicitudesTabs from "../../components/colaboracion/SolicitudesTabs.vue";
 import { idPerfilActivo } from "../../services/authState";
 import {
   state as invitacionState,
@@ -70,12 +42,17 @@ import {
   state as solicitudColaboracionState,
   cargarResumenSolicitudesColaboracion,
 } from "../../services/solicitudColaboracionState";
+import {
+  state as colaboracionAutomaticaState,
+  cargarResumenColaboracionesAutomaticas,
+} from "../../services/colaboracionAutomaticaState";
 
 export default {
   name: "SolicitudesView",
   components: {
     InvitacionesView,
     SolicitudesColaboracionPanel,
+    SolicitudesTabs,
   },
   computed: {
     tipoActual() {
@@ -92,6 +69,9 @@ export default {
     colaboracionesPendientes() {
       return solicitudColaboracionState.pendientesRecibidas || 0;
     },
+    colaboracionesAutomaticasPendientes() {
+      return colaboracionAutomaticaState.pendientes || 0;
+    },
   },
   mounted() {
     this.cargarResumenes();
@@ -101,9 +81,15 @@ export default {
       cargarResumenInvitaciones(idPerfilActivo());
       cargarResumenReemplazos(idPerfilActivo());
       cargarResumenSolicitudesColaboracion();
+      cargarResumenColaboracionesAutomaticas();
     },
     cambiarTipo(tipo) {
       if (tipo === this.tipoActual) return;
+
+      if (tipo === "automaticas") {
+        this.$router.push({ name: "colaboraciones-automaticas" }).catch(() => {});
+        return;
+      }
 
       const query = { ...this.$route.query };
       if (tipo === "colaboraciones") query.tipo = "colaboraciones";
@@ -142,51 +128,4 @@ export default {
   font-size: 0.9rem;
 }
 
-.solicitudes-view__tabs {
-  display: inline-flex;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  margin-bottom: 1rem;
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border-soft);
-  border-radius: 10px;
-}
-
-.solicitudes-view__tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.55rem 0.9rem;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.solicitudes-view__tab--activa {
-  color: var(--color-on-primary);
-  background: var(--color-primary);
-}
-
-.solicitudes-view__contador {
-  display: inline-flex;
-  min-width: 1.2rem;
-  height: 1.2rem;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.3rem;
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-  border-radius: 999px;
-  font-size: 0.65rem;
-}
-
-.solicitudes-view__tab--activa .solicitudes-view__contador {
-  color: var(--color-primary);
-  background: var(--color-on-primary);
-}
 </style>

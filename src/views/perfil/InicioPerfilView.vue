@@ -531,6 +531,7 @@ import calificacionPerfilService from "../../services/calificacionPerfilService"
 import solicitudConexionService from "../../services/solicitudConexionService";
 import conexionService from "../../services/conexionService";
 import { cargarResumenPerfil } from "../../services/notificacionState";
+import { cargarResumenColaboracionesAutomaticas } from "../../services/colaboracionAutomaticaState";
 import { cargarConteosSolicitudesConexion } from "../../services/solicitudConexionState";
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
 import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
@@ -1698,6 +1699,7 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+      cargarResumenColaboracionesAutomaticas();
       this.limpiarFiltrosPublicaciones();
       this.cargarPublicacionesPerfil();
     },
@@ -1771,6 +1773,7 @@ export default {
           duration: 5000,
         });
 
+        cargarResumenColaboracionesAutomaticas();
         const pagina = this.paginacionPublicaciones.paginaActual || 0;
         await this.cargarPublicaciones({ pagina });
         if (!this.publicaciones.length && pagina > 0) {
@@ -1796,6 +1799,7 @@ export default {
             position: "top-right",
             duration: 5000,
           });
+          cargarResumenColaboracionesAutomaticas();
           await this.cargarPublicaciones({
             pagina: this.paginacionPublicaciones.paginaActual || 0,
           });
@@ -1816,6 +1820,7 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+      cargarResumenColaboracionesAutomaticas();
       this.cargarPublicaciones();
       this.cargarPublicacionesPerfil();
     },

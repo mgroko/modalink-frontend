@@ -132,6 +132,7 @@ import {
   setPerfilActivo,
   refrescarSesion,
 } from "../../services/authState.js";
+import { cargarResumenColaboracionesAutomaticas } from "../../services/colaboracionAutomaticaState";
 import { useToast } from "vuestic-ui";
 import {
   clasificarErrorPublicacion,
@@ -327,6 +328,7 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+      cargarResumenColaboracionesAutomaticas();
       this.$router.push({ name: "inicioperfil" });
     },
     editarPublicacion(publicacion) {
@@ -388,11 +390,13 @@ export default {
           position: "top-right",
           duration: 5000,
         });
+        cargarResumenColaboracionesAutomaticas();
       } catch (error) {
         const status = error?.response?.status;
         if (status === 404) {
           this.modalEliminarPublicacionVisible = false;
           this.quitarPublicacionDelFeed(publicacion.idPublicacion);
+          cargarResumenColaboracionesAutomaticas();
           this.toast.init({
             title: "Publicación no disponible",
             message:
@@ -421,6 +425,7 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+      cargarResumenColaboracionesAutomaticas();
       this.cargarFeedPublicaciones();
     },
     abortarFeedPublicaciones() {

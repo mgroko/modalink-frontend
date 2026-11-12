@@ -33,6 +33,8 @@ import ContratosPendientesView from "../views/contrato/ContratosPendientesView.v
 import DetalleContratoView from "../views/contrato/DetalleContratoView.vue";
 import ModificarContratoView from "../views/contrato/ModificarContratoView.vue";
 import SolicitudesView from "../views/proyecto/SolicitudesView.vue";
+import ColaboracionesAutomaticasView from "../views/colaboracion/ColaboracionesAutomaticasView.vue";
+import ColaboracionAutomaticaDetalleView from "../views/colaboracion/ColaboracionAutomaticaDetalleView.vue";
 import PublicacionDetalleView from "../views/perfil/PublicacionDetalleView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
@@ -284,6 +286,28 @@ const routes = [
   {
     path: "/invitaciones",
     redirect: (to) => ({ name: "solicitudes", query: to.query }),
+  },
+  {
+    path: "/colaboraciones-automaticas",
+    name: "colaboraciones-automaticas",
+    component: ColaboracionesAutomaticasView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Colaboraciones automáticas",
+      requiresActiveProfile: true,
+      navActiva: "solicitudes",
+    },
+  },
+  {
+    path: "/colaboraciones-automaticas/:id",
+    name: "colaboracion-automatica-detalle",
+    component: ColaboracionAutomaticaDetalleView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Colaboración automática",
+      requiresActiveProfile: true,
+      navActiva: "solicitudes",
+    },
   },
   {
     path: "/publicaciones/:idPublicacion",
