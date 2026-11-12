@@ -110,6 +110,7 @@
     <ModalConfirmarReemplazo
       v-model="modalConfirmarVisible"
       :candidatos="candidatosDetalle"
+      :ids-preseleccionados="idsPreseleccionados"
       :confirmando="confirmando"
       :error="errorConfirmar"
       @confirmar="confirmarCandidatos"
@@ -216,6 +217,7 @@ export default {
       errorDetalle: "",
       puedeReintentarDetalle: false,
       modalConfirmarVisible: false,
+      idsPreseleccionados: [],
       confirmando: false,
       errorConfirmar: "",
       modalRegenerarVisible: false,
@@ -301,6 +303,9 @@ export default {
     },
   },
   watch: {
+    modalConfirmarVisible(visible) {
+      if (!visible) this.idsPreseleccionados = [];
+    },
     idProyecto() {
       this.reiniciarEstado();
       this.cargar();
@@ -506,13 +511,20 @@ export default {
       this.errorDetalle = mensaje;
       this.puedeReintentarDetalle = true;
     },
-    abrirConfirmar() {
+    abrirConfirmar({ idsCandidatos } = {}) {
       if (!this.detalle?.reemplazo || this.accionEnCurso) return;
-      const hayPropuestos = this.candidatosDetalle.some(
+      const propuestos = this.candidatosDetalle.filter(
         (candidato) =>
           candidato?.estado === ESTADOS_CANDIDATO_REEMPLAZO.PROPUESTO
       );
-      if (!hayPropuestos) return;
+      if (!propuestos.length) return;
+
+      const idsPropuestos = new Set(
+        propuestos.map((candidato) => String(candidato.idCandidato))
+      );
+      this.idsPreseleccionados = Array.isArray(idsCandidatos)
+        ? idsCandidatos.filter((id) => idsPropuestos.has(String(id)))
+        : [];
       this.errorConfirmar = "";
       this.modalConfirmarVisible = true;
     },
@@ -558,6 +570,7 @@ export default {
           this.controladorAccion.signal
         );
         this.modalConfirmarVisible = false;
+        this.idsPreseleccionados = [];
         this.toast.init({
           title: "Invitaciones enviadas",
           message: "Los candidatos seleccionados recibieron la invitación.",

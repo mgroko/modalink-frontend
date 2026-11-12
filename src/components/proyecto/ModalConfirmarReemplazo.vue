@@ -99,7 +99,9 @@
           :disabled="!puedeConfirmar"
           @click="confirmar"
         >
-          Enviar invitaciones
+          Enviar invitaciones{{
+            seleccionados.length ? ` (${seleccionados.length})` : ""
+          }}
         </VaButton>
       </div>
     </template>
@@ -123,6 +125,11 @@ export default {
       default: false,
     },
     candidatos: {
+      type: Array,
+      default: () => [],
+    },
+    /** IDs seleccionados desde las tarjetas del detalle. */
+    idsPreseleccionados: {
       type: Array,
       default: () => [],
     },
@@ -170,7 +177,18 @@ export default {
   methods: {
     formatearPuntajeReemplazo,
     limpiar() {
-      this.seleccionados = [];
+      const valoresPorId = new Map(
+        this.propuestos.map((candidato) => [
+          String(candidato.idCandidato),
+          candidato.idCandidato,
+        ])
+      );
+      this.seleccionados = (Array.isArray(this.idsPreseleccionados)
+        ? this.idsPreseleccionados
+        : []
+      )
+        .map((id) => valoresPorId.get(String(id)))
+        .filter((id) => id != null);
       this.mensaje = "";
     },
     alternarTodos() {

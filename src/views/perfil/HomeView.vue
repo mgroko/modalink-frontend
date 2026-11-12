@@ -23,6 +23,7 @@
       :cargando-mas-publicaciones="cargandoMasPublicacionesFeed"
       @cambiar-tab="tabActiva = $event"
       @postular="abrirPostulacion"
+      @abrir-oportunidad="abrirDetalleOportunidad"
       @abrir-proyecto="irAProyecto"
       @ver-todos-proyectos="irAProyectos"
       @ver-todas-oportunidades="irABuscarOportunidades"
@@ -104,6 +105,12 @@
       @sin-perfil="alSinPerfilActivo"
       @perfil-inactivo="alPerfilInactivo"
     />
+
+    <ModalDetalleOportunidad
+      v-model="modalOportunidadVisible"
+      :oportunidad="oportunidadSeleccionada"
+      @ver-proyecto="verProyectoDesdeOportunidad"
+    />
   </div>
 </template>
 
@@ -113,6 +120,7 @@ import proyectoService from "../../services/proyectoService.js";
 import publicacionService from "../../services/publicacionService.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import HomeFeed from "../../components/home/HomeFeed.vue";
+import ModalDetalleOportunidad from "../../components/home/ModalDetalleOportunidad.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
@@ -166,6 +174,7 @@ export default {
   components: {
     BaseAlert,
     HomeFeed,
+    ModalDetalleOportunidad,
     ModalEliminarPublicacion,
     ModalInvitarColaborador,
     ModalNuevaPublicacion,
@@ -211,6 +220,8 @@ export default {
       publicacionDetalle: null,
       indiceDetallePublicacion: 0,
       enfocarComentariosDetalle: false,
+      modalOportunidadVisible: false,
+      oportunidadSeleccionada: null,
     };
   },
   computed: {
@@ -643,6 +654,21 @@ export default {
       this.$router.push({
         name: "dashboard-proyecto",
         params: { id: proyecto.idProyecto },
+      });
+    },
+    abrirDetalleOportunidad(oportunidad) {
+      if (!oportunidad) return;
+      this.oportunidadSeleccionada = oportunidad;
+      this.modalOportunidadVisible = true;
+    },
+    verProyectoDesdeOportunidad(payload) {
+      const idProyecto =
+        payload?.idProyecto ?? this.oportunidadSeleccionada?.idProyecto;
+      if (idProyecto == null) return;
+      this.modalOportunidadVisible = false;
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: idProyecto },
       });
     },
     irAProyectos() {

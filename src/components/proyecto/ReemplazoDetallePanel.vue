@@ -63,9 +63,9 @@
               preset="primary"
               size="small"
               :disabled="procesando"
-              @click="$emit('confirmar')"
+              @click="confirmarSeleccion"
             >
-              Confirmar candidatos
+              {{ etiquetaConfirmar }}
             </VaButton>
             <VaButton
               v-if="puedeRegenerar"
@@ -128,14 +128,56 @@
           v-if="propuestos.length"
           class="reemplazo-detalle__seccion"
         >
-          <h4 class="reemplazo-detalle__seccion-titulo">
-            Candidatos propuestos
-          </h4>
+          <header class="reemplazo-detalle__seccion-cabecera">
+            <div>
+              <h4 class="reemplazo-detalle__seccion-titulo">
+                Candidatos propuestos
+              </h4>
+              <p class="reemplazo-detalle__seccion-resumen">
+                {{ textoResumenPropuestos }}
+              </p>
+            </div>
+            <div
+              class="reemplazo-detalle__leyenda"
+              aria-label="Referencia de coincidencia de requisitos"
+            >
+              <span
+                class="reemplazo-detalle__leyenda-item reemplazo-detalle__leyenda-item--success"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">
+                  check_circle
+                </span>
+                Cumple lo pedido
+              </span>
+              <span
+                class="reemplazo-detalle__leyenda-item reemplazo-detalle__leyenda-item--warning"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">
+                  warning
+                </span>
+                Difiere o falta
+              </span>
+              <span
+                class="reemplazo-detalle__leyenda-item reemplazo-detalle__leyenda-item--neutral"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">
+                  remove_circle
+                </span>
+                Sin requisito
+              </span>
+            </div>
+          </header>
           <div class="reemplazo-detalle__lista">
             <CandidatoReemplazoCard
               v-for="candidato in propuestos"
               :key="candidato.idCandidato"
               :candidato="candidato"
+              :mejor-opcion="
+                String(candidato.idCandidato) === String(mejorOpcionId)
+              "
+              seleccionable
+              :seleccionado="estaSeleccionado(candidato)"
+              @seleccionar="alternarSeleccion"
             />
           </div>
         </section>
@@ -190,14 +232,18 @@ import { formatearFecha } from "../../utils/fechas.js";
 import {
   ESTADOS_CANDIDATO_REEMPLAZO,
   ESTADOS_REEMPLAZO,
+  candidatoCumpleTodo,
   descripcionVacante,
   detalleVacante,
+  etiquetaAccionConfirmarReemplazo,
   etiquetaEstadoReemplazo,
   etiquetaOrigenReemplazo,
   etiquetaTipoReemplazo,
+  mejorCandidatoReemplazo,
   puedeCancelarReemplazo,
   puedeConfirmarReemplazo,
   puedeRegenerarReemplazo,
+  puntajeNumericoReemplazo,
   tonoEstadoReemplazo,
 } from "../../utils/reemplazoConstants.js";
 
@@ -237,6 +283,7 @@ export default {
   data() {
     return {
       ESTADOS_REEMPLAZO,
+      seleccionadosPropuestos: [],
     };
   },
   computed: {
@@ -288,6 +335,33 @@ export default {
         puedeConfirmarReemplazo(this.estado) && this.propuestos.length > 0
       );
     },
+    etiquetaConfirmar() {
+      const etiqueta = etiquetaAccionConfirmarReemplazo(this.estado);
+      const cantidad = this.seleccionadosPropuestos.length;
+      return cantidad ? `${etiqueta} (${cantidad})` : etiqueta;
+    },
+    mejorOpcionId() {
+      const mejor = mejorCandidatoReemplazo(this.propuestos);
+      if (!mejor || puntajeNumericoReemplazo(mejor) == null) return null;
+      return mejor.idCandidato;
+    },
+    cumpleTodoCount() {
+      return this.propuestos.filter(
+        (candidato) =>
+          puntajeNumericoReemplazo(candidato) != null &&
+          candidatoCumpleTodo(candidato)
+      ).length;
+    },
+    textoResumenPropuestos() {
+      const total = this.propuestos.length;
+      const cumple = this.cumpleTodoCount;
+      const candidatos = `${total} candidato${total === 1 ? "" : "s"}`;
+      const cumpleTexto =
+        cumple === 1
+          ? "1 cumple todo lo pedido"
+          : `${cumple} cumplen todo lo pedido`;
+      return `${candidatos} · ${cumpleTexto}`;
+    },
     puedeRegenerar() {
       return puedeRegenerarReemplazo(this.estado);
     },
@@ -315,12 +389,44 @@ export default {
         : "";
     },
   },
+  watch: {
+    propuestos(nuevos) {
+      const ids = new Set(
+        (nuevos || []).map((candidato) => String(candidato.idCandidato))
+      );
+      this.seleccionadosPropuestos = this.seleccionadosPropuestos.filter(
+        (id) => ids.has(String(id))
+      );
+    },
+  },
   methods: {
     descripcionVacante,
     detalleVacante,
     etiquetaEstadoReemplazo,
     etiquetaOrigenReemplazo,
     etiquetaTipoReemplazo,
+    estaSeleccionado(candidato) {
+      return this.seleccionadosPropuestos.some(
+        (id) => String(id) === String(candidato?.idCandidato)
+      );
+    },
+    alternarSeleccion(candidato) {
+      const id = candidato?.idCandidato;
+      if (id == null) return;
+      const existe = this.seleccionadosPropuestos.some(
+        (seleccionado) => String(seleccionado) === String(id)
+      );
+      this.seleccionadosPropuestos = existe
+        ? this.seleccionadosPropuestos.filter(
+            (seleccionado) => String(seleccionado) !== String(id)
+          )
+        : [...this.seleccionadosPropuestos, id];
+    },
+    confirmarSeleccion() {
+      this.$emit("confirmar", {
+        idsCandidatos: [...this.seleccionadosPropuestos],
+      });
+    },
   },
 };
 </script>
@@ -465,11 +571,67 @@ export default {
   gap: 0.55rem;
 }
 
+.reemplazo-detalle__seccion-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+
 .reemplazo-detalle__seccion-titulo {
   margin: 0;
   color: var(--color-text);
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+.reemplazo-detalle__seccion-resumen {
+  margin: 0.2rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.reemplazo-detalle__leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.reemplazo-detalle__leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.reemplazo-detalle__leyenda-item .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+.reemplazo-detalle__leyenda-item--success {
+  border-color: var(--color-success-border);
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+.reemplazo-detalle__leyenda-item--warning {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.reemplazo-detalle__leyenda-item--neutral {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .reemplazo-detalle__lista {

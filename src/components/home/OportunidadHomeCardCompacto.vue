@@ -1,5 +1,12 @@
 <template>
-  <article class="oportunidad-compacta">
+  <article
+    class="oportunidad-compacta"
+    role="button"
+    tabindex="0"
+    @click="$emit('abrir', oportunidad)"
+    @keydown.enter.self.prevent="$emit('abrir', oportunidad)"
+    @keydown.space.self.prevent="$emit('abrir', oportunidad)"
+  >
     <header class="oportunidad-compacta__cabecera">
       <h3 class="oportunidad-compacta__titulo">{{ titulo }}</h3>
 
@@ -30,7 +37,7 @@
         v-if="puedePostular"
         type="button"
         class="oportunidad-compacta__postular"
-        @click="$emit('postular', oportunidad)"
+        @click.stop="$emit('postular', oportunidad)"
       >
         Postular
       </button>
@@ -52,7 +59,7 @@ export default {
       required: true,
     },
   },
-  emits: ["postular"],
+  emits: ["postular", "abrir"],
   computed: {
     esActividad() {
       return (
@@ -113,6 +120,20 @@ export default {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 10px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.oportunidad-compacta:hover {
+  border-color: var(--color-primary-light);
+  box-shadow: 0 6px 16px rgba(35, 33, 52, 0.07);
+}
+
+.oportunidad-compacta:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .oportunidad-compacta__cabecera {

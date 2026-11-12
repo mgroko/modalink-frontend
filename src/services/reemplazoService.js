@@ -31,6 +31,28 @@ import { normalizarTextoReemplazo } from "../utils/reemplazoConstants.js";
  */
 
 /**
+ * Habilidad evaluada del candidato. El contrato actual puede enviar sólo
+ * strings; el contrato enriquecido agrega el estado de coincidencia.
+ * @typedef {Object} HabilidadCandidatoReemplazo
+ * @property {string} nombre
+ * @property {boolean|null} [requerida] true si el puesto la pidió
+ * @property {boolean|null} [cumple] true/false sólo cuando es requerida
+ */
+
+/**
+ * Característica evaluada del candidato. `valorPedido` y `cumple` permiten
+ * pintar la grilla del rediseño; si no llegan, el frontend muestra el dato en
+ * gris y usa `faltantes` como fallback.
+ * @typedef {Object} CaracteristicaCandidatoReemplazo
+ * @property {string} codigo
+ * @property {string|null} [valor]
+ * @property {string|null} [codigoValor]
+ * @property {string|null} [valorPedido]
+ * @property {boolean|null} [requerida]
+ * @property {boolean|null} [cumple]
+ */
+
+/**
  * @typedef {Object} CandidatoReemplazoResponse
  * @property {number} idCandidato
  * @property {number} idPerfil
@@ -41,9 +63,15 @@ import { normalizarTextoReemplazo } from "../utils/reemplazoConstants.js";
  * @property {string|null} profesion
  * @property {string|null} fotoUrl
  * @property {object|null} ciudad
- * @property {string[]} habilidades
- * @property {object[]} caracteristicas
+ * @property {(string|HabilidadCandidatoReemplazo)[]} habilidades contrato actual
+ * @property {HabilidadCandidatoReemplazo[]} [habilidadesEvaluadas] contrato
+ *           enriquecido; incluye requeridas y no requeridas. Si existe, tiene
+ *           prioridad sobre `habilidades`.
+ * @property {CaracteristicaCandidatoReemplazo[]} caracteristicas
  * @property {number|string} puntaje
+ * @property {number|null} [requisitosCumplidos] conteo exacto informado por el backend
+ * @property {number|null} [requisitosTotales] total de requisitos evaluados
+ * @property {boolean|null} [cumpleTodo] true si cumple todos los requisitos
  * @property {"MISMA_CIUDAD"|"MISMA_PROVINCIA"|"OTRA"} nivelUbicacion
  * @property {boolean} alternativo
  * @property {string[]} faltantes

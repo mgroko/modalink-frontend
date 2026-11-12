@@ -280,7 +280,18 @@ export function esEstadoReemplazoFinal(estado) {
 }
 
 export function puedeConfirmarReemplazo(estado) {
-  return estado === ESTADOS_REEMPLAZO.PENDIENTE_CONFIRMACION_DIRECTOR;
+  return (
+    estado === ESTADOS_REEMPLAZO.PENDIENTE_CONFIRMACION_DIRECTOR ||
+    estado === ESTADOS_REEMPLAZO.INVITACIONES_ENVIADAS ||
+    estado === ESTADOS_REEMPLAZO.PENDIENTE_APROBACION
+  );
+}
+
+/** Texto del botón según el proceso ya tenga invitaciones o no. */
+export function etiquetaAccionConfirmarReemplazo(estado) {
+  return estado === ESTADOS_REEMPLAZO.PENDIENTE_CONFIRMACION_DIRECTOR
+    ? "Confirmar candidatos"
+    : "Invitar más candidatos";
 }
 
 export function puedeRegenerarReemplazo(estado) {
@@ -398,6 +409,352 @@ export function valorCaracteristicaReemplazo(caracteristica) {
     caracteristica?.codigoValor ||
     "—"
   );
+}
+
+/**
+ * Lista de faltantes del candidato, sin valores vacíos.
+ * @param {object|null|undefined} candidato
+ * @returns {string[]}
+ */
+export function faltantesCandidatoReemplazo(candidato) {
+  return Array.isArray(candidato?.faltantes)
+    ? candidato.faltantes.filter(Boolean)
+    : [];
+}
+
+function normalizarComparacion(valor) {
+  return String(valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function habilidadesFaltantesDesdeTexto(candidato) {
+  const resultado = [];
+  for (const faltante of faltantesCandidatoReemplazo(candidato)) {
+    const match = String(faltante).match(
+      /habilidad(?:es)? faltante[s]?:\s*(.+)$/i
+    );
+    if (!match) continue;
+    for (const nombre of match[1].split(",")) {
+      const limpio = nombre.trim();
+      if (limpio) resultado.push(limpio);
+    }
+  }
+  return resultado;
+}
+
+/**
+ * Normaliza las habilidades del candidato para la UI.
+ * Acepta el contrato actual (`string[]`) y el enriquecido
+ * (`{ nombre, requerida, cumple }[]`).
+ * @param {object|null|undefined} candidato
+ * @returns {{nombre:string, requerida:boolean|null, cumple:boolean|null}[]}
+ */
+export function habilidadesCandidatoReemplazo(candidato) {
+  const faltantes = faltantesCandidatoReemplazo(candidato).map(
+    normalizarComparacion
+  );
+  const habilidades = Array.isArray(candidato?.habilidadesEvaluadas)
+    ? candidato.habilidadesEvaluadas
+    : Array.isArray(candidato?.habilidades)
+      ? candidato.habilidades
+      : [];
+  const resultado = [];
+  const vistos = new Set();
+
+  for (const item of habilidades) {
+    const esObjeto = item && typeof item === "object";
+    const nombre = String(
+      (esObjeto ? item.nombre || item.habilidad : item) || ""
+    ).trim();
+    if (!nombre) continue;
+
+    const clave = normalizarComparacion(nombre);
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+
+    const mencionada = faltantes.some(
+      (faltante) => faltante.includes(clave) || clave.includes(faltante)
+    );
+    const requerida =
+      esObjeto && typeof item.requerida === "boolean"
+        ? item.requerida
+        : typeof item?.cumple === "boolean"
+          ? true
+          : mencionada
+            ? true
+            : null;
+    const cumple =
+      requerida === false
+        ? null
+        : esObjeto && typeof item.cumple === "boolean"
+          ? item.cumple
+          : mencionada
+            ? false
+            : null;
+
+    resultado.push({ nombre, requerida, cumple });
+  }
+
+  // El backend actual sólo nombra las habilidades faltantes dentro de
+  // `faltantes`; las agregamos como requeridas/no cumplidas.
+  for (const nombre of habilidadesFaltantesDesdeTexto(candidato)) {
+    const clave = normalizarComparacion(nombre);
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    resultado.push({ nombre, requerida: true, cumple: false });
+  }
+
+  return resultado;
+}
+
+/**
+ * Normaliza las características del candidato para la UI.
+ * Acepta el contrato actual y el enriquecido con `requerida`, `cumple` y
+ * `valorPedido`.
+ * @param {object|null|undefined} candidato
+ * @returns {object[]}
+ */
+export function caracteristicasCandidatoReemplazo(candidato) {
+  const faltantes = faltantesCandidatoReemplazo(candidato).map(
+    normalizarComparacion
+  );
+  const caracteristicas = Array.isArray(candidato?.caracteristicas)
+    ? candidato.caracteristicas
+    : [];
+
+  return caracteristicas
+    .map((caracteristica) => {
+      const etiqueta = etiquetaCaracteristicaReemplazo(caracteristica);
+      const mencionada = faltantes.some(
+        (faltante) =>
+          faltante.includes(normalizarComparacion(etiqueta)) ||
+          normalizarComparacion(etiqueta).includes(faltante)
+      );
+      const requerida =
+        typeof caracteristica?.requerida === "boolean"
+          ? caracteristica.requerida
+          : typeof caracteristica?.cumple === "boolean"
+            ? true
+            : mencionada
+              ? true
+              : null;
+      const cumple =
+        requerida === false
+          ? null
+          : typeof caracteristica?.cumple === "boolean"
+            ? caracteristica.cumple
+            : mencionada
+              ? false
+              : null;
+
+      return {
+        ...caracteristica,
+        etiqueta,
+        valor: valorCaracteristicaReemplazo(caracteristica),
+        valorPedido:
+          caracteristica?.valorPedido ||
+          caracteristica?.valorRequerido ||
+          null,
+        requerida,
+        cumple,
+      };
+    })
+    .filter((caracteristica) => caracteristica.etiqueta);
+}
+
+/**
+ * @param {object|null|undefined} candidato
+ * @returns {number|null} puntaje normalizado 0..100
+ */
+export function puntajeNumericoReemplazo(candidato) {
+  const valor = candidato?.puntaje;
+  if (valor == null || valor === "") return null;
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return null;
+  return Math.min(100, Math.max(0, numero));
+}
+
+/**
+ * Puntaje compacto para el bloque principal de la tarjeta.
+ * @param {object|null|undefined} candidato
+ * @returns {string}
+ */
+export function formatearPuntajeCompactoReemplazo(candidato) {
+  const numero = puntajeNumericoReemplazo(candidato);
+  if (numero == null) return "—";
+  return numero.toLocaleString("es-AR", {
+    maximumFractionDigits: 1,
+  });
+}
+
+/**
+ * @param {object|null|undefined} candidato
+ * @returns {number} 0..100
+ */
+export function porcentajeConcordanciaReemplazo(candidato) {
+  return puntajeNumericoReemplazo(candidato) ?? 0;
+}
+
+/**
+ * @param {object|null|undefined} candidato
+ * @returns {boolean}
+ */
+export function candidatoCumpleTodo(candidato) {
+  if (typeof candidato?.cumpleTodo === "boolean") {
+    return candidato.cumpleTodo;
+  }
+  const puntaje = puntajeNumericoReemplazo(candidato);
+  return (
+    faltantesCandidatoReemplazo(candidato).length === 0 &&
+    (puntaje == null || puntaje >= 100)
+  );
+}
+
+/**
+ * @param {object|null|undefined} candidato
+ * @returns {boolean}
+ */
+export function candidatoTieneDiferencias(candidato) {
+  return (
+    candidato?.cumpleTodo === false ||
+    faltantesCandidatoReemplazo(candidato).length > 0
+  );
+}
+
+/**
+ * @param {object|null|undefined} candidato
+ * @returns {"cumple"|"difiere"|"sin-requisito"}
+ */
+export function clasificarCandidatoReemplazo(candidato) {
+  if (puntajeNumericoReemplazo(candidato) == null) return "sin-requisito";
+  return candidatoTieneDiferencias(candidato) ? "difiere" : "cumple";
+}
+
+/**
+ * Devuelve el candidato con mayor puntaje. En empate, el que tiene menos
+ * faltantes; si persiste el empate, el primero de la lista.
+ * @param {object[]|null|undefined} candidatos
+ * @returns {object|null}
+ */
+export function mejorCandidatoReemplazo(candidatos) {
+  const lista = Array.isArray(candidatos) ? candidatos.filter(Boolean) : [];
+  let mejor = null;
+
+  for (const candidato of lista) {
+    const puntaje = puntajeNumericoReemplazo(candidato) ?? -1;
+    const faltantes = faltantesCandidatoReemplazo(candidato).length;
+
+    if (
+      !mejor ||
+      puntaje > mejor.puntaje ||
+      (puntaje === mejor.puntaje && faltantes < mejor.faltantes)
+    ) {
+      mejor = { candidato, puntaje, faltantes };
+    }
+  }
+
+  return mejor?.candidato || null;
+}
+
+/**
+ * Resumen textual de requisitos. Usa los conteos del backend si existen;
+ * si no, cuenta los ítems requeridos estructurados; como último recurso,
+ * muestra la cantidad de diferencias.
+ * @param {object|null|undefined} candidato
+ * @returns {{tipo:string, cumplidos:number|null, total:number|null, texto:string}}
+ */
+export function resumenRequisitosCandidato(candidato) {
+  const totalBackend = Number(candidato?.requisitosTotales);
+  const cumplidosBackend = Number(candidato?.requisitosCumplidos);
+  if (
+    Number.isFinite(totalBackend) &&
+    totalBackend > 0 &&
+    Number.isFinite(cumplidosBackend)
+  ) {
+    return {
+      tipo: "conteo",
+      cumplidos: cumplidosBackend,
+      total: totalBackend,
+      texto: `${cumplidosBackend} de ${totalBackend} requisitos cumplidos`,
+    };
+  }
+
+  const requeridos = [
+    ...habilidadesCandidatoReemplazo(candidato),
+    ...caracteristicasCandidatoReemplazo(candidato),
+  ].filter((item) => item.requerida === true);
+
+  if (requeridos.length) {
+    const cumplidos = requeridos.filter(
+      (item) => item.cumple === true
+    ).length;
+    return {
+      tipo: "conteo",
+      cumplidos,
+      total: requeridos.length,
+      texto: `${cumplidos} de ${requeridos.length} requisitos cumplidos`,
+    };
+  }
+
+  const faltantes = faltantesCandidatoReemplazo(candidato);
+  if (!faltantes.length) {
+    return {
+      tipo: "sin-diferencias",
+      cumplidos: null,
+      total: null,
+      texto: "Sin diferencias registradas",
+    };
+  }
+
+  return {
+    tipo: "diferencias",
+    cumplidos: null,
+    total: faltantes.length,
+    texto: `${faltantes.length} diferencia${
+      faltantes.length === 1 ? "" : "s"
+    }`,
+  };
+}
+
+/**
+ * @param {object|null|undefined} candidato
+ * @returns {"success"|"warning"|"primary"|"neutral"}
+ */
+export function colorPuntajeReemplazo(candidato) {
+  const puntaje = puntajeNumericoReemplazo(candidato);
+  if (puntaje == null) return "neutral";
+  if (candidatoCumpleTodo(candidato) && puntaje >= 100) return "success";
+  if (puntaje > 0) return "warning";
+  return "primary";
+}
+
+/**
+ * Estado visual de una habilidad o característica.
+ * - success: el puesto lo pidió y el candidato lo cumple.
+ * - warning: el puesto lo pidió y el candidato no lo cumple.
+ * - neutral: el puesto no lo pidió o no hay dato.
+ * @param {{requerida?:boolean|null, cumple?:boolean|null}|null|undefined} item
+ * @returns {"success"|"warning"|"neutral"}
+ */
+export function estadoRequisitoReemplazo(item) {
+  if (item?.requerida === true && item?.cumple === true) return "success";
+  if (item?.requerida === true && item?.cumple === false) return "warning";
+  return "neutral";
+}
+
+/**
+ * @param {object|null|undefined} caracteristica
+ * @returns {string}
+ */
+export function textoPedidoCaracteristica(caracteristica) {
+  if (caracteristica?.valorPedido) {
+    return `Pedido: ${caracteristica.valorPedido}`;
+  }
+  return "No coincide con lo pedido";
 }
 
 /**
