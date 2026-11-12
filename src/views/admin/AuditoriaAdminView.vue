@@ -156,6 +156,8 @@ export default {
         fechaDesde: rango.fechaDesde,
         fechaHasta: rango.fechaHasta,
         tipos: [],
+        operador: "",
+        texto: "",
       },
       aplicados: null,
       tamano: TAMANO_AUDITORIA_POR_DEFECTO,
@@ -281,6 +283,8 @@ export default {
         fechaDesde: this.filtros.fechaDesde,
         fechaHasta: this.filtros.fechaHasta,
         tipos: tiposSinDuplicados(this.filtros.tipos),
+        operador: String(this.filtros.operador || "").trim(),
+        texto: String(this.filtros.texto || "").trim(),
       };
 
       await Promise.allSettled([this.cargarListado(0), this.cargarResumen()]);
@@ -504,6 +508,8 @@ export default {
         fechaDesde: rango.fechaDesde,
         fechaHasta: rango.fechaHasta,
         tipos: [],
+        operador: "",
+        texto: "",
       };
       this.errorFiltros = "";
       this.consultar();
