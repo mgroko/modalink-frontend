@@ -149,6 +149,9 @@ export default {
       if (this.modoAdmin) return null;
       return this.modoPerfil ? idPerfilActivo() : this.filtroPerfil;
     },
+    idPerfilActivoActual() {
+      return idPerfilActivo();
+    },
     titulo() {
       return this.modoPerfil ? "Notificaciones del perfil" : "Notificaciones";
     },
@@ -168,6 +171,13 @@ export default {
     "$route.name"() {
       this.cargar();
       this.cargarResumen();
+    },
+    idPerfilActivoActual() {
+      // En la bandeja del perfil, el contexto cambia con el perfil activo.
+      if (this.modoPerfil) {
+        this.cargar();
+        this.cargarResumen();
+      }
     },
   },
   mounted() {

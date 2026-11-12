@@ -366,6 +366,31 @@ export function formatearReprogramacion(actividad) {
 }
 
 /**
+ * Horario legible para los resúmenes de disponibilidad.
+ * Mismo día: `12/11/2026 · 09:15 a 11:15`.
+ * Días distintos: `12/11/2026 09:15 a 13/11/2026 11:15`.
+ * @param {string|null|undefined} inicio
+ * @param {string|null|undefined} fin
+ * @returns {string}
+ */
+export function formatearHorarioDisponibilidad(inicio, fin) {
+  const inicioTexto = formatearFecha(inicio);
+  if (inicioTexto === "—") return "";
+
+  const finTexto = formatearFecha(fin);
+  if (finTexto === "—") return inicioTexto;
+
+  const [fechaInicio, horaInicio] = inicioTexto.split(" ");
+  const [fechaFin, horaFin] = finTexto.split(" ");
+
+  if (fechaInicio === fechaFin) {
+    return `${fechaInicio} · ${horaInicio} a ${horaFin}`;
+  }
+
+  return `${inicioTexto} a ${finTexto}`;
+}
+
+/**
  * @param {string|null|undefined} inicio
  * @param {string|null|undefined} fin
  * @returns {string}

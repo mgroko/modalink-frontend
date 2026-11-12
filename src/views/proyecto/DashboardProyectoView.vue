@@ -33,6 +33,8 @@
         <ProyectoEncabezado
           :proyecto="proyecto"
           :tab-activa="tabActiva"
+          :mostrar-descripcion="tabActiva !== 'informacion'"
+          :mostrar-detalles="tabActiva !== 'informacion'"
           :mostrar-planificacion="esMiembro"
           :mostrar-integrantes="esMiembro"
           :mostrar-chat="esMiembro"
@@ -97,128 +99,11 @@
         />
 
         <template v-if="tabActiva === 'informacion'">
-          <section class="dashboard-proyecto__panel">
-            <h2 class="dashboard-proyecto__titulo">Datos generales</h2>
-            <p class="dashboard-proyecto__parrafo">{{ proyecto.descripcion }}</p>
-
-            <div class="dashboard-proyecto__grilla">
-              <div class="dashboard-proyecto__dato">
-                <span class="dashboard-proyecto__dato-label">Privacidad</span>
-                <span class="dashboard-proyecto__dato-valor">
-                  {{ ETIQUETAS_PRIVACIDAD[proyecto.privacidad] || proyecto.privacidad }}
-                </span>
-                <span v-if="esPrivado" class="dashboard-proyecto__dato-hint">
-                  Visible solo para tus perfiles miembros
-                </span>
-              </div>
-
-              <div class="dashboard-proyecto__dato">
-                <span class="dashboard-proyecto__dato-label">Ubicación</span>
-                <span class="dashboard-proyecto__dato-valor">{{ ubicacionTexto }}</span>
-              </div>
-
-              <div class="dashboard-proyecto__dato">
-                <span class="dashboard-proyecto__dato-label">Fecha de entrega</span>
-                <span class="dashboard-proyecto__dato-valor">
-                  {{ formatearFechaCorta(proyecto.fechaEntregaEstipulada) }}
-                </span>
-              </div>
-
-              <div class="dashboard-proyecto__dato">
-                <span class="dashboard-proyecto__dato-label">Fecha de inicio</span>
-                <span class="dashboard-proyecto__dato-valor">
-                  {{ formatearFechaCorta(proyecto.fechaInicio) }}
-                </span>
-              </div>
-
-              <div
-                v-if="proyecto.fechaFinalizacion"
-                class="dashboard-proyecto__dato"
-              >
-                <span class="dashboard-proyecto__dato-label">Finalizado el</span>
-                <span class="dashboard-proyecto__dato-valor">
-                  {{ formatearFecha(proyecto.fechaFinalizacion) }}
-                </span>
-                <span
-                  v-if="proyecto.finalizacionPrematura"
-                  class="dashboard-proyecto__chip-prematura"
-                >
-                  Finalizado anticipadamente
-                </span>
-              </div>
-
-              <div class="dashboard-proyecto__dato">
-                <span class="dashboard-proyecto__dato-label">Director</span>
-                <span class="dashboard-proyecto__dato-valor">
-                  {{ proyecto.nombreDirector || "—" }}
-                </span>
-              </div>
-
-              <div v-if="proyecto.aceptaPostulacionGral" class="dashboard-proyecto__dato">
-                <span class="dashboard-proyecto__dato-label">Postulaciones</span>
-                <span class="dashboard-proyecto__chip-postulaciones">Acepta postulaciones</span>
-              </div>
-            </div>
-          </section>
-
-          <section class="dashboard-proyecto__panel">
-            <h2 class="dashboard-proyecto__titulo">Objetivos</h2>
-            <div
-              v-if="(proyecto.objetivos || []).length"
-              class="dashboard-proyecto__objetivos"
-            >
-              <article
-                v-for="objetivo in proyecto.objetivos"
-                :key="objetivo.idObjetivo"
-                class="dashboard-proyecto__objetivo"
-              >
-                <p class="dashboard-proyecto__objetivo-nombre">{{ objetivo.nombre }}</p>
-                <p v-if="objetivo.descripcion" class="dashboard-proyecto__objetivo-desc">
-                  {{ objetivo.descripcion }}
-                </p>
-              </article>
-            </div>
-            <p v-else class="dashboard-proyecto__vacio">
-              Este proyecto no tiene objetivos cargados.
-            </p>
-          </section>
-
-          <section class="dashboard-proyecto__panel">
-            <h2 class="dashboard-proyecto__titulo">Personal requerido</h2>
-            <div
-              v-if="(proyecto.requerimientosGral || []).length"
-              class="dashboard-proyecto__requerimientos"
-            >
-              <RequerimientoCard
-                v-for="requerimiento in proyecto.requerimientosGral"
-                :key="requerimiento.idRequerimientoGral"
-                :requerimiento="requerimiento"
-                :habilidades="habilidades"
-                :catalogo-caracteristicas="catalogosCaracteristicas[requerimiento.idProfesion] || null"
-              />
-            </div>
-            <p v-else class="dashboard-proyecto__vacio">
-              Este proyecto no tiene personal requerido cargado.
-            </p>
-          </section>
-
-          <section v-if="proyecto.moodboard" class="dashboard-proyecto__panel">
-            <h2 class="dashboard-proyecto__titulo">Moodboard</h2>
-
-            <CollageMoodboard
-              v-if="imagenesMoodboard.length"
-              :imagenes="imagenesMoodboard"
-              solo-lectura
-              @ampliar="galeriaAbierta = true"
-            />
-            <p v-else class="dashboard-proyecto__contador">
-              0 de {{ MOODBOARD_IMAGENES.MAX_IMAGENES }} imágenes
-            </p>
-
-            <p v-if="proyecto.moodboard.descripcion" class="dashboard-proyecto__parrafo">
-              {{ proyecto.moodboard.descripcion }}
-            </p>
-          </section>
+          <InformacionGeneralProyecto
+            :proyecto="proyecto"
+            :id-proyecto="idProyecto"
+            :puede-modificar="puedeModificar"
+          />
 
           <section
             v-if="puedeCancelar || puedeDarseDeBaja"
@@ -372,13 +257,6 @@
           @confirmar="confirmarEliminarActividad"
         />
 
-        <ModalGaleriaMoodboard
-          :model-value="galeriaAbierta"
-          :imagenes="imagenesMoodboard"
-          solo-lectura
-          @update:modelValue="galeriaAbierta = $event"
-        />
-
         <ModalPublicarProyecto
           :model-value="modalPublicarVisible"
           :privacidad="proyecto.privacidad"
@@ -515,10 +393,8 @@ import HistorialProyecto from "../../components/proyecto/HistorialProyecto.vue";
 import ReemplazosProyecto from "../../components/proyecto/ReemplazosProyecto.vue";
 import ContratosProyecto from "../../components/proyecto/ContratosProyecto.vue";
 import PersonalRequerido from "../../components/proyecto/PersonalRequerido.vue";
-import RequerimientoCard from "../../components/proyecto/RequerimientoCard.vue";
+import InformacionGeneralProyecto from "../../components/proyecto/InformacionGeneralProyecto.vue";
 import GestionPostulaciones from "../../components/proyecto/GestionPostulaciones.vue";
-import CollageMoodboard from "../../components/proyecto/CollageMoodboard.vue";
-import ModalGaleriaMoodboard from "../../components/proyecto/ModalGaleriaMoodboard.vue";
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
 import ModalConfirmarProyecto from "../../components/proyecto/ModalConfirmarProyecto.vue";
 import ModalFinalizarProyecto from "../../components/proyecto/ModalFinalizarProyecto.vue";
@@ -564,8 +440,7 @@ import {
   idsEliminarSinMotivo,
   mensajeExitoEliminarActividad,
 } from "../../utils/eliminacionActividadConstants.js";
-import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
-import { resolverFotoUrl } from "../../utils/fotos.js";
+import { formatearFecha } from "../../utils/fechas.js";
 import {
   CODIGOS_CONFIRMACION,
   clasificarErrorConfirmacion,
@@ -589,10 +464,7 @@ import {
   puedePostularGeneral as esElegibleParaPostularGeneral,
 } from "../../utils/postulacionConstants.js";
 import {
-  ETIQUETAS_PRIVACIDAD,
   ESTADOS_PROYECTO,
-  MOODBOARD_IMAGENES,
-  PRIVACIDADES,
   ROLES_PROYECTO,
   normalizarEstadoProyecto,
 } from "../../utils/proyectoConstants.js";
@@ -625,10 +497,8 @@ export default {
     ReemplazosProyecto,
     ContratosProyecto,
     PersonalRequerido,
-    RequerimientoCard,
+    InformacionGeneralProyecto,
     GestionPostulaciones,
-    CollageMoodboard,
-    ModalGaleriaMoodboard,
     ModalPublicarProyecto,
     ModalConfirmarProyecto,
     ModalFinalizarProyecto,
@@ -645,8 +515,6 @@ export default {
   },
 data() {
     return {
-      ETIQUETAS_PRIVACIDAD,
-      MOODBOARD_IMAGENES,
       TIPOS_POSTULACION,
       proyecto: null,
       cargando: true,
@@ -656,7 +524,6 @@ data() {
       mostrarVolver: false,
       habilidades: [],
       catalogosCaracteristicas: {},
-      galeriaAbierta: false,
       modalPublicarVisible: false,
       publicando: false,
       errorPublicacion: "",
@@ -761,9 +628,6 @@ data() {
     },
     esBorrador() {
       return normalizarEstadoProyecto(this.proyecto?.estado) === ESTADOS_PROYECTO.BORRADOR;
-    },
-    esPrivado() {
-      return this.proyecto?.privacidad === PRIVACIDADES.PRIVADO;
     },
     /** La fecha de entrega es obligatoria para publicar y calcular CPM. */
     tieneFechaEntrega() {
@@ -875,21 +739,6 @@ data() {
     /** Perfil activo de la sesión: habilita el chip "Vos" en el listado. */
     idPerfilActivoSesion() {
       return idPerfilActivo();
-    },
-    ubicacionTexto() {
-      const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
-      const provincia = this.proyecto?.ubicacion?.ciudad?.provincia?.nombre;
-      if (ciudad && provincia) return `${ciudad}, ${provincia}`;
-      return ciudad || provincia || "—";
-    },
-    /** Items del wizard ({id, nombre, preview}) desde las imágenes de la API. */
-    imagenesMoodboard() {
-      const imagenes = this.proyecto?.moodboard?.imagenes || [];
-      return imagenes.map((imagen, indice) => ({
-        id: imagen.idImagen,
-        nombre: `Imagen ${indice + 1}`,
-        preview: resolverFotoUrl(imagen.url),
-      }));
     },
   },
   watch: {
@@ -1061,7 +910,6 @@ data() {
   },
   methods: {
     formatearFecha,
-    formatearFechaCorta,
     async cargar() {
       const corrida = ++this.idCarga;
       if (controladorCarga) controladorCarga.abort();
@@ -3740,148 +3588,6 @@ data() {
   color: var(--color-text);
 }
 
-.dashboard-proyecto__vacio {
-  margin: 0;
-  font-size: 0.88rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.dashboard-proyecto__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.dashboard-proyecto__hero-cuerpo {
-  flex: 1;
-  min-width: 260px;
-}
-
-.dashboard-proyecto__hero-titular {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.dashboard-proyecto__nombre {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.dashboard-proyecto__hero-descripcion {
-  margin: 0.6rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.55;
-  color: var(--color-text);
-}
-
-.dashboard-proyecto__hero-rol {
-  margin: 0.7rem 0 0;
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.dashboard-proyecto__hero-acciones {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-
-.dashboard-proyecto__grilla {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-top: 1.1rem;
-}
-
-.dashboard-proyecto__dato {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.dashboard-proyecto__dato-label {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.dashboard-proyecto__dato-valor {
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.dashboard-proyecto__dato-hint {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.dashboard-proyecto__chip-postulaciones {
-  align-self: flex-start;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  background: var(--color-info-soft);
-  color: var(--color-primary);
-  font-size: 0.78rem;
-  font-weight: 500;
-}
-
-.dashboard-proyecto__chip-prematura {
-  align-self: flex-start;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid var(--color-warning-border, var(--color-border));
-  border-radius: 999px;
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.dashboard-proyecto__objetivos {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.85rem;
-}
-
-.dashboard-proyecto__objetivo {
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-}
-
-.dashboard-proyecto__objetivo-nombre {
-  margin: 0;
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.dashboard-proyecto__objetivo-desc {
-  margin: 0.3rem 0 0;
-  font-size: 0.85rem;
-  line-height: 1.45;
-  color: var(--color-text-muted);
-}
-
-.dashboard-proyecto__requerimientos {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.dashboard-proyecto__contador {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
 .dashboard-proyecto__proximamente {
   border-style: dashed;
 }
@@ -3932,13 +3638,6 @@ data() {
   display: flex;
   justify-content: center;
   gap: 0.75rem;
-}
-
-@media (max-width: 900px) {
-  .dashboard-proyecto__grilla,
-  .dashboard-proyecto__objetivos {
-    grid-template-columns: 1fr;
-  }
 }
 
 .btn-publicar {

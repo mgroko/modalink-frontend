@@ -64,6 +64,7 @@
         :text-by="(option) => option.nombre"
         placeholder="Profesión"
         clearable
+        :clear-value="null"
         :loading="cargandoProfesiones"
         @update:modelValue="cambiarProfesion"
       />
@@ -207,7 +208,10 @@
     </div>
 
     <template v-else>
-      <div v-if="resultadosVacios" class="buscar-perfil__estado">
+      <div
+        v-if="resultadosVacios && tab !== 'oportunidades'"
+        class="buscar-perfil__estado"
+      >
         <span class="material-symbols-outlined buscar-perfil__estado-icono">
           search_off
         </span>
@@ -338,23 +342,35 @@
           </button>
         </div>
 
-        <div class="buscar-perfil__grid">
-          <OportunidadBusquedaCard
-            v-for="oportunidad in oportunidades"
-            :key="claveOportunidad(oportunidad)"
-            :oportunidad="oportunidad"
-            :habilidades-catalogo="habilidades"
-            :caracteristicas-catalogo="caracteristicas"
-            @postular="abrirPostulacion"
-            @ver-detalle="verDetalleOportunidad"
-          />
+        <div v-if="resultadosVacios" class="buscar-perfil__estado">
+          <span class="material-symbols-outlined buscar-perfil__estado-icono">
+            search_off
+          </span>
+          <span>{{ textoVacio }}</span>
+          <VaButton preset="secondary" size="small" @click="limpiarFiltros">
+            Restablecer filtros
+          </VaButton>
         </div>
 
-        <PaginacionResultados
-          :paginacion="paginacion"
-          :es-todos="esTodos"
-          @cambiar="cambiarPagina"
-        />
+        <template v-else>
+          <div class="buscar-perfil__grid">
+            <OportunidadBusquedaCard
+              v-for="oportunidad in oportunidades"
+              :key="claveOportunidad(oportunidad)"
+              :oportunidad="oportunidad"
+              :habilidades-catalogo="habilidades"
+              :caracteristicas-catalogo="caracteristicas"
+              @postular="abrirPostulacion"
+              @ver-detalle="verDetalleOportunidad"
+            />
+          </div>
+
+          <PaginacionResultados
+            :paginacion="paginacion"
+            :es-todos="esTodos"
+            @cambiar="cambiarPagina"
+          />
+        </template>
       </template>
     </template>
 
@@ -692,7 +708,9 @@ export default {
           ? "perfil(es)"
           : this.tab === "proyectos"
             ? "proyecto(s)"
-            : "oportunidad(es)";
+            : this.subtabOportunidades === "actividades"
+              ? "oportunidad(es) de actividad"
+              : "oportunidad(es) generales";
       const pagina = this.esTodos
         ? ""
         : ` · Página ${this.paginacion.paginaActual + 1} de ${
@@ -708,7 +726,9 @@ export default {
         return "No encontramos ningún proyecto que coincida con tus criterios de búsqueda.";
       }
       if (this.tab === "oportunidades") {
-        return "No encontramos oportunidades que coincidan con tus criterios de búsqueda.";
+        return this.subtabOportunidades === "actividades"
+          ? "No encontramos oportunidades de actividad que coincidan con tus criterios de búsqueda."
+          : "No encontramos oportunidades generales que coincidan con tus criterios de búsqueda.";
       }
       return "No encontramos resultados que coincidan con tu búsqueda.";
     },
@@ -732,6 +752,7 @@ export default {
       const q = typeof nuevo?.q === "string" ? nuevo.q : "";
       const qActual = this.limpiarTexto(this.filtros.q);
       const idProfesion = idDesdeQuery(nuevo?.idProfesion);
+      const idProfesionActual = idDesdeQuery(this.filtros.idProfesion);
       const provinciaId =
         typeof nuevo?.provinciaId === "string" ? nuevo.provinciaId : null;
       const localidadId =
@@ -748,7 +769,7 @@ export default {
         tab !== this.tab ||
         subtab !== this.subtabOportunidades ||
         q !== qActual ||
-        idProfesion !== this.filtros.idProfesion ||
+        idProfesion !== idProfesionActual ||
         provinciaId !== provinciaActual ||
         localidadId !== localidadActual;
 
@@ -769,7 +790,7 @@ export default {
         this.profesionPorDefecto = false;
       }
 
-      if (tab === "oportunidades") {
+      if (tab === "oportunidades" && tabAnterior !== "oportunidades") {
         await this.cargarProfesionPorDefecto();
       }
 
@@ -830,7 +851,10 @@ export default {
         delete query.subtab;
       }
 
-      if (this.filtros.idProfesion != null) {
+      if (
+        this.filtros.idProfesion != null &&
+        this.filtros.idProfesion !== ""
+      ) {
         query.idProfesion = String(this.filtros.idProfesion);
       } else {
         delete query.idProfesion;
@@ -948,6 +972,12 @@ export default {
     },
     cambiarProfesion() {
       this.profesionPorDefecto = false;
+      if (
+        this.filtros.idProfesion === "" ||
+        this.filtros.idProfesion === undefined
+      ) {
+        this.filtros.idProfesion = null;
+      }
       this.filtros.soloMiProfesion = false;
       this.limpiarRamaCaracteristica();
       this.sincronizarRuta();

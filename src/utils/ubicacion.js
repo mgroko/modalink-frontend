@@ -31,6 +31,23 @@ export function formatUbicacion(origen) {
 }
 
 /**
+ * Formatea la ubicación de una publicación: "Localidad, Provincia".
+ * La respuesta de UC-19/UC-22 usa campos planos (`nombre` + `provincia`),
+ * a diferencia de `PerfilResponse`, que anida la ciudad en `ciudad`.
+ * @param {{nombre?:string, provincia?:{nombre?:string}, ciudad?:object}|null|undefined} ubicacion
+ * @returns {string|null}
+ */
+export function formatUbicacionPublicacion(ubicacion) {
+  if (!ubicacion) return null;
+
+  const ciudad = ubicacion.ciudad || ubicacion;
+  const provincia = ubicacion.provincia || ciudad?.provincia;
+  const partes = [ciudad?.nombre, provincia?.nombre];
+
+  return partes.filter(Boolean).join(", ") || null;
+}
+
+/**
  * Decide si un texto libre de búsqueda corresponde al catálogo Georef.
  * Prioridad: provincia > localidad (más amplio primero).
  * La comparación replica el `contains` case-insensitive del sistema.

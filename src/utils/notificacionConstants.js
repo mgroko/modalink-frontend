@@ -28,6 +28,9 @@ export const TIPOS_NOTIFICACION = {
   ACTIVIDAD_ASIGNADA: "ACTIVIDAD_ASIGNADA",
   ACTIVIDAD_DESASIGNADA: "ACTIVIDAD_DESASIGNADA",
   PERFIL_REPORTADO: "PERFIL_REPORTADO",
+  PUBLICACION_REPORTADA: "PUBLICACION_REPORTADA",
+  PUBLICACION_OCULTADA: "PUBLICACION_OCULTADA",
+  PUBLICACION_REACTIVADA: "PUBLICACION_REACTIVADA",
   INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
   INTEGRANTE_BAJA_VOLUNTARIA: "INTEGRANTE_BAJA_VOLUNTARIA",
   HABILIDAD_MODIFICADA: "HABILIDAD_MODIFICADA",
@@ -47,6 +50,11 @@ export const TIPOS_NOTIFICACION = {
   CONTRATO_ACTIVO: "CONTRATO_ACTIVO",
   CONTRATO_RECHAZADO: "CONTRATO_RECHAZADO",
   CONTRATO_ELIMINADO: "CONTRATO_ELIMINADO",
+  SOLICITUD_COLABORACION_RECIBIDA: "SOLICITUD_COLABORACION_RECIBIDA",
+  SOLICITUD_COLABORACION_ACEPTADA: "SOLICITUD_COLABORACION_ACEPTADA",
+  SOLICITUD_COLABORACION_RECHAZADA: "SOLICITUD_COLABORACION_RECHAZADA",
+  PUBLICACION_MEGUSTA: "PUBLICACION_MEGUSTA",
+  PUBLICACION_COMENTARIO: "PUBLICACION_COMENTARIO",
 };
 
 export const RUTAS_NOTIFICACION = {
@@ -54,8 +62,10 @@ export const RUTAS_NOTIFICACION = {
   PROYECTO: "dashboard-proyecto",
   ACTIVIDAD: "actividad-proyecto",
   ADMIN_REPORTE_PERFIL: "admin-reporte-perfil",
+  ADMIN_REPORTE_PUBLICACION: "admin-reporte-publicacion",
   CALIFICACIONES: "calificaciones-proyecto",
-  INVITACIONES: "invitaciones",
+  INVITACIONES: "solicitudes",
+  PUBLICACION: "publicacion-detalle",
   CONTRATO: "detalle-contrato",
   MI_RED: "mi-red",
   MENSAJES: "mensajes",
@@ -87,6 +97,9 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA]: "Actividad asignada",
   [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "Actividad desasignada",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
+  [TIPOS_NOTIFICACION.PUBLICACION_REPORTADA]: "Publicación reportada",
+  [TIPOS_NOTIFICACION.PUBLICACION_OCULTADA]: "Publicación ocultada",
+  [TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA]: "Publicación reactivada",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "Baja voluntaria de integrante",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "Habilidad modificada",
@@ -112,6 +125,16 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.CONTRATO_ACTIVO]: "Contrato activo",
   [TIPOS_NOTIFICACION.CONTRATO_RECHAZADO]: "Contrato rechazado",
   [TIPOS_NOTIFICACION.CONTRATO_ELIMINADO]: "Contrato eliminado",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECIBIDA]:
+    "Solicitud de colaboración recibida",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_ACEPTADA]:
+    "Solicitud de colaboración aceptada",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECHAZADA]:
+    "Solicitud de colaboración rechazada",
+  [TIPOS_NOTIFICACION.PUBLICACION_MEGUSTA]:
+    "Nueva interacción en publicación",
+  [TIPOS_NOTIFICACION.PUBLICACION_COMENTARIO]:
+    "Nuevo comentario en publicación",
 };
 
 const ICONOS_TIPO = {
@@ -135,6 +158,9 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.ACTIVIDAD_ASIGNADA]: "assignment",
   [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "person_remove",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
+  [TIPOS_NOTIFICACION.PUBLICACION_REPORTADA]: "campaign",
+  [TIPOS_NOTIFICACION.PUBLICACION_OCULTADA]: "visibility_off",
+  [TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA]: "visibility",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "person_remove",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "edit",
@@ -154,6 +180,11 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.CONTRATO_ACTIVO]: "verified",
   [TIPOS_NOTIFICACION.CONTRATO_RECHAZADO]: "cancel",
   [TIPOS_NOTIFICACION.CONTRATO_ELIMINADO]: "delete",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECIBIDA]: "person_add",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_ACEPTADA]: "check_circle",
+  [TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECHAZADA]: "cancel",
+  [TIPOS_NOTIFICACION.PUBLICACION_MEGUSTA]: "favorite",
+  [TIPOS_NOTIFICACION.PUBLICACION_COMENTARIO]: "chat_bubble",
 };
 
 /**
@@ -206,6 +237,7 @@ export function esNotificacionSinNavegacion(tipo) {
     TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA,
     TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA,
     TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA,
+    TIPOS_NOTIFICACION.PUBLICACION_OCULTADA,
   ].includes(tipo);
 }
 
@@ -234,7 +266,9 @@ export function destinoNotificacion(notificacion) {
   if (esNotificacionSinNavegacion(notificacion.tipo)) return null;
 
   const tipo = notificacion.tipo;
-  const esReporteAdmin = tipo === TIPOS_NOTIFICACION.PERFIL_REPORTADO;
+  const esReporteAdmin =
+    tipo === TIPOS_NOTIFICACION.PERFIL_REPORTADO ||
+    tipo === TIPOS_NOTIFICACION.PUBLICACION_REPORTADA;
   if (!esReporteAdmin && notificacion.idPerfilContexto == null) return null;
 
   switch (tipo) {
@@ -288,6 +322,66 @@ export function destinoNotificacion(notificacion) {
           },
         },
       };
+    }
+
+    case TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECIBIDA:
+    case TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_ACEPTADA:
+    case TIPOS_NOTIFICACION.SOLICITUD_COLABORACION_RECHAZADA: {
+      const id =
+        idValido(notificacion.idPublicacion) ??
+        (notificacion.entidadTipo === "PUBLICACION"
+          ? idValido(notificacion.entidadId)
+          : null);
+
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver publicación",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PUBLICACION,
+              params: { idPublicacion: id },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA: {
+      const id =
+        (notificacion.entidadTipo === "PUBLICACION"
+          ? idValido(notificacion.entidadId)
+          : null) ?? idValido(notificacion.idPublicacion);
+
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver publicación",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PUBLICACION,
+              params: { idPublicacion: id },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.PUBLICACION_MEGUSTA:
+    case TIPOS_NOTIFICACION.PUBLICACION_COMENTARIO: {
+      // El backend de UC-66 envía entidadTipo=PUBLICACION y entidadId.
+      // No usa idProyecto para estos tipos.
+      const id =
+        (notificacion.entidadTipo === "PUBLICACION"
+          ? idValido(notificacion.entidadId)
+          : null) ?? idValido(notificacion.idPublicacion);
+
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver publicación",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PUBLICACION,
+              params: { idPublicacion: id },
+              ...(tipo === TIPOS_NOTIFICACION.PUBLICACION_COMENTARIO
+                ? { hash: "#comentarios" }
+                : {}),
+            },
+          };
     }
 
     case TIPOS_NOTIFICACION.CONEXION_ELIMINADA: {
@@ -511,6 +605,20 @@ export function destinoNotificacion(notificacion) {
             etiqueta: "Ver reporte",
             ruta: {
               name: RUTAS_NOTIFICACION.ADMIN_REPORTE_PERFIL,
+              params: { id },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.PUBLICACION_REPORTADA: {
+      if (notificacion.entidadTipo !== "REPORTE_PUBLICACION") return null;
+      const id = idValido(notificacion.entidadId);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver reporte",
+            ruta: {
+              name: RUTAS_NOTIFICACION.ADMIN_REPORTE_PUBLICACION,
               params: { id },
             },
           };

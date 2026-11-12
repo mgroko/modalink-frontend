@@ -44,6 +44,9 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} MoodboardRequest
  * @property {string} [descripcion] máx. 200 caracteres; moodboard 1:1 con el proyecto
+ * @property {number[]} [imagenesConservadas] UC-36: lista completa de imágenes
+ *           que deben conservarse. Omitir/null = no tocar las imágenes;
+ *           [] = eliminar todas. En la creación (UC-24) se ignora.
  */
 
 /**
@@ -101,7 +104,8 @@ import { serializarParams } from "../utils/queryParams.js";
  *           lista completa deseada (no delta); incluir todos los no
  *           protegidos que deban conservarse y omitir los protegidos
  * @property {MoodboardRequest|null} [moodboard] si se envía actualiza/crea;
- *           descripcion null borra la descripción
+ *           descripcion null borra la descripción. `imagenesConservadas`
+ *           permite eliminar imágenes del moodboard (UC-36).
  */
 
 /**
@@ -493,6 +497,36 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} HistorialProyectoPerfilItem
+ *   Item de `GET /perfiles/{idPerfil}/proyectos/historial` (UC-14 extensión).
+ * @property {number} idProyecto
+ * @property {string} nombre
+ * @property {"Finalizado"|"Cancelado"} estado
+ * @property {string|null} rol rol visible del perfil en el proyecto
+ * @property {string|null} rolCodigo código de profesión o "DIRECTOR"
+ * @property {string|null} fechaFinalizacion ISO-8601; null si no aplica
+ * @property {string|null} fechaCancelacion ISO-8601; null si no aplica
+ * @property {boolean} puedeVerProyecto el perfil activo puede abrir el detalle
+ */
+
+/**
+ * @typedef {Object} PaginaHistorialProyectoPerfil
+ * @property {HistorialProyectoPerfilItem[]} contenido
+ * @property {number} paginaActual base 0
+ * @property {number} tamanoPagina
+ * @property {number} totalElementos
+ * @property {number} totalPaginas
+ * @property {boolean} primera
+ * @property {boolean} ultima
+ */
+
+/**
+ * @typedef {Object} HistorialProyectoPerfilParams
+ * @property {number} [page] base 0, default 0
+ * @property {number} [size] 1 a 50, default 10
+ */
+
+/**
  * @typedef {Object} BuscarProyectosPropiosParams
  *   Todos opcionales: sin parámetros se listan todos los proyectos propios
  *   (orden alfabético).
@@ -870,6 +904,34 @@ const proyectoService = {
   },
 
   /**
+   * GET /perfiles/{idPerfil}/proyectos/historial — historial de proyectos
+   * finalizados y cancelados en los que el perfil mantiene una membresía
+   * activa (UC-14 extensión).
+   *
+   * El backend aplica visibilidad, estados, rol y orden por fecha de cierre
+   * descendente. El frontend no debe filtrar ni reordenar.
+   *
+   * Errores esperables:
+   * - 401 sesión ausente/vencida
+   * - 403 sin rol USUARIO
+   * - 404 perfil inexistente, en baja o no visible
+   * - 200 con `contenido: []` no es error
+   * @param {number|string} idPerfil
+   * @param {HistorialProyectoPerfilParams} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: PaginaHistorialProyectoPerfil}>} 200 OK
+   */
+  historialPerfil(idPerfil, params = {}, signal) {
+    const query = {};
+    if (params.page != null) query.page = params.page;
+    if (params.size != null) query.size = params.size;
+    return http.get(`/perfiles/${idPerfil}/proyectos/historial`, {
+      params: query,
+      signal,
+    });
+  },
+
+  /**
    * GET /proyectos/buscar — listado/búsqueda general de proyectos (UC-29).
    * Aplica la regla de visibilidad server-side: el proyecto aparece si el
    * perfil activo es miembro activo, o si no está en Borrador y es Público.
@@ -905,7 +967,8 @@ const proyectoService = {
    *   seleccionado en la sesión."
    * - 404 ProyectoNoEncontradoException → "El proyecto con id {id} no existe."
    * - 403 AccesoDenegadoProyectoException → proyecto Privado/Borrador y el
-   *   perfil no es miembro (no confundir con 401: http.js ya redirige)
+   *   perfil no es miembro ni contacto de un director activo (no confundir
+   *   con 401: http.js ya redirige)
    * - 409 PerfilEnBajaException → "El perfil no se encuentra activo."
    * @param {number} idProyecto
    * @param {AbortSignal} [signal] cancela la request en vuelo (patrón de

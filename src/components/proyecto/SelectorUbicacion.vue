@@ -1,5 +1,8 @@
 <template>
-  <div class="selector-ubicacion">
+  <div
+    class="selector-ubicacion"
+    :class="{ 'selector-ubicacion--horizontal': horizontal }"
+  >
     <VaSelect
       :model-value="provinciaId"
       :options="provincias"
@@ -54,6 +57,10 @@ export default {
     errorMessage: {
       type: String,
       default: "",
+    },
+    horizontal: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ["update:modelValue"],
@@ -153,5 +160,11 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.selector-ubicacion--horizontal {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 </style>

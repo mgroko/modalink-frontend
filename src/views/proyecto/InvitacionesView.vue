@@ -1,6 +1,6 @@
 <template>
   <div class="invitaciones">
-    <header class="invitaciones__cabecera">
+    <header v-if="!embebido" class="invitaciones__cabecera">
       <h1 class="invitaciones__titulo">Invitaciones</h1>
       <p class="invitaciones__subtitulo">
         Revisá las invitaciones a proyectos y las invitaciones de reemplazo.
@@ -420,6 +420,12 @@ export default {
     ModalDetalleInvitacionReemplazo,
     ModalGestionInvitacionReemplazo,
   },
+  props: {
+    embebido: {
+      type: Boolean,
+      default: false,
+    },
+  },
   setup() {
     return { toast: useToast() };
   },
@@ -493,6 +499,7 @@ export default {
       mostrarRechazoReemplazo: false,
       idCargaReemplazos: 0,
       idCargaReemplazosRechazados: 0,
+      temporalizadorFiltros: null,
     };
   },
   computed: {
@@ -691,6 +698,7 @@ export default {
     cargarResumenInvitaciones(this.idPerfilActivo);
   },
   beforeUnmount() {
+    clearTimeout(this.temporalizadorFiltros);
     this.abortar();
     if (controladorEliminar) controladorEliminar.abort();
     if (controladorGestion) controladorGestion.abort();
@@ -714,7 +722,7 @@ export default {
       if (direccion === SECCION_REEMPLAZOS) query.seccion = "reemplazos";
       else if (direccion === SECCION_RECHAZADAS) query.seccion = "rechazadas";
       else delete query.seccion;
-      this.$router.replace({ name: "invitaciones", query }).catch(() => {});
+      this.$router.replace({ name: "solicitudes", query }).catch(() => {});
 
       if (direccion === SECCION_REEMPLAZOS) {
         this.cargarReemplazos();
@@ -727,9 +735,14 @@ export default {
     },
     cambiarFiltro({ campo, valor }) {
       this.filtros = { ...this.filtros, [campo]: valor ?? "" };
-      if (campo === "estado" || campo === "tipo") {
-        this.buscar(0);
+      clearTimeout(this.temporalizadorFiltros);
+
+      if (campo === "nombreProyecto" || campo === "nombrePerfil") {
+        this.temporalizadorFiltros = setTimeout(() => this.buscar(0), 350);
+        return;
       }
+
+      this.buscar(0);
     },
     limpiarFiltros() {
       this.filtros = { ...FILTROS_INICIALES };
@@ -808,6 +821,8 @@ export default {
       });
     },
     async buscar(pagina = 0) {
+      clearTimeout(this.temporalizadorFiltros);
+
       if (this.errorFechas) {
         this.idCarga += 1;
         this.abortar();
@@ -1800,51 +1815,55 @@ export default {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0 1.4rem;
-  border-bottom: 1px solid var(--color-border);
+  gap: 0.35rem;
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .invitaciones__tab {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.7rem 0 0.6rem;
+  gap: 0.4rem;
+  padding: 0.6rem 0.7rem;
   border: 0;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 0.88rem;
+  font: inherit;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
 }
 
-.invitaciones__tab:hover {
-  color: var(--color-primary);
+.invitaciones__tab:hover,
+.invitaciones__tab:focus-visible {
+  color: var(--color-text);
+  outline: none;
 }
 
 .invitaciones__tab--activa {
   border-bottom-color: var(--color-primary);
   color: var(--color-text);
+  font-weight: 700;
 }
 
 .invitaciones__tab-contador {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
+  min-width: 1.25rem;
+  height: 1.25rem;
   padding: 0 0.35rem;
   border-radius: 999px;
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
 .invitaciones__tab--activa .invitaciones__tab-contador {
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-surface-muted);
+  color: var(--color-primary);
 }
 
 .invitaciones__rechazos-reemplazo {

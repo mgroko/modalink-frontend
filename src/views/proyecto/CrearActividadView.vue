@@ -165,17 +165,45 @@
               </section>
 
               <section class="crear-actividad__panel">
-                <h2 class="crear-actividad__seccion-titulo">Ubicación</h2>
-                <p class="crear-actividad__seccion-ayuda">
-                  Opcional. Si la actividad no se realiza en la ubicación del
-                  proyecto, indicá dónde será.
-                </p>
+                <header class="crear-actividad__seccion-cabecera">
+                  <div>
+                    <h2 class="crear-actividad__seccion-titulo">Ubicación</h2>
+                    <p class="crear-actividad__seccion-ayuda">
+                      {{ textoAyudaUbicacion }}
+                    </p>
+                  </div>
+                  <VaButton
+                    v-if="form.ubicacion"
+                    preset="secondary"
+                    size="small"
+                    color="danger"
+                    icon="mso-close"
+                    title="Quitar ubicación"
+                    @click="quitarUbicacion"
+                  >
+                    Quitar ubicación
+                  </VaButton>
+                  <VaButton
+                    v-else-if="ubicacionProyecto"
+                    preset="secondary"
+                    size="small"
+                    icon="mso-place"
+                    title="Volver a usar la ubicación del proyecto"
+                    @click="usarUbicacionProyecto"
+                  >
+                    Usar la del proyecto
+                  </VaButton>
+                </header>
 
                 <SelectorUbicacion
                   v-model="form.ubicacion"
                   :error="!!errores.ubicacion"
                   :error-message="errores.ubicacion || ''"
                 />
+
+                <p v-if="usaUbicacionProyecto" class="crear-actividad__hint">
+                  Usando la ubicación del proyecto.
+                </p>
               </section>
 
               <section class="crear-actividad__panel">
@@ -242,16 +270,27 @@
                         </span>
                       </div>
 
-                      <VaButton
-                        preset="secondary"
-                        size="small"
-                        color="danger"
-                        icon="mso-delete"
-                        title="Quitar requerimiento"
-                        @click="quitarRequerimiento(indice)"
-                      >
-                        Quitar
-                      </VaButton>
+                      <div class="crear-actividad__requerimiento-acciones">
+                        <VaButton
+                          preset="secondary"
+                          size="small"
+                          icon="mso-edit"
+                          title="Editar requerimiento"
+                          @click="abrirEditarRequerimiento(indice)"
+                        >
+                          Editar
+                        </VaButton>
+                        <VaButton
+                          preset="secondary"
+                          size="small"
+                          color="danger"
+                          icon="mso-delete"
+                          title="Quitar requerimiento"
+                          @click="quitarRequerimiento(indice)"
+                        >
+                          Quitar
+                        </VaButton>
+                      </div>
                     </div>
 
                     <p v-if="requerimiento.descripcion" class="crear-actividad__requerimiento-desc">
@@ -274,14 +313,31 @@
                   </article>
                 </div>
 
-                <VaButton
-                  preset="secondary"
-                  icon="mso-add"
-                  class="crear-actividad__agregar-requerimiento"
-                  @click="abrirNuevoRequerimiento"
+                <div class="crear-actividad__requerimiento-botones">
+                  <VaButton
+                    preset="secondary"
+                    icon="mso-add"
+                    @click="abrirNuevoRequerimiento"
+                  >
+                    Agregar requerimiento
+                  </VaButton>
+                  <VaButton
+                    preset="secondary"
+                    icon="mso-library_add"
+                    :disabled="!puedeRecuperarRequerimientos"
+                    :title="textoRecuperarRequerimientos"
+                    @click="abrirCatalogoRequerimientos"
+                  >
+                    Recuperar de otras actividades
+                  </VaButton>
+                </div>
+
+                <p
+                  v-if="!cargandoActividades && !puedeRecuperarRequerimientos"
+                  class="crear-actividad__hint"
                 >
-                  Agregar requerimiento
-                </VaButton>
+                  {{ textoRecuperarRequerimientos }}
+                </p>
 
                 <ul
                   v-if="seccionErrores.requerimientos?.length"
@@ -386,13 +442,15 @@
       class="crear-actividad-modal"
     >
       <template #header>
-        <h3 class="va-h5 crear-actividad-modal__titulo">Nuevo requerimiento</h3>
+        <h3 class="va-h5 crear-actividad-modal__titulo">
+          {{ tituloModalRequerimiento }}
+        </h3>
       </template>
 
       <RequerimientoForm
         :key="modalRequerimientoKey"
         v-model="requerimientoDraft"
-        :indice="form.requerimientos.length"
+        :indice="indiceRequerimientoEnEdicion ?? form.requerimientos.length"
         :profesiones="profesiones"
         :habilidades="habilidades"
         :cargando-habilidades="cargandoHabilidades"
@@ -409,15 +467,34 @@
 
       <template #footer>
         <div class="crear-actividad-modal__acciones">
-          <VaButton preset="secondary" @click="cerrarModalRequerimiento">
+          <VaButton
+            preset="secondary"
+            :disabled="guardandoRequerimiento"
+            @click="cerrarModalRequerimiento"
+          >
             Cancelar
           </VaButton>
-          <VaButton preset="primary" @click="agregarRequerimiento">
-            Agregar
+          <VaButton
+            preset="primary"
+            :loading="guardandoRequerimiento"
+            :disabled="guardandoRequerimiento"
+            @click="guardarRequerimiento"
+          >
+            {{ textoGuardarRequerimiento }}
           </VaButton>
         </div>
       </template>
     </VaModal>
+
+    <CatalogoRequerimientosActividades
+      v-model="modalCatalogoVisible"
+      :actividades="actividades"
+      :profesiones="profesiones"
+      :hay-requerimientos-actuales="form.requerimientos.length > 0"
+      :procesando="importandoRequerimientos"
+      :error="errorCatalogo"
+      @confirmar="recuperarRequerimientos"
+    />
   </div>
 </template>
 
@@ -434,6 +511,7 @@ import CampoHora from "../../components/CampoHora.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import SelectorUbicacion from "../../components/proyecto/SelectorUbicacion.vue";
 import RequerimientoForm from "../../components/proyecto/RequerimientoForm.vue";
+import CatalogoRequerimientosActividades from "../../components/proyecto/CatalogoRequerimientosActividades.vue";
 import {
   ETIQUETAS_UNIDAD_DURACION,
   LIMITES_ACTIVIDAD,
@@ -477,6 +555,7 @@ export default {
     ProyectoEncabezado,
     SelectorUbicacion,
     RequerimientoForm,
+    CatalogoRequerimientosActividades,
   },
   setup() {
     return { toast: useToast() };
@@ -512,13 +591,19 @@ export default {
       },
       modalRequerimientoVisible: false,
       modalRequerimientoKey: 0,
+      indiceRequerimientoEnEdicion: null,
+      guardandoRequerimiento: false,
       requerimientoDraft: this.nuevoRequerimiento(0),
+      modalCatalogoVisible: false,
+      importandoRequerimientos: false,
+      errorCatalogo: "",
       errores: {},
       seccionErrores: {},
       erroresDraft: {},
       errorDraftSeccion: [],
       siguienteUid: 0,
       idCarga: 0,
+      ubicacionInicializada: false,
     };
   },
   computed: {
@@ -596,12 +681,64 @@ export default {
         0
       );
     },
+    ubicacionProyecto() {
+      return this.mapearUbicacion(this.proyecto?.ubicacion);
+    },
+    usaUbicacionProyecto() {
+      const actual = this.form.ubicacion;
+      const proyecto = this.ubicacionProyecto;
+      if (!actual?.localidadId || !proyecto?.localidadId) return false;
+      return (
+        String(actual.provinciaId) === String(proyecto.provinciaId) &&
+        String(actual.localidadId) === String(proyecto.localidadId)
+      );
+    },
+    textoAyudaUbicacion() {
+      return this.ubicacionProyecto
+        ? "Se completa con la ubicación del proyecto. Podés cambiarla o quitarla si la actividad se realiza en otro lugar."
+        : "Opcional. Indicá dónde se realiza la actividad.";
+    },
+    actividadesConRequerimientos() {
+      return this.actividades.filter(
+        (actividad) =>
+          Array.isArray(actividad?.requerimientos) &&
+          actividad.requerimientos.length > 0
+      );
+    },
+    puedeRecuperarRequerimientos() {
+      return this.actividadesConRequerimientos.length > 0;
+    },
+    textoRecuperarRequerimientos() {
+      if (this.cargandoActividades) return "Cargando actividades del proyecto...";
+      if (this.advertenciaActividades) {
+        return "No se pudieron cargar las actividades del proyecto.";
+      }
+      if (!this.actividadesConRequerimientos.length) {
+        return "Todavía no hay requerimientos cargados en otras actividades del proyecto.";
+      }
+      return "Elegí requerimientos de otras actividades para reutilizarlos.";
+    },
+    tituloModalRequerimiento() {
+      return this.indiceRequerimientoEnEdicion == null
+        ? "Nuevo requerimiento"
+        : "Editar requerimiento";
+    },
+    textoGuardarRequerimiento() {
+      return this.indiceRequerimientoEnEdicion == null ? "Agregar" : "Guardar";
+    },
   },
   watch: {
     idProyecto(nuevo, anterior) {
       if (nuevo === anterior) return;
       this.proyecto = null;
+      this.form.ubicacion = null;
+      this.ubicacionInicializada = false;
+      this.modalCatalogoVisible = false;
+      this.errorCatalogo = "";
       this.cargar();
+    },
+    modalCatalogoVisible(abierto) {
+      if (!abierto) this.errorCatalogo = "";
     },
   },
   created() {
@@ -688,6 +825,11 @@ export default {
         }
 
         this.proyecto = proyecto;
+
+        if (!this.ubicacionInicializada) {
+          this.form.ubicacion = this.mapearUbicacion(proyecto.ubicacion);
+          this.ubicacionInicializada = true;
+        }
 
         if (!proyecto.esMiembro) {
           this.$router.replace({
@@ -814,44 +956,33 @@ export default {
         "No se pudo cargar el proyecto."
       );
     },
-    guardarCatalogo({ idProfesion, caracteristicas }) {
-      this.catalogosPorProfesion = {
-        ...this.catalogosPorProfesion,
-        [idProfesion]: caracteristicas,
+    mapearUbicacion(ubicacion) {
+      const ciudad = ubicacion?.ciudad;
+      const provinciaId = ciudad?.provincia?.idExterno;
+      const localidadId = ciudad?.idExterno;
+      if (!provinciaId || !localidadId) return null;
+      return {
+        provinciaId: String(provinciaId),
+        localidadId: String(localidadId),
       };
     },
-    abrirNuevoRequerimiento() {
-      this.requerimientoDraft = this.crearRequerimientoVacio();
-      this.erroresDraft = {};
-      this.errorDraftSeccion = [];
-      this.modalRequerimientoKey += 1;
-      this.modalRequerimientoVisible = true;
+    limpiarErrorUbicacion() {
+      if (!this.errores.ubicacion) return;
+      const errores = { ...this.errores };
+      delete errores.ubicacion;
+      this.errores = errores;
     },
-    cerrarModalRequerimiento() {
-      this.modalRequerimientoVisible = false;
+    quitarUbicacion() {
+      this.form.ubicacion = null;
+      this.limpiarErrorUbicacion();
     },
-    agregarRequerimiento() {
-      const { campos, seccion } = validarRequerimiento(
-        this.requerimientoDraft,
-        this.catalogosPorProfesion[this.requerimientoDraft.idProfesion]
-      );
-
-      this.erroresDraft = campos;
-      this.errorDraftSeccion = seccion;
-
-      if (Object.keys(campos).length || seccion.length) {
-        return;
-      }
-
-      this.form.requerimientos.push(
-        JSON.parse(JSON.stringify(this.requerimientoDraft))
-      );
-      this.modalRequerimientoVisible = false;
-      this.mensajeError = "";
+    usarUbicacionProyecto() {
+      const ubicacion = this.ubicacionProyecto;
+      if (!ubicacion) return;
+      this.form.ubicacion = { ...ubicacion };
+      this.limpiarErrorUbicacion();
     },
-    quitarRequerimiento(indice) {
-      this.form.requerimientos.splice(indice, 1);
-
+    limpiarErroresRequerimientos() {
       const errores = {};
       for (const [clave, mensaje] of Object.entries(this.errores)) {
         if (!clave.startsWith("requerimientos.")) errores[clave] = mensaje;
@@ -861,6 +992,261 @@ export default {
       const secciones = { ...this.seccionErrores };
       delete secciones.requerimientos;
       this.seccionErrores = secciones;
+    },
+    async asegurarCatalogo(idProfesion) {
+      if (!idProfesion) return [];
+      if (Array.isArray(this.catalogosPorProfesion[idProfesion])) {
+        return this.catalogosPorProfesion[idProfesion];
+      }
+
+      try {
+        const response = await perfilService.caracteristicasPorProfesion(
+          idProfesion
+        );
+        const datos = response?.data;
+        const caracteristicas = Array.isArray(datos)
+          ? datos
+          : datos?.caracteristicas || [];
+        this.catalogosPorProfesion = {
+          ...this.catalogosPorProfesion,
+          [idProfesion]: caracteristicas,
+        };
+        return caracteristicas;
+      } catch {
+        this.catalogosPorProfesion = {
+          ...this.catalogosPorProfesion,
+          [idProfesion]: [],
+        };
+        return [];
+      }
+    },
+    async asegurarCatalogos(requerimientos = []) {
+      const idsProfesion = [
+        ...new Set(
+          requerimientos
+            .map((requerimiento) => requerimiento?.idProfesion)
+            .filter(Boolean)
+        ),
+      ];
+      await Promise.all(
+        idsProfesion.map((idProfesion) => this.asegurarCatalogo(idProfesion))
+      );
+    },
+    guardarCatalogo({ idProfesion, caracteristicas }) {
+      this.catalogosPorProfesion = {
+        ...this.catalogosPorProfesion,
+        [idProfesion]: caracteristicas,
+      };
+    },
+    abrirNuevoRequerimiento() {
+      this.indiceRequerimientoEnEdicion = null;
+      this.requerimientoDraft = this.crearRequerimientoVacio();
+      this.erroresDraft = {};
+      this.errorDraftSeccion = [];
+      this.modalRequerimientoKey += 1;
+      this.modalRequerimientoVisible = true;
+    },
+    abrirEditarRequerimiento(indice) {
+      const requerimiento = this.form.requerimientos[indice];
+      if (!requerimiento) return;
+
+      this.indiceRequerimientoEnEdicion = indice;
+      this.requerimientoDraft = JSON.parse(JSON.stringify(requerimiento));
+      this.erroresDraft = {};
+      this.errorDraftSeccion = [];
+      this.modalRequerimientoKey += 1;
+      this.modalRequerimientoVisible = true;
+    },
+    cerrarModalRequerimiento() {
+      if (this.guardandoRequerimiento) return;
+      this.modalRequerimientoVisible = false;
+      this.indiceRequerimientoEnEdicion = null;
+    },
+    async guardarRequerimiento() {
+      if (this.guardandoRequerimiento) return;
+
+      this.guardandoRequerimiento = true;
+      this.erroresDraft = {};
+      this.errorDraftSeccion = [];
+
+      try {
+        const catalogo = await this.asegurarCatalogo(
+          this.requerimientoDraft.idProfesion
+        );
+        const { campos, seccion } = validarRequerimiento(
+          this.requerimientoDraft,
+          catalogo
+        );
+
+        this.erroresDraft = campos;
+        this.errorDraftSeccion = seccion;
+
+        if (Object.keys(campos).length || seccion.length) {
+          return;
+        }
+
+        const requerimiento = JSON.parse(
+          JSON.stringify(this.requerimientoDraft)
+        );
+
+        if (this.indiceRequerimientoEnEdicion == null) {
+          this.form.requerimientos.push(requerimiento);
+        } else {
+          this.form.requerimientos.splice(
+            this.indiceRequerimientoEnEdicion,
+            1,
+            requerimiento
+          );
+        }
+
+        this.modalRequerimientoVisible = false;
+        this.indiceRequerimientoEnEdicion = null;
+        this.mensajeError = "";
+        this.limpiarErroresRequerimientos();
+      } finally {
+        this.guardandoRequerimiento = false;
+      }
+    },
+    quitarRequerimiento(indice) {
+      this.form.requerimientos.splice(indice, 1);
+      this.limpiarErroresRequerimientos();
+    },
+    abrirCatalogoRequerimientos() {
+      if (!this.puedeRecuperarRequerimientos) return;
+      this.errorCatalogo = "";
+      this.modalCatalogoVisible = true;
+    },
+    mapearRequerimientoImportado(requerimiento) {
+      this.siguienteUid += 1;
+      return {
+        uid: this.siguienteUid,
+        cantidad: requerimiento.cantidad,
+        idProfesion: requerimiento.idProfesion,
+        descripcion: requerimiento.descripcion || "",
+        caracteristicas: (requerimiento.caracteristicas || []).map(
+          (caracteristica) => ({
+            idCaracteristica: caracteristica.idCaracteristica,
+            valorMin: caracteristica.valorMin ?? null,
+            valorMax: caracteristica.valorMax ?? null,
+            valores: Array.isArray(caracteristica.valores)
+              ? [...caracteristica.valores]
+              : [],
+          })
+        ),
+        habilidades: Array.isArray(requerimiento.habilidades)
+          ? [...requerimiento.habilidades]
+          : [],
+      };
+    },
+    async recuperarRequerimientos({ seleccionados = [], modo = "agregar" } = {}) {
+      if (this.importandoRequerimientos || !seleccionados.length) return;
+
+      this.importandoRequerimientos = true;
+      this.errorCatalogo = "";
+
+      try {
+        const porActividad = new Map();
+        for (const item of seleccionados) {
+          const clave = String(item.idActividad);
+          if (!porActividad.has(clave)) {
+            porActividad.set(clave, {
+              idActividad: item.idActividad,
+              ids: new Set(),
+            });
+          }
+          porActividad.get(clave).ids.add(String(item.idRequerimiento));
+        }
+
+        const resultados = await Promise.allSettled(
+          [...porActividad.values()].map(async ({ idActividad, ids }) => {
+            const response = await actividadService.obtener(
+              this.idProyecto,
+              idActividad
+            );
+            const actividad = response?.data;
+            return {
+              ids,
+              requerimientos: Array.isArray(actividad?.requerimientos)
+                ? actividad.requerimientos
+                : [],
+            };
+          })
+        );
+
+        let huboError = false;
+        const importados = [];
+
+        for (const resultado of resultados) {
+          if (resultado.status !== "fulfilled") {
+            huboError = true;
+            continue;
+          }
+
+          const { ids, requerimientos } = resultado.value;
+          const porId = new Map(
+            requerimientos.map((requerimiento) => [
+              String(requerimiento.idRequerimiento),
+              requerimiento,
+            ])
+          );
+
+          for (const id of ids) {
+            const requerimiento = porId.get(id);
+            if (!requerimiento) {
+              huboError = true;
+              continue;
+            }
+            importados.push(this.mapearRequerimientoImportado(requerimiento));
+          }
+        }
+
+        if (huboError || importados.length !== seleccionados.length) {
+          const fallido = resultados.find(
+            (resultado) => resultado.status === "rejected"
+          );
+          if (fallido?.reason?.response?.status === 403) {
+            this.errorCatalogo =
+              "No tenés permiso para recuperar requerimientos de otras actividades.";
+          } else {
+            this.errorCatalogo =
+              "No se pudieron recuperar todos los requerimientos seleccionados. No se modificó la lista. Revisá que las actividades sigan disponibles e intentá nuevamente.";
+          }
+          return;
+        }
+
+        if (modo === "reemplazar") {
+          this.form.requerimientos = importados;
+        } else {
+          this.form.requerimientos.push(...importados);
+        }
+
+        this.limpiarErroresRequerimientos();
+        await this.asegurarCatalogos(importados);
+        this.modalCatalogoVisible = false;
+
+        const reemplazo = modo === "reemplazar";
+        this.toast.init({
+          title: "Requerimientos recuperados",
+          message:
+            importados.length === 1
+              ? `Se ${reemplazo ? "reemplazó" : "agregó"} 1 requerimiento de otra actividad.`
+              : `Se ${reemplazo ? "reemplazaron" : "agregaron"} ${importados.length} requerimientos de otras actividades.`,
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        const status = error?.response?.status;
+        this.errorCatalogo =
+          status === 403
+            ? "No tenés permiso para recuperar requerimientos de otras actividades."
+            : mensajeErrorApi(
+                error,
+                "No se pudieron recuperar los requerimientos seleccionados."
+              );
+      } finally {
+        this.importandoRequerimientos = false;
+      }
     },
     nombreProfesion(idProfesion) {
       const profesion = this.profesiones.find(
@@ -1177,6 +1563,7 @@ export default {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
@@ -1278,6 +1665,21 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.crear-actividad__requerimiento-acciones {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.crear-actividad__requerimiento-botones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 .crear-actividad__requerimiento-titulo {

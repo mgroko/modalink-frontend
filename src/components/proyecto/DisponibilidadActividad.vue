@@ -10,7 +10,7 @@
         :disabled="cargando"
         @click="cargar"
       >
-        Reconsultar
+        {{ textoReconsultar }}
       </VaButton>
     </header>
 
@@ -25,7 +25,9 @@
       class="disponibilidad-actividad__sin-fecha"
       role="status"
     >
-      <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+      <span class="material-symbols-outlined" aria-hidden="true">
+        event_busy
+      </span>
       <div>
         <p class="disponibilidad-actividad__sin-fecha-titulo">
           Falta fecha de entrega
@@ -38,59 +40,84 @@
     </div>
 
     <template v-else-if="resultado">
-      <div class="disponibilidad-actividad__badges">
+      <div
+        class="disponibilidad-actividad__estado"
+        :class="
+          resultado.disponible
+            ? 'disponibilidad-actividad__estado--ok'
+            : 'disponibilidad-actividad__estado--no'
+        "
+      >
         <span
-          class="disponibilidad-actividad__badge"
-          :class="
-            resultado.disponible
-              ? 'disponibilidad-actividad__badge--ok'
-              : 'disponibilidad-actividad__badge--no'
-          "
+          class="material-symbols-outlined disponibilidad-actividad__estado-icono"
+          aria-hidden="true"
         >
-          {{ resultado.disponible ? "Disponible" : "Sin disponibilidad" }}
+          {{ iconoEstado }}
         </span>
+
+        <div class="disponibilidad-actividad__estado-cuerpo">
+          <p class="disponibilidad-actividad__estado-titulo">
+            {{ tituloEstado }}
+          </p>
+          <p class="disponibilidad-actividad__estado-texto">
+            {{ textoEstado }}
+          </p>
+
+          <p
+            v-if="horarioPropuesto"
+            class="disponibilidad-actividad__horario"
+          >
+            <strong>Horario propuesto:</strong> {{ horarioPropuesto }}
+          </p>
+
+          <p
+            v-if="!resultado.disponible && nombresBloqueantesTexto"
+            class="disponibilidad-actividad__bloqueantes"
+          >
+            Perfiles que no coinciden: {{ nombresBloqueantesTexto }}.
+          </p>
+
+          <VaButton
+            v-if="mostrarAcciones && !resultado.disponible && metaResultado.accion"
+            preset="secondary"
+            size="small"
+            class="disponibilidad-actividad__accion-motivo"
+            @click="ejecutarAccionMotivo"
+          >
+            {{ textoAccionMotivo }}
+          </VaButton>
+        </div>
+      </div>
+
+      <div class="disponibilidad-actividad__chips">
         <span
           v-if="etiquetaPreferencia"
-          class="disponibilidad-actividad__badge"
-          :class="
-            esPreferenciaExacta
-              ? 'disponibilidad-actividad__badge--ok'
-              : resultado.disponible
-                ? 'disponibilidad-actividad__badge--ajuste'
-                : 'disponibilidad-actividad__badge--no'
-          "
+          class="disponibilidad-actividad__chip"
+          :class="{
+            'disponibilidad-actividad__chip--ajuste':
+              !esPreferenciaExacta && resultado.disponible,
+          }"
         >
           {{ etiquetaPreferencia }}
         </span>
         <span
           v-if="resultado.provisional"
-          class="disponibilidad-actividad__badge disponibilidad-actividad__badge--provisional"
+          class="disponibilidad-actividad__chip disponibilidad-actividad__chip--provisional"
         >
           Evaluación provisional
         </span>
       </div>
 
-      <dl class="disponibilidad-actividad__detalle">
-        <div>
-          <dt>Ventana evaluada</dt>
-          <dd>{{ ventanaEvaluada }}</dd>
-        </div>
-        <div>
-          <dt>Hueco seleccionado</dt>
-          <dd>{{ huecoSeleccionado }}</dd>
-        </div>
-        <div v-if="inicioPreferidoTexto">
-          <dt>Horario preferido</dt>
-          <dd>{{ inicioPreferidoTexto }}</dd>
-        </div>
-        <div v-if="desvioTexto">
-          <dt>Ajuste</dt>
-          <dd>{{ desvioTexto }}</dd>
-        </div>
-      </dl>
+      <p
+        v-if="resultado.provisional"
+        class="disponibilidad-actividad__nota disponibilidad-actividad__nota--provisional"
+      >
+        La evaluación es provisional hasta que el proyecto confirme su fecha de
+        inicio. El sistema volverá a validar la disponibilidad al confirmar.
+      </p>
 
       <div
-        v-if="mostrarReprogramacion && reprogramacion.length"
+        v-if="reprogramacion.length"
         class="disponibilidad-actividad__reprogramacion"
       >
         <p class="disponibilidad-actividad__reprogramacion-titulo">
@@ -102,7 +129,10 @@
             :key="movimiento.clave"
           >
             <strong>{{ movimiento.nombre }}</strong>
-            <span v-if="movimiento.movimiento" class="disponibilidad-actividad__movimiento">
+            <span
+              v-if="movimiento.movimiento"
+              class="disponibilidad-actividad__movimiento"
+            >
               {{ movimiento.movimiento }}
             </span>
           </li>
@@ -111,96 +141,6 @@
           Al confirmar la asignación, estas actividades se reprograman y el
           cronograma se recalcula.
         </p>
-      </div>
-
-      <div
-        v-if="!resultado.disponible"
-        class="disponibilidad-actividad__motivo"
-        :class="`disponibilidad-actividad__motivo--${metaResultado.tono}`"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">
-          {{ metaResultado.icono }}
-        </span>
-        <div class="disponibilidad-actividad__motivo-cuerpo">
-          <p class="disponibilidad-actividad__motivo-texto">{{ mensaje }}</p>
-          <VaButton
-            v-if="mostrarAcciones && metaResultado.accion"
-            preset="secondary"
-            size="small"
-            class="disponibilidad-actividad__motivo-accion"
-            @click="ejecutarAccionMotivo"
-          >
-            {{ textoAccionMotivo }}
-          </VaButton>
-        </div>
-      </div>
-
-      <p
-        v-if="resultado.provisional"
-        class="disponibilidad-actividad__nota disponibilidad-actividad__nota--provisional"
-      >
-        La evaluación es provisional porque el proyecto todavía no confirmó su
-        fecha de inicio. El sistema volverá a validar la disponibilidad al
-        confirmar la postulación o asignación.
-      </p>
-
-      <div v-if="miembros.length" class="disponibilidad-actividad__miembros">
-        <h5 class="disponibilidad-actividad__subtitulo">
-          Detalle por miembro
-        </h5>
-
-        <article
-          v-for="(miembro, indice) in miembros"
-          :key="`${miembro.idPerfil ?? miembro.idUsuario ?? 'miembro'}-${indice}`"
-          class="disponibilidad-actividad__miembro"
-        >
-          <header class="disponibilidad-actividad__miembro-cabecera">
-            <strong>
-              {{
-                miembro.nombreArtistico ||
-                (miembro.idUsuario != null
-                  ? `Usuario #${miembro.idUsuario}`
-                  : "Miembro")
-              }}
-            </strong>
-            <span
-              class="disponibilidad-actividad__badge"
-              :class="
-                miembro.disponible
-                  ? 'disponibilidad-actividad__badge--ok'
-                  : 'disponibilidad-actividad__badge--no'
-              "
-            >
-              {{ miembro.disponible ? "Disponible" : "Sin disponibilidad" }}
-            </span>
-          </header>
-
-          <p class="disponibilidad-actividad__miembro-texto">
-            Ventana: {{ formatearVentana(miembro.inicioEvaluado, miembro.finEvaluado) }}
-          </p>
-
-          <p
-            v-if="miembro.huecos.length"
-            class="disponibilidad-actividad__miembro-texto"
-          >
-            Huecos:
-            {{ formatearHuecos(miembro.huecos).map((hueco) => hueco.texto).join(" · ") }}
-          </p>
-
-          <p
-            v-else
-            class="disponibilidad-actividad__miembro-texto disponibilidad-actividad__miembro-texto--vacio"
-          >
-            Sin huecos en la ventana evaluada.
-          </p>
-
-          <p
-            v-if="miembro.motivo"
-            class="disponibilidad-actividad__miembro-texto disponibilidad-actividad__miembro-texto--motivo"
-          >
-            {{ mensajeMotivo(miembro.motivo) }}
-          </p>
-        </article>
       </div>
     </template>
 
@@ -217,20 +157,20 @@ import { esErrorSinFechaEntrega } from "../../utils/cpmConstants.js";
 import {
   ACCIONES_MOTIVO_DISPONIBILIDAD,
   etiquetaResultadoPreferencia,
-  formatearDesvioMinutos,
-  formatearHuecos,
+  formatearHorarioDisponibilidad,
   formatearReprogramacion,
-  formatearVentana,
   mensajeMotivo,
   metaMotivo,
   normalizarResultado,
 } from "../../utils/disponibilidadConstants.js";
-import { formatearHora } from "../../utils/fechas.js";
 
 /*
  * Panel de disponibilidad (ficha CPM §6 y §10). Consulta de solo lectura: no
  * reserva ni asigna. Si la consulta falla por un error técnico, emite `null`
  * para que el contenedor pueda permitir continuar; el sistema revalida igual.
+ *
+ * La UI muestra un resumen legible del resultado. No expone ventanas técnicas
+ * ni la lista completa de huecos de cada miembro.
  */
 export default {
   name: "DisponibilidadActividad",
@@ -252,6 +192,18 @@ export default {
     titulo: {
       type: String,
       default: "Disponibilidad",
+    },
+    /**
+     * Ajusta el texto del resumen sin cambiar la lógica:
+     * postulacion | aceptacion | asignacion | invitacion
+     */
+    contexto: {
+      type: String,
+      default: "asignacion",
+      validator: (valor) =>
+        ["postulacion", "aceptacion", "asignacion", "invitacion"].includes(
+          valor
+        ),
     },
     autoCargar: {
       type: Boolean,
@@ -291,27 +243,6 @@ export default {
     sinFechaEntregaTotal() {
       return this.sinFechaEntrega || this.sinFechaEntregaError;
     },
-    miembros() {
-      return this.resultado?.miembros || [];
-    },
-    ventanaEvaluada() {
-      return formatearVentana(
-        this.resultado?.inicioEvaluado,
-        this.resultado?.finEvaluado
-      );
-    },
-    huecoSeleccionado() {
-      if (
-        this.resultado?.inicioSeleccionado == null &&
-        this.resultado?.finSeleccionado == null
-      ) {
-        return "Sin hueco seleccionado";
-      }
-      return formatearVentana(
-        this.resultado?.inicioSeleccionado,
-        this.resultado?.finSeleccionado
-      );
-    },
     mensaje() {
       return mensajeMotivo(
         this.resultado?.codigoMotivo,
@@ -321,11 +252,86 @@ export default {
     metaResultado() {
       return metaMotivo(this.resultado?.codigoMotivo);
     },
+    textoReconsultar() {
+      return this.resultado && !this.resultado.disponible
+        ? "Volver a consultar"
+        : "Reconsultar";
+    },
+    tituloEstado() {
+      if (!this.resultado?.disponible) return "No hay un horario en común";
+
+      if (this.contexto === "postulacion") return "Podés postularte";
+      if (this.contexto === "aceptacion") return "Hay disponibilidad";
+      if (this.contexto === "invitacion") return "Podés aceptar la invitación";
+      return "Hay un horario en común";
+    },
+    textoEstado() {
+      if (!this.resultado?.disponible) return this.mensaje;
+
+      if (this.contexto === "postulacion") {
+        return "Tu agenda coincide con la del equipo de esta actividad.";
+      }
+      if (this.contexto === "aceptacion") {
+        return "El postulante y el equipo tienen un horario en común.";
+      }
+      if (this.contexto === "invitacion") {
+        return "Tu agenda coincide con la del equipo de esta actividad.";
+      }
+      return "Los miembros de la actividad tienen un horario en común.";
+    },
+    iconoEstado() {
+      return this.resultado?.disponible
+        ? "check_circle"
+        : this.metaResultado.icono;
+    },
+    horarioPropuesto() {
+      if (!this.resultado?.disponible) return "";
+      return formatearHorarioDisponibilidad(
+        this.resultado?.inicioSeleccionado,
+        this.resultado?.finSeleccionado
+      );
+    },
+    miembrosBloqueantesNombres() {
+      const bloqueantes = Array.isArray(
+        this.resultado?.miembrosBloqueantes
+      )
+        ? this.resultado.miembrosBloqueantes
+        : [];
+      if (!bloqueantes.length) return [];
+
+      const ids = new Set(bloqueantes.map((id) => String(id)));
+      const miembros = Array.isArray(this.resultado?.miembros)
+        ? this.resultado.miembros
+        : [];
+
+      return miembros
+        .filter(
+          (miembro) =>
+            ids.has(String(miembro.idUsuario)) ||
+            ids.has(String(miembro.idPerfil))
+        )
+        .map((miembro) => miembro.nombreArtistico)
+        .filter(Boolean);
+    },
+    nombresBloqueantesTexto() {
+      const nombres = this.miembrosBloqueantesNombres;
+      if (!nombres.length) return "";
+      if (nombres.length <= 3) return nombres.join(", ");
+      return `${nombres.slice(0, 3).join(", ")} y ${
+        nombres.length - 3
+      } más`;
+    },
     textoAccionMotivo() {
-      if (this.metaResultado.accion === ACCIONES_MOTIVO_DISPONIBILIDAD.CALENDARIO) {
+      if (
+        this.metaResultado.accion ===
+        ACCIONES_MOTIVO_DISPONIBILIDAD.CALENDARIO
+      ) {
         return "Revisar calendario";
       }
-      if (this.metaResultado.accion === ACCIONES_MOTIVO_DISPONIBILIDAD.CRONOGRAMA) {
+      if (
+        this.metaResultado.accion ===
+        ACCIONES_MOTIVO_DISPONIBILIDAD.CRONOGRAMA
+      ) {
         return "Ver cronograma";
       }
       return "";
@@ -348,15 +354,6 @@ export default {
     },
     esPreferenciaExacta() {
       return this.resultado?.resultadoPreferencia === "EXACTO";
-    },
-    inicioPreferidoTexto() {
-      return this.resultado?.inicioPreferido
-        ? formatearHora(this.resultado.inicioPreferido)
-        : "";
-    },
-    desvioTexto() {
-      if (this.resultado?.resultadoPreferencia !== "DESVIO") return "";
-      return formatearDesvioMinutos(this.resultado?.desvioMinutos);
     },
   },
   watch: {
@@ -398,9 +395,6 @@ export default {
     this.abortar();
   },
   methods: {
-    formatearVentana,
-    formatearHuecos,
-    mensajeMotivo,
     reconsultarSiCorresponde() {
       if (this.autoCargar) this.cargar();
     },
@@ -509,12 +503,12 @@ export default {
 .disponibilidad-actividad {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.65rem;
   margin-top: 0.85rem;
   padding: 0.9rem 1rem;
+  background: var(--color-surface-soft);
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: var(--color-surface-muted);
 }
 
 .disponibilidad-actividad__cabecera {
@@ -522,243 +516,178 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  flex-wrap: wrap;
 }
 
 .disponibilidad-actividad__titulo {
   margin: 0;
   color: var(--color-text);
-  font-size: 0.86rem;
+  font-size: 0.9rem;
   font-weight: 700;
-}
-
-.disponibilidad-actividad__subtitulo {
-  margin: 0 0 0.45rem;
-  color: var(--color-text);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.disponibilidad-actividad__badges {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.disponibilidad-actividad__badge {
-  display: inline-block;
-  padding: 0.12rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.disponibilidad-actividad__badge--ok {
-  border-color: var(--color-success-border);
-  background: var(--color-success-soft);
-  color: var(--color-success-text);
-}
-
-.disponibilidad-actividad__badge--no {
-  border-color: var(--color-danger-border);
-  background: var(--color-danger-soft);
-  color: var(--color-danger-text);
-}
-
-.disponibilidad-actividad__badge--provisional {
-  border-color: var(--color-warning-border);
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
-}
-
-.disponibilidad-actividad__badge--ajuste {
-  border-color: var(--color-warning-border);
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
-}
-
-.disponibilidad-actividad__sin-fecha {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--color-warning-border);
-  border-radius: 8px;
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
-}
-
-.disponibilidad-actividad__sin-fecha .material-symbols-outlined {
-  font-size: 1.1rem;
-}
-
-.disponibilidad-actividad__sin-fecha-titulo {
-  margin: 0;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.disponibilidad-actividad__sin-fecha-texto {
-  margin: 0.15rem 0 0;
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-.disponibilidad-actividad__detalle {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.5rem;
-  margin: 0;
-}
-
-.disponibilidad-actividad__detalle div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.disponibilidad-actividad__detalle dt {
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.disponibilidad-actividad__detalle dd {
-  margin: 0;
-  color: var(--color-text);
-  font-size: 0.8rem;
 }
 
 .disponibilidad-actividad__nota {
   margin: 0;
   color: var(--color-text-muted);
-  font-size: 0.78rem;
-  line-height: 1.45;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .disponibilidad-actividad__nota--provisional {
-  color: var(--color-warning-text);
+  margin-top: -0.15rem;
+  font-size: 0.76rem;
 }
 
-.disponibilidad-actividad__reprogramacion {
-  margin-top: 0.25rem;
-  padding: 0.6rem 0.7rem;
-  border: 1px solid var(--color-info-border);
-  border-radius: 8px;
-  background: var(--color-info-soft);
-  color: var(--color-info-text);
+.disponibilidad-actividad__sin-fecha {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 0.8rem;
+  color: var(--color-warning-text);
+  background: var(--color-warning-soft);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 9px;
+}
+
+.disponibilidad-actividad__sin-fecha .material-symbols-outlined {
+  flex: 0 0 auto;
+  font-size: 1.15rem;
+}
+
+.disponibilidad-actividad__sin-fecha-titulo {
+  margin: 0 0 0.15rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.disponibilidad-actividad__sin-fecha-texto {
+  margin: 0;
   font-size: 0.78rem;
   line-height: 1.45;
 }
 
-.disponibilidad-actividad__reprogramacion-titulo {
+.disponibilidad-actividad__estado {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid;
+  border-radius: 9px;
+}
+
+.disponibilidad-actividad__estado--ok {
+  color: var(--color-success-text);
+  background: var(--color-success-soft);
+  border-color: var(--color-success-border);
+}
+
+.disponibilidad-actividad__estado--no {
+  color: var(--color-warning-text);
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning-border);
+}
+
+.disponibilidad-actividad__estado-icono {
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+}
+
+.disponibilidad-actividad__estado-cuerpo {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.disponibilidad-actividad__estado-titulo {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.disponibilidad-actividad__estado-texto {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.79rem;
+  line-height: 1.5;
+}
+
+.disponibilidad-actividad__horario {
+  margin: 0.1rem 0 0;
+  color: var(--color-text);
+  font-size: 0.79rem;
+  line-height: 1.45;
+}
+
+.disponibilidad-actividad__bloqueantes {
+  margin: 0.1rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.disponibilidad-actividad__accion-motivo {
+  justify-self: start;
+  margin-top: 0.15rem;
+}
+
+.disponibilidad-actividad__chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.disponibilidad-actividad__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  color: var(--color-success-text);
+  background: var(--color-success-soft);
+  border: 1px solid var(--color-success-border);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.disponibilidad-actividad__chip--ajuste,
+.disponibilidad-actividad__chip--provisional {
+  color: var(--color-warning-text);
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning-border);
+}
+
+.disponibilidad-actividad__reprogramacion {
+  padding: 0.75rem 0.85rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 9px;
+}
+
+.disponibilidad-actividad__reprogramacion-titulo {
+  margin: 0 0 0.35rem;
+  color: var(--color-text);
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
 .disponibilidad-actividad__reprogramacion-lista {
-  margin: 0.35rem 0 0;
-  padding-left: 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.disponibilidad-actividad__movimiento {
-  margin-left: 0.35rem;
-  opacity: 0.85;
-  white-space: nowrap;
-}
-
-.disponibilidad-actividad__reprogramacion-texto {
-  margin: 0.4rem 0 0;
-  opacity: 0.9;
-}
-
-.disponibilidad-actividad__motivo {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
+  display: grid;
+  gap: 0.25rem;
   margin: 0;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid var(--color-danger-border);
-  border-radius: 8px;
-  background: var(--color-danger-soft);
-  color: var(--color-danger-text);
-  font-size: 0.78rem;
+  padding-left: 1.1rem;
+  color: var(--color-text);
+  font-size: 0.77rem;
   line-height: 1.45;
 }
 
-.disponibilidad-actividad__motivo--warning {
-  border-color: var(--color-warning-border);
-  background: var(--color-warning-soft);
-  color: var(--color-warning-text);
-}
-
-.disponibilidad-actividad__motivo-cuerpo {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.disponibilidad-actividad__motivo-texto {
-  margin: 0;
-}
-
-.disponibilidad-actividad__motivo-accion {
-  margin-top: 0.1rem;
-}
-
-.disponibilidad-actividad__motivo .material-symbols-outlined {
-  font-size: 1rem;
-}
-
-.disponibilidad-actividad__miembros {
-  margin-top: 0.35rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--color-border-soft);
-}
-
-.disponibilidad-actividad__miembro {
-  padding: 0.55rem 0.65rem;
-  border: 1px solid var(--color-border-soft);
-  border-radius: 8px;
-  background: var(--color-surface);
-}
-
-.disponibilidad-actividad__miembro + .disponibilidad-actividad__miembro {
-  margin-top: 0.45rem;
-}
-
-.disponibilidad-actividad__miembro-cabecera {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  color: var(--color-text);
-  font-size: 0.8rem;
-}
-
-.disponibilidad-actividad__miembro-texto {
-  margin: 0.25rem 0 0;
+.disponibilidad-actividad__movimiento {
   color: var(--color-text-muted);
-  font-size: 0.76rem;
-  line-height: 1.4;
 }
 
-.disponibilidad-actividad__miembro-texto--vacio {
-  font-style: italic;
-}
-
-.disponibilidad-actividad__miembro-texto--motivo {
-  color: var(--color-danger-text);
+.disponibilidad-actividad__reprogramacion-texto {
+  margin: 0.35rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
 }
 </style>

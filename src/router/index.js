@@ -32,7 +32,8 @@ import BuscarContratosView from "../views/contrato/BuscarContratosView.vue";
 import ContratosPendientesView from "../views/contrato/ContratosPendientesView.vue";
 import DetalleContratoView from "../views/contrato/DetalleContratoView.vue";
 import ModificarContratoView from "../views/contrato/ModificarContratoView.vue";
-import InvitacionesView from "../views/proyecto/InvitacionesView.vue";
+import SolicitudesView from "../views/proyecto/SolicitudesView.vue";
+import PublicacionDetalleView from "../views/perfil/PublicacionDetalleView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
@@ -46,6 +47,7 @@ import GestionHabilidadesView from "../views/admin/GestionHabilidadesView.vue";
 import GestionTiposContratoView from "../views/admin/GestionTiposContratoView.vue";
 import ConfiguracionSchedulerView from "../views/admin/ConfiguracionSchedulerView.vue";
 import ConfiguracionSchedulerBajaView from "../views/admin/ConfiguracionSchedulerBajaView.vue";
+import ConfiguracionSchedulerLimpiezaImagenesView from "../views/admin/ConfiguracionSchedulerLimpiezaImagenesView.vue";
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
 import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
 import ReparacionCronogramaView from "../views/admin/ReparacionCronogramaView.vue";
@@ -53,6 +55,8 @@ import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
 import ReportePerfilDetalleView from "../views/admin/ReportePerfilDetalleView.vue";
+import ReportesPublicacionView from "../views/admin/ReportesPublicacionView.vue";
+import ReportePublicacionDetalleView from "../views/admin/ReportePublicacionDetalleView.vue";
 import AuditoriaAdminView from "../views/admin/AuditoriaAdminView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
@@ -272,10 +276,20 @@ const routes = [
     meta: { layout: HomeLayout, titulo: "Detalle del contrato", requiresActiveProfile: true, navActiva: "contratos" },
   },
   {
+    path: "/solicitudes",
+    name: "solicitudes",
+    component: SolicitudesView,
+    meta: { layout: HomeLayout, titulo: "Solicitudes", requiresActiveProfile: true, navActiva: "solicitudes" },
+  },
+  {
     path: "/invitaciones",
-    name: "invitaciones",
-    component: InvitacionesView,
-    meta: { layout: HomeLayout, titulo: "Invitaciones", requiresActiveProfile: true, navActiva: "invitaciones" },
+    redirect: (to) => ({ name: "solicitudes", query: to.query }),
+  },
+  {
+    path: "/publicaciones/:idPublicacion",
+    name: "publicacion-detalle",
+    component: PublicacionDetalleView,
+    meta: { layout: HomeLayout, titulo: "Publicación", requiresActiveProfile: true, sinFondoBlanco: true },
   },
   {
     path: "/proyectos/:id/actividades/crear",
@@ -475,6 +489,26 @@ const routes = [
     },
   },
   {
+    path: "/admin/reportes-publicacion",
+    name: "admin-reportes-publicacion",
+    component: ReportesPublicacionView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Reportes de publicaciones",
+    },
+  },
+  {
+    path: "/admin/reportes-publicacion/:id",
+    name: "admin-reporte-publicacion",
+    component: ReportePublicacionDetalleView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      titulo: "Detalle del reporte de publicación",
+    },
+  },
+  {
     path: "/admin/auditoria",
     name: "auditoria-admin",
     component: AuditoriaAdminView,
@@ -566,6 +600,17 @@ const routes = [
       requiereAdmin: true,
       requierePermiso: "ADMINISTRAR_CONFIGURACION",
       titulo: "Scheduler de bajas",
+    }
+  },
+  {
+    path: "/admin/configuracion-scheduler/limpieza-imagenes",
+    name: "configuracion-scheduler-limpieza-imagenes",
+    component: ConfiguracionSchedulerLimpiezaImagenesView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Scheduler de limpieza de imágenes",
     }
   },
   {

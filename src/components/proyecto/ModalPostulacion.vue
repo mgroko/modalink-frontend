@@ -64,10 +64,8 @@
     </div>
 
     <p v-if="esActividad" class="postulacion-modal__nota">
-      La disponibilidad se verifica antes de postular. Si el proyecto no tiene
-      fecha de entrega, no se puede postular. Si la consulta falla por un error
-      técnico, el sistema volverá a validarla al enviar. Si el proyecto todavía
-      no tiene fecha de inicio confirmada, la verificación será provisoria.
+      El horario se confirma cuando el director confirme el proyecto. Hasta
+      entonces, la verificación es provisoria.
     </p>
 
     <p
@@ -85,6 +83,7 @@
       :id-actividad="actividad.idActividad"
       :sin-fecha-entrega="sinFechaEntrega"
       :token-refresco="tokenDisponibilidad"
+      contexto="postulacion"
       titulo="Mi disponibilidad"
       @actualizado="disponibilidad = $event"
     />

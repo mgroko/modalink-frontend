@@ -22,6 +22,13 @@
         <span v-if="item.contador > 0" class="perfil-nav__badge">
           {{ item.contador }}
         </span>
+        <span
+          v-else-if="!esPropio"
+          class="material-symbols-outlined perfil-nav__chevron"
+          aria-hidden="true"
+        >
+          chevron_right
+        </span>
       </button>
 
       <button
@@ -34,138 +41,54 @@
       </button>
     </nav>
 
-    <div v-if="!esPropio" class="perfil-nav__acciones">
-      <PerfilAccionesConexion
-        class="perfil-nav__accion"
-        :estado-conexion="estadoConexion"
-        :mostrar="mostrarConexion"
-        :cargando="cargandoConexion"
-        :procesando="procesandoConexion"
-        :accion-procesando="accionProcesandoConexion"
-        @conectar="$emit('conectar')"
-        @aceptar="$emit('aceptar')"
-        @rechazar="$emit('rechazar')"
-        @eliminar="$emit('eliminar')"
-      />
-      <VaButton
-        class="perfil-nav__accion"
-        preset="secondary"
-        color="primary"
-        icon="mso-chat_bubble"
-        @click="$emit('mensaje')"
-      >
-        Mensaje
-      </VaButton>
-    </div>
-
-    <VaButton
-      v-if="!esPropio && mostrarCancelar"
-      preset="secondary"
-      color="danger"
-      size="small"
-      block
-      icon="mso-close"
-      :loading="cancelandoConexion"
-      :disabled="cancelandoConexion"
-      :aria-busy="cancelandoConexion ? 'true' : 'false'"
-      @click="$emit('cancelar')"
-    >
-      Cancelar solicitud
-    </VaButton>
-
-    <VaButton
-      v-if="!esPropio && puedeReportar"
-      color="danger"
-      size="small"
-      block
-      icon="mso-flag"
-      @click="$emit('reportar')"
-    >
-      Reportar perfil
-    </VaButton>
   </div>
 </template>
 
 <script>
 import { state as invitacionState } from "../../services/invitacionState";
+import { state as reemplazoState } from "../../services/reemplazoState";
+import { state as solicitudColaboracionState } from "../../services/solicitudColaboracionState";
 import { state as solicitudConexionState } from "../../services/solicitudConexionState";
-import PerfilAccionesConexion from "./PerfilAccionesConexion.vue";
 
 export default {
   name: "PerfilSidebarNav",
-  components: {
-    PerfilAccionesConexion,
-  },
   props: {
     esPropio: {
       type: Boolean,
       default: true,
     },
-    /** Oculta la acción para administradores (UC-15). */
-    puedeReportar: {
-      type: Boolean,
-      default: true,
-    },
     seccionActiva: {
       type: String,
-      default: "publicaciones",
-    },
-    /** Estado de la relación entre el perfil activo y el perfil consultado. */
-    estadoConexion: {
-      type: String,
-      default: "NINGUNA",
-    },
-    /** El perfil consultado permite mostrar la acción de conexión. */
-    mostrarConexion: {
-      type: Boolean,
-      default: true,
-    },
-    cargandoConexion: {
-      type: Boolean,
-      default: false,
-    },
-    /** Muestra la acción para cancelar una solicitud enviada y pendiente. */
-    mostrarCancelar: {
-      type: Boolean,
-      default: false,
-    },
-    cancelandoConexion: {
-      type: Boolean,
-      default: false,
-    },
-    procesandoConexion: {
-      type: Boolean,
-      default: false,
-    },
-    accionProcesandoConexion: {
-      type: String,
-      default: "",
+      default: "perfil",
     },
   },
   emits: [
     "cambiar-seccion",
     "navegar-ruta",
     "cerrar-sesion",
-    "conectar",
-    "aceptar",
-    "rechazar",
-    "eliminar",
-    "cancelar",
-    "mensaje",
-    "reportar",
     "funcionalidad-no-disponible",
   ],
   computed: {
     itemsVisibles() {
       const itemsPropio = [
-        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "ruta", ruta: "proyectos-inicio" },
+        { key: "perfil", label: "Perfil", icono: "person", tipo: "seccion" },
         {
-          key: "invitaciones",
-          label: "Invitaciones",
+          key: "publicaciones",
+          label: "Publicaciones",
+          icono: "photo_library",
+          tipo: "seccion",
+        },
+        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "seccion" },
+        {
+          key: "solicitudes",
+          label: "Solicitudes",
           icono: "mail",
           tipo: "ruta",
-          ruta: "invitaciones",
-          contador: invitacionState.pendientesRecibidas,
+          ruta: "solicitudes",
+          contador:
+            (invitacionState.pendientesRecibidas || 0) +
+            (reemplazoState.pendientes || 0) +
+            (solicitudColaboracionState.pendientesRecibidas || 0),
         },
         { key: "resenas", label: "Reseñas", icono: "star", tipo: "seccion" },
         {
@@ -187,8 +110,14 @@ export default {
       ];
 
       const itemsAjeno = [
-        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "no-disponible" },
-        { key: "participaciones", label: "Participaciones", icono: "groups", tipo: "no-disponible" },
+        { key: "perfil", label: "Perfil", icono: "person", tipo: "seccion" },
+        {
+          key: "publicaciones",
+          label: "Publicaciones",
+          icono: "photo_library",
+          tipo: "seccion",
+        },
+        { key: "proyectos", label: "Proyectos", icono: "business_center", tipo: "seccion" },
         { key: "calendario", label: "Calendario", icono: "calendar_month", tipo: "seccion" },
         {
           key: "terminos",
@@ -281,6 +210,12 @@ export default {
   line-height: 1;
 }
 
+.perfil-nav__chevron {
+  margin-left: auto;
+  color: var(--color-text-subtle);
+  font-size: 1.1rem;
+}
+
 .perfil-nav__item--activo .material-symbols-outlined {
   color: var(--color-primary);
 }
@@ -297,12 +232,4 @@ export default {
   background: var(--color-danger-soft);
 }
 
-.perfil-nav__acciones {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.perfil-nav__accion {
-  flex: 1;
-}
 </style>

@@ -118,6 +118,43 @@ export function formatearFechasEnTexto(texto) {
  * @param {string|Date|null|undefined} valor
  * @returns {string}
  */
+/**
+ * Antigüedad relativa para publicaciones: "hace instantes", "hace 5 min",
+ * "hace 2 h", "hace 3 d". A partir de 7 días usa fecha corta.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearTiempoRelativo(valor) {
+  if (valor == null || valor === "") return "";
+  const partes = aPartes(valor);
+  if (!partes) return String(valor);
+
+  const fecha = aFecha(partes);
+  const diferencia = Date.now() - fecha.getTime();
+  if (!Number.isFinite(diferencia) || diferencia < 0) return "ahora";
+
+  const minutos = Math.floor(diferencia / 60000);
+  if (minutos < 1) return "hace instantes";
+  if (minutos < 60) return `hace ${minutos} min`;
+
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `hace ${horas} h`;
+
+  const dias = Math.floor(horas / 24);
+  if (dias === 1) return "hace 1 día";
+  if (dias < 7) return `hace ${dias} días`;
+
+  const semanas = Math.floor(dias / 7);
+  if (semanas === 1) return "hace 1 semana";
+  if (semanas < 4) return `hace ${semanas} semanas`;
+
+  const meses = Math.floor(dias / 30);
+  if (meses === 1) return "hace 1 mes";
+  if (meses < 12) return `hace ${meses} meses`;
+
+  return formatearFechaCorta(valor);
+}
+
 export function formatearFechaConDia(valor) {
   if (valor == null || valor === "") return "—";
   const p = aPartes(valor);
@@ -189,6 +226,30 @@ export function fechaLarga(valor) {
   if (!p) return "";
   const diaSemana = DIAS_LARGOS[aFecha(p).getDay()];
   return `${diaSemana} ${p.dia} de ${MESES_LARGOS[p.mes - 1]} de ${p.anio}`;
+}
+
+/**
+ * Fecha larga sin día de la semana (ej. "25 de noviembre de 2026"). Se usa
+ * en resúmenes donde el espacio es acotado y el día de la semana no aporta.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function fechaLargaSinDia(valor) {
+  const p = aPartes(valor);
+  if (!p) return "";
+  return `${p.dia} de ${MESES_LARGOS[p.mes - 1]} de ${p.anio}`;
+}
+
+/**
+ * Devuelve "mes año" en español (ej. "noviembre 2026") a partir de un
+ * valor ISO-8601 o Date. Retorna "" si no hay fecha válida.
+ * @param {string|Date|null|undefined} valor
+ * @returns {string}
+ */
+export function formatearMesAnio(valor) {
+  const p = aPartes(valor);
+  if (!p) return "";
+  return `${MESES_LARGOS[p.mes - 1]} ${p.anio}`;
 }
 
 export function rangoSemana(inicio, fin) {

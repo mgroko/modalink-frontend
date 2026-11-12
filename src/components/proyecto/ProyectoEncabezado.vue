@@ -13,7 +13,10 @@
           </span>
         </div>
 
-        <p v-if="proyecto.descripcion" class="proyecto-encabezado__descripcion">
+        <p
+          v-if="mostrarDescripcion && proyecto.descripcion"
+          class="proyecto-encabezado__descripcion"
+        >
           {{ proyecto.descripcion }}
         </p>
 
@@ -127,6 +130,22 @@ export default {
       type: String,
       default: "",
     },
+    /**
+     * La descripción puede ocultarse del encabezado cuando la pestaña activa
+     * ya la muestra en su propio panel (Información general).
+     */
+    mostrarDescripcion: {
+      type: Boolean,
+      default: true,
+    },
+    /**
+     * Los detalles de privacidad, ubicación y entrega pueden omitirse del
+     * subtítulo cuando la pestaña activa ya los muestra en un panel propio.
+     */
+    mostrarDetalles: {
+      type: Boolean,
+      default: true,
+    },
   },
   emits: ["cambiar-tab"],
   computed: {
@@ -185,22 +204,28 @@ export default {
         partes.push("Vista pública del proyecto");
       }
 
-      if (this.proyecto?.privacidad) {
-        partes.push(
-          ETIQUETAS_PRIVACIDAD[this.proyecto.privacidad] || this.proyecto.privacidad
-        );
+      if (this.mostrarDetalles) {
+        if (this.proyecto?.privacidad) {
+          partes.push(
+            ETIQUETAS_PRIVACIDAD[this.proyecto.privacidad] || this.proyecto.privacidad
+          );
+        }
+
+        const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
+        const provincia = this.proyecto?.ubicacion?.ciudad?.provincia?.nombre;
+        if (ciudad && provincia) partes.push(`${ciudad}, ${provincia}`);
+        else if (ciudad || provincia) partes.push(ciudad || provincia);
+
+        if (this.proyecto?.fechaEntregaEstipulada) {
+          partes.push(
+            `Entrega: ${formatearFechaCorta(this.proyecto.fechaEntregaEstipulada)}`
+          );
+        }
+
+        return partes.join(" · ");
       }
 
-      const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
-      const provincia = this.proyecto?.ubicacion?.ciudad?.provincia?.nombre;
-      if (ciudad && provincia) partes.push(`${ciudad}, ${provincia}`);
-      else if (ciudad || provincia) partes.push(ciudad || provincia);
-
-      if (this.proyecto?.fechaEntregaEstipulada) {
-        partes.push(`Entrega: ${formatearFechaCorta(this.proyecto.fechaEntregaEstipulada)}`);
-      }
-
-      return partes.join(" · ");
+      return partes.length ? `${partes.join(". ")}.` : "";
     },
   },
 };

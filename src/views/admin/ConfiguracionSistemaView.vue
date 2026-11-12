@@ -39,6 +39,21 @@
       </RouterLink>
 
       <RouterLink
+        to="/admin/configuracion-scheduler/limpieza-imagenes"
+        class="configuracion-sistema__card"
+      >
+        <span class="configuracion-sistema__icon material-symbols-outlined">cleaning_services</span>
+        <span class="configuracion-sistema__card-content">
+          <strong>Limpieza de imágenes</strong>
+          <span>
+            Configurá cada cuántas horas el sistema elimina archivos e imágenes
+            huérfanas, y ejecutá la limpieza manualmente.
+          </span>
+        </span>
+        <span class="configuracion-sistema__arrow material-symbols-outlined">chevron_right</span>
+      </RouterLink>
+
+      <RouterLink
         to="/admin/configuracion/cronograma"
         class="configuracion-sistema__card"
       >

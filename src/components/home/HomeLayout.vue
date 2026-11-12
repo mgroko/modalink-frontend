@@ -184,7 +184,7 @@
         'home-layout__body--full': $route.meta.sinSidebarPerfil,
         'home-layout__body--ancho-proyecto':
           ['home', 'mi-red', 'buscar', 'mensajes'].includes($route.name) ||
-          ['proyectos', 'contratos', 'invitaciones', 'ajustes'].includes($route.meta.navActiva),
+          ['proyectos', 'contratos', 'solicitudes', 'ajustes'].includes($route.meta.navActiva),
       }"
     >
       <aside v-if="!$route.meta.sinSidebarPerfil" class="home-layout__sidebar">
@@ -219,6 +219,13 @@
 
         <nav class="home-layout__quick-links">
           <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('inicio') }"
+            @click="$router.push({ name: 'home' })"
+          >
+            <span class="material-symbols-outlined">home</span>
+            Inicio
+          </button>
+          <button
             :class="{ 'home-layout__quick-link--active': esQuickActivo('mi-perfil') }"
             @click="$router.push({ name: 'inicioperfil' })"
           >
@@ -247,16 +254,16 @@
             Oportunidades
           </button>
           <button
-            :class="{ 'home-layout__quick-link--active': esQuickActivo('invitaciones') }"
-            @click="$router.push({ name: 'invitaciones' })"
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('solicitudes') }"
+            @click="$router.push({ name: 'solicitudes' })"
           >
             <span class="material-symbols-outlined">mail</span>
-            <span>Invitaciones</span>
+            <span>Solicitudes</span>
             <span
-              v-if="invitacionesPendientes > 0"
+              v-if="solicitudesMenuPendientes > 0"
               class="home-layout__quick-link-badge"
             >
-              {{ invitacionesPendientes }}
+              {{ solicitudesMenuPendientes }}
             </span>
           </button>
           <button
@@ -312,6 +319,10 @@ import {
   state as reemplazoState,
   cargarResumenReemplazos,
 } from "../../services/reemplazoState";
+import {
+  state as solicitudColaboracionState,
+  cargarResumenSolicitudesColaboracion,
+} from "../../services/solicitudColaboracionState";
 import {
   state as contratoState,
   cargarContratosPendientes,
@@ -386,6 +397,12 @@ export default {
         invitacionState.pendientesRecibidas + reemplazoState.pendientes
       );
     },
+    solicitudesMenuPendientes() {
+      return (
+        this.invitacionesPendientes +
+        (solicitudColaboracionState.pendientesRecibidas || 0)
+      );
+    },
     contratosPendientes() {
       return contratoState.pendientesFirma;
     },
@@ -403,6 +420,7 @@ export default {
     idActivo(nuevo) {
       cargarResumenInvitaciones(nuevo);
       cargarResumenReemplazos(nuevo);
+      cargarResumenSolicitudesColaboracion();
       cargarContratosPendientes(nuevo);
       cargarPendientesRecibidas(nuevo);
       cargarResumenMensajes();
@@ -420,6 +438,7 @@ export default {
     cargarResumenPerfil(this.idActivo);
     cargarResumenInvitaciones(this.idActivo);
     cargarResumenReemplazos(this.idActivo);
+    cargarResumenSolicitudesColaboracion();
     cargarContratosPendientes(this.idActivo);
     cargarPendientesRecibidas(this.idActivo);
     cargarResumenMensajes();
@@ -529,6 +548,9 @@ export default {
     },
     esQuickActivo(clave) {
       const ruta = this.$route;
+      if (clave === "inicio") {
+        return ruta.name === "home";
+      }
       if (clave === "mi-perfil") {
         if (ruta.name === "inicioperfil-seccion") {
           return ruta.params.seccion !== "calendario";
@@ -549,8 +571,8 @@ export default {
       if (clave === "oportunidades") {
         return ruta.name === "buscar" && ruta.query.tab === "oportunidades";
       }
-      if (clave === "invitaciones") {
-        return ruta.name === "invitaciones";
+      if (clave === "solicitudes") {
+        return ruta.name === "solicitudes";
       }
       if (clave === "ajustes") {
         return [
