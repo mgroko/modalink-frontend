@@ -9,6 +9,7 @@ import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
 import GoogleCallbackView from "../views/auth/GoogleCallbackView.vue";
 import GoogleCompletarView from "../views/auth/GoogleCompletarView.vue";
+import EmailLoginView from "../views/auth/EmailLoginView.vue";
 import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
 import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
@@ -427,6 +428,12 @@ const routes = [
     name: "editar-perfil",
     component: EditarPerfilView,
     meta: { layout: UserDashboardLayout, titulo: "Editar perfil", permiteSinPerfil: true },
+  },
+  {
+    path: "/auth/email",
+    name: "email-login",
+    component: EmailLoginView,
+    meta: { layout: AuthLayout }
   },
   {
     path: "/auth/google/callback",
