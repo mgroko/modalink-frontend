@@ -104,6 +104,7 @@ import {
 } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { formatearFecha, diasRestantes } from "../../utils/fechas";
+import { destinoSeguro } from "../../utils/redirect";
 
 export default {
   name: "LoginView",
@@ -144,6 +145,7 @@ export default {
   },
   mounted() {
     this.mostrarErrorGoogle();
+    this.mostrarErrorEmail();
     this.mostrarAvisoBajaCuenta();
   },
   methods: {
@@ -167,6 +169,24 @@ export default {
       // (por ejemplo, `redirect`).
       const query = { ...this.$route.query };
       delete query.googleError;
+      this.$router.replace({ query }).catch(() => {});
+    },
+    mostrarErrorEmail() {
+      const codigo = this.$route.query?.emailError;
+      if (!codigo) return;
+
+      const mensajes = {
+        TOKEN_REQUERIDO: "El enlace de acceso no incluye un token.",
+        TOKEN_INVALIDO: "El enlace de acceso no es válido. Iniciá sesión nuevamente.",
+        TOKEN_EXPIRADO: "El enlace de acceso venció. Iniciá sesión nuevamente.",
+        TOKEN_USADO: "El enlace de acceso ya fue utilizado.",
+        USUARIO_NO_ACTIVO: "La cuenta asociada al enlace no está habilitada.",
+      };
+      this.errorMessage =
+        mensajes[codigo] || "No se pudo iniciar sesión con el enlace del correo.";
+
+      const query = { ...this.$route.query };
+      delete query.emailError;
       this.$router.replace({ query }).catch(() => {});
     },
     async iniciarSesion() {
@@ -205,7 +225,7 @@ export default {
     entrarSegun(usuario) {
       // Destino guardado (?redirect=...) para volver a la ruta de origen
       // tras re-autenticarse (ej. ver un perfil con sesión expirada).
-      const destino = this.destinoSeguro();
+      const destino = destinoSeguro(this.$route.query?.redirect);
       if (destino) {
         this.$router.push(destino);
         return;
@@ -217,14 +237,6 @@ export default {
       } else {
         this.$router.push({ name: "dashboard-usuario" });
       }
-    },
-    destinoSeguro() {
-      const redirect = this.$route.query?.redirect;
-      if (typeof redirect !== "string") return null;
-      // Solo rutas internas (mismo origin): evita open redirects.
-      if (!redirect.startsWith("/") || redirect.startsWith("//")) return null;
-      if (redirect.startsWith("/login")) return null;
-      return redirect;
     },
     async reactivarCuenta() {
       if (this.reactivando) return;
