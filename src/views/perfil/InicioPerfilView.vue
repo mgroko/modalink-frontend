@@ -136,17 +136,41 @@
             <section ref="publicacionesRef" class="inicio-perfil__panel">
               <div class="inicio-perfil__panel-header">
                 <h2 class="inicio-perfil__panel-titulo">Publicaciones</h2>
-                <VaButton
-                  v-if="esPropio"
-                  color="success"
-                  size="small"
-                  icon="mso-add"
-                  @click="nuevaPublicacion"
-                >
-                  Nueva publicación
-                </VaButton>
+                <div class="inicio-perfil__panel-acciones">
+                  <VaButton
+                    v-if="puedeGestionarPublicacionesOcultas"
+                    preset="secondary"
+                    size="small"
+                    icon="mso-visibility_off"
+                    @click="alternarPublicacionesOcultas"
+                  >
+                    {{
+                      mostrandoPublicacionesOcultas
+                        ? "Volver a publicaciones"
+                        : "Publicaciones ocultas"
+                    }}
+                  </VaButton>
+                  <VaButton
+                    v-if="esPropio && !mostrandoPublicacionesOcultas"
+                    color="success"
+                    size="small"
+                    icon="mso-add"
+                    @click="nuevaPublicacion"
+                  >
+                    Nueva publicación
+                  </VaButton>
+                </div>
               </div>
 
+              <PublicacionesOcultasPanel
+                v-if="
+                  mostrandoPublicacionesOcultas &&
+                  puedeGestionarPublicacionesOcultas
+                "
+                :key="`ocultas-${perfil?.idPerfil}`"
+              />
+
+              <template v-else>
               <FiltrosPublicaciones
                 v-if="perfil"
                 :filtros="filtrosPublicaciones"
@@ -210,6 +234,7 @@
                 :paginacion="paginacionPublicaciones"
                 @cambiar="cambiarPaginaPublicaciones"
               />
+              </template>
             </section>
           </template>
 
@@ -510,6 +535,7 @@ import { cargarConteosSolicitudesConexion } from "../../services/solicitudConexi
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
 import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
 import PublicacionCard from "../../components/perfil/PublicacionCard.vue";
+import PublicacionesOcultasPanel from "../../components/perfil/PublicacionesOcultasPanel.vue";
 import PublicacionDetalleModal from "../../components/perfil/PublicacionDetalleModal.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
@@ -611,6 +637,7 @@ export default {
     PolaroidsPerfilPanel,
     ProximosEventos,
     PublicacionCard,
+    PublicacionesOcultasPanel,
     PublicacionDetalleModal,
     ReportarPerfilModal,
     ModalEnviarSolicitudConexion,
@@ -664,6 +691,7 @@ export default {
         primera: true,
         ultima: true,
       },
+      mostrandoPublicacionesOcultas: false,
       controladorPublicaciones: null,
       controladorProyectosPublicaciones: null,
       temporalizadorFiltrosPublicaciones: null,
@@ -762,6 +790,13 @@ export default {
       if (this.perfil?.esPropietario != null) return this.perfil.esPropietario === true;
       return this.perfil?.idPerfil != null && this.perfil.idPerfil === idPerfilActivo();
     },
+    puedeGestionarPublicacionesOcultas() {
+      return (
+        this.esPropio &&
+        this.perfil?.idPerfil != null &&
+        this.perfil.idPerfil === idPerfilActivo()
+      );
+    },
     esModelo() {
       return esPerfilModelo(this.perfil);
     },
@@ -842,12 +877,16 @@ export default {
   },
   watch: {
     "$route.params.id"() {
+      this.mostrandoPublicacionesOcultas = false;
       this.resetearTerminos();
       this.cargarDatos();
     },
     "$route.params.seccion"() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       this.avisarSeccionNoDisponible();
+      if (this.seccion !== "publicaciones") {
+        this.mostrandoPublicacionesOcultas = false;
+      }
       if (this.seccion === "terminos") this.cargarTerminos();
       if (this.seccion === "proyectos") this.cargarHistorialProyectos();
     },
@@ -2381,6 +2420,13 @@ export default {
       if (!this.esPropio) return;
       this.modalNuevaPublicacionVisible = true;
     },
+    alternarPublicacionesOcultas() {
+      if (!this.puedeGestionarPublicacionesOcultas) return;
+      this.mostrandoPublicacionesOcultas = !this.mostrandoPublicacionesOcultas;
+      if (!this.mostrandoPublicacionesOcultas) {
+        this.cargarPublicaciones();
+      }
+    },
     irAEditar() {
       if (this.perfil?.idPerfil) {
         this.$router.push({
@@ -2468,6 +2514,14 @@ export default {
 
 .inicio-perfil__panel-header .inicio-perfil__panel-titulo {
   margin: 0;
+}
+
+.inicio-perfil__panel-acciones {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .inicio-perfil__vacio {

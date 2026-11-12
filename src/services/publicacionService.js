@@ -393,6 +393,40 @@ const publicacionService = {
     };
     return http.get("/publicaciones/feed", { params: query, signal });
   },
+
+  /**
+   * GET /publicaciones/ocultas — UC-69.
+   * Búsqueda específica de publicaciones ocultas del perfil activo.
+   * Solo devuelve idPublicacion, titulo, descripcion, fechaPublicacion y
+   * estado. El dueño solo puede eliminarlas.
+   *
+   * @param {{texto?:string,page?:number,size?:number}} [params]
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: {
+   *   contenido: Array<{
+   *     idPublicacion: number,
+   *     titulo: string,
+   *     descripcion: string|null,
+   *     fechaPublicacion: string,
+   *     estado: "OCULTA"
+   *   }>,
+   *   paginaActual: number,
+   *   tamanoPagina: number,
+   *   totalElementos: number,
+   *   totalPaginas: number,
+   *   primera: boolean,
+   *   ultima: boolean
+   * }}>} 200 OK
+   */
+  listarOcultas(params = {}, signal) {
+    const query = {
+      page: Math.max(0, Number(params.page) || 0),
+      size: Math.min(50, Math.max(1, Number(params.size) || 10)),
+    };
+    const texto = String(params.texto ?? "").trim();
+    if (texto) query.texto = texto;
+    return http.get("/publicaciones/ocultas", { params: query, signal });
+  },
 };
 
 export default publicacionService;

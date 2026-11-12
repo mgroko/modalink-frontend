@@ -109,6 +109,27 @@ const adminService = {
   },
 
   /**
+   * PATCH /admin/publicaciones/{idPublicacion}/estado - UC-69.
+   * Oculta o reactiva una publicación reportada.
+   * - OCULTA exige motivo.
+   * - ACTIVA admite motivo opcional.
+   * @param {number|string} idPublicacion
+   * @param {{estado: "ACTIVA"|"OCULTA", motivo?: string|null}} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: object}>} AdminPublicacionResponse actualizada
+   */
+  moderarPublicacion(idPublicacion, { estado, motivo } = {}, signal) {
+    return http.patch(
+      `/admin/publicaciones/${idPublicacion}/estado`,
+      {
+        estado,
+        motivo: String(motivo ?? "").trim() || null,
+      },
+      { signal }
+    );
+  },
+
+  /**
    * GET /admin/cronograma/inconsistencias — ficha §7.1.
    * `limite` limita la cantidad de proyectos procesados. Sin paginación.
    * @param {{idProyecto?: number, idActividad?: number, limite?: number}} [params]

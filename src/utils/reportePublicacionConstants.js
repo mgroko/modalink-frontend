@@ -33,6 +33,19 @@ export const ESTADOS_REPORTE_PUBLICACION = {
   DESCARTADO: "DESCARTADO",
 };
 
+export const ESTADOS_PUBLICACION = {
+  ACTIVA: "ACTIVA",
+  OCULTA: "OCULTA",
+};
+
+export const ETIQUETAS_ESTADO_PUBLICACION = {
+  [ESTADOS_PUBLICACION.ACTIVA]: "Activa",
+  [ESTADOS_PUBLICACION.OCULTA]: "Ocultada por el administrador",
+};
+
+export const LEYENDA_PUBLICACION_OCULTA =
+  "Publicación ocultada por el administrador";
+
 export const ETIQUETAS_ESTADO_REPORTE_PUBLICACION = {
   [ESTADOS_REPORTE_PUBLICACION.PENDIENTE]: "Pendiente de revisión",
   [ESTADOS_REPORTE_PUBLICACION.RESUELTO]: "Resuelto",

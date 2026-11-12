@@ -29,6 +29,8 @@ export const TIPOS_NOTIFICACION = {
   ACTIVIDAD_DESASIGNADA: "ACTIVIDAD_DESASIGNADA",
   PERFIL_REPORTADO: "PERFIL_REPORTADO",
   PUBLICACION_REPORTADA: "PUBLICACION_REPORTADA",
+  PUBLICACION_OCULTADA: "PUBLICACION_OCULTADA",
+  PUBLICACION_REACTIVADA: "PUBLICACION_REACTIVADA",
   INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
   INTEGRANTE_BAJA_VOLUNTARIA: "INTEGRANTE_BAJA_VOLUNTARIA",
   HABILIDAD_MODIFICADA: "HABILIDAD_MODIFICADA",
@@ -96,6 +98,8 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "Actividad desasignada",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "Perfil reportado",
   [TIPOS_NOTIFICACION.PUBLICACION_REPORTADA]: "Publicación reportada",
+  [TIPOS_NOTIFICACION.PUBLICACION_OCULTADA]: "Publicación ocultada",
+  [TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA]: "Publicación reactivada",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "Baja voluntaria de integrante",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "Habilidad modificada",
@@ -155,6 +159,8 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.ACTIVIDAD_DESASIGNADA]: "person_remove",
   [TIPOS_NOTIFICACION.PERFIL_REPORTADO]: "flag",
   [TIPOS_NOTIFICACION.PUBLICACION_REPORTADA]: "campaign",
+  [TIPOS_NOTIFICACION.PUBLICACION_OCULTADA]: "visibility_off",
+  [TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA]: "visibility",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "person_remove",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "edit",
@@ -231,6 +237,7 @@ export function esNotificacionSinNavegacion(tipo) {
     TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA,
     TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA,
     TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA,
+    TIPOS_NOTIFICACION.PUBLICACION_OCULTADA,
   ].includes(tipo);
 }
 
@@ -325,6 +332,23 @@ export function destinoNotificacion(notificacion) {
         (notificacion.entidadTipo === "PUBLICACION"
           ? idValido(notificacion.entidadId)
           : null);
+
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver publicación",
+            ruta: {
+              name: RUTAS_NOTIFICACION.PUBLICACION,
+              params: { idPublicacion: id },
+            },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA: {
+      const id =
+        (notificacion.entidadTipo === "PUBLICACION"
+          ? idValido(notificacion.entidadId)
+          : null) ?? idValido(notificacion.idPublicacion);
 
       return id == null
         ? null

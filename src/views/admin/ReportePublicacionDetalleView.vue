@@ -78,6 +78,26 @@
           </p>
 
           <template v-else-if="reporte.publicacion">
+            <div
+              v-if="imagenesPublicacion.length"
+              class="reporte-publicacion-detalle__galeria"
+            >
+              <a
+                v-for="(imagen, indice) in imagenesPublicacion"
+                :key="imagen.idImagen || indice"
+                :href="resolverFotoUrl(imagen.url)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="reporte-publicacion-detalle__miniatura"
+                :aria-label="`Abrir imagen ${indice + 1} de la publicación`"
+              >
+                <img
+                  :src="resolverFotoUrl(imagen.url)"
+                  :alt="`${reporte.publicacion.titulo || 'Publicación'} — imagen ${indice + 1}`"
+                />
+              </a>
+            </div>
+
             <dl class="reporte-publicacion-detalle__datos">
               <div>
                 <dt>Título</dt>
@@ -95,9 +115,13 @@
                 <dt>Estado</dt>
                 <dd>
                   <VaBadge
-                    :text="reporte.publicacion.estado || '—'"
+                    :text="
+                      reporte.publicacion.estado === ESTADOS_PUBLICACION.OCULTA
+                        ? 'Oculta'
+                        : 'Activa'
+                    "
                     :color="
-                      reporte.publicacion.estado === 'OCULTA'
+                      reporte.publicacion.estado === ESTADOS_PUBLICACION.OCULTA
                         ? 'warning'
                         : 'success'
                     "
@@ -113,7 +137,83 @@
                 <dt>Usuario dueño</dt>
                 <dd>{{ reporte.publicacion.nombreUsuario || "—" }}</dd>
               </div>
+              <div>
+                <dt>Proyecto</dt>
+                <dd>{{ reporte.publicacion.proyecto?.nombre || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Ubicación</dt>
+                <dd>{{ ubicacionPublicacion || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Me gusta</dt>
+                <dd>{{ reporte.publicacion.cantidadMeGusta ?? 0 }}</dd>
+              </div>
+              <div>
+                <dt>Comentarios</dt>
+                <dd>{{ reporte.publicacion.cantidadComentarios ?? 0 }}</dd>
+              </div>
+              <div>
+                <dt>Reportes</dt>
+                <dd>
+                  {{ reporte.publicacion.cantidadReportes ?? 0 }}
+                  <template
+                    v-if="reporte.publicacion.cantidadReportesPendientes"
+                  >
+                    ({{ reporte.publicacion.cantidadReportesPendientes }}
+                    pendiente{{
+                      reporte.publicacion.cantidadReportesPendientes === 1
+                        ? ""
+                        : "s"
+                    }})
+                  </template>
+                </dd>
+              </div>
             </dl>
+
+            <div
+              v-if="colaboradoresPublicacion.length"
+              class="reporte-publicacion-detalle__colaboradores"
+            >
+              <span class="reporte-publicacion-detalle__colaboradores-label">
+                Colaboradores:
+              </span>
+              <VaBadge
+                v-for="colaborador in colaboradoresPublicacion"
+                :key="colaborador.idPerfil"
+                :text="colaborador.nombreArtistico"
+                color="info"
+                outline
+              />
+            </div>
+
+            <div class="reporte-publicacion-detalle__moderacion">
+              <p class="reporte-publicacion-detalle__nota">
+                La moderación es independiente del estado del reporte. Al
+                ocultar, la publicación deja de ser visible para todos los
+                usuarios.
+              </p>
+              <div class="reporte-publicacion-detalle__botones">
+                <VaButton
+                  v-if="puedeOcultarPublicacion"
+                  color="danger"
+                  icon="mso-visibility_off"
+                  :disabled="moderandoPublicacion"
+                  @click="abrirModeracion(ESTADOS_PUBLICACION.OCULTA)"
+                >
+                  Ocultar publicación
+                </VaButton>
+                <VaButton
+                  v-else-if="puedeReactivarPublicacion"
+                  color="success"
+                  icon="mso-visibility"
+                  :disabled="moderandoPublicacion"
+                  @click="abrirModeracion(ESTADOS_PUBLICACION.ACTIVA)"
+                >
+                  Reactivar publicación
+                </VaButton>
+              </div>
+            </div>
           </template>
 
           <p v-else class="reporte-publicacion-detalle__nota">
@@ -248,6 +348,60 @@
         </div>
       </template>
     </VaModal>
+
+    <VaModal
+      v-model="modalModeracionVisible"
+      hide-default-actions
+      blur
+      size="small"
+    >
+      <template #header>
+        <h3 class="va-h5">{{ tituloModeracion }}</h3>
+      </template>
+
+      <div class="reporte-publicacion-detalle__moderacion-form">
+        <p class="reporte-publicacion-detalle__confirmacion">
+          {{ mensajeModeracion }}
+        </p>
+
+        <VaTextarea
+          v-model="motivoModeracion"
+          label="Motivo"
+          :max-length="200"
+          counter
+          :rows="3"
+          :error="!!errorMotivoModeracion"
+          :error-messages="errorMotivoModeracion || undefined"
+          placeholder="Explicá brevemente el motivo de la moderación"
+        />
+
+        <BaseAlert v-if="errorModeracion" :message="errorModeracion" type="error" />
+      </div>
+
+      <template #footer>
+        <div class="reporte-publicacion-detalle__acciones-modal">
+          <VaButton
+            preset="secondary"
+            :disabled="moderandoPublicacion"
+            @click="cerrarModeracion"
+          >
+            Cancelar
+          </VaButton>
+          <VaButton
+            :color="
+              estadoPublicacionDestino === ESTADOS_PUBLICACION.OCULTA
+                ? 'danger'
+                : 'success'
+            "
+            :loading="moderandoPublicacion"
+            :disabled="moderandoPublicacion"
+            @click="confirmarModeracion"
+          >
+            {{ estadoPublicacionDestino === ESTADOS_PUBLICACION.OCULTA ? "Ocultar" : "Reactivar" }}
+          </VaButton>
+        </div>
+      </template>
+    </VaModal>
   </div>
 </template>
 
@@ -256,7 +410,10 @@ import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { formatearFecha } from "../../utils/fechas.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
+import { formatUbicacionPublicacion } from "../../utils/ubicacion.js";
 import {
+  ESTADOS_PUBLICACION,
   ESTADOS_REPORTE_PUBLICACION,
   colorEstadoReportePublicacion,
   etiquetaEstadoReportePublicacion,
@@ -268,6 +425,7 @@ export default {
   components: { BaseAlert },
   data() {
     return {
+      ESTADOS_PUBLICACION,
       ESTADOS_REPORTE_PUBLICACION,
       reporte: null,
       cargando: true,
@@ -279,6 +437,12 @@ export default {
       estadoDestino: ESTADOS_REPORTE_PUBLICACION.RESUELTO,
       cambiandoEstado: false,
       errorEstado: "",
+      modalModeracionVisible: false,
+      estadoPublicacionDestino: ESTADOS_PUBLICACION.OCULTA,
+      motivoModeracion: "",
+      moderandoPublicacion: false,
+      errorModeracion: "",
+      errorMotivoModeracion: "",
       idCarga: 0,
     };
   },
@@ -297,6 +461,41 @@ export default {
         ? "El reporte quedará marcado como resuelto. Esta acción no se puede revertir."
         : "El reporte quedará descartado. Esta acción no se puede revertir.";
     },
+    imagenesPublicacion() {
+      return this.reporte?.publicacion?.imagenes || [];
+    },
+    colaboradoresPublicacion() {
+      return this.reporte?.publicacion?.colaboradores || [];
+    },
+    ubicacionPublicacion() {
+      return formatUbicacionPublicacion(this.reporte?.publicacion?.ubicacion);
+    },
+    puedeOcultarPublicacion() {
+      const publicacion = this.reporte?.publicacion;
+      if (!publicacion || this.reporte?.publicacionEliminada) return false;
+      if (typeof publicacion.puedeOcultar === "boolean") {
+        return publicacion.puedeOcultar;
+      }
+      return publicacion.estado === ESTADOS_PUBLICACION.ACTIVA;
+    },
+    puedeReactivarPublicacion() {
+      const publicacion = this.reporte?.publicacion;
+      if (!publicacion || this.reporte?.publicacionEliminada) return false;
+      if (typeof publicacion.puedeReactivar === "boolean") {
+        return publicacion.puedeReactivar;
+      }
+      return publicacion.estado === ESTADOS_PUBLICACION.OCULTA;
+    },
+    tituloModeracion() {
+      return this.estadoPublicacionDestino === ESTADOS_PUBLICACION.OCULTA
+        ? "Ocultar publicación"
+        : "Reactivar publicación";
+    },
+    mensajeModeracion() {
+      return this.estadoPublicacionDestino === ESTADOS_PUBLICACION.OCULTA
+        ? "La publicación dejará de ser visible para todos los usuarios. El dueño recibirá una notificación y solo podrá ver el título y la descripción desde su perfil."
+        : "La publicación volverá a ser visible para los usuarios. El dueño recibirá una notificación con un enlace a la publicación.";
+    },
   },
   created() {
     this.controlador = null;
@@ -309,6 +508,7 @@ export default {
   },
   methods: {
     formatearFecha,
+    resolverFotoUrl,
     etiquetaEstado: etiquetaEstadoReportePublicacion,
     colorEstado: colorEstadoReportePublicacion,
     etiquetaMotivo: etiquetaMotivoReportePublicacion,
@@ -452,6 +652,105 @@ export default {
       this.errorEstado = mensajeErrorApi(
         error,
         "No se pudo cambiar el estado del reporte."
+      );
+    },
+    abrirModeracion(estado) {
+      if (this.moderandoPublicacion) return;
+      this.estadoPublicacionDestino = estado;
+      this.motivoModeracion = "";
+      this.errorModeracion = "";
+      this.errorMotivoModeracion = "";
+      this.modalModeracionVisible = true;
+    },
+    cerrarModeracion() {
+      if (this.moderandoPublicacion) return;
+      this.modalModeracionVisible = false;
+      this.errorModeracion = "";
+      this.errorMotivoModeracion = "";
+    },
+    validarMotivoModeracion() {
+      const motivo = String(this.motivoModeracion || "").trim();
+      if (
+        this.estadoPublicacionDestino === ESTADOS_PUBLICACION.OCULTA &&
+        !motivo
+      ) {
+        this.errorMotivoModeracion =
+          "El motivo es obligatorio al ocultar una publicación.";
+        return false;
+      }
+      if (motivo.length > 200) {
+        this.errorMotivoModeracion =
+          "El motivo no puede superar los 200 caracteres.";
+        return false;
+      }
+      this.errorMotivoModeracion = "";
+      return true;
+    },
+    async confirmarModeracion() {
+      if (
+        this.moderandoPublicacion ||
+        this.reporte?.publicacion?.idPublicacion == null
+      ) {
+        return;
+      }
+      if (!this.validarMotivoModeracion()) return;
+
+      this.moderandoPublicacion = true;
+      this.errorModeracion = "";
+      try {
+        const response = await adminService.moderarPublicacion(
+          this.reporte.publicacion.idPublicacion,
+          {
+            estado: this.estadoPublicacionDestino,
+            motivo: this.motivoModeracion,
+          }
+        );
+        this.reporte.publicacion = response?.data || this.reporte.publicacion;
+        this.modalModeracionVisible = false;
+        this.mensajeExito =
+          this.estadoPublicacionDestino === ESTADOS_PUBLICACION.OCULTA
+            ? "La publicación quedó oculta."
+            : "La publicación quedó reactivada.";
+        window.dispatchEvent(
+          new CustomEvent("reportes-publicacion-actualizados")
+        );
+      } catch (error) {
+        await this.manejarErrorModeracion(error);
+      } finally {
+        this.moderandoPublicacion = false;
+      }
+    },
+    async manejarErrorModeracion(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+
+      if (status === 409) {
+        this.modalModeracionVisible = false;
+        await this.cargar();
+        this.mensajeError =
+          mensaje || "La publicación ya fue moderada por otro administrador.";
+        return;
+      }
+      if (status === 404) {
+        this.modalModeracionVisible = false;
+        await this.cargar();
+        this.mensajeError =
+          mensaje || "La publicación ya no existe o fue eliminada.";
+        return;
+      }
+      if (status === 403) {
+        this.errorModeracion =
+          mensaje || "No tenés permisos para moderar esta publicación.";
+        return;
+      }
+      if (!status || status >= 500) {
+        this.errorModeracion =
+          "No se pudo moderar la publicación. Inténtalo nuevamente.";
+        return;
+      }
+      this.errorModeracion = mensajeErrorApi(
+        error,
+        "No se pudo moderar la publicación."
       );
     },
     volver() {
@@ -614,5 +913,58 @@ export default {
   justify-content: flex-end;
   gap: 1rem;
   width: 100%;
+}
+
+.reporte-publicacion-detalle__galeria {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.55rem;
+}
+
+.reporte-publicacion-detalle__miniatura {
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+}
+
+.reporte-publicacion-detalle__miniatura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.18s ease;
+}
+
+.reporte-publicacion-detalle__miniatura:hover img {
+  transform: scale(1.03);
+}
+
+.reporte-publicacion-detalle__colaboradores {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.reporte-publicacion-detalle__colaboradores-label {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.reporte-publicacion-detalle__moderacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.reporte-publicacion-detalle__moderacion-form {
+  display: grid;
+  gap: 0.75rem;
 }
 </style>
