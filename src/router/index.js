@@ -54,6 +54,8 @@ import ConfiguracionSchedulerLimpiezaImagenesView from "../views/admin/Configura
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
 import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
 import ReparacionCronogramaView from "../views/admin/ReparacionCronogramaView.vue";
+import ColaboracionesAutomaticasHistoricasView from "../views/admin/ColaboracionesAutomaticasHistoricasView.vue";
+import ColaboracionAutomaticaHistoricaDetalleView from "../views/admin/ColaboracionAutomaticaHistoricaDetalleView.vue";
 import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
@@ -653,6 +655,28 @@ const routes = [
       requiereAdmin: true,
       requierePermiso: "ADMINISTRAR_CONFIGURACION",
       titulo: "Reparación de cronogramas",
+    }
+  },
+  {
+    path: "/admin/configuracion/colaboraciones-automaticas-historicas",
+    name: "admin-colaboraciones-historicas",
+    component: ColaboracionesAutomaticasHistoricasView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Colaboraciones históricas",
+    }
+  },
+  {
+    path: "/admin/configuracion/colaboraciones-automaticas-historicas/:id",
+    name: "admin-colaboracion-historica",
+    component: ColaboracionAutomaticaHistoricaDetalleView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Procesamiento histórico",
     }
   }
 ];
