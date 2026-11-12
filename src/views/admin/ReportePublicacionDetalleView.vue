@@ -82,20 +82,19 @@
               v-if="imagenesPublicacion.length"
               class="reporte-publicacion-detalle__galeria"
             >
-              <a
+              <button
                 v-for="(imagen, indice) in imagenesPublicacion"
                 :key="imagen.idImagen || indice"
-                :href="resolverFotoUrl(imagen.url)"
-                target="_blank"
-                rel="noopener noreferrer"
+                type="button"
                 class="reporte-publicacion-detalle__miniatura"
-                :aria-label="`Abrir imagen ${indice + 1} de la publicación`"
+                :aria-label="`Ampliar imagen ${indice + 1} de la publicación`"
+                @click="abrirGaleria(indice)"
               >
                 <img
                   :src="resolverFotoUrl(imagen.url)"
                   :alt="`${reporte.publicacion.titulo || 'Publicación'} — imagen ${indice + 1}`"
                 />
-              </a>
+              </button>
             </div>
 
             <dl class="reporte-publicacion-detalle__datos">
@@ -349,6 +348,13 @@
       </template>
     </VaModal>
 
+    <GaleriaPublicacionModal
+      v-model="galeriaVisible"
+      :imagenes="imagenesPublicacion"
+      :titulo="reporte?.publicacion?.titulo || 'Publicación'"
+      :indice-inicial="indiceGaleria"
+    />
+
     <VaModal
       v-model="modalModeracionVisible"
       hide-default-actions
@@ -408,6 +414,7 @@
 <script>
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
+import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { formatearFecha } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
@@ -422,7 +429,7 @@ import {
 
 export default {
   name: "ReportePublicacionDetalleView",
-  components: { BaseAlert },
+  components: { BaseAlert, GaleriaPublicacionModal },
   data() {
     return {
       ESTADOS_PUBLICACION,
@@ -443,6 +450,8 @@ export default {
       moderandoPublicacion: false,
       errorModeracion: "",
       errorMotivoModeracion: "",
+      galeriaVisible: false,
+      indiceGaleria: 0,
       idCarga: 0,
     };
   },
@@ -462,7 +471,11 @@ export default {
         : "El reporte quedará descartado. Esta acción no se puede revertir.";
     },
     imagenesPublicacion() {
-      return this.reporte?.publicacion?.imagenes || [];
+      const imagenes = this.reporte?.publicacion?.imagenes || [];
+      // Mismo criterio que la galería para que el índice clickeado coincida.
+      return [...imagenes].sort(
+        (a, b) => (Number(a.orden) || 0) - (Number(b.orden) || 0)
+      );
     },
     colaboradoresPublicacion() {
       return this.reporte?.publicacion?.colaboradores || [];
@@ -753,6 +766,10 @@ export default {
         "No se pudo moderar la publicación."
       );
     },
+    abrirGaleria(indice) {
+      this.indiceGaleria = Number(indice) || 0;
+      this.galeriaVisible = true;
+    },
     volver() {
       this.$router.push({ name: "admin-reportes-publicacion" });
     },
@@ -923,11 +940,19 @@ export default {
 
 .reporte-publicacion-detalle__miniatura {
   display: block;
+  width: 100%;
+  padding: 0;
   overflow: hidden;
   aspect-ratio: 1;
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
   border-radius: 9px;
+  cursor: zoom-in;
+}
+
+.reporte-publicacion-detalle__miniatura:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .reporte-publicacion-detalle__miniatura img {
