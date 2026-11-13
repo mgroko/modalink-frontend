@@ -661,6 +661,31 @@ export function mejorCandidatoReemplazo(candidatos) {
 }
 
 /**
+ * Ordena candidatos por concordancia descendente (mayor puntaje primero).
+ * Los candidatos sin puntaje quedan al final. En empate, primero el que
+ * tiene menos faltantes, manteniendo el orden original si persiste.
+ * @param {object[]|null|undefined} candidatos
+ * @returns {object[]}
+ */
+export function ordenarCandidatosPorConcordanciaReemplazo(candidatos) {
+  const lista = Array.isArray(candidatos) ? candidatos.filter(Boolean) : [];
+  return [...lista].sort((a, b) => {
+    const puntajeA = puntajeNumericoReemplazo(a);
+    const puntajeB = puntajeNumericoReemplazo(b);
+
+    if (puntajeA == null && puntajeB == null) return 0;
+    if (puntajeA == null) return 1;
+    if (puntajeB == null) return -1;
+    if (puntajeB !== puntajeA) return puntajeB - puntajeA;
+
+    return (
+      faltantesCandidatoReemplazo(a).length -
+      faltantesCandidatoReemplazo(b).length
+    );
+  });
+}
+
+/**
  * Resumen textual de requisitos. Usa los conteos del backend si existen;
  * si no, cuenta los ítems requeridos estructurados; como último recurso,
  * muestra la cantidad de diferencias.

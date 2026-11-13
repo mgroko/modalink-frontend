@@ -28,7 +28,7 @@
         :loading="cargandoProyectos"
         :error="!!errorProyectos"
         :error-messages="errorProyectos || undefined"
-        allow-search
+        searchable
         clearable
         no-options-text="No hay proyectos para filtrar"
         @update:model-value="cambiar('idProyecto', $event)"

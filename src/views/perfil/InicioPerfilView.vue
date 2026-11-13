@@ -491,6 +491,7 @@
         v-model="modalInvitarColaboradorVisible"
         :publicacion="publicacionInvitar"
         @enviada="alEnviarInvitacion"
+        @agregada="alAgregarColaborador"
       />
 
       <ModalEliminarPublicacion
@@ -1731,6 +1732,24 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+    },
+    alAgregarColaborador(colaborador) {
+      this.modalInvitarColaboradorVisible = false;
+      this.toast.init({
+        title: "Colaborador agregado",
+        message: `${
+          colaborador?.nombre || "Tu perfil"
+        } ya aparece como colaborador en la publicación.`,
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
+
+      if (this.seccion === "publicaciones") {
+        this.cargarPublicaciones();
+      } else {
+        this.cargarPublicacionesPerfil();
+      }
     },
     abrirEliminarPublicacion(publicacion) {
       if (!publicacion?.idPublicacion) return;

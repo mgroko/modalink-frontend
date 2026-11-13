@@ -240,6 +240,7 @@ import {
   etiquetaOrigenReemplazo,
   etiquetaTipoReemplazo,
   mejorCandidatoReemplazo,
+  ordenarCandidatosPorConcordanciaReemplazo,
   puedeCancelarReemplazo,
   puedeConfirmarReemplazo,
   puedeRegenerarReemplazo,
@@ -296,9 +297,11 @@ export default {
         : [];
     },
     propuestos() {
-      return this.candidatos.filter(
-        (candidato) =>
-          candidato?.estado === ESTADOS_CANDIDATO_REEMPLAZO.PROPUESTO
+      return ordenarCandidatosPorConcordanciaReemplazo(
+        this.candidatos.filter(
+          (candidato) =>
+            candidato?.estado === ESTADOS_CANDIDATO_REEMPLAZO.PROPUESTO
+        )
       );
     },
     invitados() {

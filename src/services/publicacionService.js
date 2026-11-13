@@ -301,6 +301,30 @@ const publicacionService = {
     return http.delete(`/publicaciones/${idPublicacion}`);
   },
 
+  /**
+   * POST /publicaciones/{idPublicacion}/colaboradores/propios — autocolaboración.
+   * Agrega un perfil del mismo usuario como colaborador directo de una
+   * publicación propia, sin solicitud ni conexión. La etiqueta queda con
+   * origen MANUAL.
+   *
+   * Errores:
+   * - 400 `idPerfil` ausente o inválido
+   * - 403 sin rol USUARIO o sin perfil activo
+   * - 404 la publicación no pertenece al perfil activo o el perfil no existe
+   * - 409 PERFIL_PROPIO_INVALIDO (el perfil no pertenece al usuario, no está
+   *   activo o es el mismo perfil activo)
+   *
+   * @param {number|string} idPublicacion
+   * @param {number|string} idPerfil
+   * @returns {Promise<{status: number}>} 204 No Content
+   */
+  agregarColaboradorPropio(idPublicacion, idPerfil) {
+    return http.post(
+      `/publicaciones/${idPublicacion}/colaboradores/propios`,
+      { idPerfil: Number(idPerfil) }
+    );
+  },
+
   actualizar(idPublicacion, request, onUploadProgress) {
     const formData = new FormData();
 

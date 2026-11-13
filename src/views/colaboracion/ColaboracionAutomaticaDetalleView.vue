@@ -125,7 +125,7 @@
       <div class="detalle-colaboracion__grid">
         <section class="detalle-colaboracion__panel">
           <h2 class="detalle-colaboracion__subtitulo">
-            Perfil de la contraparte
+            {{ esAutocolaboracion ? "Tu otro perfil" : "Perfil de la contraparte" }}
           </h2>
           <div class="detalle-colaboracion__perfil">
             <span class="detalle-colaboracion__avatar">
@@ -185,12 +185,25 @@
             <dd>{{ etiquetaMiEstado }}</dd>
           </div>
           <div>
-            <dt>Estado de {{ nombreContraparte }}</dt>
+            <dt>
+              {{
+                esAutocolaboracion
+                  ? "Estado de tu otro perfil"
+                  : `Estado de ${nombreContraparte}`
+              }}
+            </dt>
             <dd>{{ etiquetaEstadoContraparte }}</dd>
           </div>
         </dl>
         <p class="detalle-colaboracion__explicacion">
           {{ descripcionEstado }}
+        </p>
+        <p
+          v-if="esAutocolaboracion"
+          class="detalle-colaboracion__explicacion"
+        >
+          Las dos publicaciones pertenecen a tu cuenta. La confirmación o el
+          rechazo se aplica a ambos lados.
         </p>
       </section>
 
@@ -261,6 +274,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import EstadoColaboracionAutomaticaBadge from "../../components/colaboracion/EstadoColaboracionAutomaticaBadge.vue";
 import ModalGestionColaboracionAutomatica from "../../components/colaboracion/ModalGestionColaboracionAutomatica.vue";
 import colaboracionAutomaticaService from "../../services/colaboracionAutomaticaService";
+import perfilService from "../../services/perfilService";
 import { cargarResumenColaboracionesAutomaticas } from "../../services/colaboracionAutomaticaState";
 import { cargarResumenPerfil } from "../../services/notificacionState";
 import { idPerfilActivo } from "../../services/authState";
@@ -271,6 +285,7 @@ import {
   ESTADOS_COLABORACION_AUTOMATICA,
   ETIQUETAS_ESTADO_COLABORACION_AUTOMATICA,
   descripcionEstadoColaboracionAutomatica,
+  esAutocolaboracionAutomatica,
   mensajeErrorColaboracionAutomatica,
   normalizarColaboracionAutomatica,
   normalizarEstadoColaboracionAutomatica,
@@ -292,6 +307,7 @@ export default {
   data() {
     return {
       colaboracion: null,
+      misPerfiles: [],
       cargando: true,
       error: "",
       errorModal: "",
@@ -317,6 +333,12 @@ export default {
     },
     perfil() {
       return this.colaboracion?.perfilContraparte || null;
+    },
+    esAutocolaboracion() {
+      return esAutocolaboracionAutomatica(
+        this.colaboracion,
+        this.misPerfiles
+      );
     },
     imagen() {
       return this.colaboracion?.imagen || null;
@@ -416,7 +438,8 @@ export default {
     descripcionEstado() {
       return descripcionEstadoColaboracionAutomatica(
         this.colaboracion,
-        this.nombreContraparte
+        this.nombreContraparte,
+        this.esAutocolaboracion
       );
     },
     fechaDeteccion() {
@@ -448,6 +471,7 @@ export default {
   },
   mounted() {
     this.cargar();
+    this.cargarMisPerfiles();
   },
   beforeUnmount() {
     this.abortar();
@@ -457,6 +481,14 @@ export default {
       if (this.controlador) {
         this.controlador.abort();
         this.controlador = null;
+      }
+    },
+    async cargarMisPerfiles() {
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        this.misPerfiles = response?.data || [];
+      } catch {
+        this.misPerfiles = [];
       }
     },
     async cargar() {

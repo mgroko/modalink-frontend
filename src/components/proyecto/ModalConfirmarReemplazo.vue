@@ -114,6 +114,7 @@ import {
   ESTADOS_CANDIDATO_REEMPLAZO,
   LIMITE_MENSAJE_REEMPLAZO,
   formatearPuntajeReemplazo,
+  ordenarCandidatosPorConcordanciaReemplazo,
 } from "../../utils/reemplazoConstants.js";
 
 export default {
@@ -152,9 +153,11 @@ export default {
   },
   computed: {
     propuestos() {
-      return (Array.isArray(this.candidatos) ? this.candidatos : []).filter(
-        (candidato) =>
-          candidato?.estado === ESTADOS_CANDIDATO_REEMPLAZO.PROPUESTO
+      return ordenarCandidatosPorConcordanciaReemplazo(
+        (Array.isArray(this.candidatos) ? this.candidatos : []).filter(
+          (candidato) =>
+            candidato?.estado === ESTADOS_CANDIDATO_REEMPLAZO.PROPUESTO
+        )
       );
     },
     todosSeleccionados() {

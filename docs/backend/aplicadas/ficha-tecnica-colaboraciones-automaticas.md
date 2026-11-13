@@ -21,12 +21,15 @@ Si después quieren ser conexión, deben usar el flujo manual de UC-43.
 
 Se ejecuta al crear una publicación o al agregar imágenes nuevas con UC-21.
 
+La detección corre de forma **asíncrona después del commit** de la transacción
+de subida, en un executor dedicado. El request no espera la decodificación, ORB
+ni el multi-recorte: publica un evento con los IDs y responde.
+
 - Solo considera imágenes de publicaciones.
 - Solo considera publicaciones `ACTIVA`, perfiles `ACTIVO` y usuarios `ACTIVO`.
 - Excluye:
   - la misma publicación;
   - el mismo perfil;
-  - otros perfiles del mismo usuario;
   - publicaciones donde ya existe una etiqueta recíproca de colaborador;
   - propuestas `PENDIENTE` o `CONFIRMADA` para el mismo par.
 
@@ -38,8 +41,10 @@ Se ejecuta al crear una publicación o al agregar imágenes nuevas con UC-21.
    `phash-distancia-candidato`.
 3. **Alta confianza**: si la distancia pHash es menor o igual a
    `phash-distancia-alta-confianza`, se acepta como `PERCEPTUAL_ALTA` sin ORB.
-4. **ORB**: verificación principal para candidatos perceptuales. Se acepta como
-   `PERCEPTUAL_ORB` si hay suficientes keypoints y matches buenos.
+4. **ORB**: verificación principal para candidatos perceptuales. Se aplica
+   ratio test de Lowe (0.75) y validación geométrica con homografía RANSAC.
+   Se acepta como `PERCEPTUAL_ORB` si los inliers geométricos alcanzan
+   `orb-min-inliers`.
 5. **Multi-recorte pHash**: fallback cuando ORB no alcanza. Compara recortes de
    ambas imágenes en una grilla y varias escalas; se acepta como
    `PERCEPTUAL_MULTICROP` si la distancia mínima no supera el máximo.
@@ -54,10 +59,17 @@ app.colaboracion-automatica.max-propuestas-por-imagen=10
 app.colaboracion-automatica.orb-min-keypoints=50
 app.colaboracion-automatica.orb-min-matches=50
 app.colaboracion-automatica.orb-max-distancia=60
-app.colaboracion-automatica.orb-max-distancia-inliers=40
+app.colaboracion-automatica.orb-min-inliers=10
 app.colaboracion-automatica.multicrop-distancia-maxima=8
 app.colaboracion-automatica.multicrop-grid=3
 app.colaboracion-automatica.multicrop-escalas=90,80,70
+
+# Detección asíncrona después del commit
+app.colaboracion-automatica.async.core-pool-size=2
+app.colaboracion-automatica.async.max-pool-size=4
+app.colaboracion-automatica.async.queue-capacity=100
+app.colaboracion-automatica.async.thread-name-prefix=colab-auto-
+app.colaboracion-automatica.async.await-termination-seconds=60
 ```
 
 La propuesta guarda la evidencia de la verificación:
@@ -67,8 +79,27 @@ La propuesta guarda la evidencia de la verificación:
 | `distancia_phash` | `int4` | Distancia pHash entre las imágenes comparadas |
 | `distancia_multicrop` | `int4` | Distancia mínima del fallback multi-recorte |
 | `orb_matches` | `int4` | Matches ORB buenos |
-| `orb_inliers` | `int4` | Matches ORB con distancia estricta |
+| `orb_inliers` | `int4` | Inliers geométricos de RANSAC |
 | `tipo_coincidencia` | `varchar(30)` | `EXACTA`, `PERCEPTUAL_ALTA`, `PERCEPTUAL_ORB` o `PERCEPTUAL_MULTICROP` |
+
+### 2.2 Autocolaboración
+
+Un usuario puede colaborar entre sus propios perfiles (por ejemplo, modelo y
+maquilladora). Se mantiene la exclusión del mismo perfil.
+
+- **Automática:** el detector considera perfiles distintos del mismo usuario.
+  Si ambos perfiles pertenecen al mismo usuario, una sola confirmación o rechazo
+  alcanza para ambos lados.
+- **Manual directa:** `POST /publicaciones/{idPublicacion}/colaboradores/propios`
+  con `{ "idPerfil": 8 }` agrega el perfil propio como colaborador sin solicitud
+  ni conexión, con origen `MANUAL`.
+- **Solicitud manual:** los perfiles del mismo usuario pueden enviarse
+  solicitudes sin exigir una conexión activa.
+- **Conexiones:** los perfiles del mismo usuario siguen sin poder conectarse.
+- **Notificaciones:** en autocolaboración automática se genera una sola
+  notificación, en el contexto del perfil que subió la imagen.
+- **Portfolio:** no cambia. Las colaboraciones solo `AUTOMATICA` siguen
+  excluidas; las `MANUAL` se incluyen.
 
 ## 3. Endpoints
 
@@ -226,3 +257,9 @@ Link del frontend:
 - Mostrar `puedeConfirmar` y `puedeRechazar`.
 - Si una publicación está eliminada, mostrar “Publicación eliminada” sin imagen.
 - Al confirmar o rechazar, refrescar el listado y el resumen de notificaciones.
+
+## 9. Publicaciones históricas
+
+Las publicaciones existentes se pueden procesar desde el panel administrador
+para completar huellas y generar propuestas. Ver
+`docs/frontend/ficha-tecnica-colaboraciones-automaticas-historicas.md`.

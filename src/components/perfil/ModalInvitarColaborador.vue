@@ -17,9 +17,115 @@
     </template>
 
     <p class="invitar-colaborador__ayuda">
-      Elegí un contacto de tu red para invitarlo a colaborar en esta
-      publicación.
+      Elegí un contacto de tu red o sumá otro de tus perfiles como colaborador
+      de esta publicación.
     </p>
+
+    <section
+      v-if="cargandoPropios || errorPropios || perfilesPropios.length"
+      class="invitar-colaborador__propios"
+    >
+      <div class="invitar-colaborador__propios-cabecera">
+        <div>
+          <h4 class="invitar-colaborador__propios-titulo">
+            Tus otros perfiles
+          </h4>
+          <p class="invitar-colaborador__propios-ayuda">
+            Podés etiquetar otro perfil de tu cuenta en esta publicación.
+          </p>
+        </div>
+        <div
+          class="invitar-colaborador__modo"
+          role="group"
+          aria-label="Forma de agregar tu otro perfil"
+        >
+          <button
+            type="button"
+            class="invitar-colaborador__modo-boton"
+            :class="{
+              'invitar-colaborador__modo-boton--activo':
+                modoPropio === 'directa',
+            }"
+            :aria-pressed="modoPropio === 'directa' ? 'true' : 'false'"
+            @click="modoPropio = 'directa'"
+          >
+            Directo
+          </button>
+          <button
+            type="button"
+            class="invitar-colaborador__modo-boton"
+            :class="{
+              'invitar-colaborador__modo-boton--activo':
+                modoPropio === 'solicitud',
+            }"
+            :aria-pressed="modoPropio === 'solicitud' ? 'true' : 'false'"
+            @click="modoPropio = 'solicitud'"
+          >
+            Con solicitud
+          </button>
+        </div>
+      </div>
+
+      <div
+        v-if="cargandoPropios"
+        class="invitar-colaborador__estado"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">
+          hourglass_empty
+        </span>
+        Cargando tus perfiles...
+      </div>
+
+      <BaseAlert
+        v-else-if="errorPropios"
+        :message="errorPropios"
+        type="error"
+      />
+
+      <div
+        v-else
+        class="invitar-colaborador__lista invitar-colaborador__lista--propios"
+      >
+        <button
+          v-for="perfil in perfilesPropios"
+          :key="`propio-${perfil.idPerfil}`"
+          type="button"
+          class="invitar-colaborador__item"
+          :class="{
+            'invitar-colaborador__item--activo': esSeleccionado(perfil, true),
+          }"
+          :aria-pressed="
+            esSeleccionado(perfil, true) ? 'true' : 'false'
+          "
+          @click="seleccionar(perfil, true)"
+        >
+          <span class="invitar-colaborador__avatar" aria-hidden="true">
+            <img
+              v-if="fotoDe(perfil)"
+              :src="fotoDe(perfil)"
+              :alt="nombreDe(perfil)"
+            />
+            <template v-else>{{ inicialDe(nombreDe(perfil)) }}</template>
+          </span>
+          <span class="invitar-colaborador__datos">
+            <strong>
+              {{ nombreDe(perfil) }}
+              <span class="invitar-colaborador__chip-propio">Tu perfil</span>
+            </strong>
+            <span>{{ profesionDe(perfil) }}</span>
+          </span>
+          <span class="material-symbols-outlined invitar-colaborador__check">
+            {{
+              esSeleccionado(perfil, true)
+                ? "radio_button_checked"
+                : "radio_button_unchecked"
+            }}
+          </span>
+        </button>
+      </div>
+    </section>
 
     <div class="invitar-colaborador__buscador">
       <VaInput
@@ -57,7 +163,7 @@
       <span class="material-symbols-outlined" aria-hidden="true">
         group_off
       </span>
-      No hay contactos disponibles para invitar.
+      No hay contactos de tu red disponibles para invitar.
     </div>
 
     <div v-else class="invitar-colaborador__lista">
@@ -68,12 +174,12 @@
         class="invitar-colaborador__item"
         :class="{
           'invitar-colaborador__item--activo':
-            seleccionado?.idPerfil === contacto.idPerfil,
+            esSeleccionado(contacto, false),
         }"
         :aria-pressed="
-          seleccionado?.idPerfil === contacto.idPerfil ? 'true' : 'false'
+          esSeleccionado(contacto, false) ? 'true' : 'false'
         "
-        @click="seleccionar(contacto)"
+        @click="seleccionar(contacto, false)"
       >
         <span class="invitar-colaborador__avatar" aria-hidden="true">
           <img
@@ -89,7 +195,7 @@
         </span>
         <span class="material-symbols-outlined invitar-colaborador__check">
           {{
-            seleccionado?.idPerfil === contacto.idPerfil
+            esSeleccionado(contacto, false)
               ? "radio_button_checked"
               : "radio_button_unchecked"
           }}
@@ -139,7 +245,7 @@
           :disabled="!seleccionado || enviando"
           @click="enviar"
         >
-          Enviar invitación
+          {{ textoAccion }}
         </VaButton>
       </div>
     </template>
@@ -149,10 +255,14 @@
 <script>
 import BaseAlert from "../AlertaBase.vue";
 import conexionService from "../../services/conexionService";
+import perfilService from "../../services/perfilService";
+import publicacionService from "../../services/publicacionService";
 import solicitudColaboracionService from "../../services/solicitudColaboracionService";
+import { idPerfilActivo } from "../../services/authState";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
   mensajeErrorSolicitudColaboracion,
+  perfilesPropiosDisponibles,
 } from "../../utils/solicitudesColaboracionConstants.js";
 
 export default {
@@ -168,7 +278,7 @@ export default {
       default: null,
     },
   },
-  emits: ["update:modelValue", "enviada"],
+  emits: ["update:modelValue", "enviada", "agregada"],
   data() {
     return {
       busqueda: "",
@@ -181,13 +291,30 @@ export default {
       enviando: false,
       errorEnvio: "",
       controlador: null,
+      perfilesPropios: [],
+      cargandoPropios: false,
+      errorPropios: "",
+      modoPropio: "directa",
+      solicitudPropios: 0,
     };
+  },
+  computed: {
+    esPropioSeleccionado() {
+      return this.seleccionado?.esPropio === true;
+    },
+    textoAccion() {
+      if (!this.esPropioSeleccionado) return "Enviar invitación";
+      return this.modoPropio === "directa"
+        ? "Agregar como colaborador"
+        : "Enviar solicitud";
+    },
   },
   watch: {
     modelValue(abierto) {
       if (abierto) {
         this.reiniciar();
         this.buscar(0);
+        this.cargarPerfilesPropios();
         return;
       }
       this.abortar();
@@ -205,6 +332,10 @@ export default {
       this.errorEnvio = "";
       this.pagina = 0;
       this.totalPaginas = 0;
+      this.perfilesPropios = [];
+      this.cargandoPropios = false;
+      this.errorPropios = "";
+      this.modoPropio = "directa";
     },
     cambiarVisibilidad(abierto) {
       if (this.enviando && !abierto) return;
@@ -228,10 +359,52 @@ export default {
     inicialDe(nombre) {
       return String(nombre || "?").trim().charAt(0).toUpperCase() || "?";
     },
-    seleccionar(perfil) {
-      if (this.enviando) return;
-      this.seleccionado =
-        this.seleccionado?.idPerfil === perfil?.idPerfil ? null : perfil;
+    esSeleccionado(perfil, esPropio = false) {
+      if (
+        this.seleccionado?.idPerfil == null ||
+        perfil?.idPerfil == null
+      ) {
+        return false;
+      }
+      return (
+        String(this.seleccionado.idPerfil) === String(perfil.idPerfil) &&
+        this.seleccionado?.esPropio === esPropio
+      );
+    },
+    seleccionar(perfil, esPropio = false) {
+      if (this.enviando || perfil?.idPerfil == null) return;
+      const yaSeleccionado = this.esSeleccionado(perfil, esPropio);
+      this.seleccionado = yaSeleccionado
+        ? null
+        : { ...perfil, esPropio };
+    },
+    async cargarPerfilesPropios() {
+      const solicitud = ++this.solicitudPropios;
+      this.cargandoPropios = true;
+      this.errorPropios = "";
+
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        if (solicitud !== this.solicitudPropios) return;
+
+        this.perfilesPropios = perfilesPropiosDisponibles(
+          this.publicacion,
+          response?.data || [],
+          idPerfilActivo()
+        );
+      } catch (error) {
+        if (solicitud !== this.solicitudPropios) return;
+
+        this.perfilesPropios = [];
+        this.errorPropios = mensajeErrorSolicitudColaboracion(
+          error,
+          "No se pudieron cargar tus perfiles."
+        );
+      } finally {
+        if (solicitud === this.solicitudPropios) {
+          this.cargandoPropios = false;
+        }
+      }
     },
     cambiarPagina(delta) {
       const destino = this.pagina + delta;
@@ -294,24 +467,42 @@ export default {
         return;
       }
 
+      const esPropio = this.seleccionado?.esPropio === true;
+      const agregarDirecto = esPropio && this.modoPropio === "directa";
+
       this.enviando = true;
       this.errorEnvio = "";
 
       try {
-        await solicitudColaboracionService.crear(
-          idPublicacion,
-          idPerfilDestinatario
-        );
-        this.$emit("enviada", {
-          idPublicacion,
-          idPerfilDestinatario,
-          nombre: this.nombreDe(this.seleccionado),
-        });
+        if (agregarDirecto) {
+          await publicacionService.agregarColaboradorPropio(
+            idPublicacion,
+            idPerfilDestinatario
+          );
+          this.$emit("agregada", {
+            idPublicacion,
+            idPerfil: idPerfilDestinatario,
+            nombre: this.nombreDe(this.seleccionado),
+          });
+        } else {
+          await solicitudColaboracionService.crear(
+            idPublicacion,
+            idPerfilDestinatario
+          );
+          this.$emit("enviada", {
+            idPublicacion,
+            idPerfilDestinatario,
+            nombre: this.nombreDe(this.seleccionado),
+            esPropio,
+          });
+        }
         this.$emit("update:modelValue", false);
       } catch (error) {
         this.errorEnvio = mensajeErrorSolicitudColaboracion(
           error,
-          "No se pudo enviar la invitación."
+          agregarDirecto
+            ? "No se pudo agregar el colaborador."
+            : "No se pudo enviar la invitación."
         );
       } finally {
         this.enviando = false;
@@ -337,6 +528,82 @@ export default {
   margin: 0 0 0.85rem;
   color: var(--color-text-muted);
   font-size: 0.82rem;
+}
+
+.invitar-colaborador__propios {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.8rem;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+}
+
+.invitar-colaborador__propios-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.invitar-colaborador__propios-titulo {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.invitar-colaborador__propios-ayuda {
+  margin: 0.15rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+}
+
+.invitar-colaborador__modo {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.invitar-colaborador__modo-boton {
+  padding: 0.25rem 0.6rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 0;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.invitar-colaborador__modo-boton + .invitar-colaborador__modo-boton {
+  border-left: 1px solid var(--color-border);
+}
+
+.invitar-colaborador__modo-boton--activo {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+}
+
+.invitar-colaborador__lista--propios {
+  max-height: 13rem;
+}
+
+.invitar-colaborador__datos .invitar-colaborador__chip-propio {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.35rem;
+  padding: 0.04rem 0.35rem;
+  color: var(--color-primary);
+  background: var(--color-chip);
+  border: 1px solid var(--color-primary-light);
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  vertical-align: middle;
 }
 
 .invitar-colaborador__buscador {

@@ -55,7 +55,10 @@ const MENSAJES_ERROR = {
   PUBLICACION_NO_DISPONIBLE:
     "La publicación ya no está disponible para colaborar.",
   AUTOINVITACION: "No podés invitarte a colaborar en tu propia publicación.",
-  MISMO_USUARIO: "No podés invitar a otro perfil del mismo usuario.",
+  MISMO_USUARIO:
+    "Ese perfil pertenece a tu misma cuenta. Podés agregarlo directamente como colaborador.",
+  PERFIL_PROPIO_INVALIDO:
+    "El perfil elegido no pertenece a tu cuenta o no está activo.",
   DESTINATARIO_FUERA_DE_RED:
     "El perfil debe pertenecer a tu red de contactos.",
   DESTINATARIO_YA_ES_COLABORADOR:
@@ -82,6 +85,45 @@ export function mensajeErrorSolicitudColaboracion(
   const codigo = error?.response?.data?.codigo;
   if (codigo && MENSAJES_ERROR[codigo]) return MENSAJES_ERROR[codigo];
   return error?.response?.data?.message || fallback;
+}
+
+/**
+ * Perfiles propios que todavía se pueden etiquetar como colaboradores de una
+ * publicación. Excluye el perfil activo, los perfiles no activos y los que ya
+ * figuran como colaboradores.
+ *
+ * @param {object|null|undefined} publicacion
+ * @param {object[]|null|undefined} misPerfiles
+ * @param {number|string|null|undefined} idPerfilActivo
+ * @returns {object[]}
+ */
+export function perfilesPropiosDisponibles(
+  publicacion,
+  misPerfiles,
+  idPerfilActivo
+) {
+  const colaboradores = new Set(
+    (Array.isArray(publicacion?.colaboradores)
+      ? publicacion.colaboradores
+      : []
+    )
+      .map((colaborador) => colaborador?.idPerfil)
+      .filter((id) => id != null)
+      .map(String)
+  );
+
+  return (Array.isArray(misPerfiles) ? misPerfiles : []).filter((perfil) => {
+    if (perfil?.idPerfil == null) return false;
+    if (
+      idPerfilActivo != null &&
+      String(perfil.idPerfil) === String(idPerfilActivo)
+    ) {
+      return false;
+    }
+    const estado = String(perfil.estado || "").trim().toUpperCase();
+    if (estado && estado !== "ACTIVO") return false;
+    return !colaboradores.has(String(perfil.idPerfil));
+  });
 }
 
 /**

@@ -21,11 +21,23 @@
           <dd>{{ tituloPropia }}</dd>
         </div>
         <div>
-          <dt>Publicación de {{ nombreContraparte }}</dt>
+          <dt>
+            {{
+              esAutocolaboracion
+                ? "Tu otra publicación"
+                : `Publicación de ${nombreContraparte}`
+            }}
+          </dt>
           <dd>{{ tituloContraparte }}</dd>
         </div>
         <div>
-          <dt>Perfil de la contraparte</dt>
+          <dt>
+            {{
+              esAutocolaboracion
+                ? "Tu otro perfil"
+                : "Perfil de la contraparte"
+            }}
+          </dt>
           <dd>{{ nombreContraparte }}</dd>
         </div>
         <div>
@@ -39,7 +51,13 @@
           <dd>{{ etiquetaMiEstado }}</dd>
         </div>
         <div>
-          <dt>Estado de {{ nombreContraparte }}</dt>
+          <dt>
+            {{
+              esAutocolaboracion
+                ? "Estado de tu otro perfil"
+                : `Estado de ${nombreContraparte}`
+            }}
+          </dt>
           <dd>{{ etiquetaEstadoContraparte }}</dd>
         </div>
       </dl>
@@ -52,7 +70,16 @@
             esConfirmar && contraparteYaConfirmo,
         }"
       >
-        <template v-if="esConfirmar && contraparteYaConfirmo">
+        <template v-if="esAutocolaboracion && esConfirmar">
+          Como ambas publicaciones pertenecen a tu cuenta, esta confirmación
+          activa la colaboración en los dos lados. No se crea una conexión de
+          red.
+        </template>
+        <template v-else-if="esAutocolaboracion">
+          Como ambas publicaciones pertenecen a tu cuenta, el rechazo se
+          aplica a los dos lados y no se agregarán colaboradores.
+        </template>
+        <template v-else-if="esConfirmar && contraparteYaConfirmo">
           {{ nombreContraparte }} ya confirmó. Al confirmar, la colaboración
           quedará activa y ambos perfiles aparecerán como colaboradores en la
           publicación del otro.
@@ -96,10 +123,12 @@
 <script>
 import BaseAlert from "../AlertaBase.vue";
 import EstadoColaboracionAutomaticaBadge from "./EstadoColaboracionAutomaticaBadge.vue";
+import perfilService from "../../services/perfilService.js";
 import {
   ACCIONES_COLABORACION_AUTOMATICA,
   ESTADOS_COLABORACION_AUTOMATICA,
   ETIQUETAS_ESTADO_COLABORACION_AUTOMATICA,
+  esAutocolaboracionAutomatica,
   normalizarEstadoColaboracionAutomatica,
 } from "../../utils/colaboracionesAutomaticasConstants.js";
 
@@ -129,7 +158,30 @@ export default {
     },
   },
   emits: ["update:modelValue", "confirmar"],
+  data() {
+    return {
+      misPerfiles: [],
+      cargandoPerfiles: false,
+      perfilesCargados: false,
+    };
+  },
+  watch: {
+    colaboracion: {
+      immediate: true,
+      handler(colaboracion) {
+        if (colaboracion && !this.perfilesCargados) {
+          this.cargarMisPerfiles();
+        }
+      },
+    },
+  },
   computed: {
+    esAutocolaboracion() {
+      return esAutocolaboracionAutomatica(
+        this.colaboracion,
+        this.misPerfiles
+      );
+    },
     esConfirmar() {
       return this.accion === ACCIONES_COLABORACION_AUTOMATICA.CONFIRMAR;
     },
@@ -142,6 +194,11 @@ export default {
       return this.esConfirmar ? "Confirmar colaboración" : "Rechazar propuesta";
     },
     textoIntro() {
+      if (this.esAutocolaboracion) {
+        return this.esConfirmar
+          ? "Vas a confirmar la propuesta detectada automáticamente entre dos de tus publicaciones."
+          : "Vas a rechazar la propuesta detectada automáticamente entre dos de tus publicaciones.";
+      }
       return this.esConfirmar
         ? "Vas a confirmar la propuesta detectada automáticamente entre estas dos publicaciones."
         : "Vas a rechazar la propuesta detectada automáticamente.";
@@ -217,6 +274,19 @@ export default {
     },
   },
   methods: {
+    async cargarMisPerfiles() {
+      if (this.cargandoPerfiles) return;
+      this.cargandoPerfiles = true;
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        this.misPerfiles = response?.data || [];
+      } catch {
+        this.misPerfiles = [];
+      } finally {
+        this.cargandoPerfiles = false;
+        this.perfilesCargados = true;
+      }
+    },
     cambiarVisibilidad(valor) {
       if (this.gestionando && !valor) return;
       this.$emit("update:modelValue", valor);

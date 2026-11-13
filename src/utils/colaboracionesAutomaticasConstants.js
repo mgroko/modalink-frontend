@@ -222,14 +222,35 @@ export function mensajeErrorColaboracionAutomatica(
 }
 
 /**
+ * Indica si la contraparte de una colaboración automática es otro perfil del
+ * mismo usuario.
+ *
+ * @param {object|null|undefined} colaboracion
+ * @param {object[]|null|undefined} misPerfiles
+ * @returns {boolean}
+ */
+export function esAutocolaboracionAutomatica(colaboracion, misPerfiles) {
+  const idContraparte = colaboracion?.perfilContraparte?.idPerfil;
+  if (idContraparte == null) return false;
+
+  return (Array.isArray(misPerfiles) ? misPerfiles : []).some(
+    (perfil) =>
+      perfil?.idPerfil != null &&
+      String(perfil.idPerfil) === String(idContraparte)
+  );
+}
+
+/**
  * Explica el estado de la propuesta según lo que hizo cada parte.
  * @param {object|null|undefined} colaboracion
  * @param {string} [nombreContraparte]
+ * @param {boolean} [esAutocolaboracion] ambos perfiles son del mismo usuario
  * @returns {string}
  */
 export function descripcionEstadoColaboracionAutomatica(
   colaboracion,
-  nombreContraparte
+  nombreContraparte,
+  esAutocolaboracion = false
 ) {
   if (!colaboracion) return "";
 
@@ -245,6 +266,12 @@ export function descripcionEstadoColaboracionAutomatica(
   const nombre = nombreContraparte || "la contraparte";
 
   if (estado === ESTADOS_COLABORACION_AUTOMATICA.PENDIENTE) {
+    if (esAutocolaboracion) {
+      if (miEstado === ESTADOS_COLABORACION_AUTOMATICA.CONFIRMADA) {
+        return "Tu confirmación alcanza para activar la colaboración en tus dos publicaciones.";
+      }
+      return "Como ambas publicaciones son tuyas, una sola confirmación activa la colaboración en los dos lados.";
+    }
     if (miEstado === ESTADOS_COLABORACION_AUTOMATICA.CONFIRMADA) {
       return suEstado === ESTADOS_COLABORACION_AUTOMATICA.CONFIRMADA
         ? "Ambos confirmaron. La colaboración se está activando."

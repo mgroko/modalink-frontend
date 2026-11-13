@@ -3,7 +3,8 @@
     <div class="colaboraciones-automaticas__barra">
       <p class="colaboraciones-automaticas__ayuda">
         Detectamos publicaciones que comparten una imagen. La colaboración se
-        activa cuando ambos perfiles confirman.
+        activa cuando ambos perfiles confirman. Si ambas publicaciones son
+        tuyas, una sola confirmación alcanza para los dos lados.
       </p>
 
       <label class="colaboraciones-automaticas__historial">
@@ -63,6 +64,7 @@
             procesandoId === colaboracion.idColaboracionAutomatica
           "
           :accion="accionProcesando"
+          :es-autocolaboracion="esAutocolaboracion(colaboracion)"
           @confirmar="abrirGestion($event, 'confirmar')"
           @rechazar="abrirGestion($event, 'rechazar')"
           @ver-detalle="verDetalle"
@@ -96,6 +98,7 @@ import FiltrosColaboracionesAutomaticas from "./FiltrosColaboracionesAutomaticas
 import ColaboracionAutomaticaCard from "./ColaboracionAutomaticaCard.vue";
 import ModalGestionColaboracionAutomatica from "./ModalGestionColaboracionAutomatica.vue";
 import colaboracionAutomaticaService from "../../services/colaboracionAutomaticaService";
+import perfilService from "../../services/perfilService";
 import { cargarResumenColaboracionesAutomaticas } from "../../services/colaboracionAutomaticaState";
 import { cargarResumenPerfil } from "../../services/notificacionState";
 import { idPerfilActivo } from "../../services/authState";
@@ -104,6 +107,7 @@ import {
   ESTADOS_COLABORACION_AUTOMATICA,
   TAMANO_PAGINA_COLABORACIONES_AUTOMATICAS,
   contenidoColaboracionesAutomaticas,
+  esAutocolaboracionAutomatica,
   mensajeErrorColaboracionAutomatica,
   normalizarColaboracionAutomatica,
   normalizarPaginaColaboracionesAutomaticas,
@@ -147,6 +151,7 @@ export default {
       procesandoId: null,
       accionProcesando: "",
       errorModal: "",
+      misPerfiles: [],
       modalGestion: {
         visible: false,
         colaboracion: null,
@@ -178,11 +183,23 @@ export default {
   },
   mounted() {
     this.buscar(0);
+    this.cargarMisPerfiles();
   },
   beforeUnmount() {
     this.abortar();
   },
   methods: {
+    async cargarMisPerfiles() {
+      try {
+        const response = await perfilService.listarMisPerfiles();
+        this.misPerfiles = response?.data || [];
+      } catch {
+        this.misPerfiles = [];
+      }
+    },
+    esAutocolaboracion(colaboracion) {
+      return esAutocolaboracionAutomatica(colaboracion, this.misPerfiles);
+    },
     abortar() {
       if (this.controlador) {
         this.controlador.abort();

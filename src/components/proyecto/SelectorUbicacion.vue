@@ -14,6 +14,9 @@
       :disabled="disabled"
       :error="error || undefined"
       :error-messages="errorMessage || undefined"
+      searchable
+      search-placeholder-text="Buscá una provincia..."
+      no-options-text="No hay provincias disponibles"
       @update:model-value="onProvincia"
     />
 
@@ -28,8 +31,8 @@
       :disabled="disabled || !provinciaId"
       :error="error || undefined"
       :error-messages="errorMessage || undefined"
-      allow-search
-      search-placeholder="Buscá una ciudad..."
+      searchable
+      search-placeholder-text="Buscá una ciudad..."
       no-options-text="No hay localidades para esta provincia"
       @update:model-value="onLocalidad"
     />

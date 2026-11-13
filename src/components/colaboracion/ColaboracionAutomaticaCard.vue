@@ -87,7 +87,11 @@
         </div>
         <div class="colaboracion-automatica-card__publicacion-info">
           <span class="colaboracion-automatica-card__rol">
-            Publicación de {{ nombreContraparte }}
+            {{
+              esAutocolaboracion
+                ? "Tu otra publicación"
+                : `Publicación de ${nombreContraparte}`
+            }}
           </span>
           <strong>{{ tituloContraparte }}</strong>
           <span
@@ -140,7 +144,7 @@
           Vos: <strong>{{ etiquetaMiEstado }}</strong>
         </span>
         <span>
-          {{ nombreContraparte }}:
+          {{ esAutocolaboracion ? "Tu otro perfil" : nombreContraparte }}:
           <strong>{{ etiquetaEstadoContraparte }}</strong>
         </span>
       </div>
@@ -232,6 +236,10 @@ export default {
     accion: {
       type: String,
       default: "",
+    },
+    esAutocolaboracion: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ["confirmar", "rechazar", "ver-detalle", "ver-perfil", "ver-publicacion"],
@@ -343,7 +351,8 @@ export default {
     descripcionEstado() {
       return descripcionEstadoColaboracionAutomatica(
         this.colaboracion,
-        this.nombreContraparte
+        this.nombreContraparte,
+        this.esAutocolaboracion
       );
     },
     fechaDeteccion() {

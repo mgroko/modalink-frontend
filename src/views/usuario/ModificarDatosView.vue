@@ -69,6 +69,9 @@ Modificardatosview · VUE
               label="Provincia"
               placeholder="Seleccioná una provincia"
               :loading="cargandoProvincias"
+              searchable
+              search-placeholder-text="Buscá una provincia..."
+              no-options-text="No hay provincias disponibles"
               @update:model-value="onProvinciaCambio"
             />
             <VaSelect
@@ -80,8 +83,8 @@ Modificardatosview · VUE
               placeholder="Seleccioná una localidad"
               :loading="cargandoLocalidades"
               :disabled="!provinciaSeleccionada"
-              allow-search
-              search-placeholder="Buscá una localidad..."
+              searchable
+              search-placeholder-text="Buscá una localidad..."
               no-options-text="No hay localidades para esta provincia"
             />
           </div>

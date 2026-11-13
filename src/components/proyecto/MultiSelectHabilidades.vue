@@ -11,7 +11,7 @@
       text-by="nombre"
       multiple
       clearable
-      allow-search
+      searchable
       :label="ayuda ? '' : label"
       placeholder="Seleccionar habilidades"
       :loading="loading"

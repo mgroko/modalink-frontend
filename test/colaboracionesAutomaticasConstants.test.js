@@ -5,6 +5,7 @@ import {
   ESTADOS_COLABORACION_AUTOMATICA,
   contenidoColaboracionesAutomaticas,
   descripcionEstadoColaboracionAutomatica,
+  esAutocolaboracionAutomatica,
   normalizarColaboracionAutomatica,
   normalizarPaginaColaboracionesAutomaticas,
 } from "../src/utils/colaboracionesAutomaticasConstants.js";
@@ -73,6 +74,36 @@ test("explica el estado según quién confirmó", () => {
       "Sol"
     ),
     "La colaboración está activa en ambas publicaciones."
+  );
+});
+
+test("detecta autocolaboración por el perfil de la contraparte", () => {
+  const colaboracion = { perfilContraparte: { idPerfil: 8 } };
+
+  assert.equal(
+    esAutocolaboracionAutomatica(colaboracion, [
+      { idPerfil: 1 },
+      { idPerfil: 8 },
+    ]),
+    true
+  );
+  assert.equal(
+    esAutocolaboracionAutomatica(colaboracion, [{ idPerfil: 1 }]),
+    false
+  );
+  assert.equal(esAutocolaboracionAutomatica(null, [{ idPerfil: 8 }]), false);
+});
+
+test("explica la autocolaboración con una sola confirmación", () => {
+  const colaboracion = {
+    estado: "PENDIENTE",
+    miEstado: "PENDIENTE",
+    estadoContraparte: "PENDIENTE",
+  };
+
+  assert.match(
+    descripcionEstadoColaboracionAutomatica(colaboracion, "Sol", true),
+    /una sola confirmación/i
   );
 });
 
