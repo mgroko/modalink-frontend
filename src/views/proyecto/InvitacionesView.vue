@@ -307,13 +307,11 @@
     <ModalDetalleInvitacionReemplazo
       :model-value="modalDetalleReemplazo.visible"
       :invitacion="modalDetalleReemplazo.invitacion"
+      :gestionando="gestionandoDetalleReemplazo"
+      :error="errorDetalleReemplazo"
+      :mostrar-rechazo="mostrarRechazoDetalleReemplazo"
       @update:model-value="onCambioVisibilidadDetalleReemplazo"
-      @aceptar="
-        onGestionDesdeDetalleReemplazo(
-          $event,
-          ACCIONES_GESTION_REEMPLAZO.ACEPTAR
-        )
-      "
+      @aceptar="confirmarAceptacionDesdeDetalleReemplazo"
       @rechazar="
         onGestionDesdeDetalleReemplazo(
           $event,
@@ -489,6 +487,9 @@ export default {
         visible: false,
         invitacion: null,
       },
+      gestionandoDetalleReemplazo: false,
+      errorDetalleReemplazo: "",
+      mostrarRechazoDetalleReemplazo: false,
       modalGestionReemplazo: {
         visible: false,
         accion: ACCIONES_GESTION_REEMPLAZO.ACEPTAR,
@@ -1112,10 +1113,12 @@ export default {
     abrirDetalleReemplazo(invitacion) {
       if (!invitacion?.idCandidato) return;
       this.modalDetalleReemplazo = { visible: true, invitacion };
+      this.errorDetalleReemplazo = "";
+      this.mostrarRechazoDetalleReemplazo = false;
     },
     onCambioVisibilidadDetalleReemplazo(valor) {
       if (!valor) {
-        this.modalDetalleReemplazo = { visible: false, invitacion: null };
+        this.cerrarModalDetalleReemplazo();
         return;
       }
       this.modalDetalleReemplazo = {
@@ -1123,8 +1126,55 @@ export default {
         visible: true,
       };
     },
+    cerrarModalDetalleReemplazo(forzar = false) {
+      if (this.gestionandoDetalleReemplazo && !forzar) return;
+      this.modalDetalleReemplazo = { visible: false, invitacion: null };
+      this.errorDetalleReemplazo = "";
+      this.mostrarRechazoDetalleReemplazo = false;
+    },
+    async confirmarAceptacionDesdeDetalleReemplazo(invitacion) {
+      if (
+        this.gestionandoDetalleReemplazo ||
+        !invitacion ||
+        !puedeGestionarInvitacionReemplazo(invitacion)
+      ) {
+        return;
+      }
+
+      this.gestionandoDetalleReemplazo = true;
+      this.errorDetalleReemplazo = "";
+      this.mostrarRechazoDetalleReemplazo = false;
+      if (controladorGestionReemplazo) controladorGestionReemplazo.abort();
+      controladorGestionReemplazo = new AbortController();
+
+      try {
+        await reemplazoService.aceptarInvitacion(
+          invitacion.idCandidato,
+          controladorGestionReemplazo.signal
+        );
+
+        this.cerrarModalDetalleReemplazo(true);
+        this.toast.init({
+          title: "Invitación aceptada",
+          message:
+            "Tu aceptación quedó pendiente de aprobación del director.",
+          color: "success",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargarReemplazos();
+        await this.cargarReemplazosRechazados();
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        await this.manejarErrorGestionReemplazo(error, true, "detalle");
+      } finally {
+        this.gestionandoDetalleReemplazo = false;
+      }
+    },
     onGestionDesdeDetalleReemplazo(invitacion, accion) {
       this.modalDetalleReemplazo = { visible: false, invitacion: null };
+      this.errorDetalleReemplazo = "";
+      this.mostrarRechazoDetalleReemplazo = false;
       this.$nextTick(() => {
         this.abrirGestionReemplazo(invitacion, accion);
       });
@@ -1224,25 +1274,45 @@ export default {
         this.gestionandoReemplazo = false;
       }
     },
-    async manejarErrorGestionReemplazo(error, esAceptar) {
+    async manejarErrorGestionReemplazo(
+      error,
+      esAceptar,
+      origen = "gestion"
+    ) {
+      const esDetalle = origen === "detalle";
       const clasificacion = clasificarErrorReemplazo(error);
       const { tipo, mensaje, codigo } = clasificacion;
-      const invitacion = this.modalGestionReemplazo.invitacion;
+      const invitacion = esDetalle
+        ? this.modalDetalleReemplazo.invitacion
+        : this.modalGestionReemplazo.invitacion;
+
+      const cerrar = (forzar = false) => {
+        if (esDetalle) this.cerrarModalDetalleReemplazo(forzar);
+        else this.cerrarModalGestionReemplazo(forzar);
+      };
+      const asignarError = (valor) => {
+        if (esDetalle) this.errorDetalleReemplazo = valor;
+        else this.errorGestionReemplazo = valor;
+      };
+      const asignarMostrarRechazo = (valor) => {
+        if (esDetalle) this.mostrarRechazoDetalleReemplazo = valor;
+        else this.mostrarRechazoReemplazo = valor;
+      };
 
       if (tipo === TIPOS_ERROR_REEMPLAZO.SESION) {
-        this.cerrarModalGestionReemplazo(true);
+        cerrar(true);
         return;
       }
 
       if (tipo === TIPOS_ERROR_REEMPLAZO.PERFIL_ACTIVO) {
-        this.cerrarModalGestionReemplazo(true);
+        cerrar(true);
         await refrescarSesion();
         this.$router.push({ name: "dashboard-usuario" });
         return;
       }
 
       if (tipo === TIPOS_ERROR_REEMPLAZO.PERFIL_NO_ENCONTRADO) {
-        this.cerrarModalGestionReemplazo(true);
+        cerrar(true);
         await refrescarSesion();
         this.$router.push({ name: "dashboard-usuario" });
         return;
@@ -1256,10 +1326,11 @@ export default {
       ];
 
       if (esAceptar && codigosConRechazo.includes(codigo)) {
-        this.errorGestionReemplazo =
+        asignarError(
           mensaje ||
-          "No se pudo aceptar la invitación. Podés rechazarla para cerrar la gestión.";
-        this.mostrarRechazoReemplazo = true;
+            "No se pudo aceptar la invitación. Podés rechazarla para cerrar la gestión."
+        );
+        asignarMostrarRechazo(true);
         return;
       }
 
@@ -1268,7 +1339,7 @@ export default {
         tipo === TIPOS_ERROR_REEMPLAZO.PROYECTO_NO_ENCONTRADO ||
         tipo === TIPOS_ERROR_REEMPLAZO.CONFLICTO
       ) {
-        this.cerrarModalGestionReemplazo(true);
+        cerrar(true);
         this.toast.init({
           title: "La invitación ya no está disponible",
           message:
@@ -1283,7 +1354,7 @@ export default {
       }
 
       if (tipo === TIPOS_ERROR_REEMPLAZO.CUENTA) {
-        this.cerrarModalGestionReemplazo(true);
+        cerrar(true);
         this.toast.init({
           title: "Cuenta no habilitada",
           message: mensajeErrorApi(error, "Tu cuenta no se encuentra activa."),
@@ -1295,7 +1366,7 @@ export default {
       }
 
       if (tipo === TIPOS_ERROR_REEMPLAZO.PERMISO) {
-        this.cerrarModalGestionReemplazo(true);
+        cerrar(true);
         if (invitacion?.idCandidato != null) {
           this.reemplazos = this.reemplazos.filter(
             (item) => item.idCandidato !== invitacion.idCandidato
@@ -1314,11 +1385,13 @@ export default {
         return;
       }
 
-      this.errorGestionReemplazo = mensajeErrorApi(
-        error,
-        "No se pudo gestionar la invitación de reemplazo."
+      asignarError(
+        mensajeErrorApi(
+          error,
+          "No se pudo gestionar la invitación de reemplazo."
+        )
       );
-      this.mostrarRechazoReemplazo = false;
+      asignarMostrarRechazo(false);
     },
     abrirDetalle(invitacion) {
       if (!invitacion) return;

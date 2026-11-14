@@ -3,13 +3,18 @@
     :model-value="modelValue"
     hide-default-actions
     size="medium"
+    :no-dismiss="gestionando"
     blur
     class="detalle-reemplazo"
     @update:model-value="onCambioVisibilidad"
   >
     <template #header>
       <h3 class="va-h5 detalle-reemplazo__titulo">
-        Detalle de invitación de reemplazo
+        {{
+          confirmandoAceptacion
+            ? "Confirmar aceptación de reemplazo"
+            : "Detalle de invitación de reemplazo"
+        }}
       </h3>
     </template>
 
@@ -82,15 +87,38 @@
         Aceptaste esta invitación. Está pendiente de aprobación del director;
         si elige a otra persona, la invitación se cancelará.
       </p>
+
+      <BaseAlert v-if="error" :message="error" type="error" />
+
+      <p
+        v-if="confirmandoAceptacion"
+        class="detalle-reemplazo__aviso"
+      >
+        <template v-if="esActividad">
+          Se verificará tu disponibilidad. Si no hay una ventana válida, la
+          invitación no se aceptará.
+        </template>
+        <template v-else>
+          Quedarás pendiente de aprobación del director.
+        </template>
+      </p>
+
+      <p
+        v-if="confirmandoAceptacion && error && mostrarRechazo"
+        class="detalle-reemplazo__sugerencia"
+      >
+        Podés rechazar la invitación para cerrar la gestión.
+      </p>
     </div>
 
     <template #footer>
       <div class="detalle-reemplazo__acciones">
         <div class="detalle-reemplazo__acciones-izquierda">
           <VaButton
-            v-if="puedeGestionar"
+            v-if="puedeGestionar && (!confirmandoAceptacion || mostrarRechazo)"
             preset="secondary"
             color="danger"
+            :disabled="gestionando"
             @click="$emit('rechazar', invitacion)"
           >
             Rechazar invitación
@@ -98,14 +126,33 @@
         </div>
 
         <div class="detalle-reemplazo__acciones-principales">
-          <VaButton preset="secondary" @click="cerrar">Cerrar</VaButton>
-          <VaButton
-            v-if="puedeGestionar"
-            preset="primary"
-            @click="$emit('aceptar', invitacion)"
-          >
-            Aceptar invitación
-          </VaButton>
+          <template v-if="confirmandoAceptacion">
+            <VaButton
+              preset="secondary"
+              :disabled="gestionando"
+              @click="cancelarConfirmacion"
+            >
+              Volver
+            </VaButton>
+            <VaButton
+              preset="primary"
+              :loading="gestionando"
+              :disabled="gestionando"
+              @click="confirmarAceptacion"
+            >
+              Confirmar aceptación
+            </VaButton>
+          </template>
+          <template v-else>
+            <VaButton preset="secondary" @click="cerrar">Cerrar</VaButton>
+            <VaButton
+              v-if="puedeGestionar"
+              preset="primary"
+              @click="solicitarAceptacion"
+            >
+              Aceptar invitación
+            </VaButton>
+          </template>
         </div>
       </div>
     </template>
@@ -113,6 +160,7 @@
 </template>
 
 <script>
+import BaseAlert from "../AlertaBase.vue";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import {
   ESTADOS_CANDIDATO_REEMPLAZO,
@@ -126,6 +174,7 @@ import {
 
 export default {
   name: "ModalDetalleInvitacionReemplazo",
+  components: { BaseAlert },
   props: {
     modelValue: {
       type: Boolean,
@@ -135,8 +184,33 @@ export default {
       type: Object,
       default: null,
     },
+    gestionando: {
+      type: Boolean,
+      default: false,
+    },
+    error: {
+      type: String,
+      default: "",
+    },
+    mostrarRechazo: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ["update:modelValue", "aceptar", "rechazar"],
+  data() {
+    return {
+      confirmandoAceptacion: false,
+    };
+  },
+  watch: {
+    modelValue(valor) {
+      if (!valor) this.confirmandoAceptacion = false;
+    },
+    invitacion() {
+      this.confirmandoAceptacion = false;
+    },
+  },
   computed: {
     puedeGestionar() {
       return puedeGestionarInvitacionReemplazo(this.invitacion);
@@ -187,10 +261,24 @@ export default {
     descripcionInvitacionReemplazo,
     etiquetaTipoReemplazo,
     onCambioVisibilidad(valor) {
+      if (this.gestionando && !valor) return;
       this.$emit("update:modelValue", valor);
     },
     cerrar() {
+      if (this.gestionando) return;
       this.$emit("update:modelValue", false);
+    },
+    solicitarAceptacion() {
+      if (this.gestionando || !this.puedeGestionar) return;
+      this.confirmandoAceptacion = true;
+    },
+    cancelarConfirmacion() {
+      if (this.gestionando) return;
+      this.confirmandoAceptacion = false;
+    },
+    confirmarAceptacion() {
+      if (this.gestionando || !this.puedeGestionar) return;
+      this.$emit("aceptar", this.invitacion);
     },
   },
 };
@@ -295,6 +383,13 @@ export default {
   background: var(--color-info-soft);
   color: var(--color-info-text);
   font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.detalle-reemplazo__sugerencia {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
   line-height: 1.45;
 }
 
