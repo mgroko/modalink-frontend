@@ -40,7 +40,7 @@
       :imagenes="imagenes"
       :solo-lectura="soloLectura"
       @quitar="quitarImagen"
-      @ampliar="galeriaAbierta = true"
+      @ampliar="abrirGaleria"
     />
 
     <VaTextarea
@@ -60,8 +60,7 @@
     <ModalGaleriaMoodboard
       v-model="galeriaAbierta"
       :imagenes="imagenes"
-      :solo-lectura="soloLectura"
-      @quitar="quitarImagen"
+      :indice-inicial="galeriaIndice"
     />
   </div>
 </template>
@@ -130,9 +129,14 @@ export default {
       reglas: reglasProyecto,
       rechazadas: [],
       galeriaAbierta: false,
+      galeriaIndice: 0,
     };
   },
   methods: {
+    abrirGaleria(indice = 0) {
+      this.galeriaIndice = Number.isInteger(indice) && indice >= 0 ? indice : 0;
+      this.galeriaAbierta = true;
+    },
     async alAgregarArchivos(archivos) {
       if (this.procesando) return;
       this.$emit("update:procesando", true);

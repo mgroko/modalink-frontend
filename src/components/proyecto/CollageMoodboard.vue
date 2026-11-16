@@ -9,7 +9,7 @@
         type="button"
         class="collage__ampliar"
         title="Ampliar vista"
-        @click="$emit('ampliar')"
+        @click="$emit('ampliar', 0)"
       >
         <span class="material-symbols-outlined" aria-hidden="true">open_in_full</span>
         Ampliar vista
@@ -18,14 +18,14 @@
 
     <div class="collage__grid" :class="`collage__grid--${columnas}`">
       <img
-        v-for="imagen in imagenes"
+        v-for="(imagen, i) in imagenes"
         :key="imagen.id"
         class="collage__img"
         :src="imagen.preview"
         :alt="imagen.nombre"
         :title="imagen.nombre"
-        @click="$emit('ampliar')"
-        @keydown.enter="$emit('ampliar')"
+        @click="$emit('ampliar', i)"
+        @keydown.enter="$emit('ampliar', i)"
       />
     </div>
 
