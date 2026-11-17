@@ -1,6 +1,6 @@
 <template>
   <div class="perfil-acciones-publico">
-    <div class="perfil-acciones-publico__fila">
+    <div v-if="mostrarFila" class="perfil-acciones-publico__fila">
       <PerfilAccionesConexion
         class="perfil-acciones-publico__conexion"
         :estado-conexion="estadoConexion"
@@ -15,6 +15,7 @@
       />
 
       <VaButton
+        v-if="puedeMensajear"
         class="perfil-acciones-publico__mensaje"
         preset="secondary"
         color="primary"
@@ -44,6 +45,10 @@
 
 <script>
 import PerfilAccionesConexion from "./PerfilAccionesConexion.vue";
+import {
+  ESTADOS_CONEXION,
+  normalizarEstadoConexion,
+} from "../../utils/conexionConstants.js";
 
 export default {
   name: "PerfilAccionesPublico",
@@ -86,6 +91,21 @@ export default {
     "mensaje",
     "cancelar",
   ],
+  computed: {
+    /**
+     * Sólo se puede enviar mensajes con una conexión activa: sin conexión,
+     * con solicitud enviada o recibida el botón no se muestra.
+     */
+    puedeMensajear() {
+      return (
+        normalizarEstadoConexion(this.estadoConexion) ===
+        ESTADOS_CONEXION.CONECTADO
+      );
+    },
+    mostrarFila() {
+      return this.mostrarConexion || this.puedeMensajear;
+    },
+  },
 };
 </script>
 
