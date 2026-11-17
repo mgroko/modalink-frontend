@@ -9,6 +9,30 @@ const adminService = {
     return http.get("/admin/proyectos", { params });
   },
 
+  detalleProyecto(idProyecto) {
+    return http.get(`/admin/proyectos/${idProyecto}`);
+  },
+
+  buscarPerfiles(params = {}, signal) {
+    return http.get("/admin/perfiles", { params, signal });
+  },
+
+  detallePerfil(idPerfil, signal) {
+    return http.get(`/admin/perfiles/${idPerfil}`, { signal });
+  },
+
+  buscarContratos(params = {}, signal) {
+    return http.get("/admin/contratos", { params, signal });
+  },
+
+  detalleContrato(idContrato, signal) {
+    return http.get(`/admin/contratos/${idContrato}`, { signal });
+  },
+
+  eventosContrato(idContrato, signal) {
+    return http.get(`/admin/contratos/${idContrato}/eventos`, { signal });
+  },
+
   listarUsuarios() {
     return http.get("/admin/usuarios");
   },

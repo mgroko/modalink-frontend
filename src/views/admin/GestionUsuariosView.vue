@@ -276,7 +276,7 @@
                   size="small"
                   preset="primary"
                   icon="mso-visibility"
-                  @click="abrirDetallePerfil(rowData)"
+                  @click="verPerfilCompleto(rowData)"
                 >
                   Ver detalle
                 </VaButton>
@@ -688,10 +688,12 @@ export default {
       }
     },
 
-    // Detalle perfil
-    abrirDetallePerfil(perfil) {
-      this.perfilDetalle = perfil;
-      this.modalPerfilVisible = true;
+    // Detalle perfil: vista administrativa completa de solo lectura.
+    verPerfilCompleto(perfil) {
+      this.$router.push({
+        name: "admin-perfil-detalle",
+        params: { id: perfil.idPerfil },
+      });
     },
 
     // Deshabilitar

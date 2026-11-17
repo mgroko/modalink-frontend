@@ -14,7 +14,7 @@
     <div class="proyectos-admin__toolbar">
       <label for="estado-proyecto">Filtrar por estado</label>
       <select id="estado-proyecto" v-model="estado" @change="cargarProyectos(0)">
-        <option value="">Todos excepto borradores</option>
+        <option value="">Todos los estados</option>
         <option v-for="opcion in estados" :key="opcion.value" :value="opcion.value">{{ opcion.label }}</option>
       </select>
     </div>
@@ -30,6 +30,7 @@
             <th>Fecha de inicio</th>
             <th>Estado</th>
             <th>Privacidad</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -38,6 +39,11 @@
             <td>{{ formatearFecha(proyecto.fechaInicio) }}</td>
             <td><span class="proyectos-admin__status">{{ estadoAmigable(proyecto.estado) }}</span></td>
             <td>{{ privacidadAmigable(proyecto.privacidad) }}</td>
+            <td>
+              <button type="button" class="proyectos-admin__detail" @click="verDetalle(proyecto)">
+                Ver detalle
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -106,6 +112,12 @@ export default {
     },
     privacidadAmigable(privacidad) {
       return privacidad === "PUBLICO" ? "Público" : privacidad === "PRIVADO" ? "Privado" : privacidad || "—";
+    },
+    verDetalle(proyecto) {
+      this.$router.push({
+        name: "admin-proyecto-detalle",
+        params: { id: proyecto.idProyecto },
+      });
     },
   },
 };
@@ -234,6 +246,17 @@ export default {
   background: var(--color-chip);
   border-radius: 1rem;
   font-size: 0.75rem;
+}
+
+.proyectos-admin__detail {
+  padding: 0.45rem 0.7rem;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.45rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
 }
 
 .proyectos-admin__pagination {

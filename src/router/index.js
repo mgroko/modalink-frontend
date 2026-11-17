@@ -57,6 +57,11 @@ import ReparacionCronogramaView from "../views/admin/ReparacionCronogramaView.vu
 import ColaboracionesAutomaticasHistoricasView from "../views/admin/ColaboracionesAutomaticasHistoricasView.vue";
 import ColaboracionAutomaticaHistoricaDetalleView from "../views/admin/ColaboracionAutomaticaHistoricaDetalleView.vue";
 import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
+import ProyectoAdminDetalleView from "../views/admin/ProyectoAdminDetalleView.vue";
+import PerfilesAdminView from "../views/admin/PerfilesAdminView.vue";
+import PerfilAdminDetalleView from "../views/admin/PerfilAdminDetalleView.vue";
+import ContratosAdminView from "../views/admin/ContratosAdminView.vue";
+import ContratoAdminDetalleView from "../views/admin/ContratoAdminDetalleView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
 import ReportePerfilDetalleView from "../views/admin/ReportePerfilDetalleView.vue";
@@ -493,7 +498,37 @@ const routes = [
     path: "/admin/proyectos",
     name: "proyectos-admin",
     component: ProyectosAdminView,
-    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_USUARIOS", titulo: "Proyectos" }
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PROYECTOS", titulo: "Proyectos" }
+  },
+  {
+    path: "/admin/proyectos/:id",
+    name: "admin-proyecto-detalle",
+    component: ProyectoAdminDetalleView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PROYECTOS", titulo: "Detalle del proyecto" }
+  },
+  {
+    path: "/admin/perfiles",
+    name: "perfiles-admin",
+    component: PerfilesAdminView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PERFILES", titulo: "Perfiles" }
+  },
+  {
+    path: "/admin/perfiles/:id",
+    name: "admin-perfil-detalle",
+    component: PerfilAdminDetalleView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PERFILES", titulo: "Detalle del perfil" }
+  },
+  {
+    path: "/admin/contratos",
+    name: "contratos-admin",
+    component: ContratosAdminView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_CONTRATOS", titulo: "Contratos" }
+  },
+  {
+    path: "/admin/contratos/:id",
+    name: "admin-contrato-detalle",
+    component: ContratoAdminDetalleView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_CONTRATOS", titulo: "Detalle del contrato" }
   },
   {
     path: "/admin/reportes",
