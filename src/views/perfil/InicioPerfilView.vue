@@ -2515,8 +2515,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  position: sticky;
-  top: 1rem;
 }
 
 .inicio-perfil__panel {
@@ -2715,7 +2713,6 @@ export default {
   }
 
   .inicio-perfil__sidebar {
-    position: static;
     order: -1;
   }
 }

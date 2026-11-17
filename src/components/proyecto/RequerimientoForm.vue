@@ -2,29 +2,32 @@
   <div
     class="requerimiento"
     :class="{ 'requerimiento--resaltado': resaltado }"
-    :aria-describedby="
-      soloLectura ? `requerimiento-bloqueo-${indice}` : undefined
-    "
+    :aria-describedby="soloLectura ? `requerimiento-bloqueo-${indice}` : undefined"
   >
     <div class="requerimiento__encabezado">
-      <div class="requerimiento__encabezado-titulos">
-        <span class="requerimiento__titulo">Requerimiento {{ indice + 1 }}</span>
-        <span v-if="soloLectura" class="requerimiento__badge-satisfecho">
-          {{ etiquetaBloqueo }}
-        </span>
+      <div class="requerimiento__encabezado-info">
+        <span class="requerimiento__numero" aria-hidden="true">{{ indice + 1 }}</span>
+        <div class="requerimiento__encabezado-texto">
+          <div class="requerimiento__encabezado-titulos">
+            <span class="requerimiento__titulo">Requerimiento {{ indice + 1 }}</span>
+            <span v-if="soloLectura" class="requerimiento__badge-satisfecho">
+              {{ etiquetaBloqueo }}
+            </span>
+          </div>
+          <p class="requerimiento__resumen">{{ resumen }}</p>
+        </div>
       </div>
-      <VaButton
+
+      <button
         v-if="!soloLectura && mostrarEliminar"
-        preset="secondary"
-        size="small"
-        color="danger"
-        icon="mso-delete"
+        type="button"
+        class="requerimiento__quitar"
         :disabled="!eliminarPermitido"
         title="Quitar requerimiento"
         @click="$emit('eliminar')"
       >
         Quitar
-      </VaButton>
+      </button>
     </div>
 
     <p
@@ -57,157 +60,147 @@
     </div>
 
     <div class="requerimiento__fila">
-      <VaInput
-        v-model="modelValue.cantidad"
-        type="number"
-        label="Cantidad de personas*"
-        placeholder="Ej: 2"
-        :disabled="soloLectura"
-        :rules="[reglas.requerido, reglas.cantidadPositiva]"
-        :error="errores.cantidad ? true : undefined"
-        :error-messages="errores.cantidad || undefined"
-      />
-
-      <VaSelect
-        v-model="modelValue.idProfesion"
-        :options="profesiones"
-        value-by="idProfesion"
-        :text-by="(o) => capitalizar(o.nombre)"
-        label="Profesión*"
-        placeholder="Ej: Modelo"
-        :disabled="soloLectura"
-        :rules="[reglas.requerido]"
-        :error="errores.idProfesion ? true : undefined"
-        :error-messages="errores.idProfesion || undefined"
-      />
-    </div>
-
-    <div class="requerimiento__seccion">
-      <p class="requerimiento__seccion-titulo">Características técnicas</p>
-      <p class="requerimiento__seccion-ayuda">
-        Preferencias técnicas por profesión (opcional, no excluyentes)
-      </p>
-
-      <div class="requerimiento__bloque">
-        <p v-if="!modelValue.idProfesion" class="requerimiento__hint">
-          Las características se filtran por profesión. Seleccioná una para poder agregar
-          características.
-        </p>
-
-        <VaSelect
-          v-else-if="!soloLectura"
-          v-model="caracteristicaAAgregar"
-          :options="caracteristicasDisponibles"
-          value-by="idCaracteristica"
-          :text-by="etiquetaCaracteristica"
-          label="Agregar característica"
-          placeholder="Elegí una característica"
-          :loading="cargandoCaracteristicas"
-          no-options-text="Todas las características ya fueron agregadas"
-          clearable
-          @update:model-value="agregarCaracteristica"
+      <div class="requerimiento__campo">
+        <span class="requerimiento__label">Cantidad de personas *</span>
+        <CantidadStepper
+          v-model="modelValue.cantidad"
+          :disabled="soloLectura"
+          :rules="[reglas.requerido, reglas.cantidadPositiva]"
+          :error="!!errores.cantidad"
+          :error-message="errores.cantidad || ''"
+          :aria-label="`Cantidad de personas del requerimiento ${indice + 1}`"
         />
       </div>
 
-      <div
-        v-for="(carac, i) in modelValue.caracteristicas"
-        :key="carac.idCaracteristica"
-        class="requerimiento__caracteristica"
-      >
-        <div class="requerimiento__caracteristica-cabecera">
-          <span class="requerimiento__caracteristica-nombre">
-            {{ etiquetaCaracteristica(catalogoDe(carac.idCaracteristica)) }}
-          </span>
-          <VaButton
-            v-if="!soloLectura"
-            preset="secondary"
-            size="small"
-            color="danger"
-            icon="mso-close"
-            title="Quitar característica"
-            @click="quitarCaracteristica(i)"
-          />
-        </div>
-
-        <p v-if="errorDeCaracteristica(i)" class="requerimiento__error">
-          {{ errorDeCaracteristica(i) }}
-        </p>
-
-        <div v-if="esNumerico(carac)" class="requerimiento__rango">
-          <VaInput
-            v-model="carac.valorMin"
-            type="number"
-            label="Valor mínimo"
-            placeholder="Mín."
-            :disabled="soloLectura"
-            :rules="[reglas.numerico, reglas.noNegativo]"
-          />
-          <VaInput
-            v-model="carac.valorMax"
-            type="number"
-            label="Valor máximo"
-            placeholder="Máx."
-            :disabled="soloLectura"
-            :rules="[reglas.numerico, reglas.noNegativo]"
-          />
-        </div>
-
-        <template v-else-if="esEnumerado(carac)">
-          <p
-            v-if="!(catalogoDe(carac.idCaracteristica)?.valores || []).length"
-            class="requerimiento__hint"
-          >
-            Esta característica no tiene valores de catálogo cargados.
-          </p>
-          <VaOptionList
-            v-else
-            v-model="carac.valores"
-            type="checkbox"
-            :options="catalogoDe(carac.idCaracteristica).valores"
-            value-by="idValor"
-            :text-by="textoValor"
-            :disabled="soloLectura"
-            class="requerimiento__valores"
-          />
-        </template>
-
-        <p v-else class="requerimiento__hint">Sin configuración adicional.</p>
+      <div class="requerimiento__campo">
+        <span class="requerimiento__label">Profesión *</span>
+        <VaSelect
+          :key="selectProfesionKey"
+          :model-value="modelValue.idProfesion"
+          :options="profesiones"
+          value-by="idProfesion"
+          :text-by="(o) => capitalizar(o.nombre)"
+          placeholder="Ej: Modelo"
+          :disabled="soloLectura"
+          :rules="[reglas.requerido]"
+          :error="errores.idProfesion ? true : undefined"
+          :error-messages="errores.idProfesion || undefined"
+          :aria-label="`Profesión del requerimiento ${indice + 1}`"
+          @update:model-value="alCambiarProfesion"
+        />
       </div>
     </div>
 
-    <MultiSelectHabilidades
+    <hr class="requerimiento__divisor" />
+
+    <section class="requerimiento__seccion">
+      <div class="requerimiento__seccion-cabecera">
+        <p class="requerimiento__seccion-titulo">Características técnicas</p>
+        <p class="requerimiento__seccion-ayuda">
+          Preferencias opcionales, no excluyentes. Las medidas se expresan en
+          centímetros (cm).
+        </p>
+      </div>
+
+      <p v-if="!modelValue.idProfesion" class="requerimiento__hint">
+        Las características se filtran por profesión. Seleccioná una para poder
+        agregar características.
+      </p>
+
+      <AgregarCaracteristicas
+        v-else-if="!soloLectura"
+        :catalogo="caracteristicasCatalogo"
+        :agregadas="caracteristicasAgregadas"
+        :cargando="cargandoCaracteristicas"
+        @agregar="agregarCaracteristica"
+      />
+
+      <div
+        v-if="(modelValue.caracteristicas || []).length"
+        class="requerimiento__caracteristicas"
+      >
+        <CaracteristicaRequerimientoCard
+          v-for="(carac, i) in modelValue.caracteristicas"
+          :key="carac.idCaracteristica"
+          :caracteristica="carac"
+          :catalogo="catalogoDe(carac.idCaracteristica)"
+          :solo-lectura="soloLectura"
+          :error="errorDeCaracteristica(i)"
+          @quitar="quitarCaracteristica(i)"
+        />
+      </div>
+    </section>
+
+    <HabilidadesRequerimiento
       v-if="mostrarHabilidades"
       v-model="modelValue.habilidades"
       :options="habilidades"
       :loading="cargandoHabilidades"
-      :ayuda="ayudaHabilidades"
       :disabled="soloLectura"
-      :error="errores.habilidades ? true : undefined"
-      :error-message="errores.habilidades || undefined"
+      :error="!!errores.habilidades"
+      :error-message="errores.habilidades || ''"
     />
 
-    <VaInput
-      v-model="modelValue.descripcion"
-      label="Descripción"
-      placeholder="Descripción de la vacante..."
-      :max-length="200"
-      :disabled="soloLectura"
-      counter
-      :rules="[reglas.max200]"
-    />
+    <div class="requerimiento__campo">
+      <span class="requerimiento__label">Descripción de la vacante</span>
+      <VaTextarea
+        v-model="modelValue.descripcion"
+        placeholder="Contá en pocas líneas qué buscás para esta producción…"
+        :max-length="200"
+        maxlength="200"
+        :max-rows="4"
+        :disabled="soloLectura"
+        counter
+        :rules="[reglas.max200]"
+        :error="errores.descripcion ? true : undefined"
+        :error-messages="errores.descripcion || undefined"
+        input-aria-label="Descripción de la vacante"
+      />
+    </div>
+
+    <VaModal
+      v-model="modalCambioProfesionVisible"
+      hide-default-actions
+      no-dismiss
+      blur
+      @update:model-value="alCerrarModalCambioProfesion"
+    >
+      <h3 class="va-h5">Cambiar profesión</h3>
+      <p class="requerimiento__modal-texto">{{ textoCambioProfesion }}</p>
+      <template #footer>
+        <div class="requerimiento__modal-acciones">
+          <VaButton preset="secondary" @click="cancelarCambioProfesion">
+            Cancelar
+          </VaButton>
+          <VaButton color="danger" @click="confirmarCambioProfesion">
+            Cambiar profesión
+          </VaButton>
+        </div>
+      </template>
+    </VaModal>
   </div>
 </template>
 
 <script>
 import perfilService from "../../services/perfilService.js";
 import { reglasProyecto } from "../../utils/reglas.js";
-import { esNumerico as esTipoNumerico, esEnumerado as esTipoEnumerado } from "../../utils/proyectoConstants.js";
-import { ETIQUETAS_CARACTERISTICAS, normCodigo } from "../../utils/perfilConstants.js";
-import MultiSelectHabilidades from "./MultiSelectHabilidades.vue";
+import {
+  capitalizar,
+  resumenRequerimiento,
+} from "../../utils/requerimientoUi.js";
+import CantidadStepper from "./CantidadStepper.vue";
+import AgregarCaracteristicas from "./AgregarCaracteristicas.vue";
+import CaracteristicaRequerimientoCard from "./CaracteristicaRequerimientoCard.vue";
+import HabilidadesRequerimiento from "./HabilidadesRequerimiento.vue";
 
 export default {
   name: "RequerimientoForm",
-  components: { MultiSelectHabilidades },
+  components: {
+    CantidadStepper,
+    AgregarCaracteristicas,
+    CaracteristicaRequerimientoCard,
+    HabilidadesRequerimiento,
+  },
   props: {
     modelValue: {
       type: Object,
@@ -282,18 +275,59 @@ export default {
   data() {
     return {
       reglas: reglasProyecto,
-      ayudaHabilidades: "Destrezas que valorás en los postulantes",
       caracteristicasCatalogo: [],
       cargandoCaracteristicas: false,
-      caracteristicaAAgregar: null,
+      /** Fuerza a remontar el select si se cancela el cambio de profesión. */
+      selectProfesionKey: 0,
+      modalCambioProfesionVisible: false,
+      cambioProfesionPendiente: null,
     };
   },
   computed: {
-    caracteristicasDisponibles() {
-      const agregadas = new Set(
-        (this.modelValue.caracteristicas || []).map((c) => c.idCaracteristica)
+    profesionActual() {
+      return (
+        this.profesiones.find(
+          (profesion) => profesion.idProfesion === this.modelValue.idProfesion
+        ) || null
       );
-      return this.caracteristicasCatalogo.filter((c) => !agregadas.has(c.idCaracteristica));
+    },
+    caracteristicasAgregadas() {
+      return (this.modelValue.caracteristicas || []).map(
+        (caracteristica) => caracteristica.idCaracteristica
+      );
+    },
+    cantidadCaracteristicas() {
+      return (this.modelValue.caracteristicas || []).length;
+    },
+    cantidadHabilidades() {
+      return Array.isArray(this.modelValue.habilidades)
+        ? this.modelValue.habilidades.length
+        : 0;
+    },
+    resumen() {
+      return resumenRequerimiento({
+        cantidad: this.modelValue.cantidad,
+        profesion: this.profesionActual?.nombre || "",
+        caracteristicas: this.cantidadCaracteristicas,
+        habilidades: this.cantidadHabilidades,
+      });
+    },
+    profesionPendienteNombre() {
+      return (
+        this.profesiones.find(
+          (profesion) => profesion.idProfesion === this.cambioProfesionPendiente
+        )?.nombre || ""
+      );
+    },
+    textoCambioProfesion() {
+      const total = this.cantidadCaracteristicas;
+      const detalle =
+        total === 1
+          ? "Se va a quitar la única característica cargada de este requerimiento."
+          : `Se van a quitar las ${total} características cargadas de este requerimiento.`;
+      return this.profesionPendienteNombre
+        ? `Vas a cambiar la profesión a ${this.profesionPendienteNombre}. ${detalle}`
+        : detalle;
     },
   },
   watch: {
@@ -303,7 +337,6 @@ export default {
         if (!this.modelValue) return;
         if (anterior != null && idProfesion !== anterior) {
           this.modelValue.caracteristicas = [];
-          this.caracteristicaAAgregar = null;
         }
         this.cargarCaracteristicas(idProfesion);
       },
@@ -312,7 +345,6 @@ export default {
   methods: {
     async cargarCaracteristicas(idProfesion) {
       this.caracteristicasCatalogo = [];
-      this.caracteristicaAAgregar = null;
       if (!idProfesion) return;
 
       this.cargandoCaracteristicas = true;
@@ -320,7 +352,9 @@ export default {
         const response = await perfilService.caracteristicasPorProfesion(idProfesion);
         if (this.modelValue.idProfesion !== idProfesion) return;
         const datos = response?.data;
-        this.caracteristicasCatalogo = Array.isArray(datos) ? datos : datos?.caracteristicas || [];
+        this.caracteristicasCatalogo = Array.isArray(datos)
+          ? datos
+          : datos?.caracteristicas || [];
         this.$emit("catalogo-cargado", {
           idProfesion,
           caracteristicas: this.caracteristicasCatalogo,
@@ -342,44 +376,58 @@ export default {
         valorMax: null,
         valores: [],
       });
-      this.caracteristicaAAgregar = null;
     },
     quitarCaracteristica(indice) {
       this.modelValue.caracteristicas.splice(indice, 1);
     },
     catalogoDe(idCaracteristica) {
       return (
-        this.caracteristicasCatalogo.find((c) => c.idCaracteristica === idCaracteristica) || null
+        this.caracteristicasCatalogo.find(
+          (caracteristica) => caracteristica.idCaracteristica === idCaracteristica
+        ) || null
       );
-    },
-    esNumerico(carac) {
-      const catalogo = this.catalogoDe(carac.idCaracteristica);
-      return catalogo ? esTipoNumerico(catalogo.tipoDato) : false;
-    },
-    esEnumerado(carac) {
-      const catalogo = this.catalogoDe(carac.idCaracteristica);
-      return catalogo ? esTipoEnumerado(catalogo.tipoDato) : false;
-    },
-    etiquetaCaracteristica(carac) {
-      if (!carac) return "";
-      const etiqueta = ETIQUETAS_CARACTERISTICAS[normCodigo(carac.codigo)];
-      return etiqueta || this.capitalizar(carac.codigo);
-    },
-    textoValor(valor) {
-      return this.capitalizar(valor?.codigo);
     },
     errorDeCaracteristica(indice) {
       return this.errores[`caracteristicas.${indice}`];
     },
-    capitalizar(texto) {
-      if (!texto) return "";
-      return String(texto)
-        .toLowerCase()
-        .split(/[_\-.]+/)
-        .filter(Boolean)
-        .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
-        .join(" ");
+    alCambiarProfesion(idProfesion) {
+      if (this.soloLectura) return;
+      if (idProfesion === this.modelValue.idProfesion) return;
+
+      if (
+        idProfesion != null &&
+        this.modelValue.idProfesion != null &&
+        this.cantidadCaracteristicas > 0
+      ) {
+        this.cambioProfesionPendiente = idProfesion;
+        this.modalCambioProfesionVisible = true;
+        return;
+      }
+
+      this.aplicarCambioProfesion(idProfesion);
     },
+    aplicarCambioProfesion(idProfesion) {
+      this.cambioProfesionPendiente = null;
+      this.modalCambioProfesionVisible = false;
+      this.modelValue.caracteristicas = [];
+      this.modelValue.idProfesion = idProfesion;
+      this.selectProfesionKey += 1;
+    },
+    confirmarCambioProfesion() {
+      this.aplicarCambioProfesion(this.cambioProfesionPendiente);
+    },
+    cancelarCambioProfesion() {
+      this.cambioProfesionPendiente = null;
+      this.modalCambioProfesionVisible = false;
+      this.selectProfesionKey += 1;
+    },
+    alCerrarModalCambioProfesion(visible) {
+      // Cierre por Escape u otro medio sin confirmar: se descarta el cambio.
+      if (!visible && this.cambioProfesionPendiente != null) {
+        this.cancelarCambioProfesion();
+      }
+    },
+    capitalizar,
   },
 };
 </script>
@@ -388,11 +436,12 @@ export default {
 .requerimiento {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem;
-  border: 1px solid var(--va-background-border);
-  border-radius: 8px;
-  background: var(--va-background-element);
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .requerimiento--resaltado {
@@ -400,6 +449,160 @@ export default {
   box-shadow: 0 0 0 2px var(--color-danger-soft, rgba(220, 38, 38, 0.12));
 }
 
+/* ── Encabezado ── */
+.requerimiento__encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.requerimiento__encabezado-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.requerimiento__numero {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.requerimiento__encabezado-texto {
+  min-width: 0;
+}
+
+.requerimiento__encabezado-titulos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.requerimiento__titulo {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.requerimiento__resumen {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.requerimiento__quitar {
+  flex: 0 0 auto;
+  padding: 0.2rem 0;
+  border: none;
+  background: none;
+  color: var(--color-danger-text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.requerimiento__quitar:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.requerimiento__quitar:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
+}
+
+.requerimiento__quitar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.requerimiento__badge-satisfecho {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ── Campos ── */
+.requerimiento__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.requerimiento__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.requerimiento__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.requerimiento__divisor {
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--color-border);
+}
+
+.requerimiento__seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.requerimiento__seccion-cabecera {
+  display: flex;
+  flex-direction: column;
+}
+
+.requerimiento__seccion-titulo {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.requerimiento__seccion-ayuda {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.requerimiento__caracteristicas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.requerimiento__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* ── Conflicto ── */
 .requerimiento__conflicto {
   display: flex;
   flex-direction: column;
@@ -423,113 +626,27 @@ export default {
   gap: 0.5rem;
 }
 
-.requerimiento__encabezado {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.requerimiento__encabezado-titulos {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.requerimiento__titulo {
+/* ── Modal de cambio de profesión ── */
+.requerimiento__modal-texto {
+  margin: 0.75rem 0 0;
   font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--va-text-primary);
+  color: var(--color-text);
 }
 
-.requerimiento__badge-satisfecho {
-  display: inline-block;
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-  background: var(--color-success-soft);
-  color: var(--color-success-text);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.requerimiento__fila {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.requerimiento__seccion {
+.requerimiento__modal-acciones {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   gap: 0.75rem;
+  width: 100%;
 }
 
-.requerimiento__seccion-titulo {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--va-text-primary);
-}
+@media (max-width: 600px) {
+  .requerimiento {
+    padding: 1.1rem;
+  }
 
-.requerimiento__seccion-ayuda {
-  margin: 0.15rem 0 0;
-  font-size: 0.8rem;
-  font-weight: 400;
-  color: var(--va-secondary);
-}
-
-.requerimiento__bloque {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border: 1px solid var(--va-background-border);
-  border-radius: 8px;
-  background: var(--va-background-element);
-}
-
-.requerimiento__hint {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--va-secondary);
-}
-
-.requerimiento__error {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--va-danger);
-}
-
-.requerimiento__caracteristica {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.9rem;
-  border: 1px solid var(--va-background-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-}
-
-.requerimiento__caracteristica-cabecera {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.requerimiento__caracteristica-nombre {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--va-text-primary);
-}
-
-.requerimiento__rango {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.requerimiento__valores {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
+  .requerimiento__fila {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

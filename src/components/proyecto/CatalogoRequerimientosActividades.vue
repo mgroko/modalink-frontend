@@ -357,14 +357,17 @@ export default {
 
 .catalogo-requerimientos__grupos {
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 1rem;
-  max-height: 24rem;
+  max-height: min(24rem, 45vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding-right: 0.25rem;
 }
 
 .catalogo-requerimientos__grupo {
+  flex: 0 0 auto;
   border: 1px solid var(--color-border-soft);
   border-radius: 0.75rem;
   overflow: hidden;

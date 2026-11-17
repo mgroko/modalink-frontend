@@ -256,7 +256,13 @@
                   class="invitar-proyecto__perfil-card"
                 >
                   <span class="invitar-proyecto__avatar" aria-hidden="true">
-                    {{ inicialDePerfil(perfil) }}
+                    <img
+                      v-if="fotoDePerfil(perfil) && !fotosRotas[perfil.idPerfil]"
+                      :src="fotoDePerfil(perfil)"
+                      :alt="perfil.nombreArtistico || 'Perfil'"
+                      @error="marcarFotoRota(perfil)"
+                    />
+                    <template v-else>{{ inicialDePerfil(perfil) }}</template>
                   </span>
 
                   <span class="invitar-proyecto__perfil-datos">
@@ -417,6 +423,7 @@ import ModalResultadoInvitaciones from "../../components/invitacion/ModalResulta
 import AceptacionTerminosPerfil from "../../components/perfil/AceptacionTerminosPerfil.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { formatearFechaCorta } from "../../utils/fechas.js";
+import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatUbicacion } from "../../utils/ubicacion.js";
 import {
   datosErrorTerminos,
@@ -498,6 +505,7 @@ export default {
       estadosTerminos: {},
       terminosVigentes: {},
       idCarga: 0,
+      fotosRotas: {},
       TIPOS_INVITACION,
       LIMITE_MENSAJE_INVITACION,
     };
@@ -869,6 +877,14 @@ export default {
         String(perfil?.nombreArtistico || "?").trim().charAt(0).toUpperCase() ||
         "?"
       );
+    },
+    fotoDePerfil(perfil) {
+      return resolverFotoUrl(
+        perfil?.fotoUrl || perfil?.urlFoto || perfil?.fotoPerfil
+      );
+    },
+    marcarFotoRota(perfil) {
+      this.fotosRotas = { ...this.fotosRotas, [perfil.idPerfil]: true };
     },
     ubicacionDePerfil(perfil) {
       return formatUbicacion(perfil);

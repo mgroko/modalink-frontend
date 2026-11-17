@@ -232,7 +232,11 @@ export default {
       );
     },
     fotoContraparte() {
-      return resolverFotoUrl(this.contraparte?.fotoUrl);
+      return resolverFotoUrl(
+        this.contraparte?.fotoUrl ||
+          this.contraparte?.urlFoto ||
+          this.contraparte?.fotoPerfil
+      );
     },
     fechaEnvio() {
       return formatearFechaCorta(this.invitacion.fechaEnvio);
@@ -256,7 +260,7 @@ export default {
     "invitacion.idInvitacion"() {
       this.fotoRota = false;
     },
-    "contraparte.fotoUrl"() {
+    contraparte() {
       this.fotoRota = false;
     },
   },
