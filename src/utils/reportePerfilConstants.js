@@ -3,6 +3,13 @@
  * Constantes compartidas entre el modal de reporte y la bandeja administrativa.
  */
 
+/**
+ * Valor de las opciones "Todos…" de los filtros. VaSelect no muestra la
+ * etiqueta cuando el valor es "" (lo interpreta como sin selección), por eso
+ * se usa un valor centinela que los builders de parámetros ignoran.
+ */
+export const VALOR_FILTRO_TODOS = "TODOS";
+
 export const MOTIVOS_REPORTE_PERFIL = {
   SPAM: "SPAM",
   CONTENIDO_OFENSIVO: "CONTENIDO_OFENSIVO",
@@ -25,7 +32,7 @@ export const OPCIONES_MOTIVO_REPORTE_PERFIL = Object.entries(
 ).map(([value, text]) => ({ value, text }));
 
 export const OPCIONES_MOTIVO_FILTRO_REPORTE_PERFIL = [
-  { text: "Todos los motivos", value: "" },
+  { text: "Todos los motivos", value: VALOR_FILTRO_TODOS },
   ...OPCIONES_MOTIVO_REPORTE_PERFIL,
 ];
 
@@ -48,7 +55,7 @@ export const COLORES_ESTADO_REPORTE_PERFIL = {
 };
 
 export const OPCIONES_ESTADO_REPORTE_PERFIL = [
-  { text: "Todos los estados", value: "" },
+  { text: "Todos los estados", value: VALOR_FILTRO_TODOS },
   { text: "Pendiente", value: ESTADOS_REPORTE_PERFIL.PENDIENTE },
   { text: "Resuelto", value: ESTADOS_REPORTE_PERFIL.RESUELTO },
   { text: "Descartado", value: ESTADOS_REPORTE_PERFIL.DESCARTADO },
@@ -113,8 +120,8 @@ export function construirParamsReportesPerfil(filtros = {}) {
   } = filtros;
 
   const params = {};
-  if (estado) params.estado = estado;
-  if (motivo) params.motivo = motivo;
+  if (estado && estado !== VALOR_FILTRO_TODOS) params.estado = estado;
+  if (motivo && motivo !== VALOR_FILTRO_TODOS) params.motivo = motivo;
   if (fechaDesde) params.fechaDesde = fechaDesde;
   if (fechaHasta) params.fechaHasta = fechaHasta;
 

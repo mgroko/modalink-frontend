@@ -532,8 +532,8 @@ export default {
 
 .auditoria__encabezado h1 {
   margin: 0;
-  color: var(--color-text);
-  font-size: 1.45rem;
+  color: var(--color-primary);
+  font-size: 2.25rem;
   font-weight: 800;
 }
 

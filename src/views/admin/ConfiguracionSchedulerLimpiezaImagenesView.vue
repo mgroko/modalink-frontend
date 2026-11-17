@@ -1,5 +1,10 @@
 <template>
   <div class="limpieza-imagenes">
+    <AdminVolver
+      :to="{ name: 'configuracion-sistema' }"
+      texto="Volver a configuración"
+    />
+
     <section class="limpieza-imagenes__encabezado">
       <h1>Limpieza de imágenes</h1>
       <p class="limpieza-imagenes__subtitulo">
@@ -175,6 +180,7 @@ import { tienePermiso } from "../../services/authState";
 import { formatearFecha } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminVolver from "../../components/admin/AdminVolver.vue";
 import { useToast } from "vuestic-ui";
 
 const INTERVALO_MINIMO = 1;
@@ -184,6 +190,7 @@ export default {
   name: "ConfiguracionSchedulerLimpiezaImagenesView",
   components: {
     BaseAlert,
+    AdminVolver,
   },
   data() {
     return {
@@ -414,13 +421,10 @@ export default {
 }
 
 .limpieza-imagenes__encabezado h1 {
+  margin: 0 0 0.25rem;
+  color: var(--color-primary);
   font-size: 2.25rem;
   font-weight: 800;
-  margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .limpieza-imagenes__subtitulo {

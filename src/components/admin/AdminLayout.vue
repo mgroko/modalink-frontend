@@ -8,103 +8,115 @@
       class="admin-layout__sidebar"
       :class="{ 'admin-layout__sidebar--abierto': menuAbierto }"
     >
-      <RouterLink to="/admin/dashboard" class="admin-layout__brand">ModaLink</RouterLink>
+      <div class="admin-layout__sidebar-top">
+        <RouterLink to="/admin/dashboard" class="admin-layout__brand">ModaLink</RouterLink>
 
-      <div class="admin-layout__search" aria-label="Buscar">
-        <span class="material-symbols-outlined">search</span>
-        <span>Buscar</span>
-      </div>
+        <div class="admin-layout__search" aria-label="Buscar">
+          <span class="material-symbols-outlined">search</span>
+          <span>Buscar</span>
+        </div>
 
-      <div class="admin-layout__sidebar-user">
-        <span class="admin-layout__avatar">{{ iniciales }}</span>
-        <span class="admin-layout__user-data">
-          <strong>{{ nombreCompleto }}</strong>
-          <small>{{ rolUsuario }}</small>
-        </span>
+        <div class="admin-layout__sidebar-user">
+          <span class="admin-layout__avatar">{{ iniciales }}</span>
+          <span class="admin-layout__user-data">
+            <strong>{{ nombreCompleto }}</strong>
+            <small>{{ rolUsuario }}</small>
+          </span>
+        </div>
       </div>
 
       <nav class="admin-layout__nav" aria-label="Navegación administrativa">
-        <RouterLink to="/admin/notificaciones" class="admin-layout__link">
-          <span class="material-symbols-outlined">notifications</span>
-          <span>Notificaciones</span>
-          <span v-if="notificaciones > 0" class="admin-layout__badge admin-layout__badge--enlace">{{ notificaciones }}</span>
-        </RouterLink>
-        <RouterLink to="/admin/dashboard" class="admin-layout__link">
-          <span class="material-symbols-outlined">dashboard</span>
-          <span>Dashboard</span>
-        </RouterLink>
-        <RouterLink to="/admin/gestion-usuarios" class="admin-layout__link">
-          <span class="material-symbols-outlined">group</span>
-          <span>Usuarios</span>
-        </RouterLink>
-        <RouterLink
-          v-if="tienePermiso('VER_PERFILES')"
-          to="/admin/perfiles"
-          class="admin-layout__link"
-        >
-          <span class="material-symbols-outlined">person_search</span>
-          <span>Perfiles</span>
-        </RouterLink>
-        <RouterLink
-          v-if="tienePermiso('VER_PROYECTOS')"
-          to="/admin/proyectos"
-          class="admin-layout__link"
-        >
-          <span class="material-symbols-outlined">folder_open</span>
-          <span>Proyectos</span>
-        </RouterLink>
-        <RouterLink
-          v-if="tienePermiso('VER_CONTRATOS')"
-          to="/admin/contratos"
-          class="admin-layout__link"
-        >
-          <span class="material-symbols-outlined">request_quote</span>
-          <span>Contratos</span>
-        </RouterLink>
-        <RouterLink to="/admin/reportes-perfil" class="admin-layout__link">
-          <span class="material-symbols-outlined">flag</span>
-          <span>Reportes de perfil</span>
-        </RouterLink>
-        <RouterLink
-          to="/admin/reportes-publicacion"
-          class="admin-layout__link"
-        >
-          <span class="material-symbols-outlined">campaign</span>
-          <span>Reportes de publicaciones</span>
-          <span
-            v-if="reportesPublicacionPendientes > 0"
-            class="admin-layout__badge admin-layout__badge--enlace"
+        <div class="admin-layout__nav-grupo">
+          <RouterLink to="/admin/dashboard" class="admin-layout__link">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span>Dashboard</span>
+          </RouterLink>
+          <RouterLink to="/admin/notificaciones" class="admin-layout__link">
+            <span class="material-symbols-outlined">notifications</span>
+            <span>Notificaciones</span>
+            <span v-if="notificaciones > 0" class="admin-layout__badge admin-layout__badge--enlace">{{ notificaciones }}</span>
+          </RouterLink>
+        </div>
+
+        <div class="admin-layout__nav-grupo">
+          <p class="admin-layout__grupo-titulo">Gestión</p>
+          <RouterLink to="/admin/gestion-usuarios" class="admin-layout__link">
+            <span class="material-symbols-outlined">group</span>
+            <span>Usuarios</span>
+          </RouterLink>
+          <RouterLink
+            v-if="tienePermiso('VER_PERFILES')"
+            to="/admin/perfiles"
+            class="admin-layout__link"
           >
-            {{ reportesPublicacionPendientes }}
-          </span>
-        </RouterLink>
-        <RouterLink to="/admin/auditoria" class="admin-layout__link">
-          <span class="material-symbols-outlined">fact_check</span>
-          <span>Auditoría</span>
-        </RouterLink>
-        <RouterLink to="/admin/gestionar-caracteristicas" class="admin-layout__link">
-          <span class="material-symbols-outlined">tune</span>
-          <span>Características técnicas</span>
-        </RouterLink>
-        <RouterLink to="/admin/habilidades" class="admin-layout__link">
-          <span class="material-symbols-outlined">psychology</span>
-          <span>Habilidades</span>
-        </RouterLink>
-        <RouterLink to="/admin/tipos-contrato" class="admin-layout__link">
-          <span class="material-symbols-outlined">description</span>
-          <span>Tipos de contrato</span>
-        </RouterLink>
-        <RouterLink to="/admin/unidades-medida" class="admin-layout__link">
-          <span class="material-symbols-outlined">straighten</span>
-          <span>Unidad de medidas</span>
-        </RouterLink>
+            <span class="material-symbols-outlined">person_search</span>
+            <span>Perfiles</span>
+          </RouterLink>
+          <RouterLink to="/admin/proyectos" class="admin-layout__link">
+            <span class="material-symbols-outlined">folder_open</span>
+            <span>Proyectos</span>
+          </RouterLink>
+          <RouterLink
+            v-if="tienePermiso('VER_CONTRATOS')"
+            to="/admin/contratos"
+            class="admin-layout__link"
+          >
+            <span class="material-symbols-outlined">request_quote</span>
+            <span>Contratos</span>
+          </RouterLink>
+        </div>
+
+        <div class="admin-layout__nav-grupo">
+          <p class="admin-layout__grupo-titulo">Moderación y control</p>
+          <RouterLink to="/admin/reportes-perfil" class="admin-layout__link">
+            <span class="material-symbols-outlined">flag</span>
+            <span>Reportes de perfil</span>
+          </RouterLink>
+          <RouterLink
+            to="/admin/reportes-publicacion"
+            class="admin-layout__link"
+          >
+            <span class="material-symbols-outlined">campaign</span>
+            <span>Reportes de publicaciones</span>
+            <span
+              v-if="reportesPublicacionPendientes > 0"
+              class="admin-layout__badge admin-layout__badge--enlace"
+            >
+              {{ reportesPublicacionPendientes }}
+            </span>
+          </RouterLink>
+          <RouterLink to="/admin/auditoria" class="admin-layout__link">
+            <span class="material-symbols-outlined">fact_check</span>
+            <span>Auditoría</span>
+          </RouterLink>
+        </div>
+
+        <div class="admin-layout__nav-grupo">
+          <p class="admin-layout__grupo-titulo">Catálogos</p>
+          <RouterLink to="/admin/gestionar-caracteristicas" class="admin-layout__link">
+            <span class="material-symbols-outlined">tune</span>
+            <span>Características técnicas</span>
+          </RouterLink>
+          <RouterLink to="/admin/habilidades" class="admin-layout__link">
+            <span class="material-symbols-outlined">psychology</span>
+            <span>Habilidades</span>
+          </RouterLink>
+          <RouterLink to="/admin/tipos-contrato" class="admin-layout__link">
+            <span class="material-symbols-outlined">description</span>
+            <span>Tipos de contrato</span>
+          </RouterLink>
+          <RouterLink to="/admin/unidades-medida" class="admin-layout__link">
+            <span class="material-symbols-outlined">straighten</span>
+            <span>Unidades de medida</span>
+          </RouterLink>
+        </div>
+      </nav>
+
+      <div class="admin-layout__footer">
         <RouterLink to="/admin/configuracion" class="admin-layout__link">
           <span class="material-symbols-outlined">settings</span>
           <span>Configuración del sistema</span>
         </RouterLink>
-      </nav>
-
-      <div class="admin-layout__footer">
         <button type="button" class="admin-layout__logout" @click="cerrarSesion">
           <span class="material-symbols-outlined">logout</span>
           Cerrar sesión
@@ -331,22 +343,33 @@ export default {
 <style scoped>
 .admin-layout {
   position: relative;
-  overflow-x: hidden;
+  overflow-x: clip;
   min-height: 100vh;
   display: flex;
   background: var(--color-bg);
 }
 
 .admin-layout__sidebar {
+  position: sticky;
+  top: 0;
   width: 276px;
   flex: 0 0 276px;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  padding: 1.75rem 0.9rem 1.5rem;
+  gap: 1.25rem;
+  padding: 1.5rem 0.9rem 1rem;
+  overflow: hidden;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border-soft);
+}
+
+.admin-layout__sidebar-top {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex-shrink: 0;
 }
 
 .admin-layout__brand {
@@ -390,8 +413,33 @@ export default {
 }
 
 .admin-layout__nav {
-  display: grid;
-  gap: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 0.2rem;
+  margin-right: -0.2rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.admin-layout__nav-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.admin-layout__grupo-titulo {
+  margin: 0;
+  padding: 0 0.9rem 0.1rem;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .admin-layout__notificaciones-header {
@@ -404,8 +452,8 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-height: 2.75rem;
-  padding: 0.65rem 0.9rem;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.9rem;
   color: var(--color-text);
   border-radius: 0.65rem;
   font-size: 0.9rem;
@@ -427,7 +475,12 @@ export default {
 
 .admin-layout__footer {
   display: flex;
-  margin-top: auto;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-border-soft);
 }
 
 /* Menú en drawer para mobile: hamburguesa + overlay + sidebar fijo. */
@@ -488,15 +541,22 @@ export default {
 .admin-layout__logout {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  width: fit-content;
-  padding: 0;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.9rem;
   color: var(--color-danger);
   background: none;
   border: 0;
+  border-radius: 0.65rem;
   cursor: pointer;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.admin-layout__logout:hover {
+  background: var(--color-danger-soft);
 }
 
 .admin-layout__actions {
@@ -729,7 +789,7 @@ export default {
     max-width: 84vw;
     min-height: 100dvh;
     padding: 1rem;
-    overflow-y: auto;
+    overflow: hidden;
     background: var(--color-surface);
     border-right: 1px solid var(--color-border-soft);
     transform: translateX(-105%);
@@ -738,14 +798,6 @@ export default {
 
   .admin-layout--menu-abierto .admin-layout__sidebar {
     transform: translateX(0);
-  }
-
-  .admin-layout__nav {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-layout__footer {
-    justify-content: flex-start;
   }
 
   .admin-layout__actions {

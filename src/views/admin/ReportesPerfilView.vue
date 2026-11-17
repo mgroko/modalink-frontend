@@ -177,6 +177,7 @@ import {
   OPCIONES_MOTIVO_FILTRO_REPORTE_PERFIL,
   OPCIONES_TAMANO_REPORTES,
   TAMANO_REPORTES_POR_DEFECTO,
+  VALOR_FILTRO_TODOS,
   colorEstadoReportePerfil,
   construirParamsReportesPerfil,
   etiquetaEstadoReportePerfil,
@@ -186,7 +187,7 @@ import {
 function filtrosIniciales() {
   return {
     estado: ESTADO_REPORTE_POR_DEFECTO,
-    motivo: "",
+    motivo: VALOR_FILTRO_TODOS,
     fechaDesde: "",
     fechaHasta: "",
     tamano: TAMANO_REPORTES_POR_DEFECTO,
@@ -382,8 +383,8 @@ export default {
 
 .reportes-perfil__encabezado h1 {
   margin: 0;
-  color: var(--color-text);
-  font-size: 1.45rem;
+  color: var(--color-primary);
+  font-size: 2.25rem;
   font-weight: 800;
 }
 

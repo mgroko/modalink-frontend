@@ -1,5 +1,10 @@
 <template>
   <div class="configuracion-baja">
+    <AdminVolver
+      :to="{ name: 'configuracion-sistema' }"
+      texto="Volver a configuración"
+    />
+
     <section class="configuracion-baja__encabezado">
       <h1>Programación de Bajas</h1>
       <p class="configuracion-baja__subtitulo">
@@ -118,11 +123,13 @@
 import adminConfiguracionService from "../../services/adminConfiguracionService";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminVolver from "../../components/admin/AdminVolver.vue";
 
 export default {
   name: "ConfiguracionSchedulerBajaView",
   components: {
     BaseAlert,
+    AdminVolver,
   },
   data() {
     return {
@@ -267,13 +274,10 @@ export default {
 }
 
 .configuracion-baja__encabezado h1 {
+  margin: 0 0 0.25rem;
+  color: var(--color-primary);
   font-size: 2.25rem;
   font-weight: 800;
-  margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .configuracion-baja__subtitulo {

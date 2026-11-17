@@ -7,110 +7,130 @@
       </p>
     </section>
 
-    <div class="gestion-unidades__toolbar">
-      <VaInput
-        v-model="busqueda"
-        preset="bordered"
-        placeholder="Buscar por nombre o símbolo"
-        removable
-        class="gestion-unidades__buscador"
-      >
-        <template #prependInner>
-          <VaIcon name="mso-search" color="grey" size="small" />
-        </template>
-      </VaInput>
-
-      <div class="gestion-unidades__toolbar-acciones">
-        <VaSelect
-          v-model="filtroTipoDato"
-          :options="opcionesTipoDato"
-          value-by="value"
-          text-by="text"
-          placeholder="Tipo de dato"
-          clearable
-          class="gestion-unidades__select-tipo"
-          @update:modelValue="cargarUnidades"
-        />
-
-        <VaButton
-          preset="secondary"
-          icon="mso-refresh"
-          :loading="cargando"
-          @click="cargarUnidades"
-        >
-          Actualizar
-        </VaButton>
-
-        <VaButton
-          v-if="puedeCrear"
-          color="primary"
-          icon="mso-add"
-          @click="abrirCrear"
-        >
-          Nueva unidad
-        </VaButton>
-      </div>
-    </div>
-
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
-    <div v-if="!puedeVer" class="gestion-unidades__estado">
-      <span class="material-symbols-outlined gestion-unidades__estado-icono">lock</span>
-      No tenés permisos para ver las unidades de medida.
-    </div>
-
-    <div v-else-if="cargando" class="gestion-unidades__estado">
-      <span class="material-symbols-outlined gestion-unidades__estado-icono">hourglass_empty</span>
-      Cargando unidades...
-    </div>
-
-    <div v-else-if="unidadesFiltradas.length === 0" class="gestion-unidades__estado">
-      <span class="material-symbols-outlined gestion-unidades__estado-icono">straighten</span>
-      No hay unidades de medida registradas.
-    </div>
-
-    <VaDataTable
-      v-else
-      class="gestion-unidades__tabla"
-      :items="unidadesFiltradas"
-      :columns="columnas"
-      :per-page="10"
-      striped
-      hoverable
-    >
-      <template #cell(idUnidad)="{ value }">
-        <span class="gestion-unidades__id">{{ value }}</span>
-      </template>
-
-      <template #cell(tipoDatoPermitido)="{ value }">
-        <VaBadge :text="value" :color="value === 'NUMERICO' ? 'info' : 'warning'" outline />
-      </template>
-
-      <template #cell(acciones)="{ rowData }">
-        <div class="gestion-unidades__acciones">
-          <VaButton
-            v-if="puedeModificar"
-            size="small"
-            preset="primary"
-            icon="mso-edit"
-            :loading="precargando && filaEditando === rowData.idUnidad"
-            @click="abrirEditar(rowData)"
+    <AdminTablaPanel class="gestion-unidades__panel">
+      <template #toolbar>
+        <div class="gestion-unidades__toolbar">
+          <VaInput
+            v-model="busqueda"
+            preset="bordered"
+            placeholder="Buscar por nombre o símbolo"
+            removable
+            class="gestion-unidades__buscador"
           >
-            Modificar
-          </VaButton>
-          <VaButton
-            v-if="puedeEliminar"
-            size="small"
-            color="danger"
-            icon="mso-delete"
-            @click="confirmarEliminar(rowData)"
-          >
-            Eliminar
-          </VaButton>
+            <template #prependInner>
+              <VaIcon name="mso-search" color="grey" size="small" />
+            </template>
+          </VaInput>
+
+          <div class="gestion-unidades__toolbar-acciones">
+            <VaSelect
+              v-model="filtroTipoDato"
+              :options="opcionesTipoDato"
+              value-by="value"
+              text-by="text"
+              placeholder="Tipo de dato"
+              clearable
+              class="gestion-unidades__select-tipo"
+              @update:modelValue="cargarUnidades"
+            />
+
+            <VaButton
+              preset="secondary"
+              icon="mso-refresh"
+              :loading="cargando"
+              @click="cargarUnidades"
+            >
+              Actualizar
+            </VaButton>
+
+            <VaButton
+              v-if="puedeCrear"
+              color="primary"
+              icon="mso-add"
+              @click="abrirCrear"
+            >
+              Nueva unidad
+            </VaButton>
+          </div>
         </div>
       </template>
-    </VaDataTable>
+
+      <div v-if="!puedeVer" class="gestion-unidades__estado">
+        <span class="material-symbols-outlined gestion-unidades__estado-icono">lock</span>
+        No tenés permisos para ver las unidades de medida.
+      </div>
+
+      <div v-else-if="cargando" class="gestion-unidades__estado">
+        <span class="material-symbols-outlined gestion-unidades__estado-icono">hourglass_empty</span>
+        Cargando unidades...
+      </div>
+
+      <div v-else-if="unidadesFiltradas.length === 0" class="gestion-unidades__estado">
+        <span class="material-symbols-outlined gestion-unidades__estado-icono">straighten</span>
+        No hay unidades de medida registradas.
+      </div>
+
+      <VaDataTable
+        v-else
+        class="gestion-unidades__tabla"
+        :items="unidadesFiltradas"
+        :columns="columnas"
+        :per-page="porPaginaUnidades"
+        :current-page="paginaUnidades"
+        hoverable
+      >
+        <template #cell(idUnidad)="{ value }">
+          <span class="gestion-unidades__id">{{ value }}</span>
+        </template>
+
+        <template #cell(tipoDatoPermitido)="{ value }">
+          <VaBadge :text="value" :color="value === 'NUMERICO' ? 'info' : 'warning'" outline />
+        </template>
+
+        <template #cell(acciones)="{ rowData }">
+          <div class="gestion-unidades__acciones">
+            <VaButton
+              v-if="puedeModificar"
+              size="small"
+              preset="primary"
+              icon="mso-edit"
+              :loading="precargando && filaEditando === rowData.idUnidad"
+              @click="abrirEditar(rowData)"
+            >
+              Modificar
+            </VaButton>
+            <VaButton
+              v-if="puedeEliminar"
+              size="small"
+              color="danger"
+              icon="mso-delete"
+              @click="confirmarEliminar(rowData)"
+            >
+              Eliminar
+            </VaButton>
+          </div>
+        </template>
+      </VaDataTable>
+
+      <template v-if="puedeVer && !cargando && unidadesFiltradas.length > 0" #footer>
+        <span class="gestion-unidades__pie-info">
+          Mostrando {{ unidadesFiltradas.length }}
+          {{ unidadesFiltradas.length === 1 ? "unidad" : "unidades" }}
+        </span>
+        <VaPagination
+          v-model="paginaUnidades"
+          :total="unidadesFiltradas.length"
+          :page-size="porPaginaUnidades"
+          :visible-pages="5"
+          boundary-links
+          direction-links
+          hide-on-single-page
+        />
+      </template>
+    </AdminTablaPanel>
 
     <!-- Modal crear / editar unidad -->
     <VaModal
@@ -218,6 +238,7 @@ import adminUnidadesMedidaService from "../../services/adminUnidadesMedidaServic
 import { tienePermiso } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
 
 const TIPOS_DATO = ["NUMERICO", "TEXTO"];
 const CAMPOS_FORM = ["nombre", "simbolo", "tipoDatoPermitido"];
@@ -226,6 +247,7 @@ export default {
   name: "GestionUnidadesMedidaView",
   components: {
     BaseAlert,
+    AdminTablaPanel,
   },
   data() {
     return {
@@ -235,6 +257,8 @@ export default {
       unidades: [],
       busqueda: "",
       filtroTipoDato: null,
+      paginaUnidades: 1,
+      porPaginaUnidades: 10,
       successMessage: "",
       errorMessage: "",
 
@@ -296,6 +320,16 @@ export default {
     await this.cargarUnidades();
   },
   watch: {
+    busqueda() {
+      this.paginaUnidades = 1;
+    },
+    unidadesFiltradas() {
+      const paginas = Math.max(
+        1,
+        Math.ceil(this.unidadesFiltradas.length / this.porPaginaUnidades)
+      );
+      if (this.paginaUnidades > paginas) this.paginaUnidades = paginas;
+    },
     modalVisible(abierto) {
       if (!abierto) {
         this.erroresBackend = {};
@@ -504,14 +538,20 @@ export default {
   margin: 0 auto;
 }
 
+.gestion-unidades__panel {
+  margin-top: 1rem;
+}
+
+.gestion-unidades__pie-info {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
 .gestion-unidades__encabezado h1 {
+  margin: 0 0 0.25rem;
+  color: var(--color-primary);
   font-size: 2.25rem;
   font-weight: 800;
-  margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .gestion-unidades__subtitulo {
@@ -526,7 +566,6 @@ export default {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  margin: 1.25rem 0 1rem;
 }
 
 .gestion-unidades__buscador {
@@ -543,10 +582,6 @@ export default {
 
 .gestion-unidades__select-tipo {
   min-width: 180px;
-}
-
-.gestion-unidades__tabla {
-  --va-table-padding: 0.5rem;
 }
 
 .gestion-unidades__id {

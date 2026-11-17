@@ -8,204 +8,260 @@
       </p>
     </section>
 
-    <div class="gestion-tipos-contrato__toolbar">
-      <VaInput
-        v-model="busqueda"
-        preset="bordered"
-        placeholder="Buscar por nombre, código o descripción"
-        removable
-        class="gestion-tipos-contrato__buscador"
-      >
-        <template #prependInner>
-          <VaIcon name="mso-search" color="grey" size="small" />
-        </template>
-      </VaInput>
-
-      <div class="gestion-tipos-contrato__toolbar-acciones">
-        <VaCheckbox
-          v-model="incluirInactivos"
-          label="Incluir inactivos"
-          class="gestion-tipos-contrato__check"
-        />
-
-        <VaButton
-          preset="secondary"
-          icon="mso-refresh"
-          :loading="cargando"
-          @click="cargarTipos"
-        >
-          Actualizar
-        </VaButton>
-
-        <VaButton
-          v-if="puedeCrear"
-          color="primary"
-          icon="mso-add"
-          @click="abrirCrear"
-        >
-          Nuevo tipo
-        </VaButton>
-      </div>
-    </div>
-
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
-    <div v-if="!puedeVer" class="gestion-tipos-contrato__estado">
-      <span class="material-symbols-outlined gestion-tipos-contrato__estado-icono">lock</span>
-      No tenés permisos para ver los tipos de contrato.
-    </div>
+    <AdminTablaPanel class="gestion-tipos-contrato__panel">
+      <template #toolbar>
+        <div class="gestion-tipos-contrato__toolbar">
+          <VaInput
+            v-model="busqueda"
+            preset="bordered"
+            placeholder="Buscar por nombre, código o descripción"
+            removable
+            class="gestion-tipos-contrato__buscador"
+          >
+            <template #prependInner>
+              <VaIcon name="mso-search" color="grey" size="small" />
+            </template>
+          </VaInput>
 
-    <div v-else-if="cargando" class="gestion-tipos-contrato__estado">
-      <span class="material-symbols-outlined gestion-tipos-contrato__estado-icono">hourglass_empty</span>
-      Cargando tipos de contrato...
-    </div>
+          <div class="gestion-tipos-contrato__toolbar-acciones">
+            <VaCheckbox
+              v-model="incluirInactivos"
+              label="Incluir inactivos"
+              class="gestion-tipos-contrato__check"
+            />
 
-    <div
-      v-else-if="tiposFiltrados.length === 0"
-      class="gestion-tipos-contrato__estado"
-    >
-      <span class="material-symbols-outlined gestion-tipos-contrato__estado-icono">description</span>
-      {{
-        busqueda.trim()
-          ? "No hay tipos de contrato que coincidan con la búsqueda."
-          : "No hay tipos de contrato registrados."
-      }}
-    </div>
+            <VaButton
+              preset="secondary"
+              icon="mso-refresh"
+              :loading="cargando"
+              @click="cargarTipos"
+            >
+              Actualizar
+            </VaButton>
 
-    <VaDataTable
-      v-else
-      class="gestion-tipos-contrato__tabla"
-      :items="tiposFiltrados"
-      :columns="columnas"
-      :per-page="tiposFiltrados.length || 1"
-      striped
-      hoverable
-    >
-      <template #cell(nombre)="{ rowData }">
-        <div class="gestion-tipos-contrato__celda-nombre">
-          <strong>{{ rowData.nombre }}</strong>
-          <small v-if="rowData.descripcion">{{ rowData.descripcion }}</small>
+            <VaButton
+              v-if="puedeCrear"
+              color="primary"
+              icon="mso-add"
+              @click="abrirCrear"
+            >
+              Nuevo tipo
+            </VaButton>
+          </div>
         </div>
       </template>
 
-      <template #cell(codigo)="{ value }">
-        <code class="gestion-tipos-contrato__codigo">{{ value || "—" }}</code>
-      </template>
+      <div v-if="!puedeVer" class="gestion-tipos-contrato__estado">
+        <span class="material-symbols-outlined gestion-tipos-contrato__estado-icono">lock</span>
+        No tenés permisos para ver los tipos de contrato.
+      </div>
 
-      <template #cell(estado)="{ rowData }">
-        <VaBadge
-          :text="rowData.activo ? 'Activo' : 'Inactivo'"
-          :color="rowData.activo ? 'success' : 'secondary'"
+      <div v-else-if="cargando" class="gestion-tipos-contrato__estado">
+        <span class="material-symbols-outlined gestion-tipos-contrato__estado-icono">hourglass_empty</span>
+        Cargando tipos de contrato...
+      </div>
+
+      <div
+        v-else-if="tiposFiltrados.length === 0"
+        class="gestion-tipos-contrato__estado"
+      >
+        <span class="material-symbols-outlined gestion-tipos-contrato__estado-icono">description</span>
+        {{
+          busqueda.trim()
+            ? "No hay tipos de contrato que coincidan con la búsqueda."
+            : "No hay tipos de contrato registrados."
+        }}
+      </div>
+
+      <VaDataTable
+        v-else
+        class="gestion-tipos-contrato__tabla"
+        :items="tiposFiltrados"
+        :columns="columnas"
+        :per-page="porPaginaTipos"
+        :current-page="paginaTiposActual"
+        hoverable
+      >
+        <template #cell(nombre)="{ rowData }">
+          <div class="gestion-tipos-contrato__celda-nombre">
+            <strong>{{ rowData.nombre }}</strong>
+            <small v-if="rowData.descripcion">{{ rowData.descripcion }}</small>
+          </div>
+        </template>
+
+        <template #cell(codigo)="{ value }">
+          <code class="gestion-tipos-contrato__codigo">{{ value || "—" }}</code>
+        </template>
+
+        <template #cell(estado)="{ rowData }">
+          <VaBadge
+            :text="rowData.activo ? 'Activo' : 'Inactivo'"
+            :color="rowData.activo ? 'success' : 'secondary'"
+          />
+        </template>
+
+        <template #cell(contratos)="{ rowData }">
+          <span :title="textoContratos(rowData)">
+            {{ rowData.contratosAsociados }}
+          </span>
+          <small v-if="rowData.contratosPendientes > 0" class="gestion-tipos-contrato__pendientes">
+            {{ rowData.contratosPendientes }} pendiente(s)
+          </small>
+        </template>
+
+        <template #cell(acciones)="{ rowData }">
+          <div class="gestion-tipos-contrato__acciones">
+            <VaButton
+              v-if="puedeModificar"
+              size="small"
+              preset="primary"
+              icon="mso-edit"
+              :title="rowData.motivoNoEditable || 'Editar tipo de contrato'"
+              @click="abrirEditar(rowData)"
+            >
+              Editar
+            </VaButton>
+
+            <VaButton
+              v-if="puedeModificar"
+              size="small"
+              preset="secondary"
+              :color="rowData.activo ? 'danger' : 'success'"
+              :disabled="rowData.activo && !rowData.puedeDesactivar"
+              :title="rowData.activo
+                ? (rowData.motivoNoDesactivable || 'Desactivar tipo de contrato')
+                : 'Activar tipo de contrato'"
+              @click="confirmarEstado(rowData)"
+            >
+              {{ rowData.activo ? "Desactivar" : "Activar" }}
+            </VaButton>
+
+            <VaButton
+              v-if="puedeEliminar"
+              size="small"
+              color="danger"
+              icon="mso-delete"
+              :disabled="!rowData.puedeEliminar"
+              :title="rowData.motivoNoEliminable || 'Eliminar tipo de contrato'"
+              @click="confirmarEliminar(rowData)"
+            >
+              Eliminar
+            </VaButton>
+          </div>
+        </template>
+      </VaDataTable>
+
+      <template v-if="puedeVer && !cargando" #footer>
+        <span class="gestion-tipos-contrato__pie-info">
+          <template v-if="tiposFiltrados.length">
+            Mostrando {{ inicioTipos }}–{{ finTipos }} de {{ tiposFiltrados.length }}
+            {{ tiposFiltrados.length === 1 ? "tipo de contrato" : "tipos de contrato" }}
+          </template>
+          <template v-else>0 tipos de contrato</template>
+        </span>
+        <VaPagination
+          v-if="paginasTipos > 1"
+          v-model="paginaTipos"
+          :total="tiposFiltrados.length"
+          :page-size="porPaginaTipos"
+          :visible-pages="5"
+          boundary-links
+          direction-links
         />
       </template>
-
-      <template #cell(contratos)="{ rowData }">
-        <span :title="textoContratos(rowData)">
-          {{ rowData.contratosAsociados }}
-        </span>
-        <small v-if="rowData.contratosPendientes > 0" class="gestion-tipos-contrato__pendientes">
-          {{ rowData.contratosPendientes }} pendiente(s)
-        </small>
-      </template>
-
-      <template #cell(acciones)="{ rowData }">
-        <div class="gestion-tipos-contrato__acciones">
-          <VaButton
-            v-if="puedeModificar"
-            size="small"
-            preset="primary"
-            icon="mso-edit"
-            :title="rowData.motivoNoEditable || 'Editar tipo de contrato'"
-            @click="abrirEditar(rowData)"
-          >
-            Editar
-          </VaButton>
-
-          <VaButton
-            v-if="puedeModificar"
-            size="small"
-            preset="secondary"
-            :color="rowData.activo ? 'danger' : 'success'"
-            :disabled="rowData.activo && !rowData.puedeDesactivar"
-            :title="rowData.activo
-              ? (rowData.motivoNoDesactivable || 'Desactivar tipo de contrato')
-              : 'Activar tipo de contrato'"
-            @click="confirmarEstado(rowData)"
-          >
-            {{ rowData.activo ? "Desactivar" : "Activar" }}
-          </VaButton>
-
-          <VaButton
-            v-if="puedeEliminar"
-            size="small"
-            color="danger"
-            icon="mso-delete"
-            :disabled="!rowData.puedeEliminar"
-            :title="rowData.motivoNoEliminable || 'Eliminar tipo de contrato'"
-            @click="confirmarEliminar(rowData)"
-          >
-            Eliminar
-          </VaButton>
-        </div>
-      </template>
-    </VaDataTable>
+    </AdminTablaPanel>
 
     <!-- Alta / edición -->
     <VaModal
       v-model="modalVisible"
-      :title="modoEdicion ? 'Editar tipo de contrato' : 'Nuevo tipo de contrato'"
       close-button
       hide-default-actions
       size="large"
       :no-dismiss="guardando"
     >
+      <template #header>
+        <div class="gestion-tipos-contrato__modal-encabezado">
+          <span class="gestion-tipos-contrato__modal-icono material-symbols-outlined">description</span>
+          <div class="gestion-tipos-contrato__modal-textos">
+            <h3>{{ modoEdicion ? "Editar tipo de contrato" : "Nuevo tipo de contrato" }}</h3>
+            <p>
+              {{
+                modoEdicion
+                  ? "Ajustá el nombre, la descripción o la plantilla legal. El código no cambia."
+                  : "Completá los datos y la plantilla que se usará al generar contratos."
+              }}
+            </p>
+          </div>
+        </div>
+      </template>
+
       <VaForm ref="formTipoContrato" @submit.prevent="guardar">
         <div class="gestion-tipos-contrato__form">
           <BaseAlert v-if="errorMessage" :message="errorMessage" type="error" />
 
-          <VaInput
-            v-model="form.nombre"
-            :rules="[reglas.requerido, reglas.max100]"
-            label="Nombre"
-            placeholder="Ej: Acuerdo de confidencialidad"
-            counter
-            :max-length="100"
-            :disabled="modoEdicion && form.puedeEditar === false"
-            :error="!!errores.nombre"
-            :error-messages="errores.nombre || undefined"
-          />
+          <div class="gestion-tipos-contrato__fila">
+            <VaInput
+              v-model="form.nombre"
+              :rules="[reglas.requerido, reglas.max100]"
+              label="Nombre"
+              placeholder="Ej: Acuerdo de confidencialidad"
+              counter
+              :max-length="100"
+              :disabled="modoEdicion && form.puedeEditar === false"
+              :error="!!errores.nombre"
+              :error-messages="errores.nombre || undefined"
+            />
 
-          <VaInput
+            <VaInput
+              v-if="modoEdicion"
+              v-model="form.codigo"
+              label="Código"
+              readonly
+              disabled
+              hint="Se genera automáticamente."
+            />
+          </div>
+
+          <VaTextarea
             v-model="form.descripcion"
-            type="textarea"
             label="Descripción"
             placeholder="Descripción opcional del tipo de contrato"
             :max-length="200"
+            :max-rows="3"
             counter
-            :rows="3"
             :error="!!errores.descripcion"
             :error-messages="errores.descripcion || undefined"
           />
 
-          <VaInput
-            v-if="modoEdicion"
-            v-model="form.codigo"
-            label="Código"
-            readonly
-            disabled
-            hint="El código se genera automáticamente y no cambia."
-          />
+          <section class="gestion-tipos-contrato__plantilla-card">
+            <div class="gestion-tipos-contrato__plantilla-cabecera">
+              <div>
+                <span class="gestion-tipos-contrato__plantilla-titulo">Plantilla legal</span>
+                <p class="gestion-tipos-contrato__plantilla-subtitulo">
+                  Texto base del contrato. Insertá los placeholders donde los necesites.
+                </p>
+              </div>
 
-          <div>
-            <VaInput
+              <VaButton
+                size="small"
+                preset="secondary"
+                icon="mso-verified"
+                :loading="validando"
+                @click="validarPlantilla"
+              >
+                Validar plantilla
+              </VaButton>
+            </div>
+
+            <VaTextarea
               v-model="form.plantilla"
-              type="textarea"
-              label="Plantilla legal"
+              class="gestion-tipos-contrato__plantilla"
               placeholder="Escribí la plantilla del contrato..."
               :max-length="100000"
-              counter
-              :rows="14"
+              :max-rows="12"
               :disabled="modoEdicion && form.puedeEditar === false"
               :error="!!errores.plantilla"
               :error-messages="errores.plantilla || undefined"
@@ -215,58 +271,52 @@
               <span class="gestion-tipos-contrato__placeholders-label">
                 Insertar placeholder:
               </span>
-              <VaButton
+              <button
                 v-for="placeholder in placeholders"
                 :key="placeholder.token"
-                size="small"
-                preset="secondary"
+                type="button"
+                class="gestion-tipos-contrato__placeholder"
+                :title="placeholder.descripcion"
                 :disabled="modoEdicion && form.puedeEditar === false"
                 @click="insertarPlaceholder(placeholder.token)"
               >
                 {{ placeholder.token }}
-              </VaButton>
+              </button>
             </div>
-          </div>
 
-          <p v-if="modoEdicion && form.puedeEditar === false" class="gestion-tipos-contrato__hint">
+            <div v-if="validacion" class="gestion-tipos-contrato__validacion">
+              <VaBadge
+                :text="validacion.valido ? 'Plantilla válida' : 'Plantilla con errores'"
+                :color="validacion.valido ? 'success' : 'danger'"
+              />
+
+              <ul v-if="validacion.placeholdersDesconocidos?.length" class="gestion-tipos-contrato__lista">
+                <li v-for="item in validacion.placeholdersDesconocidos" :key="item">
+                  Placeholder desconocido: <code>{{ item }}</code>
+                </li>
+              </ul>
+
+              <ul v-if="validacion.placeholdersConFormatoInvalido?.length" class="gestion-tipos-contrato__lista">
+                <li v-for="item in validacion.placeholdersConFormatoInvalido" :key="item">
+                  Formato inválido: <code>{{ item }}</code>. Debe ser exactamente
+                  <code>{{ item.trim() }}</code>.
+                </li>
+              </ul>
+
+              <ul v-if="validacion.advertencias?.length" class="gestion-tipos-contrato__lista gestion-tipos-contrato__lista--advertencia">
+                <li v-for="item in validacion.advertencias" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+          </section>
+
+          <p
+            v-if="modoEdicion && form.puedeEditar === false"
+            class="gestion-tipos-contrato__aviso"
+          >
+            <span class="material-symbols-outlined">info</span>
             Este tipo tiene contratos pendientes o activos asociados. Solo podés
             modificar la descripción.
           </p>
-
-          <div class="gestion-tipos-contrato__validacion-acciones">
-            <VaButton
-              preset="secondary"
-              :loading="validando"
-              icon="mso-fact-check"
-              @click="validarPlantilla"
-            >
-              Validar plantilla
-            </VaButton>
-          </div>
-
-          <div v-if="validacion" class="gestion-tipos-contrato__validacion">
-            <VaBadge
-              :text="validacion.valido ? 'Plantilla válida' : 'Plantilla con errores'"
-              :color="validacion.valido ? 'success' : 'danger'"
-            />
-
-            <ul v-if="validacion.placeholdersDesconocidos?.length" class="gestion-tipos-contrato__lista">
-              <li v-for="item in validacion.placeholdersDesconocidos" :key="item">
-                Placeholder desconocido: <code>{{ item }}</code>
-              </li>
-            </ul>
-
-            <ul v-if="validacion.placeholdersConFormatoInvalido?.length" class="gestion-tipos-contrato__lista">
-              <li v-for="item in validacion.placeholdersConFormatoInvalido" :key="item">
-                Formato inválido: <code>{{ item }}</code>. Debe ser exactamente
-                <code>{{ item.trim() }}</code>.
-              </li>
-            </ul>
-
-            <ul v-if="validacion.advertencias?.length" class="gestion-tipos-contrato__lista gestion-tipos-contrato__lista--advertencia">
-              <li v-for="item in validacion.advertencias" :key="item">{{ item }}</li>
-            </ul>
-          </div>
         </div>
       </VaForm>
 
@@ -381,6 +431,7 @@
 import adminTiposContratoService from "../../services/adminTiposContratoService";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
 
 const PLACEHOLDERS = [
   { token: "{{proyecto}}", descripcion: "Nombre y descripción del proyecto" },
@@ -400,12 +451,14 @@ const COLUMNAS = [
 
 export default {
   name: "GestionTiposContratoView",
-  components: { BaseAlert },
+  components: { BaseAlert, AdminTablaPanel },
   data() {
     return {
       tipos: [],
       busqueda: "",
       incluirInactivos: true,
+      paginaTipos: 1,
+      porPaginaTipos: 10,
       cargando: false,
       successMessage: "",
       errorMessage: "",
@@ -465,6 +518,22 @@ export default {
         );
       });
     },
+    paginasTipos() {
+      return Math.max(1, Math.ceil(this.tiposFiltrados.length / this.porPaginaTipos));
+    },
+    paginaTiposActual() {
+      return Math.min(this.paginaTipos, this.paginasTipos);
+    },
+    inicioTipos() {
+      if (!this.tiposFiltrados.length) return 0;
+      return (this.paginaTiposActual - 1) * this.porPaginaTipos + 1;
+    },
+    finTipos() {
+      return Math.min(
+        this.paginaTiposActual * this.porPaginaTipos,
+        this.tiposFiltrados.length
+      );
+    },
     soloDescripcionCambiada() {
       if (!this.modoEdicion || !this.formOriginal) return false;
       const original = this.formOriginal;
@@ -476,6 +545,15 @@ export default {
   watch: {
     busqueda() {
       this.successMessage = "";
+      this.paginaTipos = 1;
+    },
+    incluirInactivos() {
+      this.paginaTipos = 1;
+    },
+    tiposFiltrados() {
+      if (this.paginaTipos > this.paginasTipos) {
+        this.paginaTipos = this.paginasTipos;
+      }
     },
     "form.plantilla"() {
       this.validacion = null;
@@ -832,8 +910,9 @@ export default {
 
 .gestion-tipos-contrato__encabezado h1 {
   margin: 0;
-  color: var(--color-text);
-  font-size: 1.35rem;
+  color: var(--color-primary);
+  font-size: 2.25rem;
+  font-weight: 800;
 }
 
 .gestion-tipos-contrato__subtitulo {
@@ -884,11 +963,12 @@ export default {
 
 .gestion-tipos-contrato__tabla {
   width: 100%;
-  max-width: 1200px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
   --va-data-table-cell-padding: 0.65rem 0.8rem;
+}
+
+.gestion-tipos-contrato__pie-info {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
 .gestion-tipos-contrato__tabla :deep(.va-data-table__table) {
@@ -940,7 +1020,61 @@ export default {
 .gestion-tipos-contrato__form {
   display: flex;
   flex-direction: column;
+  gap: 1.1rem;
+}
+
+.gestion-tipos-contrato__form :deep(.va-input-label) {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-text-muted) !important;
+}
+
+.gestion-tipos-contrato__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 1rem;
+  align-items: start;
+}
+
+.gestion-tipos-contrato__plantilla-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.05rem 1.1rem;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+}
+
+.gestion-tipos-contrato__plantilla-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.gestion-tipos-contrato__plantilla-titulo {
+  display: block;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.gestion-tipos-contrato__plantilla-subtitulo {
+  margin: 0.15rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.gestion-tipos-contrato__plantilla :deep(textarea) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--color-text);
 }
 
 .gestion-tipos-contrato__placeholders {
@@ -948,27 +1082,44 @@ export default {
   align-items: center;
   gap: 0.4rem;
   flex-wrap: wrap;
-  margin-top: 0.5rem;
 }
 
 .gestion-tipos-contrato__placeholders-label {
+  margin-right: 0.15rem;
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
-.gestion-tipos-contrato__validacion-acciones {
-  display: flex;
-  justify-content: flex-start;
+.gestion-tipos-contrato__placeholder {
+  padding: 0.22rem 0.5rem;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 0.45rem;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.gestion-tipos-contrato__placeholder:hover:not(:disabled) {
+  background: var(--color-chip);
+  border-color: var(--color-primary);
+}
+
+.gestion-tipos-contrato__placeholder:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .gestion-tipos-contrato__validacion {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.75rem;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-muted);
+  border-radius: 0.6rem;
+  background: var(--color-surface);
 }
 
 .gestion-tipos-contrato__lista {
@@ -976,10 +1127,30 @@ export default {
   padding-left: 1.1rem;
   color: var(--color-text-muted);
   font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .gestion-tipos-contrato__lista--advertencia {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
+}
+
+.gestion-tipos-contrato__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  color: var(--color-warning-text);
+  background: var(--color-warning-soft);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 0.6rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.gestion-tipos-contrato__aviso .material-symbols-outlined {
+  font-size: 1.05rem;
+  line-height: 1.4;
 }
 
 .gestion-tipos-contrato__hint {
@@ -989,11 +1160,54 @@ export default {
   line-height: 1.45;
 }
 
+.gestion-tipos-contrato__modal-encabezado {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding-right: 1.75rem;
+}
+
+.gestion-tipos-contrato__modal-icono {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.7rem;
+  color: var(--color-primary);
+  background: var(--color-chip);
+  font-size: 1.35rem;
+}
+
+.gestion-tipos-contrato__modal-textos h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.gestion-tipos-contrato__modal-textos p {
+  margin: 0.2rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .gestion-tipos-contrato__modal-acciones {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
   width: 100%;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+@media (max-width: 640px) {
+  .gestion-tipos-contrato__fila {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

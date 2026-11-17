@@ -1,5 +1,10 @@
 <template>
   <div class="reparacion-cronograma">
+    <AdminVolver
+      :to="{ name: 'configuracion-sistema' }"
+      texto="Volver a configuración"
+    />
+
     <header class="reparacion-cronograma__header">
       <h1>Reparación de cronogramas</h1>
       <p>
@@ -253,6 +258,7 @@ import adminService from "../../services/adminService";
 import { tienePermiso } from "../../services/authState";
 import { cargarResumenUsuario } from "../../services/notificacionState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminVolver from "../../components/admin/AdminVolver.vue";
 import { formatearFecha } from "../../utils/fechas.js";
 import {
   LIMITE_PROYECTOS_DEFAULT,
@@ -272,7 +278,7 @@ let controlador = null;
  */
 export default {
   name: "ReparacionCronogramaView",
-  components: { BaseAlert },
+  components: { BaseAlert, AdminVolver },
   data() {
     return {
       filtros: {
@@ -509,8 +515,9 @@ export default {
 
 .reparacion-cronograma__header h1 {
   margin: 0;
-  color: var(--color-text);
-  font-size: clamp(1.5rem, 2vw, 2rem);
+  color: var(--color-primary);
+  font-size: 2.25rem;
+  font-weight: 800;
 }
 
 .reparacion-cronograma__header p {

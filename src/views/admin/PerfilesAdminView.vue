@@ -5,88 +5,90 @@
         <h1>Perfiles</h1>
         <p>Consultá los perfiles registrados en la plataforma. Vista de solo lectura.</p>
       </div>
-      <button type="button" class="admin-perfiles__refresh" :disabled="cargando" @click="cargarPerfiles(paginacion.paginaActual)">
+      <button type="button" class="admin-perfiles__refresh" :disabled="cargando" @click="cargarPerfiles">
         <span class="material-symbols-outlined">refresh</span>
         Actualizar
       </button>
     </header>
 
-    <div class="admin-perfiles__toolbar">
-      <input
-        v-model="texto"
-        type="search"
-        placeholder="Nombre, apellido, correo, DNI o nombre artístico"
-        class="admin-perfiles__input"
-        @keyup.enter="buscarAhora"
-      />
-
-      <select v-model="idProfesion" class="admin-perfiles__select" @change="buscarAhora">
-        <option value="">Todas las profesiones</option>
-        <option v-for="profesion in profesiones" :key="profesion.idProfesion" :value="String(profesion.idProfesion)">
-          {{ profesion.nombre }}
-        </option>
-      </select>
-
-      <select v-model="estado" class="admin-perfiles__select" @change="buscarAhora">
-        <option value="">Todos los estados</option>
-        <option value="ACTIVO">Activo</option>
-        <option value="DESHABILITADO">Deshabilitado</option>
-        <option value="PENDIENTE_BAJA">Pendiente de baja</option>
-        <option value="BAJA">Baja</option>
-      </select>
-
-      <button type="button" class="admin-perfiles__search" :disabled="cargando" @click="buscarAhora">
-        Buscar
-      </button>
-    </div>
-
     <p v-if="errorMessage" class="admin-perfiles__error">{{ errorMessage }}</p>
-    <div v-if="cargando" class="admin-perfiles__state">Cargando perfiles...</div>
-    <div v-else-if="!perfiles.length" class="admin-perfiles__state">No hay perfiles para mostrar.</div>
-    <div v-else class="admin-perfiles__table-wrapper">
-      <table class="admin-perfiles__table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Perfil</th>
-            <th>Usuario</th>
-            <th>Correo</th>
-            <th>Profesión</th>
-            <th>Estado</th>
-            <th>Baja</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="perfil in perfiles" :key="perfil.idPerfil">
-            <td class="admin-perfiles__mono">{{ perfil.idPerfil }}</td>
-            <td>
-              <div class="admin-perfiles__profile">
-                <img v-if="perfil.fotoUrl" :src="resolverFotoUrl(perfil.fotoUrl)" alt="" class="admin-perfiles__avatar" />
-                <span v-else class="admin-perfiles__avatar admin-perfiles__avatar--placeholder">P</span>
-                <span>{{ perfil.nombreArtistico || 'Sin nombre artístico' }}</span>
-              </div>
-            </td>
-            <td>{{ nombreUsuario(perfil) }}</td>
-            <td>{{ perfil.correo || '—' }}</td>
-            <td>{{ perfil.profesion || '—' }}</td>
-            <td><span class="admin-perfiles__badge" :class="estadoClase(perfil.estado)">{{ estadoAmigable(perfil.estado) }}</span></td>
-            <td>{{ perfil.fechaSolicitudBaja ? formatearFecha(perfil.fechaSolicitudBaja) : '—' }}</td>
-            <td>
-              <button type="button" class="admin-perfiles__detail" @click="verDetalle(perfil)">
-                Ver detalle
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
 
-    <div v-if="paginacion.totalPaginas > 1" class="admin-perfiles__pagination">
-      <button type="button" :disabled="paginacion.primera || cargando" @click="cargarPerfiles(paginacion.paginaActual - 1)">Anterior</button>
-      <span>Página {{ paginacion.paginaActual + 1 }} de {{ paginacion.totalPaginas }} · {{ paginacion.totalElementos }} perfiles</span>
-      <button type="button" :disabled="paginacion.ultima || cargando" @click="cargarPerfiles(paginacion.paginaActual + 1)">Siguiente</button>
-    </div>
+    <AdminTablaFiltrable
+      :columns="columnas"
+      :items="perfilesTabla"
+      :loading="cargando"
+      entidad="perfiles"
+      empty-text="No hay perfiles para mostrar."
+    >
+      <template #toolbar>
+        <div class="admin-perfiles__toolbar">
+          <input
+            v-model="texto"
+            type="search"
+            placeholder="Nombre, apellido, correo, DNI o nombre artístico"
+            class="admin-perfiles__input"
+            @keyup.enter="buscarAhora"
+          />
+
+          <select v-model="idProfesion" class="admin-perfiles__select" @change="buscarAhora">
+            <option value="">Todas las profesiones</option>
+            <option v-for="profesion in profesiones" :key="profesion.idProfesion" :value="String(profesion.idProfesion)">
+              {{ profesion.nombre }}
+            </option>
+          </select>
+
+          <select v-model="estado" class="admin-perfiles__select" @change="buscarAhora">
+            <option value="">Todos los estados</option>
+            <option value="ACTIVO">Activo</option>
+            <option value="DESHABILITADO">Deshabilitado</option>
+            <option value="PENDIENTE_BAJA">Pendiente de baja</option>
+            <option value="BAJA">Baja</option>
+          </select>
+
+          <button type="button" class="admin-perfiles__search" :disabled="cargando" @click="buscarAhora">
+            Buscar
+          </button>
+        </div>
+      </template>
+
+      <template #cell(idPerfil)="{ value }">
+        <span class="admin-perfiles__mono">{{ value }}</span>
+      </template>
+
+      <template #cell(nombreArtistico)="{ rowData }">
+        <div class="admin-perfiles__profile">
+          <img v-if="rowData.fotoUrl" :src="resolverFotoUrl(rowData.fotoUrl)" alt="" class="admin-perfiles__avatar" />
+          <span v-else class="admin-perfiles__avatar admin-perfiles__avatar--placeholder">P</span>
+          <span>{{ rowData.nombreArtistico || 'Sin nombre artístico' }}</span>
+        </div>
+      </template>
+
+      <template #cell(usuarioCompleto)="{ value }">
+        {{ value || '—' }}
+      </template>
+
+      <template #cell(correo)="{ value }">
+        {{ value || '—' }}
+      </template>
+
+      <template #cell(profesion)="{ value }">
+        {{ value || '—' }}
+      </template>
+
+      <template #cell(estado)="{ value }">
+        <span class="admin-perfiles__badge" :class="estadoClase(value)">{{ estadoAmigable(value) }}</span>
+      </template>
+
+      <template #cell(fechaSolicitudBaja)="{ value }">
+        {{ value ? formatearFecha(value) : '—' }}
+      </template>
+
+      <template #cell(acciones)="{ rowData }">
+        <button type="button" class="admin-perfiles__detail" @click="verDetalle(rowData)">
+          Ver detalle
+        </button>
+      </template>
+    </AdminTablaFiltrable>
   </div>
 </template>
 
@@ -95,9 +97,11 @@ import adminService from "../../services/adminService";
 import adminCaracteristicasService from "../../services/adminCaracteristicasService";
 import { formatearFecha } from "../../utils/fechas";
 import { resolverFotoUrl } from "../../utils/fotos";
+import AdminTablaFiltrable from "../../components/admin/AdminTablaFiltrable.vue";
 
 export default {
   name: "PerfilesAdminView",
+  components: { AdminTablaFiltrable },
   data() {
     return {
       perfiles: [],
@@ -107,18 +111,86 @@ export default {
       estado: "",
       cargando: false,
       errorMessage: "",
-      paginacion: {
-        paginaActual: 0,
-        totalPaginas: 1,
-        totalElementos: 0,
-        primera: true,
-        ultima: true,
-      },
+      opcionesEstado: [
+        { value: "ACTIVO", label: "Activo" },
+        { value: "DESHABILITADO", label: "Deshabilitado" },
+        { value: "PENDIENTE_BAJA", label: "Pendiente de baja" },
+        { value: "BAJA", label: "Baja" },
+      ],
     };
+  },
+  computed: {
+    /**
+     * Agrega el nombre completo del usuario para ordenar/filtrar esa columna
+     * sin depender de dos campos separados.
+     */
+    perfilesTabla() {
+      return this.perfiles.map((perfil) => ({
+        ...perfil,
+        usuarioCompleto: this.nombreUsuario(perfil),
+      }));
+    },
+    columnas() {
+      return [
+        {
+          key: "idPerfil",
+          label: "ID",
+          sortable: true,
+          filter: { type: "text", placeholder: "ID" },
+        },
+        {
+          key: "nombreArtistico",
+          label: "Perfil",
+          sortable: true,
+          filter: { type: "text", placeholder: "Perfil" },
+        },
+        {
+          key: "usuarioCompleto",
+          label: "Usuario",
+          sortable: true,
+          filter: { type: "text", placeholder: "Usuario" },
+        },
+        {
+          key: "correo",
+          label: "Correo",
+          sortable: true,
+          filter: { type: "text", placeholder: "Correo" },
+        },
+        {
+          key: "profesion",
+          label: "Profesión",
+          sortable: true,
+          filter: { type: "text", placeholder: "Profesión" },
+        },
+        {
+          key: "estado",
+          label: "Estado",
+          sortable: true,
+          filter: {
+            type: "select",
+            options: this.opcionesEstado.map((opcion) => ({
+              value: opcion.value,
+              text: opcion.label,
+            })),
+          },
+        },
+        {
+          key: "fechaSolicitudBaja",
+          label: "Baja",
+          sortable: true,
+          filter: { type: "text", placeholder: "Fecha" },
+          value: (perfil) =>
+            perfil.fechaSolicitudBaja
+              ? this.formatearFecha(perfil.fechaSolicitudBaja)
+              : "",
+        },
+        { key: "acciones", label: "Acciones", sortable: false },
+      ];
+    },
   },
   async mounted() {
     await this.cargarProfesiones();
-    await this.cargarPerfiles(0);
+    await this.cargarPerfiles();
   },
   methods: {
     formatearFecha,
@@ -132,24 +204,21 @@ export default {
         this.profesiones = [];
       }
     },
-    async cargarPerfiles(page = 0) {
+    /**
+     * `todos: true` trae el listado completo (sin paginar) para que el orden
+     * y los filtros por columna se apliquen sobre todos los perfiles.
+     */
+    async cargarPerfiles() {
       this.cargando = true;
       this.errorMessage = "";
       try {
-        const params = { page, size: 20 };
+        const params = { todos: true };
         if (this.texto.trim()) params.texto = this.texto.trim();
         if (this.idProfesion) params.idProfesion = Number(this.idProfesion);
         if (this.estado) params.estado = this.estado;
 
         const data = (await adminService.buscarPerfiles(params))?.data || {};
         this.perfiles = Array.isArray(data.contenido) ? data.contenido : [];
-        this.paginacion = {
-          paginaActual: data.paginaActual ?? page,
-          totalPaginas: data.totalPaginas ?? 1,
-          totalElementos: data.totalElementos ?? this.perfiles.length,
-          primera: data.primera ?? true,
-          ultima: data.ultima ?? true,
-        };
       } catch (error) {
         this.perfiles = [];
         this.errorMessage = error?.response?.data?.message || "No se pudieron cargar los perfiles.";
@@ -158,7 +227,7 @@ export default {
       }
     },
     buscarAhora() {
-      this.cargarPerfiles(0);
+      this.cargarPerfiles();
     },
     verDetalle(perfil) {
       this.$router.push({ name: "admin-perfil-detalle", params: { id: perfil.idPerfil } });
@@ -167,13 +236,7 @@ export default {
       return [perfil.nombreUsuario, perfil.apellidoUsuario].filter(Boolean).join(" ") || "—";
     },
     estadoAmigable(estado) {
-      const etiquetas = {
-        ACTIVO: "Activo",
-        DESHABILITADO: "Deshabilitado",
-        PENDIENTE_BAJA: "Pendiente de baja",
-        BAJA: "Baja",
-      };
-      return etiquetas[estado] || estado || "—";
+      return this.opcionesEstado.find((opcion) => opcion.value === estado)?.label || estado || "—";
     },
     estadoClase(estado) {
       return {
@@ -193,8 +256,7 @@ export default {
   margin: 0 auto;
 }
 .admin-perfiles__header,
-.admin-perfiles__toolbar,
-.admin-perfiles__pagination {
+.admin-perfiles__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -205,7 +267,9 @@ export default {
 }
 .admin-perfiles h1 {
   margin: 0;
-  color: var(--color-text);
+  color: var(--color-primary);
+  font-size: 2.25rem;
+  font-weight: 800;
 }
 .admin-perfiles p {
   margin: 0.35rem 0 0;
@@ -213,7 +277,6 @@ export default {
 }
 .admin-perfiles__refresh,
 .admin-perfiles__search,
-.admin-perfiles__pagination button,
 .admin-perfiles__detail {
   padding: 0.6rem 0.85rem;
   color: var(--color-primary);
@@ -230,15 +293,13 @@ export default {
   gap: 0.4rem;
 }
 .admin-perfiles__refresh:disabled,
-.admin-perfiles__search:disabled,
-.admin-perfiles__pagination button:disabled {
+.admin-perfiles__search:disabled {
   cursor: wait;
   opacity: 0.5;
 }
 .admin-perfiles__toolbar {
   justify-content: flex-start;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
 }
 .admin-perfiles__input,
 .admin-perfiles__select {
@@ -266,39 +327,6 @@ export default {
   border: 1px solid var(--color-danger-border);
   border-radius: 0.5rem;
   font-size: 0.85rem;
-}
-.admin-perfiles__state {
-  padding: 3rem 1rem;
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-soft);
-  border-radius: 0.75rem;
-  text-align: center;
-}
-.admin-perfiles__table-wrapper {
-  overflow-x: auto;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-soft);
-  border-radius: 0.75rem;
-}
-.admin-perfiles__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.84rem;
-}
-.admin-perfiles__table th,
-.admin-perfiles__table td {
-  padding: 0.8rem 0.85rem;
-  border-bottom: 1px solid var(--color-border-soft);
-  text-align: left;
-  vertical-align: middle;
-}
-.admin-perfiles__table th {
-  color: var(--color-text-muted);
-  font-weight: 600;
-}
-.admin-perfiles__table td {
-  color: var(--color-text);
 }
 .admin-perfiles__mono {
   font-family: monospace;
@@ -345,12 +373,6 @@ export default {
 .admin-perfiles__badge--baja {
   color: var(--color-text-muted);
   background: var(--color-surface-muted);
-}
-.admin-perfiles__pagination {
-  justify-content: center;
-  margin-top: 1rem;
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
 }
 @media (max-width: 720px) {
   .admin-perfiles__header,
