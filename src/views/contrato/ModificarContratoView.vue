@@ -231,8 +231,8 @@
             />
 
             <p class="modificar-contrato__nota">
-              Si dejás el nombre vacío y cambia el tipo de acuerdo, el backend
-              lo regenera como “tipo - proyecto”. La descripción vacía conserva
+              Si dejás el nombre vacío y cambia el tipo de acuerdo, se regenera
+              como “tipo - proyecto”. Si la descripción queda vacía, se conserva
               la actual.
             </p>
           </section>
@@ -416,7 +416,7 @@
           <section class="modificar-contrato__panel modificar-contrato__panel--compacto">
             <h2 class="modificar-contrato__seccion-titulo">Guardar</h2>
             <p class="modificar-contrato__nota">
-              El backend reconcilia las firmas y genera la nueva versión. Sólo se
+              Las firmas se reconcilian y se genera la nueva versión. Sólo se
               habilita después de una previsualización válida.
             </p>
             <VaButton

@@ -888,7 +888,7 @@ export default {
 /* Grid de perfiles */
 .dashboard-usuario__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.25rem;
 }
 
@@ -1297,15 +1297,18 @@ export default {
 }
 
 .perfil-card__biografia {
-  margin: 0;
-  padding: 0.6rem 1rem;
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border-soft);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  flex-shrink: 0;
   overflow: hidden;
+  margin: 0;
+  padding: 0.65rem 1rem;
+  min-height: calc(1.45em * 3);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 /* Footer de la tarjeta */
@@ -1313,6 +1316,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: auto;
   padding: 0.6rem 1rem;
   border-top: 1px solid var(--color-border-soft);
 }

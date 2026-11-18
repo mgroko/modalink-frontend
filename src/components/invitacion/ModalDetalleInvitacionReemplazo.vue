@@ -10,11 +10,7 @@
   >
     <template #header>
       <h3 class="va-h5 detalle-reemplazo__titulo">
-        {{
-          confirmandoAceptacion
-            ? "Confirmar aceptación de reemplazo"
-            : "Detalle de invitación de reemplazo"
-        }}
+        Detalle de invitación de reemplazo
       </h3>
     </template>
 
@@ -33,6 +29,62 @@
           </span>
         </div>
       </section>
+
+      <section
+        v-if="cargandoProyecto"
+        class="detalle-reemplazo__proyecto-info detalle-reemplazo__proyecto-info--cargando"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">
+          hourglass_empty
+        </span>
+        Cargando información del proyecto…
+      </section>
+
+      <section v-else-if="proyecto" class="detalle-reemplazo__proyecto-info">
+        <header class="detalle-reemplazo__proyecto-info-cabecera">
+          <span class="detalle-reemplazo__label">Información general</span>
+          <EstadoProyectoBadge :estado="proyecto.estado" />
+        </header>
+
+        <p
+          v-if="proyecto.descripcion"
+          class="detalle-reemplazo__proyecto-descripcion"
+          :title="proyecto.descripcion"
+        >
+          {{ proyecto.descripcion }}
+        </p>
+
+        <dl class="detalle-reemplazo__proyecto-meta">
+          <div>
+            <dt>Privacidad</dt>
+            <dd>{{ privacidadProyecto }}</dd>
+          </div>
+          <div>
+            <dt>Inicio</dt>
+            <dd>{{ formatearFechaCorta(proyecto.fechaInicio) }}</dd>
+          </div>
+          <div>
+            <dt>Entrega estimada</dt>
+            <dd>{{ formatearFechaCorta(proyecto.fechaEntregaEstipulada) }}</dd>
+          </div>
+          <div v-if="proyecto.fechaFinalizacion">
+            <dt>Finalización</dt>
+            <dd>{{ formatearFechaCorta(proyecto.fechaFinalizacion) }}</dd>
+          </div>
+          <div>
+            <dt>Director</dt>
+            <dd>{{ proyecto.nombreDirector || "—" }}</dd>
+          </div>
+          <div v-if="ubicacionProyecto">
+            <dt>Ubicación</dt>
+            <dd>{{ ubicacionProyecto }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <p v-else-if="errorProyecto" class="detalle-reemplazo__proyecto-nota">
+        {{ errorProyecto }}
+      </p>
 
       <dl class="detalle-reemplazo__meta">
         <div>
@@ -88,25 +140,14 @@
         si elige a otra persona, la invitación se cancelará.
       </p>
 
-      <BaseAlert v-if="error" :message="error" type="error" />
-
-      <p
-        v-if="confirmandoAceptacion"
-        class="detalle-reemplazo__aviso"
-      >
-        <template v-if="esActividad">
-          Se verificará tu disponibilidad. Si no hay una ventana válida, la
-          invitación no se aceptará.
-        </template>
-        <template v-else>
-          Quedarás pendiente de aprobación del director.
-        </template>
+      <p v-if="puedeGestionar && esActividad" class="detalle-reemplazo__aviso">
+        Se verificará tu disponibilidad. Si no hay una ventana válida, la
+        invitación no se aceptará.
       </p>
 
-      <p
-        v-if="confirmandoAceptacion && error && mostrarRechazo"
-        class="detalle-reemplazo__sugerencia"
-      >
+      <BaseAlert v-if="error" :message="error" type="error" />
+
+      <p v-if="error && mostrarRechazo" class="detalle-reemplazo__sugerencia">
         Podés rechazar la invitación para cerrar la gestión.
       </p>
     </div>
@@ -115,7 +156,7 @@
       <div class="detalle-reemplazo__acciones">
         <div class="detalle-reemplazo__acciones-izquierda">
           <VaButton
-            v-if="puedeGestionar && (!confirmandoAceptacion || mostrarRechazo)"
+            v-if="puedeGestionar"
             preset="secondary"
             color="danger"
             :disabled="gestionando"
@@ -126,33 +167,27 @@
         </div>
 
         <div class="detalle-reemplazo__acciones-principales">
-          <template v-if="confirmandoAceptacion">
-            <VaButton
-              preset="secondary"
-              :disabled="gestionando"
-              @click="cancelarConfirmacion"
-            >
-              Volver
-            </VaButton>
-            <VaButton
-              preset="primary"
-              :loading="gestionando"
-              :disabled="gestionando"
-              @click="confirmarAceptacion"
-            >
-              Confirmar aceptación
-            </VaButton>
-          </template>
-          <template v-else>
-            <VaButton preset="secondary" @click="cerrar">Cerrar</VaButton>
-            <VaButton
-              v-if="puedeGestionar"
-              preset="primary"
-              @click="solicitarAceptacion"
-            >
-              Aceptar invitación
-            </VaButton>
-          </template>
+          <VaButton
+            v-if="puedeIrAlProyecto"
+            preset="secondary"
+            icon="mso-open_in_new"
+            :disabled="gestionando"
+            @click="$emit('ver-proyecto', invitacion)"
+          >
+            Ver proyecto
+          </VaButton>
+          <VaButton preset="secondary" :disabled="gestionando" @click="cerrar">
+            Cerrar
+          </VaButton>
+          <VaButton
+            v-if="puedeGestionar"
+            preset="primary"
+            :loading="gestionando"
+            :disabled="gestionando"
+            @click="aceptar"
+          >
+            Aceptar invitación
+          </VaButton>
         </div>
       </div>
     </template>
@@ -161,6 +196,8 @@
 
 <script>
 import BaseAlert from "../AlertaBase.vue";
+import EstadoProyectoBadge from "../proyecto/EstadoProyectoBadge.vue";
+import proyectoService from "../../services/proyectoService.js";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import {
   ESTADOS_CANDIDATO_REEMPLAZO,
@@ -174,7 +211,7 @@ import {
 
 export default {
   name: "ModalDetalleInvitacionReemplazo",
-  components: { BaseAlert },
+  components: { BaseAlert, EstadoProyectoBadge },
   props: {
     modelValue: {
       type: Boolean,
@@ -197,19 +234,14 @@ export default {
       default: false,
     },
   },
-  emits: ["update:modelValue", "aceptar", "rechazar"],
+  emits: ["update:modelValue", "aceptar", "rechazar", "ver-proyecto"],
   data() {
     return {
-      confirmandoAceptacion: false,
+      proyecto: null,
+      cargandoProyecto: false,
+      errorProyecto: "",
+      idCargaProyecto: 0,
     };
-  },
-  watch: {
-    modelValue(valor) {
-      if (!valor) this.confirmandoAceptacion = false;
-    },
-    invitacion() {
-      this.confirmandoAceptacion = false;
-    },
   },
   computed: {
     puedeGestionar() {
@@ -229,6 +261,28 @@ export default {
     },
     tonoEstado() {
       return tonoEstadoCandidatoReemplazo(this.invitacion?.estado);
+    },
+    idProyectoInvitacion() {
+      return this.invitacion?.idProyecto ?? null;
+    },
+    /**
+     * Se puede abrir el proyecto cuando la información se pudo cargar
+     * (proyecto público / miembro del proyecto) o cuando la invitación ya
+     * quedó aceptada.
+     */
+    puedeIrAlProyecto() {
+      return this.idProyectoInvitacion != null && !!this.proyecto;
+    },
+    privacidadProyecto() {
+      const privacidad = this.proyecto?.privacidad;
+      if (privacidad === "PUBLICO") return "Público";
+      if (privacidad === "PRIVADO") return "Privado";
+      return privacidad || "—";
+    },
+    ubicacionProyecto() {
+      const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
+      const provincia = this.proyecto?.ubicacion?.ciudad?.provincia?.nombre;
+      return [ciudad, provincia].filter(Boolean).join(", ");
     },
     fechaInvitacion() {
       return this.invitacion?.fechaInvitacion
@@ -257,7 +311,28 @@ export default {
       return resto ? `${horas} h ${resto} min` : `${horas} h`;
     },
   },
+  watch: {
+    modelValue(valor) {
+      if (valor) {
+        this.cargarProyecto();
+      } else {
+        this.idCargaProyecto += 1;
+      }
+    },
+    "invitacion.idCandidato"() {
+      this.proyecto = null;
+      this.errorProyecto = "";
+      if (this.modelValue) this.cargarProyecto();
+    },
+  },
+  mounted() {
+    if (this.modelValue) this.cargarProyecto();
+  },
+  beforeUnmount() {
+    this.idCargaProyecto += 1;
+  },
   methods: {
+    formatearFechaCorta,
     descripcionInvitacionReemplazo,
     etiquetaTipoReemplazo,
     onCambioVisibilidad(valor) {
@@ -268,17 +343,37 @@ export default {
       if (this.gestionando) return;
       this.$emit("update:modelValue", false);
     },
-    solicitarAceptacion() {
-      if (this.gestionando || !this.puedeGestionar) return;
-      this.confirmandoAceptacion = true;
-    },
-    cancelarConfirmacion() {
-      if (this.gestionando) return;
-      this.confirmandoAceptacion = false;
-    },
-    confirmarAceptacion() {
+    aceptar() {
       if (this.gestionando || !this.puedeGestionar) return;
       this.$emit("aceptar", this.invitacion);
+    },
+    async cargarProyecto() {
+      const idProyecto = this.idProyectoInvitacion;
+      this.proyecto = null;
+      this.errorProyecto = "";
+
+      if (idProyecto == null) {
+        this.cargandoProyecto = false;
+        return;
+      }
+
+      const corrida = ++this.idCargaProyecto;
+      this.cargandoProyecto = true;
+
+      try {
+        const response = await proyectoService.obtener(idProyecto);
+        if (corrida !== this.idCargaProyecto) return;
+        this.proyecto = response?.data || null;
+      } catch (error) {
+        if (corrida !== this.idCargaProyecto) return;
+        this.proyecto = null;
+        this.errorProyecto =
+          error?.response?.status === 403
+            ? "El proyecto es privado: vas a poder ver su información cuando tu reemplazo sea aprobado."
+            : "No se pudo cargar la información del proyecto.";
+      } finally {
+        if (corrida === this.idCargaProyecto) this.cargandoProyecto = false;
+      }
     },
   },
 };
@@ -317,6 +412,86 @@ export default {
   color: var(--color-text);
   font-size: 1rem;
   font-weight: 700;
+}
+
+/* Información general del proyecto */
+.detalle-reemplazo__proyecto-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-soft);
+}
+
+.detalle-reemplazo__proyecto-info--cargando {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.detalle-reemplazo__proyecto-info--cargando .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+.detalle-reemplazo__proyecto-info-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.detalle-reemplazo__proyecto-descripcion {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.detalle-reemplazo__proyecto-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem 0.9rem;
+  margin: 0;
+}
+
+.detalle-reemplazo__proyecto-meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.detalle-reemplazo__proyecto-meta dt {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.detalle-reemplazo__proyecto-meta dd {
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detalle-reemplazo__proyecto-nota {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .detalle-reemplazo__label {
@@ -451,12 +626,18 @@ export default {
 }
 
 .detalle-reemplazo__acciones-principales {
+  flex-wrap: wrap;
+  justify-content: flex-end;
   margin-left: auto;
 }
 
 @media (max-width: 560px) {
   .detalle-reemplazo__meta {
     grid-template-columns: 1fr;
+  }
+
+  .detalle-reemplazo__proyecto-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .detalle-reemplazo__proyecto-linea {

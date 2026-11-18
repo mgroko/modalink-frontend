@@ -87,6 +87,7 @@
           preset="secondary"
           color="danger"
           size="small"
+          :disabled="gestionando"
           @click.stop="$emit('rechazar', invitacion)"
         >
           Rechazar
@@ -94,6 +95,8 @@
         <VaButton
           preset="primary"
           size="small"
+          :loading="gestionando"
+          :disabled="gestionando"
           @click.stop="$emit('aceptar', invitacion)"
         >
           Aceptar
@@ -121,6 +124,11 @@ export default {
     invitacion: {
       type: Object,
       required: true,
+    },
+    /** Deshabilita las acciones mientras se gestiona la invitación. */
+    gestionando: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ["abrir", "aceptar", "rechazar"],
