@@ -265,7 +265,12 @@ export default {
       return nombreCompletoPerfil(this.invitacion?.remitente);
     },
     fotoEmisor() {
-      return resolverFotoUrl(this.fotoUrl || this.invitacion?.remitente?.fotoUrl);
+      return resolverFotoUrl(
+        this.fotoUrl ||
+          this.invitacion?.remitente?.fotoUrl ||
+          this.invitacion?.remitente?.urlFoto ||
+          this.invitacion?.remitente?.fotoPerfil
+      );
     },
   },
   watch: {
@@ -305,6 +310,14 @@ export default {
       const idPerfil = this.invitacion?.remitente?.idPerfil;
       if (idPerfil == null) {
         this.fotoUrl = null;
+        return;
+      }
+
+      // Si la invitación ya trae la foto del remitente, no hace falta pedir
+      // el perfil completo.
+      if (this.invitacion?.remitente?.fotoUrl) {
+        this.fotoUrl = null;
+        this.fotoRota = false;
         return;
       }
 

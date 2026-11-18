@@ -328,7 +328,7 @@ Editarperfilview · VUE
                   value-by="idHabilidad"
                   text-by="nombre"
                   placeholder="Seleccionar habilidad"
-                  allow-search
+                  searchable
                   clearable
                   :disabled="guardandoHabilidad || habilidadesDisponibles.length === 0"
                 />

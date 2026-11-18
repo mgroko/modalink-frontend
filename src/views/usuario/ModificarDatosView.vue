@@ -69,6 +69,9 @@ Modificardatosview · VUE
               label="Provincia"
               placeholder="Seleccioná una provincia"
               :loading="cargandoProvincias"
+              searchable
+              search-placeholder-text="Buscá una provincia..."
+              no-options-text="No hay provincias disponibles"
               @update:model-value="onProvinciaCambio"
             />
             <VaSelect
@@ -80,8 +83,8 @@ Modificardatosview · VUE
               placeholder="Seleccioná una localidad"
               :loading="cargandoLocalidades"
               :disabled="!provinciaSeleccionada"
-              allow-search
-              search-placeholder="Buscá una localidad..."
+              searchable
+              search-placeholder-text="Buscá una localidad..."
               no-options-text="No hay localidades para esta provincia"
             />
           </div>
@@ -171,6 +174,7 @@ export default {
         { text: "Prefiero no decirlo", value: "NO_DECIRLO" },
       ],
       cargando: false,
+      redireccionTimer: null,
       modalSinUbicacionVisible: false,
       modalEliminarUbicacionVisible: false,
       mensajeExito: "",
@@ -199,6 +203,9 @@ export default {
     this.cargarDatos();
     await this.cargarProvincias();
     await this.precargarUbicacion();
+  },
+  beforeUnmount() {
+    this.cancelarRedireccion();
   },
   computed: {
     pais() {
@@ -335,6 +342,7 @@ export default {
           this.ubicacionGuardada = usuarioActualizado.ubicacion || null;
         }
         this.mensajeExito = "Datos actualizados correctamente.";
+        this.programarVolverAlInicio();
       } catch (error) {
         this.mensajeError =
           error?.response?.data?.message || "No se pudieron guardar los cambios. Intentá nuevamente.";
@@ -362,7 +370,22 @@ export default {
         this.cargando = false;
       }
     },
+    programarVolverAlInicio() {
+      this.cancelarRedireccion();
+      // Se muestra brevemente el mensaje de éxito antes de volver al inicio.
+      this.redireccionTimer = setTimeout(() => {
+        this.redireccionTimer = null;
+        this.$router.push({ name: "dashboard-usuario" });
+      }, 1200);
+    },
+    cancelarRedireccion() {
+      if (this.redireccionTimer) {
+        clearTimeout(this.redireccionTimer);
+        this.redireccionTimer = null;
+      }
+    },
     volver() {
+      this.cancelarRedireccion();
       this.$router.push({ name: "dashboard-usuario" });
     },
   },

@@ -77,6 +77,11 @@ export default {
   background: var(--color-danger-soft);
 }
 
+.aud-chip--MENSAJERIA {
+  color: var(--color-info-text);
+  background: var(--color-info-soft);
+}
+
 .aud-chip--SISTEMA {
   color: var(--color-text-muted);
   background: var(--color-surface-muted);

@@ -150,12 +150,25 @@
                 group
               </span>
 
-              <span
+              <component
+                :is="colaboradorId(colaborador) != null ? 'RouterLink' : 'span'"
                 v-for="colaborador in colaboradoresVisibles"
                 :key="colaborador.idPerfil || colaborador.nombreArtistico"
+                :to="
+                  colaboradorId(colaborador) != null
+                    ? {
+                        name: 'ver-perfil',
+                        params: { id: colaboradorId(colaborador) },
+                      }
+                    : undefined
+                "
                 class="detalle-publicacion__colaborador"
+                @click.stop
               >
-                <span class="detalle-publicacion__colaborador-avatar">
+                <span
+                  class="detalle-publicacion__colaborador-avatar"
+                  aria-hidden="true"
+                >
                   <img
                     v-if="colaboradorFoto(colaborador)"
                     :src="colaboradorFoto(colaborador)"
@@ -166,7 +179,7 @@
                   </template>
                 </span>
                 {{ colaboradorNombre(colaborador) }}
-              </span>
+              </component>
 
               <span
                 v-if="colaboradoresRestantes > 0"
@@ -567,6 +580,9 @@ export default {
       this.$emit("update:modelValue", false);
       this.$emit("cerrar");
     },
+    colaboradorId(colaborador) {
+      return colaborador?.idPerfil ?? colaborador?.perfil?.idPerfil ?? null;
+    },
     colaboradorNombre(colaborador) {
       return (
         colaborador?.nombreArtistico ||
@@ -812,6 +828,21 @@ export default {
   gap: 0.3rem;
   color: var(--color-text);
   font-size: 0.76rem;
+}
+
+a.detalle-publicacion__colaborador {
+  text-decoration: none;
+}
+
+a.detalle-publicacion__colaborador:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+a.detalle-publicacion__colaborador:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .detalle-publicacion__colaborador-avatar {

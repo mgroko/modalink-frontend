@@ -9,6 +9,7 @@ import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
 import GoogleCallbackView from "../views/auth/GoogleCallbackView.vue";
 import GoogleCompletarView from "../views/auth/GoogleCompletarView.vue";
+import EmailLoginView from "../views/auth/EmailLoginView.vue";
 import DashboardUsuarioView from "../views/usuario/DashboardUsuarioView.vue";
 import HomeView from "../views/perfil/HomeView.vue";
 import CrearPerfilView from "../views/perfil/CrearPerfilView.vue";
@@ -33,6 +34,8 @@ import ContratosPendientesView from "../views/contrato/ContratosPendientesView.v
 import DetalleContratoView from "../views/contrato/DetalleContratoView.vue";
 import ModificarContratoView from "../views/contrato/ModificarContratoView.vue";
 import SolicitudesView from "../views/proyecto/SolicitudesView.vue";
+import ColaboracionesAutomaticasView from "../views/colaboracion/ColaboracionesAutomaticasView.vue";
+import ColaboracionAutomaticaDetalleView from "../views/colaboracion/ColaboracionAutomaticaDetalleView.vue";
 import PublicacionDetalleView from "../views/perfil/PublicacionDetalleView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
@@ -51,7 +54,14 @@ import ConfiguracionSchedulerLimpiezaImagenesView from "../views/admin/Configura
 import GestionUnidadesMedidaView from "../views/admin/GestionUnidadesMedidaView.vue";
 import ConfiguracionSistemaView from "../views/admin/ConfiguracionSistemaView.vue";
 import ReparacionCronogramaView from "../views/admin/ReparacionCronogramaView.vue";
+import ColaboracionesAutomaticasHistoricasView from "../views/admin/ColaboracionesAutomaticasHistoricasView.vue";
+import ColaboracionAutomaticaHistoricaDetalleView from "../views/admin/ColaboracionAutomaticaHistoricaDetalleView.vue";
 import ProyectosAdminView from "../views/admin/ProyectosAdminView.vue";
+import ProyectoAdminDetalleView from "../views/admin/ProyectoAdminDetalleView.vue";
+import PerfilesAdminView from "../views/admin/PerfilesAdminView.vue";
+import PerfilAdminDetalleView from "../views/admin/PerfilAdminDetalleView.vue";
+import ContratosAdminView from "../views/admin/ContratosAdminView.vue";
+import ContratoAdminDetalleView from "../views/admin/ContratoAdminDetalleView.vue";
 import ReportesAdminView from "../views/admin/ReportesAdminView.vue";
 import ReportesPerfilView from "../views/admin/ReportesPerfilView.vue";
 import ReportePerfilDetalleView from "../views/admin/ReportePerfilDetalleView.vue";
@@ -286,6 +296,28 @@ const routes = [
     redirect: (to) => ({ name: "solicitudes", query: to.query }),
   },
   {
+    path: "/colaboraciones-automaticas",
+    name: "colaboraciones-automaticas",
+    component: ColaboracionesAutomaticasView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Colaboraciones automáticas",
+      requiresActiveProfile: true,
+      navActiva: "solicitudes",
+    },
+  },
+  {
+    path: "/colaboraciones-automaticas/:id",
+    name: "colaboracion-automatica-detalle",
+    component: ColaboracionAutomaticaDetalleView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Colaboración automática",
+      requiresActiveProfile: true,
+      navActiva: "solicitudes",
+    },
+  },
+  {
     path: "/publicaciones/:idPublicacion",
     name: "publicacion-detalle",
     component: PublicacionDetalleView,
@@ -429,6 +461,12 @@ const routes = [
     meta: { layout: UserDashboardLayout, titulo: "Editar perfil", permiteSinPerfil: true },
   },
   {
+    path: "/auth/email",
+    name: "email-login",
+    component: EmailLoginView,
+    meta: { layout: AuthLayout }
+  },
+  {
     path: "/auth/google/callback",
     name: "google-callback",
     component: GoogleCallbackView,
@@ -460,7 +498,37 @@ const routes = [
     path: "/admin/proyectos",
     name: "proyectos-admin",
     component: ProyectosAdminView,
-    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_USUARIOS", titulo: "Proyectos" }
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PROYECTOS", titulo: "Proyectos" }
+  },
+  {
+    path: "/admin/proyectos/:id",
+    name: "admin-proyecto-detalle",
+    component: ProyectoAdminDetalleView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PROYECTOS", titulo: "Detalle del proyecto" }
+  },
+  {
+    path: "/admin/perfiles",
+    name: "perfiles-admin",
+    component: PerfilesAdminView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PERFILES", titulo: "Perfiles" }
+  },
+  {
+    path: "/admin/perfiles/:id",
+    name: "admin-perfil-detalle",
+    component: PerfilAdminDetalleView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PERFILES", titulo: "Detalle del perfil" }
+  },
+  {
+    path: "/admin/contratos",
+    name: "contratos-admin",
+    component: ContratosAdminView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_CONTRATOS", titulo: "Contratos" }
+  },
+  {
+    path: "/admin/contratos/:id",
+    name: "admin-contrato-detalle",
+    component: ContratoAdminDetalleView,
+    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_CONTRATOS", titulo: "Detalle del contrato" }
   },
   {
     path: "/admin/reportes",
@@ -622,6 +690,28 @@ const routes = [
       requiereAdmin: true,
       requierePermiso: "ADMINISTRAR_CONFIGURACION",
       titulo: "Reparación de cronogramas",
+    }
+  },
+  {
+    path: "/admin/configuracion/colaboraciones-automaticas-historicas",
+    name: "admin-colaboraciones-historicas",
+    component: ColaboracionesAutomaticasHistoricasView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Colaboraciones históricas",
+    }
+  },
+  {
+    path: "/admin/configuracion/colaboraciones-automaticas-historicas/:id",
+    name: "admin-colaboracion-historica",
+    component: ColaboracionAutomaticaHistoricaDetalleView,
+    meta: {
+      layout: AdminLayout,
+      requiereAdmin: true,
+      requierePermiso: "ADMINISTRAR_CONFIGURACION",
+      titulo: "Procesamiento histórico",
     }
   }
 ];

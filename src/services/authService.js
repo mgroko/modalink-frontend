@@ -35,6 +35,11 @@ const authService = {
     return http.post("/auth/google/completar", datos);
   },
 
+  // Intercambia el token de un email de notificación por una sesión JWT.
+  validarTokenEmail(token) {
+    return http.post("/auth/email/validar", { token });
+  },
+
   cerrarSesion() {
     return http.post("/auth/logout");
   }

@@ -66,7 +66,7 @@
           :error="!!errores.idProyecto"
           :error-messages="errores.idProyecto || undefined"
           clearable
-          allow-search
+          searchable
           no-options-text="No tenés proyectos confirmados o finalizados"
         />
 
@@ -264,6 +264,10 @@ export default {
       type: Object,
       default: null,
     },
+    proyectoInicial: {
+      type: Object,
+      default: null,
+    },
   },
   emits: ["update:modelValue", "creada", "actualizada"],
   data() {
@@ -322,6 +326,7 @@ export default {
     modelValue(abierto) {
       if (abierto) {
         this.reiniciarFormulario();
+        this.aplicarProyectoInicial();
         this.cargarProyectos();
         if (this.esEdicion) this.cargarDetalle();
         return;
@@ -452,6 +457,31 @@ export default {
         },
       ];
     },
+    aplicarProyectoInicial() {
+      if (this.esEdicion || this.proyectoInicial?.idProyecto == null) {
+        return;
+      }
+      this.form.idProyecto = this.proyectoInicial.idProyecto;
+    },
+    incluirProyectoInicial() {
+      const proyecto = this.proyectoInicial;
+      if (this.esEdicion || proyecto?.idProyecto == null) return;
+
+      const existe = this.proyectos.some(
+        (item) => String(item.idProyecto) === String(proyecto.idProyecto)
+      );
+      if (existe) return;
+
+      this.proyectos = [
+        ...this.proyectos,
+        {
+          idProyecto: proyecto.idProyecto,
+          nombre: proyecto.nombre || "Proyecto",
+          estado: proyecto.estado ?? null,
+          inicial: true,
+        },
+      ];
+    },
     reiniciarFormulario() {
       revocarPreviewsPublicacion(this.imagenesNuevas);
       this.form = {
@@ -550,6 +580,7 @@ export default {
           this.cargandoProyectos = false;
           this.controladorProyectos = null;
         }
+        if (!this.esEdicion) this.incluirProyectoInicial();
       }
     },
     async agregarArchivos(nuevas) {

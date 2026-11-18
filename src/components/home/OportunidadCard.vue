@@ -1,5 +1,12 @@
 <template>
-  <article class="oportunidad-card">
+  <article
+    class="oportunidad-card"
+    role="button"
+    tabindex="0"
+    @click="$emit('abrir', oportunidad)"
+    @keydown.enter.self.prevent="$emit('abrir', oportunidad)"
+    @keydown.space.self.prevent="$emit('abrir', oportunidad)"
+  >
     <div class="oportunidad-card__cabecera">
       <div class="oportunidad-card__titulo-grupo">
         <h3 class="oportunidad-card__titulo">{{ titulo }}</h3>
@@ -12,7 +19,7 @@
         v-if="puedePostular"
         type="button"
         class="oportunidad-card__postular"
-        @click="$emit('postular', oportunidad)"
+        @click.stop="$emit('postular', oportunidad)"
       >
         Postular
       </button>
@@ -63,7 +70,7 @@ export default {
       required: true,
     },
   },
-  emits: ["postular"],
+  emits: ["postular", "abrir"],
   computed: {
     esActividad() {
       return (
@@ -137,9 +144,15 @@ export default {
   border: 1px solid var(--color-border);
   border-radius: 12px;
   background: var(--color-surface);
+  cursor: pointer;
   transition:
     box-shadow 0.15s,
     border-color 0.15s;
+}
+
+.oportunidad-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .oportunidad-card:hover {

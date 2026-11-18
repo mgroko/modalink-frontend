@@ -20,6 +20,10 @@ import { esSesionExpirada } from "./apiError.js";
 export const AUDITORIA_RANGO_MAX_DIAS = 90;
 export const AUDITORIA_EXPORT_MAX_REGISTROS = 10000;
 export const AUDITORIA_PAGINA_MAX = 100;
+export const AUDITORIA_OPERADOR_MIN = 2;
+export const AUDITORIA_OPERADOR_MAX = 100;
+export const AUDITORIA_TEXTO_MIN = 2;
+export const AUDITORIA_TEXTO_MAX = 200;
 // Solo uso del backend al armar el PDF exportado; no impacta la UI.
 export const AUDITORIA_PDF_MAX_CAMBIOS_POR_FILA = 5;
 
@@ -43,6 +47,7 @@ export const ETIQUETAS_MODULO_AUDITORIA = {
   INVITACIONES: "Invitaciones",
   ADMINISTRACION: "Administración",
   REPORTES: "Reportes",
+  MENSAJERIA: "Mensajería",
   SISTEMA: "Sistema",
 };
 
@@ -54,6 +59,7 @@ export const ORDEN_MODULOS_AUDITORIA = [
   "INVITACIONES",
   "ADMINISTRACION",
   "REPORTES",
+  "MENSAJERIA",
   "SISTEMA",
 ];
 
@@ -89,7 +95,7 @@ export function tiposSinDuplicados(tipos) {
  * Armado de params de `GET /admin/auditoria` (y `/resumen` sin paginación).
  * Los tipos van separados por comas: si se pasa el array directo a axios, se
  * serializaría `tipos[]=...` y el backend no lo acepta.
- * @param {{fechaDesde?: string, fechaHasta?: string, tipos?: string[]}} [filtros]
+ * @param {{fechaDesde?: string, fechaHasta?: string, tipos?: string[], operador?: string, texto?: string}} [filtros]
  * @param {{pagina?: number|null, tamano?: number|null}} [opciones]
  *   Sin `pagina` se omiten page/size (usado por /resumen y /export).
  * @returns {Record<string, string|number>}
@@ -101,6 +107,12 @@ export function construirParamsAuditoria(filtros = {}, opciones = {}) {
 
   const tipos = tiposSinDuplicados(filtros.tipos);
   if (tipos.length) params.tipos = tipos.join(",");
+
+  const operador = String(filtros.operador || "").trim();
+  if (operador) params.operador = operador;
+
+  const texto = String(filtros.texto || "").trim();
+  if (texto) params.texto = texto;
 
   if (opciones.pagina != null) {
     params.page = Math.max(0, Math.floor(Number(opciones.pagina) || 0));
@@ -202,6 +214,35 @@ export function validarFiltrosAuditoria(filtros = {}) {
       mensaje: `El rango máximo permitido es de ${AUDITORIA_RANGO_MAX_DIAS} días. Elegiste ${dias} días. Acortá el rango y volvé a consultar.`,
     };
   }
+
+  const operador = String(filtros.operador || "").trim();
+  if (operador && operador.length < AUDITORIA_OPERADOR_MIN) {
+    return {
+      codigo: "OPERADOR_INVALIDO",
+      mensaje: `El operador debe tener al menos ${AUDITORIA_OPERADOR_MIN} caracteres.`,
+    };
+  }
+  if (operador.length > AUDITORIA_OPERADOR_MAX) {
+    return {
+      codigo: "OPERADOR_INVALIDO",
+      mensaje: `El operador no puede superar los ${AUDITORIA_OPERADOR_MAX} caracteres.`,
+    };
+  }
+
+  const texto = String(filtros.texto || "").trim();
+  if (texto && texto.length < AUDITORIA_TEXTO_MIN) {
+    return {
+      codigo: "TEXTO_INVALIDO",
+      mensaje: `El texto de búsqueda debe tener al menos ${AUDITORIA_TEXTO_MIN} caracteres.`,
+    };
+  }
+  if (texto.length > AUDITORIA_TEXTO_MAX) {
+    return {
+      codigo: "TEXTO_INVALIDO",
+      mensaje: `El texto de búsqueda no puede superar los ${AUDITORIA_TEXTO_MAX} caracteres.`,
+    };
+  }
+
   return null;
 }
 
@@ -252,6 +293,16 @@ export function normalizarTextoBusqueda(texto) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
+}
+
+/** Texto compacto de los filtros de operador/texto aplicados. */
+export function textoFiltrosAplicados(filtros = {}) {
+  const partes = [];
+  const operador = String(filtros.operador || "").trim();
+  const texto = String(filtros.texto || "").trim();
+  if (operador) partes.push(`Operador: "${operador}"`);
+  if (texto) partes.push(`Texto: "${texto}"`);
+  return partes.join(" · ");
 }
 
 /* ------------------------------------------------------------------ */
@@ -393,6 +444,10 @@ export function mensajeErrorAuditoria(error) {
     TIPO_EVENTO_INVALIDO:
       "Alguno de los tipos seleccionados ya no está disponible.",
     PAGINACION_INVALIDA: "La paginación solicitada no es válida.",
+    OPERADOR_INVALIDO:
+      "El operador debe tener entre 2 y 100 caracteres.",
+    TEXTO_INVALIDO:
+      "El texto de búsqueda debe tener entre 2 y 200 caracteres.",
     FORMATO_EXPORTACION_INVALIDO: "El formato de exportación no es válido.",
     EXPORTACION_EXCEDIDA: `La exportación admite hasta ${AUDITORIA_EXPORT_MAX_REGISTROS.toLocaleString(
       "es-AR"

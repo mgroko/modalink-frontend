@@ -93,6 +93,7 @@
                 :key="`${oportunidad.tipo}:${oportunidad.idRequerimiento}`"
                 :oportunidad="oportunidad"
                 @postular="$emit('postular', $event)"
+                @abrir="$emit('abrir-oportunidad', $event)"
               />
             </HomeFeedSection>
           </div>
@@ -133,6 +134,7 @@
                 :key="`${oportunidad.tipo}:${oportunidad.idRequerimiento}`"
                 :oportunidad="oportunidad"
                 @postular="$emit('postular', $event)"
+                @abrir="$emit('abrir-oportunidad', $event)"
               />
             </HomeAsideSection>
           </aside>
@@ -231,6 +233,7 @@ export default {
   emits: [
     "cambiar-tab",
     "postular",
+    "abrir-oportunidad",
     "abrir-proyecto",
     "ver-todos-proyectos",
     "ver-todas-oportunidades",

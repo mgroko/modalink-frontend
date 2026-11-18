@@ -296,6 +296,12 @@
           @reintentar="reintentarPreviewFinalizacion"
         />
 
+        <ModalNuevaPublicacion
+          v-model="modalNuevaPublicacionVisible"
+          :proyecto-inicial="proyectoPublicacion"
+          @creada="alCrearPublicacionProyecto"
+        />
+
         <ModalCancelarProyecto
           :model-value="modalCancelarVisible"
           :nombre-proyecto="proyecto.nombre"
@@ -398,6 +404,7 @@ import GestionPostulaciones from "../../components/proyecto/GestionPostulaciones
 import ModalPublicarProyecto from "../../components/proyecto/ModalPublicarProyecto.vue";
 import ModalConfirmarProyecto from "../../components/proyecto/ModalConfirmarProyecto.vue";
 import ModalFinalizarProyecto from "../../components/proyecto/ModalFinalizarProyecto.vue";
+import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalCancelarProyecto from "../../components/proyecto/ModalCancelarProyecto.vue";
 import ModalEliminarIntegrante from "../../components/proyecto/ModalEliminarIntegrante.vue";
 import ModalDarseDeBajaProyecto from "../../components/proyecto/ModalDarseDeBajaProyecto.vue";
@@ -502,6 +509,7 @@ export default {
     ModalPublicarProyecto,
     ModalConfirmarProyecto,
     ModalFinalizarProyecto,
+    ModalNuevaPublicacion,
     ModalCancelarProyecto,
     ModalEliminarIntegrante,
     ModalDarseDeBajaProyecto,
@@ -560,6 +568,8 @@ data() {
       errorFinalizacion: "",
       faltantesFinalizacion: [],
       idCargaPreviewFinalizacion: 0,
+      modalNuevaPublicacionVisible: false,
+      proyectoPublicacion: null,
       modalPostulacion: {
         visible: false,
         tipo: TIPOS_POSTULACION.GENERAL,
@@ -2263,7 +2273,8 @@ data() {
     /** UC-37: envía todas las calificaciones del director en un solo POST. */
     async confirmarFinalizacion(
       calificaciones,
-      confirmarFinalizacionPrematura = false
+      confirmarFinalizacionPrematura = false,
+      crearPublicacion = false
     ) {
       if (this.finalizandoProyecto) return;
       if (!Array.isArray(calificaciones)) return;
@@ -2349,6 +2360,10 @@ data() {
           position: "top-right",
           duration: 6000,
         });
+
+        if (crearPublicacion) {
+          this.abrirPublicacionProyecto();
+        }
       } catch (error) {
         if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
           return;
@@ -2357,6 +2372,29 @@ data() {
       } finally {
         this.finalizandoProyecto = false;
       }
+    },
+    abrirPublicacionProyecto() {
+      if (!this.proyecto?.idProyecto) return;
+
+      this.proyectoPublicacion = {
+        idProyecto: this.proyecto.idProyecto,
+        nombre: this.proyecto.nombre || "Proyecto",
+        estado: this.proyecto.estado || null,
+      };
+      this.modalNuevaPublicacionVisible = true;
+    },
+    alCrearPublicacionProyecto(publicacion) {
+      this.modalNuevaPublicacionVisible = false;
+      this.proyectoPublicacion = null;
+      if (!publicacion) return;
+
+      this.toast.init({
+        title: "Publicación creada",
+        message: "La publicación quedó asociada al proyecto finalizado.",
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
     },
     async manejarErrorFinalizacion(error) {
       const status = error?.response?.status;

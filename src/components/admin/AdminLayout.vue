@@ -37,6 +37,30 @@
           <span class="material-symbols-outlined">group</span>
           <span>Usuarios</span>
         </RouterLink>
+        <RouterLink
+          v-if="tienePermiso('VER_PERFILES')"
+          to="/admin/perfiles"
+          class="admin-layout__link"
+        >
+          <span class="material-symbols-outlined">person_search</span>
+          <span>Perfiles</span>
+        </RouterLink>
+        <RouterLink
+          v-if="tienePermiso('VER_PROYECTOS')"
+          to="/admin/proyectos"
+          class="admin-layout__link"
+        >
+          <span class="material-symbols-outlined">folder_open</span>
+          <span>Proyectos</span>
+        </RouterLink>
+        <RouterLink
+          v-if="tienePermiso('VER_CONTRATOS')"
+          to="/admin/contratos"
+          class="admin-layout__link"
+        >
+          <span class="material-symbols-outlined">request_quote</span>
+          <span>Contratos</span>
+        </RouterLink>
         <RouterLink to="/admin/reportes-perfil" class="admin-layout__link">
           <span class="material-symbols-outlined">flag</span>
           <span>Reportes de perfil</span>
@@ -158,7 +182,7 @@
 import { nextTick } from "vue";
 import authService from "../../services/authService";
 import adminService from "../../services/adminService";
-import { state, limpiarSesion } from "../../services/authState";
+import { state, limpiarSesion, tienePermiso } from "../../services/authState";
 import {
   state as notificacionState,
   cargarResumenUsuario,
@@ -247,6 +271,7 @@ export default {
     this.cargarReportesPublicacionPendientes();
   },
   methods: {
+    tienePermiso,
     async cargarReportesPublicacionPendientes() {
       try {
         const response = await adminService.listarReportesPublicacion({

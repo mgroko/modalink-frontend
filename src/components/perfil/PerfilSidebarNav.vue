@@ -48,6 +48,7 @@
 import { state as invitacionState } from "../../services/invitacionState";
 import { state as reemplazoState } from "../../services/reemplazoState";
 import { state as solicitudColaboracionState } from "../../services/solicitudColaboracionState";
+import { state as colaboracionAutomaticaState } from "../../services/colaboracionAutomaticaState";
 import { state as solicitudConexionState } from "../../services/solicitudConexionState";
 
 export default {
@@ -88,7 +89,8 @@ export default {
           contador:
             (invitacionState.pendientesRecibidas || 0) +
             (reemplazoState.pendientes || 0) +
-            (solicitudColaboracionState.pendientesRecibidas || 0),
+            (solicitudColaboracionState.pendientesRecibidas || 0) +
+            (colaboracionAutomaticaState.pendientes || 0),
         },
         { key: "resenas", label: "Reseñas", icono: "star", tipo: "seccion" },
         {

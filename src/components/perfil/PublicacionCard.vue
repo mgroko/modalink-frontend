@@ -148,10 +148,20 @@
         {{ variante === "home" ? "person" : "group" }}
       </span>
 
-      <span
+      <component
+        :is="colaboradorId(colaborador) != null ? 'RouterLink' : 'span'"
         v-for="colaborador in colaboradoresVisibles"
         :key="colaborador.idPerfil || colaborador.nombreArtistico"
+        :to="
+          colaboradorId(colaborador) != null
+            ? {
+                name: 'ver-perfil',
+                params: { id: colaboradorId(colaborador) },
+              }
+            : undefined
+        "
         class="publicacion-card__colaborador"
+        @click="alClickColaborador($event, colaborador)"
       >
         <span class="publicacion-card__colaborador-avatar" aria-hidden="true">
           <img
@@ -162,7 +172,7 @@
           <template v-else>{{ inicialesColaborador(colaborador) }}</template>
         </span>
         {{ colaboradorNombre(colaborador) }}
-      </span>
+      </component>
 
       <span
         v-if="colaboradoresRestantes > 0"
@@ -345,6 +355,14 @@ export default {
     },
     resolverImagen(imagen) {
       return resolverFotoUrl(imagen?.url);
+    },
+    colaboradorId(colaborador) {
+      return colaborador?.idPerfil ?? colaborador?.perfil?.idPerfil ?? null;
+    },
+    alClickColaborador(evento, colaborador) {
+      // Un colaborador sin perfil sigue abriendo la tarjeta; con perfil,
+      // navega al perfil sin disparar el click del contenedor.
+      if (this.colaboradorId(colaborador) != null) evento.stopPropagation();
     },
     colaboradorNombre(colaborador) {
       return (
@@ -670,6 +688,20 @@ export default {
   border: 1px solid var(--color-border-soft);
   border-radius: 999px;
   font-size: 0.72rem;
+}
+
+a.publicacion-card__colaborador {
+  text-decoration: none;
+}
+
+a.publicacion-card__colaborador:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary-light);
+}
+
+a.publicacion-card__colaborador:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .publicacion-card__colaborador-avatar {

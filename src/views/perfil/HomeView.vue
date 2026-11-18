@@ -23,6 +23,7 @@
       :cargando-mas-publicaciones="cargandoMasPublicacionesFeed"
       @cambiar-tab="tabActiva = $event"
       @postular="abrirPostulacion"
+      @abrir-oportunidad="abrirDetalleOportunidad"
       @abrir-proyecto="irAProyecto"
       @ver-todos-proyectos="irAProyectos"
       @ver-todas-oportunidades="irABuscarOportunidades"
@@ -82,6 +83,7 @@
       v-model="modalInvitarColaboradorVisible"
       :publicacion="publicacionInvitar"
       @enviada="alEnviarInvitacion"
+      @agregada="alAgregarColaborador"
     />
 
     <ModalEliminarPublicacion
@@ -104,6 +106,12 @@
       @sin-perfil="alSinPerfilActivo"
       @perfil-inactivo="alPerfilInactivo"
     />
+
+    <ModalDetalleOportunidad
+      v-model="modalOportunidadVisible"
+      :oportunidad="oportunidadSeleccionada"
+      @ver-proyecto="verProyectoDesdeOportunidad"
+    />
   </div>
 </template>
 
@@ -113,6 +121,7 @@ import proyectoService from "../../services/proyectoService.js";
 import publicacionService from "../../services/publicacionService.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import HomeFeed from "../../components/home/HomeFeed.vue";
+import ModalDetalleOportunidad from "../../components/home/ModalDetalleOportunidad.vue";
 import ModalPostulacion from "../../components/proyecto/ModalPostulacion.vue";
 import ModalNuevaPublicacion from "../../components/perfil/ModalNuevaPublicacion.vue";
 import ModalInvitarColaborador from "../../components/perfil/ModalInvitarColaborador.vue";
@@ -132,6 +141,7 @@ import {
   setPerfilActivo,
   refrescarSesion,
 } from "../../services/authState.js";
+import { cargarResumenColaboracionesAutomaticas } from "../../services/colaboracionAutomaticaState";
 import { useToast } from "vuestic-ui";
 import {
   clasificarErrorPublicacion,
@@ -165,6 +175,7 @@ export default {
   components: {
     BaseAlert,
     HomeFeed,
+    ModalDetalleOportunidad,
     ModalEliminarPublicacion,
     ModalInvitarColaborador,
     ModalNuevaPublicacion,
@@ -210,6 +221,8 @@ export default {
       publicacionDetalle: null,
       indiceDetallePublicacion: 0,
       enfocarComentariosDetalle: false,
+      modalOportunidadVisible: false,
+      oportunidadSeleccionada: null,
     };
   },
   computed: {
@@ -327,6 +340,7 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+      cargarResumenColaboracionesAutomaticas();
       this.$router.push({ name: "inicioperfil" });
     },
     editarPublicacion(publicacion) {
@@ -350,6 +364,19 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+    },
+    alAgregarColaborador(colaborador) {
+      this.modalInvitarColaboradorVisible = false;
+      this.toast.init({
+        title: "Colaborador agregado",
+        message: `${
+          colaborador?.nombre || "Tu perfil"
+        } ya aparece como colaborador en la publicación.`,
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
+      this.cargarFeedPublicaciones();
     },
     abrirEliminarPublicacion(publicacion) {
       if (!publicacion?.idPublicacion) return;
@@ -388,11 +415,13 @@ export default {
           position: "top-right",
           duration: 5000,
         });
+        cargarResumenColaboracionesAutomaticas();
       } catch (error) {
         const status = error?.response?.status;
         if (status === 404) {
           this.modalEliminarPublicacionVisible = false;
           this.quitarPublicacionDelFeed(publicacion.idPublicacion);
+          cargarResumenColaboracionesAutomaticas();
           this.toast.init({
             title: "Publicación no disponible",
             message:
@@ -421,6 +450,7 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+      cargarResumenColaboracionesAutomaticas();
       this.cargarFeedPublicaciones();
     },
     abortarFeedPublicaciones() {
@@ -638,6 +668,21 @@ export default {
       this.$router.push({
         name: "dashboard-proyecto",
         params: { id: proyecto.idProyecto },
+      });
+    },
+    abrirDetalleOportunidad(oportunidad) {
+      if (!oportunidad) return;
+      this.oportunidadSeleccionada = oportunidad;
+      this.modalOportunidadVisible = true;
+    },
+    verProyectoDesdeOportunidad(payload) {
+      const idProyecto =
+        payload?.idProyecto ?? this.oportunidadSeleccionada?.idProyecto;
+      if (idProyecto == null) return;
+      this.modalOportunidadVisible = false;
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: idProyecto },
       });
     },
     irAProyectos() {

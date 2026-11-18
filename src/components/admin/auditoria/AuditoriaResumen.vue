@@ -10,6 +10,9 @@
         <span class="auditoria-resumen__detalle">
           Entre el {{ fechaDesdeCorta }} y el {{ fechaHastaCorta }}
         </span>
+        <span v-if="textoFiltros" class="auditoria-resumen__detalle">
+          {{ textoFiltros }}
+        </span>
       </article>
 
       <article class="auditoria-resumen__tarjeta">
@@ -91,6 +94,7 @@
 import {
   formatearFechaAuditoria,
   diasEntreInclusive,
+  textoFiltrosAplicados,
   AUDITORIA_RANGO_MAX_DIAS,
   CODIGO_SIN_TIPO,
   ETIQUETA_SIN_TIPO,
@@ -150,6 +154,9 @@ export default {
     },
     fechaHastaCorta() {
       return formatearFechaAuditoria(this.aplicados?.fechaHasta);
+    },
+    textoFiltros() {
+      return textoFiltrosAplicados(this.aplicados || {});
     },
     desgloseTipos() {
       return this.resumen?.porTipoEvento || [];

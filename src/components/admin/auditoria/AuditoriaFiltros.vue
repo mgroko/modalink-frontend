@@ -49,9 +49,26 @@
       </div>
     </div>
 
+    <div class="auditoria-filtros__busqueda">
+      <VaInput
+        :model-value="operador"
+        class="auditoria-filtros__campo"
+        label="Operador"
+        placeholder="Nombre o apellido"
+        @update:modelValue="emitirCampo('operador', $event)"
+      />
+      <VaInput
+        :model-value="texto"
+        class="auditoria-filtros__campo"
+        label="Texto"
+        placeholder="Buscar en detalle o metadatos"
+        @update:modelValue="emitirCampo('texto', $event)"
+      />
+    </div>
+
     <p class="auditoria-filtros__nota">
       Rango máximo vigente: {{ rangoMaximo }} días. Por defecto se muestran los
-      últimos 7 días.
+      últimos 7 días. Operador y texto son opcionales.
     </p>
   </section>
 </template>
@@ -71,7 +88,7 @@ export default {
     modelValue: {
       type: Object,
       required: true,
-      // { fechaDesde, fechaHasta, tipos: [] }
+      // { fechaDesde, fechaHasta, tipos: [], operador: "", texto: "" }
     },
     catalogo: { type: Array, default: () => [] },
     cargandoCatalogo: { type: Boolean, default: false },
@@ -89,6 +106,12 @@ export default {
     },
     fechaHasta() {
       return this.modelValue?.fechaHasta || "";
+    },
+    operador() {
+      return this.modelValue?.operador || "";
+    },
+    texto() {
+      return this.modelValue?.texto || "";
     },
   },
   methods: {
@@ -123,6 +146,12 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1fr minmax(220px, 1.6fr) auto;
   align-items: end;
+  gap: 0.75rem;
+}
+
+.auditoria-filtros__busqueda {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(260px, 2fr);
   gap: 0.75rem;
 }
 
@@ -172,6 +201,10 @@ export default {
 
 @media (max-width: 560px) {
   .auditoria-filtros__campos {
+    grid-template-columns: 1fr;
+  }
+
+  .auditoria-filtros__busqueda {
     grid-template-columns: 1fr;
   }
 

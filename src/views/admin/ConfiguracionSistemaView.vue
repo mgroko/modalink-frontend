@@ -67,6 +67,22 @@
         </span>
         <span class="configuracion-sistema__arrow material-symbols-outlined">chevron_right</span>
       </RouterLink>
+
+      <RouterLink
+        to="/admin/configuracion/colaboraciones-automaticas-historicas"
+        class="configuracion-sistema__card"
+      >
+        <span class="configuracion-sistema__icon material-symbols-outlined">auto_awesome</span>
+        <span class="configuracion-sistema__card-content">
+          <strong>Colaboraciones automáticas históricas</strong>
+          <span>
+            Procesá publicaciones existentes, completá huellas faltantes y
+            generá propuestas de colaboración automática. Permite previsualizar,
+            seguir el progreso y revisar errores.
+          </span>
+        </span>
+        <span class="configuracion-sistema__arrow material-symbols-outlined">chevron_right</span>
+      </RouterLink>
     </section>
   </div>
 </template>

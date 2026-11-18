@@ -673,6 +673,7 @@
       v-model="modalRequerimientoVisible"
       hide-default-actions
       size="large"
+      max-width="940px"
       :no-dismiss="guardandoRequerimiento"
       blur
       class="modificar-actividad-modal"

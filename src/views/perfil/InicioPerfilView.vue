@@ -491,6 +491,7 @@
         v-model="modalInvitarColaboradorVisible"
         :publicacion="publicacionInvitar"
         @enviada="alEnviarInvitacion"
+        @agregada="alAgregarColaborador"
       />
 
       <ModalEliminarPublicacion
@@ -531,6 +532,7 @@ import calificacionPerfilService from "../../services/calificacionPerfilService"
 import solicitudConexionService from "../../services/solicitudConexionService";
 import conexionService from "../../services/conexionService";
 import { cargarResumenPerfil } from "../../services/notificacionState";
+import { cargarResumenColaboracionesAutomaticas } from "../../services/colaboracionAutomaticaState";
 import { cargarConteosSolicitudesConexion } from "../../services/solicitudConexionState";
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
 import FiltrosPublicaciones from "../../components/perfil/FiltrosPublicaciones.vue";
@@ -877,6 +879,11 @@ export default {
   },
   watch: {
     "$route.params.id"() {
+      // Al navegar a otro perfil desde un colaborador, el modal de detalle
+      // no debe quedar abierto sobre el perfil nuevo.
+      this.modalPublicacionVisible = false;
+      this.publicacionSeleccionada = null;
+      this.enfocarComentariosDetalle = false;
       this.mostrandoPublicacionesOcultas = false;
       this.resetearTerminos();
       this.cargarDatos();
@@ -1698,6 +1705,7 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+      cargarResumenColaboracionesAutomaticas();
       this.limpiarFiltrosPublicaciones();
       this.cargarPublicacionesPerfil();
     },
@@ -1724,6 +1732,24 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+    },
+    alAgregarColaborador(colaborador) {
+      this.modalInvitarColaboradorVisible = false;
+      this.toast.init({
+        title: "Colaborador agregado",
+        message: `${
+          colaborador?.nombre || "Tu perfil"
+        } ya aparece como colaborador en la publicación.`,
+        color: "success",
+        position: "top-right",
+        duration: 5000,
+      });
+
+      if (this.seccion === "publicaciones") {
+        this.cargarPublicaciones();
+      } else {
+        this.cargarPublicacionesPerfil();
+      }
     },
     abrirEliminarPublicacion(publicacion) {
       if (!publicacion?.idPublicacion) return;
@@ -1771,6 +1797,7 @@ export default {
           duration: 5000,
         });
 
+        cargarResumenColaboracionesAutomaticas();
         const pagina = this.paginacionPublicaciones.paginaActual || 0;
         await this.cargarPublicaciones({ pagina });
         if (!this.publicaciones.length && pagina > 0) {
@@ -1796,6 +1823,7 @@ export default {
             position: "top-right",
             duration: 5000,
           });
+          cargarResumenColaboracionesAutomaticas();
           await this.cargarPublicaciones({
             pagina: this.paginacionPublicaciones.paginaActual || 0,
           });
@@ -1816,6 +1844,7 @@ export default {
         position: "top-right",
         duration: 5000,
       });
+      cargarResumenColaboracionesAutomaticas();
       this.cargarPublicaciones();
       this.cargarPublicacionesPerfil();
     },
@@ -2486,8 +2515,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  position: sticky;
-  top: 1rem;
 }
 
 .inicio-perfil__panel {
@@ -2686,7 +2713,6 @@ export default {
   }
 
   .inicio-perfil__sidebar {
-    position: static;
     order: -1;
   }
 }

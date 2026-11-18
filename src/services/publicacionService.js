@@ -6,11 +6,29 @@ import http from "./http";
  */
 
 /**
+ * Origen de una etiqueta de colaborador.
+ * - MANUAL: colaboración creada manualmente (UC-61/62).
+ * - AUTOMATICA: colaboración creada por el módulo automático.
+ * - AMBOS: la etiqueta tiene origen manual y automático.
+ * @typedef {"MANUAL"|"AUTOMATICA"|"AMBOS"} OrigenColaboradorPublicacion
+ */
+
+/**
  * @typedef {Object} PublicacionAutorResponse
  * @property {number} idPerfil
  * @property {string} nombreArtistico
  * @property {string} profesion
  * @property {string|null} [fotoUrl]
+ * @property {OrigenColaboradorPublicacion|null} [origen] siempre null para el autor
+ */
+
+/**
+ * @typedef {Object} PublicacionColaboradorResponse
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string} profesion
+ * @property {string|null} [fotoUrl]
+ * @property {OrigenColaboradorPublicacion|null} [origen]
  */
 
 /**
@@ -50,7 +68,9 @@ import http from "./http";
  * @property {PublicacionProyectoResponse|null} proyecto
  * @property {PublicacionUbicacionResponse|null} ubicacion
  * @property {PublicacionImagenResponse[]} imagenes
- * @property {Array<object>} colaboradores
+ * @property {PublicacionColaboradorResponse[]} colaboradores incluye `origen`;
+ *           el portfolio ya viene filtrado por el backend (las colaboraciones
+ *           solo AUTOMATICA no se listan).
  * @property {number} cantidadMeGusta
  * @property {number} cantidadComentarios
  * @property {boolean} meGusta relativo al perfil activo
@@ -279,6 +299,30 @@ const publicacionService = {
    */
   eliminar(idPublicacion) {
     return http.delete(`/publicaciones/${idPublicacion}`);
+  },
+
+  /**
+   * POST /publicaciones/{idPublicacion}/colaboradores/propios — autocolaboración.
+   * Agrega un perfil del mismo usuario como colaborador directo de una
+   * publicación propia, sin solicitud ni conexión. La etiqueta queda con
+   * origen MANUAL.
+   *
+   * Errores:
+   * - 400 `idPerfil` ausente o inválido
+   * - 403 sin rol USUARIO o sin perfil activo
+   * - 404 la publicación no pertenece al perfil activo o el perfil no existe
+   * - 409 PERFIL_PROPIO_INVALIDO (el perfil no pertenece al usuario, no está
+   *   activo o es el mismo perfil activo)
+   *
+   * @param {number|string} idPublicacion
+   * @param {number|string} idPerfil
+   * @returns {Promise<{status: number}>} 204 No Content
+   */
+  agregarColaboradorPropio(idPublicacion, idPerfil) {
+    return http.post(
+      `/publicaciones/${idPublicacion}/colaboradores/propios`,
+      { idPerfil: Number(idPerfil) }
+    );
   },
 
   actualizar(idPublicacion, request, onUploadProgress) {

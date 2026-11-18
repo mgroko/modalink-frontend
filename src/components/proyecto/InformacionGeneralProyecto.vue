@@ -124,7 +124,7 @@
               'info-proyecto__moodboard-item--principal': indice === 0,
             }"
             :aria-label="`Ampliar ${imagen.nombre}`"
-            @click="galeriaAbierta = true"
+            @click="abrirGaleria(indice)"
           >
             <img :src="imagen.preview" :alt="imagen.nombre" loading="lazy" />
             <span v-if="indice === 0" class="info-proyecto__moodboard-label">
@@ -257,7 +257,7 @@
     <ModalGaleriaMoodboard
       :model-value="galeriaAbierta"
       :imagenes="imagenes"
-      solo-lectura
+      :indice-inicial="galeriaIndice"
       @update:model-value="galeriaAbierta = $event"
     />
   </div>
@@ -315,6 +315,7 @@ export default {
       errorActividades: "",
       idCargaActividades: 0,
       galeriaAbierta: false,
+      galeriaIndice: 0,
       maximoImagenes: MOODBOARD_IMAGENES.MAX_IMAGENES,
     };
   },
@@ -433,8 +434,8 @@ export default {
       }
       if (this.totalPersonas === 0) return "Sin personal requerido";
       return this.totalPersonas === 1
-        ? "1 persona en total"
-        : `${this.totalPersonas} personas en total`;
+        ? "1 requerimiento en total"
+        : `${this.totalPersonas} requerimientos en total`;
     },
   },
   watch: {
@@ -455,6 +456,10 @@ export default {
   },
   methods: {
     formatearFecha,
+    abrirGaleria(indice = 0) {
+      this.galeriaIndice = Number.isInteger(indice) && indice >= 0 ? indice : 0;
+      this.galeriaAbierta = true;
+    },
     fechaActividad(actividad) {
       return fechaLargaSinDia(
         actividad?.fechaHoraInicio || actividad?.inicioProyectado

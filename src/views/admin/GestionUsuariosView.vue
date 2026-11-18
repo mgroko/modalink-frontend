@@ -77,30 +77,43 @@
         <span class="gestion-usuarios__id">{{ value }}</span>
       </template>
 
-      <template #cell(rolGlobal)="{ value }">
-        <VaBadge :text="value || '—'" color="info" />
-      </template>
-
-      <template #cell(estado)="{ value }">
-        <VaBadge :text="value" :color="colorEstado(value)" outline />
-      </template>
-
-      <template #cell(deshabilitacion)="{ rowData }">
-        <div v-if="rowData.estado === 'Deshabilitado'" class="gestion-usuarios__deshabilitacion">
-          <span class="gestion-usuarios__deshabilitacion-motivo">{{ rowData.motivoDeshabilitacion || '—' }}</span>
-          <span class="gestion-usuarios__deshabilitacion-hasta">
-            {{ rowData.fechaHastaDeshabilitacion ? `Hasta ${formatearFecha(rowData.fechaHastaDeshabilitacion)}` : 'Indefinido' }}
+      <template #cell(nombre)="{ rowData }">
+        <div class="gestion-usuarios__usuario">
+          <strong class="gestion-usuarios__usuario-nombre">
+            {{ [rowData.nombre, rowData.apellido].filter(Boolean).join(" ") || "—" }}
+          </strong>
+          <span class="gestion-usuarios__usuario-meta">
+            <VaBadge :text="rowData.rolGlobal || '—'" color="info" />
+            <span class="gestion-usuarios__usuario-genero">
+              {{ textoGenero(rowData.genero) }}
+            </span>
           </span>
         </div>
-        <span v-else class="gestion-usuarios__deshabilitacion-vacio">—</span>
       </template>
 
-      <template #cell(fechaSolicitudBaja)="{ value }">
-        {{ value ? formatearFecha(value) : 'No solicitó' }}
-      </template>
+      <template #cell(estado)="{ rowData }">
+        <div class="gestion-usuarios__estado-cuenta">
+          <VaBadge :text="rowData.estado" :color="colorEstado(rowData.estado)" outline />
 
-      <template #cell(genero)="{ source }">
-        {{ textoGenero(source) }}
+          <div
+            v-if="rowData.estado === 'Deshabilitado'"
+            class="gestion-usuarios__estado-detalle"
+          >
+            <span class="gestion-usuarios__estado-motivo">
+              {{ rowData.motivoDeshabilitacion || '—' }}
+            </span>
+            <span class="gestion-usuarios__estado-fecha">
+              {{ rowData.fechaHastaDeshabilitacion ? `Hasta ${formatearFecha(rowData.fechaHastaDeshabilitacion)}` : 'Indefinido' }}
+            </span>
+          </div>
+
+          <span
+            v-if="rowData.fechaSolicitudBaja"
+            class="gestion-usuarios__estado-fecha"
+          >
+            Baja solicitada: {{ formatearFecha(rowData.fechaSolicitudBaja) }}
+          </span>
+        </div>
       </template>
 
       <template #cell(acciones)="{ rowData }">
@@ -263,7 +276,7 @@
                   size="small"
                   preset="primary"
                   icon="mso-visibility"
-                  @click="abrirDetallePerfil(rowData)"
+                  @click="verPerfilCompleto(rowData)"
                 >
                   Ver detalle
                 </VaButton>
@@ -468,23 +481,10 @@ export default {
 
       columnas: [
         { key: "idUsuario", label: "ID", sortable: true },
-        { key: "nombre", label: "Nombre", sortable: true },
-        { key: "apellido", label: "Apellido", sortable: true },
+        { key: "nombre", label: "Usuario", sortable: true },
         { key: "dni", label: "DNI", sortable: true },
         { key: "correo", label: "Correo", sortable: true },
-        { key: "rolGlobal", label: "Rol" },
-        { key: "estado", label: "Estado", sortable: true },
-        {
-          key: "genero",
-          label: "Género",
-          sortable: true,
-          sortingFn: (a, b) =>
-            String(a?.nombre ?? a?.codigo ?? "").localeCompare(
-              String(b?.nombre ?? b?.codigo ?? ""),
-            ),
-        },
-        { key: "deshabilitacion", label: "Deshabilitación" },
-        { key: "fechaSolicitudBaja", label: "Solicitud de baja" },
+        { key: "estado", label: "Estado de cuenta", sortable: true },
         { key: "acciones", label: "Acciones" },
       ],
 
@@ -688,10 +688,12 @@ export default {
       }
     },
 
-    // Detalle perfil
-    abrirDetallePerfil(perfil) {
-      this.perfilDetalle = perfil;
-      this.modalPerfilVisible = true;
+    // Detalle perfil: vista administrativa completa de solo lectura.
+    verPerfilCompleto(perfil) {
+      this.$router.push({
+        name: "admin-perfil-detalle",
+        params: { id: perfil.idPerfil },
+      });
     },
 
     // Deshabilitar
@@ -775,7 +777,7 @@ export default {
 <style scoped>
 .gestion-usuarios {
   width: 100%;
-  max-width: 1100px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -838,7 +840,8 @@ export default {
 }
 
 .gestion-usuarios__tabla {
-  --va-table-padding: 0.5rem;
+  --va-data-table-cell-padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
 }
 
 .gestion-usuarios__id {
@@ -847,34 +850,57 @@ export default {
   color: var(--color-text-muted);
 }
 
-.gestion-usuarios__acciones {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.gestion-usuarios__deshabilitacion {
+.gestion-usuarios__usuario {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  max-width: 220px;
 }
 
-.gestion-usuarios__deshabilitacion-motivo {
-  font-size: 0.82rem;
+.gestion-usuarios__usuario-nombre {
   color: var(--color-text);
+  font-size: 0.88rem;
+}
+
+.gestion-usuarios__usuario-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+}
+
+.gestion-usuarios__usuario-genero {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.gestion-usuarios__deshabilitacion-hasta {
-  font-size: 0.75rem;
+.gestion-usuarios__estado-cuenta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.gestion-usuarios__estado-detalle {
+  display: flex;
+  flex-direction: column;
+}
+
+.gestion-usuarios__estado-motivo {
+  font-size: 0.78rem;
+  color: var(--color-text);
+}
+
+.gestion-usuarios__estado-fecha {
+  font-size: 0.72rem;
   color: var(--color-text-muted);
 }
 
-.gestion-usuarios__deshabilitacion-vacio {
-  color: var(--color-text-muted);
+.gestion-usuarios__acciones {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .deshabilitar-form {

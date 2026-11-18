@@ -124,6 +124,24 @@
             califiquen al equipo.
           </p>
 
+          <label
+            v-if="preview.puedeFinalizar"
+            class="finalizar-proyecto-modal__publicacion"
+          >
+            <VaCheckbox
+              v-model="crearPublicacion"
+              color="primary"
+              :disabled="finalizando"
+            />
+            <span class="finalizar-proyecto-modal__publicacion-texto">
+              <strong>Crear una publicación relacionada a este proyecto</strong>
+              <small>
+                Al finalizar, se abrirá el formulario de nueva publicación con
+                el proyecto ya asociado.
+              </small>
+            </span>
+          </label>
+
           <div class="finalizar-proyecto-modal__progreso">
             <div class="finalizar-proyecto-modal__progreso-fila">
               <span class="finalizar-proyecto-modal__progreso-titulo">
@@ -279,6 +297,7 @@ export default {
       formulario: {},
       tocado: {},
       confirmoPrematura: false,
+      crearPublicacion: false,
     };
   },
   computed: {
@@ -362,6 +381,7 @@ export default {
         this.formulario = {};
         this.tocado = {};
         this.confirmoPrematura = false;
+        this.crearPublicacion = false;
       }
     },
     preview: {
@@ -482,7 +502,8 @@ export default {
       this.$emit(
         "confirmar",
         this.validacion.calificaciones,
-        this.confirmoPrematura === true
+        this.confirmoPrematura === true,
+        this.crearPublicacion === true
       );
     },
   },
@@ -623,6 +644,35 @@ export default {
 
 .finalizar-proyecto-modal__listo .material-symbols-outlined {
   font-size: 1.1rem;
+}
+
+.finalizar-proyecto-modal__publicacion {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-soft);
+  cursor: pointer;
+}
+
+.finalizar-proyecto-modal__publicacion-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  color: var(--color-text);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.finalizar-proyecto-modal__publicacion-texto strong {
+  font-weight: 700;
+}
+
+.finalizar-proyecto-modal__publicacion-texto small {
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
 }
 
 .finalizar-proyecto-modal__progreso {

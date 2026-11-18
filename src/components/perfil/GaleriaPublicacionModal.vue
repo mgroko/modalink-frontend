@@ -115,6 +115,11 @@ export default {
       type: String,
       default: "",
     },
+    /** Imagen que se muestra al abrir la galería. */
+    indiceInicial: {
+      type: Number,
+      default: 0,
+    },
   },
   emits: ["update:modelValue"],
   data() {
@@ -134,6 +139,12 @@ export default {
     imagenActual() {
       return resolverFotoUrl(this.imagenesOrdenadas[this.indice]?.url);
     },
+    indiceInicialSeguro() {
+      const total = this.imagenesOrdenadas.length;
+      if (!total) return 0;
+      const indice = Number(this.indiceInicial) || 0;
+      return Math.min(Math.max(indice, 0), total - 1);
+    },
     estiloImagen() {
       if (this.escala <= ZOOM_MIN) {
         return { width: "100%" };
@@ -148,7 +159,7 @@ export default {
   watch: {
     modelValue(abierto) {
       if (abierto) {
-        this.indice = 0;
+        this.indice = this.indiceInicialSeguro;
         this.escala = 1;
       }
     },
