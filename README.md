@@ -1,6 +1,6 @@
 # ModaLink Frontend
 
-Plataforma de networking profesional para la industria creativa y de moda — un LinkedIn para producciones de moda. Frontend SPA desarrollado con Vue 3.
+Plataforma de networking profesional para la industria creativa y de moda. Frontend SPA desarrollado con Vue 3.
 
 > **Última actualización:** 2026-11-17  
 > **Estado:** implementación funcional avanzada, con autenticación, perfiles, publicaciones y moodboards, red de contactos, mensajería privada, proyectos, contratos, invitaciones, colaboraciones automáticas, notificaciones in-app y por email, chat grupal y panel administrativo.
