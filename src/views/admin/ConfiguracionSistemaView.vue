@@ -106,8 +106,9 @@ export default {
 
 .configuracion-sistema__header h1 {
   margin: 0;
-  color: var(--color-text);
-  font-size: clamp(1.5rem, 2vw, 2rem);
+  color: var(--color-primary);
+  font-size: 2.25rem;
+  font-weight: 800;
 }
 
 .configuracion-sistema__header p {

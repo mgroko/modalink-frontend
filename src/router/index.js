@@ -498,25 +498,25 @@ const routes = [
     path: "/admin/proyectos",
     name: "proyectos-admin",
     component: ProyectosAdminView,
-    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PROYECTOS", titulo: "Proyectos" }
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Proyectos" }
   },
   {
     path: "/admin/proyectos/:id",
     name: "admin-proyecto-detalle",
     component: ProyectoAdminDetalleView,
-    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PROYECTOS", titulo: "Detalle del proyecto" }
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Detalle del proyecto" }
   },
   {
     path: "/admin/perfiles",
     name: "perfiles-admin",
     component: PerfilesAdminView,
-    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PERFILES", titulo: "Perfiles" }
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Perfiles" }
   },
   {
     path: "/admin/perfiles/:id",
     name: "admin-perfil-detalle",
     component: PerfilAdminDetalleView,
-    meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_PERFILES", titulo: "Detalle del perfil" }
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Detalle del perfil" }
   },
   {
     path: "/admin/contratos",

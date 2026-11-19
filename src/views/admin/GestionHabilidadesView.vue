@@ -8,109 +8,133 @@
       </p>
     </section>
 
-    <div class="gestion-habilidades__toolbar">
-      <VaInput
-        v-model="busqueda"
-        preset="bordered"
-        placeholder="Buscar por nombre, código o descripción"
-        removable
-        class="gestion-habilidades__buscador"
-      >
-        <template #prependInner>
-          <VaIcon name="mso-search" color="grey" size="small" />
-        </template>
-      </VaInput>
-
-      <div class="gestion-habilidades__toolbar-acciones">
-        <VaButton
-          preset="secondary"
-          icon="mso-refresh"
-          :loading="cargando"
-          @click="cargarHabilidades"
-        >
-          Actualizar
-        </VaButton>
-
-        <VaButton
-          v-if="puedeCrear"
-          color="primary"
-          icon="mso-add"
-          @click="abrirCrear"
-        >
-          Nueva habilidad
-        </VaButton>
-      </div>
-    </div>
-
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
-    <div v-if="!puedeVer" class="gestion-habilidades__estado">
-      <span class="material-symbols-outlined gestion-habilidades__estado-icono">lock</span>
-      No tenés permisos para ver las habilidades.
-    </div>
-
-    <div v-else-if="cargando" class="gestion-habilidades__estado">
-      <span class="material-symbols-outlined gestion-habilidades__estado-icono">hourglass_empty</span>
-      Cargando habilidades...
-    </div>
-
-    <div
-      v-else-if="habilidadesFiltradas.length === 0"
-      class="gestion-habilidades__estado"
-    >
-      <span class="material-symbols-outlined gestion-habilidades__estado-icono">auto_awesome</span>
-      {{
-        busqueda.trim()
-          ? "No hay habilidades que coincidan con la búsqueda."
-          : "No hay habilidades registradas."
-      }}
-    </div>
-
-    <VaDataTable
-      v-else
-      class="gestion-habilidades__tabla"
-      :items="habilidadesFiltradas"
-      :columns="columnas"
-      :per-page="habilidadesFiltradas.length || 1"
-      striped
-      hoverable
-    >
-      <template #cell(nombre)="{ value }">
-        <span :title="value">{{ value || "—" }}</span>
-      </template>
-
-      <template #cell(descripcion)="{ value }">
-        <span :title="value || ''">{{ value || "—" }}</span>
-      </template>
-
-      <template #cell(codigo)="{ value }">
-        <code class="gestion-habilidades__codigo">{{ value || "—" }}</code>
-      </template>
-
-      <template #cell(acciones)="{ rowData }">
-        <div class="gestion-habilidades__acciones">
-          <VaButton
-            v-if="puedeModificar"
-            size="small"
-            preset="primary"
-            icon="mso-edit"
-            @click="abrirEditar(rowData)"
+    <AdminTablaPanel class="gestion-habilidades__panel">
+      <template #toolbar>
+        <div class="gestion-habilidades__toolbar">
+          <VaInput
+            v-model="busqueda"
+            preset="bordered"
+            placeholder="Buscar por nombre, código o descripción"
+            removable
+            class="gestion-habilidades__buscador"
           >
-            Editar
-          </VaButton>
-          <VaButton
-            v-if="puedeEliminar"
-            size="small"
-            color="danger"
-            icon="mso-delete"
-            @click="confirmarEliminar(rowData)"
-          >
-            Eliminar
-          </VaButton>
+            <template #prependInner>
+              <VaIcon name="mso-search" color="grey" size="small" />
+            </template>
+          </VaInput>
+
+          <div class="gestion-habilidades__toolbar-acciones">
+            <VaButton
+              preset="secondary"
+              icon="mso-refresh"
+              :loading="cargando"
+              @click="cargarHabilidades"
+            >
+              Actualizar
+            </VaButton>
+
+            <VaButton
+              v-if="puedeCrear"
+              color="primary"
+              icon="mso-add"
+              @click="abrirCrear"
+            >
+              Nueva habilidad
+            </VaButton>
+          </div>
         </div>
       </template>
-    </VaDataTable>
+
+      <div v-if="!puedeVer" class="gestion-habilidades__estado">
+        <span class="material-symbols-outlined gestion-habilidades__estado-icono">lock</span>
+        No tenés permisos para ver las habilidades.
+      </div>
+
+      <div v-else-if="cargando" class="gestion-habilidades__estado">
+        <span class="material-symbols-outlined gestion-habilidades__estado-icono">hourglass_empty</span>
+        Cargando habilidades...
+      </div>
+
+      <div
+        v-else-if="habilidadesFiltradas.length === 0"
+        class="gestion-habilidades__estado"
+      >
+        <span class="material-symbols-outlined gestion-habilidades__estado-icono">auto_awesome</span>
+        {{
+          busqueda.trim()
+            ? "No hay habilidades que coincidan con la búsqueda."
+            : "No hay habilidades registradas."
+        }}
+      </div>
+
+      <VaDataTable
+        v-else
+        class="gestion-habilidades__tabla"
+        :items="habilidadesFiltradas"
+        :columns="columnas"
+        :per-page="porPaginaHabilidades"
+        :current-page="paginaHabilidadesActual"
+        hoverable
+      >
+        <template #cell(nombre)="{ value }">
+          <span :title="value">{{ value || "—" }}</span>
+        </template>
+
+        <template #cell(descripcion)="{ value }">
+          <span :title="value || ''">{{ value || "—" }}</span>
+        </template>
+
+        <template #cell(codigo)="{ value }">
+          <code class="gestion-habilidades__codigo">{{ value || "—" }}</code>
+        </template>
+
+        <template #cell(acciones)="{ rowData }">
+          <div class="gestion-habilidades__acciones">
+            <VaButton
+              v-if="puedeModificar"
+              size="small"
+              preset="primary"
+              icon="mso-edit"
+              @click="abrirEditar(rowData)"
+            >
+              Editar
+            </VaButton>
+            <VaButton
+              v-if="puedeEliminar"
+              size="small"
+              color="danger"
+              icon="mso-delete"
+              @click="confirmarEliminar(rowData)"
+            >
+              Eliminar
+            </VaButton>
+          </div>
+        </template>
+      </VaDataTable>
+
+      <template v-if="puedeVer && !cargando" #footer>
+        <span class="gestion-habilidades__pie-info">
+          <template v-if="habilidadesFiltradas.length">
+            Mostrando {{ inicioHabilidades }}–{{ finHabilidades }} de
+            {{ habilidadesFiltradas.length }}
+            {{ habilidadesFiltradas.length === 1 ? "habilidad" : "habilidades" }}
+          </template>
+          <template v-else>0 habilidades</template>
+        </span>
+        <VaPagination
+          v-if="paginasHabilidades > 1"
+          v-model="paginaHabilidades"
+          :total="habilidadesFiltradas.length"
+          :page-size="porPaginaHabilidades"
+          :visible-pages="5"
+          boundary-links
+          direction-links
+        />
+      </template>
+    </AdminTablaPanel>
 
     <VaModal
       v-model="modalVisible"
@@ -229,6 +253,7 @@ import adminHabilidadesService from "../../services/adminHabilidadesService";
 import habilidadService from "../../services/habilidadService";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
 
 const normalizarTextoOrden = (valor) =>
   String(valor || "")
@@ -284,11 +309,13 @@ const COLUMNAS = [
 
 export default {
   name: "GestionHabilidadesView",
-  components: { BaseAlert },
+  components: { BaseAlert, AdminTablaPanel },
   data() {
     return {
       habilidades: [],
       busqueda: "",
+      paginaHabilidades: 1,
+      porPaginaHabilidades: 10,
       cargando: false,
       successMessage: "",
       errorMessage: "",
@@ -335,10 +362,35 @@ export default {
         )
       );
     },
+    paginasHabilidades() {
+      return Math.max(
+        1,
+        Math.ceil(this.habilidadesFiltradas.length / this.porPaginaHabilidades)
+      );
+    },
+    paginaHabilidadesActual() {
+      return Math.min(this.paginaHabilidades, this.paginasHabilidades);
+    },
+    inicioHabilidades() {
+      if (!this.habilidadesFiltradas.length) return 0;
+      return (this.paginaHabilidadesActual - 1) * this.porPaginaHabilidades + 1;
+    },
+    finHabilidades() {
+      return Math.min(
+        this.paginaHabilidadesActual * this.porPaginaHabilidades,
+        this.habilidadesFiltradas.length
+      );
+    },
   },
   watch: {
     busqueda() {
       this.successMessage = "";
+      this.paginaHabilidades = 1;
+    },
+    habilidadesFiltradas() {
+      if (this.paginaHabilidades > this.paginasHabilidades) {
+        this.paginaHabilidades = this.paginasHabilidades;
+      }
     },
   },
   async mounted() {
@@ -575,8 +627,9 @@ export default {
 
 .gestion-habilidades__encabezado h1 {
   margin: 0;
-  color: var(--color-text);
-  font-size: 1.35rem;
+  color: var(--color-primary);
+  font-size: 2.25rem;
+  font-weight: 800;
 }
 
 .gestion-habilidades__subtitulo {
@@ -623,11 +676,12 @@ export default {
 
 .gestion-habilidades__tabla {
   width: 100%;
-  max-width: 1120px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
   --va-data-table-cell-padding: 0.65rem 0.8rem;
+}
+
+.gestion-habilidades__pie-info {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
 .gestion-habilidades__tabla :deep(.va-data-table__table) {

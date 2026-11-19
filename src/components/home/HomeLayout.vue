@@ -694,7 +694,7 @@ export default {
 .home-layout__quick-links .material-symbols-outlined { font-size: 1.1rem; }
 .home-layout__quick-link-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: auto; padding: 0 0.3rem; border-radius: 999px; background: var(--color-danger-fill); color: var(--color-on-primary); font-size: 0.62rem; font-weight: 700; line-height: 1; }
 .home-layout__logout { display: flex; align-items: center; gap: .5rem; margin-top: auto; padding: .5rem 1rem; border: 0; background: transparent; color: var(--color-danger-text); cursor: pointer; font-size: .8rem; }
-.home-layout__content { min-height: 530px; padding: 1.5rem; background: var(--color-surface); border-radius: 10px; }
+.home-layout__content { align-self: start; min-height: 530px; padding: 1.5rem; background: var(--color-surface); border-radius: 10px; }
 .home-layout__content--transparente { background: transparent; padding: 0; }
 @media (max-width: 900px) {
   .home-layout__topbar { flex-wrap: wrap; gap: 1rem; padding: 1rem; }

@@ -4,6 +4,13 @@
  * Constantes compartidas por el modal de reporte y la bandeja administrativa.
  */
 
+/**
+ * Valor de las opciones "Todos…" de los filtros. VaSelect no muestra la
+ * etiqueta cuando el valor es "" (lo interpreta como sin selección), por eso
+ * se usa un valor centinela que los builders de parámetros ignoran.
+ */
+export const VALOR_FILTRO_TODOS = "TODOS";
+
 export const MOTIVOS_REPORTE_PUBLICACION = {
   SPAM: "SPAM",
   CONTENIDO_INAPROPIADO: "CONTENIDO_INAPROPIADO",
@@ -23,7 +30,7 @@ export const OPCIONES_MOTIVO_REPORTE_PUBLICACION = Object.entries(
 ).map(([value, text]) => ({ value, text }));
 
 export const OPCIONES_MOTIVO_FILTRO_REPORTE_PUBLICACION = [
-  { text: "Todos los motivos", value: "" },
+  { text: "Todos los motivos", value: VALOR_FILTRO_TODOS },
   ...OPCIONES_MOTIVO_REPORTE_PUBLICACION,
 ];
 
@@ -59,7 +66,7 @@ export const COLORES_ESTADO_REPORTE_PUBLICACION = {
 };
 
 export const OPCIONES_ESTADO_REPORTE_PUBLICACION = [
-  { text: "Todos los estados", value: "" },
+  { text: "Todos los estados", value: VALOR_FILTRO_TODOS },
   {
     text: ETIQUETAS_ESTADO_REPORTE_PUBLICACION[
       ESTADOS_REPORTE_PUBLICACION.PENDIENTE
@@ -148,8 +155,8 @@ export function construirParamsReportesPublicacion(filtros = {}) {
   } = filtros;
 
   const params = {};
-  if (estado) params.estado = estado;
-  if (motivo) params.motivo = motivo;
+  if (estado && estado !== VALOR_FILTRO_TODOS) params.estado = estado;
+  if (motivo && motivo !== VALOR_FILTRO_TODOS) params.motivo = motivo;
   if (fechaDesde) params.fechaDesde = fechaDesde;
   if (fechaHasta) params.fechaHasta = fechaHasta;
 

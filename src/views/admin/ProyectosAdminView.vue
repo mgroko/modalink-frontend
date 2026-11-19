@@ -11,61 +11,70 @@
       </button>
     </header>
 
-    <div class="proyectos-admin__toolbar">
-      <label for="estado-proyecto">Filtrar por estado</label>
-      <select id="estado-proyecto" v-model="estado" @change="cargarProyectos(0)">
-        <option value="">Todos los estados</option>
-        <option v-for="opcion in estados" :key="opcion.value" :value="opcion.value">{{ opcion.label }}</option>
-      </select>
-    </div>
-
     <p v-if="errorMessage" class="proyectos-admin__error">{{ errorMessage }}</p>
-    <div v-if="cargando" class="proyectos-admin__state">Cargando proyectos...</div>
-    <div v-else-if="!proyectos.length" class="proyectos-admin__state">No hay proyectos para mostrar.</div>
-    <div v-else class="proyectos-admin__table-wrapper">
-      <table class="proyectos-admin__table">
-        <thead>
-          <tr>
-            <th>Proyecto</th>
-            <th>Fecha de inicio</th>
-            <th>Estado</th>
-            <th>Privacidad</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="proyecto in proyectos" :key="proyecto.idProyecto">
-            <td>{{ proyecto.nombre }}</td>
-            <td>{{ formatearFecha(proyecto.fechaInicio) }}</td>
-            <td><span class="proyectos-admin__status">{{ estadoAmigable(proyecto.estado) }}</span></td>
-            <td>{{ privacidadAmigable(proyecto.privacidad) }}</td>
-            <td>
-              <button type="button" class="proyectos-admin__detail" @click="verDetalle(proyecto)">
-                Ver detalle
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
 
-    <div v-if="paginacion.totalPaginas > 1" class="proyectos-admin__pagination">
-      <button type="button" :disabled="paginacion.primera || cargando" @click="cargarProyectos(paginacion.paginaActual - 1)">Anterior</button>
-      <span>Página {{ paginacion.paginaActual + 1 }} de {{ paginacion.totalPaginas }}</span>
-      <button type="button" :disabled="paginacion.ultima || cargando" @click="cargarProyectos(paginacion.paginaActual + 1)">Siguiente</button>
-    </div>
+    <AdminTablaFiltrable
+      :columns="columnas"
+      :items="proyectos"
+      :loading="cargando"
+      :busqueda="busquedaNombre"
+      entidad="proyectos"
+      empty-text="No hay proyectos para mostrar."
+    >
+      <template #toolbar>
+        <div class="proyectos-admin__toolbar">
+          <input
+            v-model="busquedaNombre"
+            type="search"
+            class="proyectos-admin__input"
+            placeholder="Buscar por nombre de proyecto"
+            aria-label="Buscar por nombre de proyecto"
+          />
+          <label for="estado-proyecto">Filtrar por estado</label>
+          <select id="estado-proyecto" v-model="estado" @change="cargarProyectos">
+            <option value="">Todos los estados</option>
+            <option v-for="opcion in estados" :key="opcion.value" :value="opcion.value">{{ opcion.label }}</option>
+          </select>
+        </div>
+      </template>
+
+      <template #cell(fechaInicio)="{ value }">
+        {{ formatearFecha(value) }}
+      </template>
+
+      <template #cell(fechaFinalizacion)="{ value }">
+        {{ formatearFecha(value) }}
+      </template>
+
+      <template #cell(estado)="{ value }">
+        <span class="proyectos-admin__status">{{ estadoAmigable(value) }}</span>
+      </template>
+
+      <template #cell(privacidad)="{ value }">
+        {{ privacidadAmigable(value) }}
+      </template>
+
+      <template #cell(acciones)="{ rowData }">
+        <button type="button" class="proyectos-admin__detail" @click="verDetalle(rowData)">
+          Ver detalle
+        </button>
+      </template>
+    </AdminTablaFiltrable>
   </div>
 </template>
 
 <script>
 import adminService from "../../services/adminService";
+import AdminTablaFiltrable from "../../components/admin/AdminTablaFiltrable.vue";
 
 export default {
   name: "ProyectosAdminView",
+  components: { AdminTablaFiltrable },
   data() {
     return {
       proyectos: [],
       estado: "",
+      busquedaNombre: "",
       cargando: false,
       errorMessage: "",
       estados: [
@@ -75,27 +84,88 @@ export default {
         { value: "FINALIZADO", label: "Finalizado" },
         { value: "CANCELADO", label: "Cancelado" },
       ],
-      paginacion: { paginaActual: 0, totalPaginas: 1, primera: true, ultima: true },
     };
+  },
+  computed: {
+    columnas() {
+      return [
+        {
+          key: "nombre",
+          label: "Proyecto",
+          sortable: true,
+          filter: { type: "text", placeholder: "Nombre" },
+        },
+        {
+          key: "fechaInicio",
+          label: "Fecha de inicio",
+          sortable: true,
+          filter: { type: "text", placeholder: "Fecha" },
+          value: (proyecto) => this.formatearFecha(proyecto.fechaInicio),
+        },
+        {
+          key: "fechaFinalizacion",
+          label: "Fecha de finalización",
+          sortable: true,
+          filter: { type: "text", placeholder: "Fecha" },
+          value: (proyecto) => this.formatearFecha(proyecto.fechaFinalizacion),
+        },
+        {
+          key: "estado",
+          label: "Estado",
+          sortable: true,
+          filter: {
+            type: "select",
+            options: this.estados.map((opcion) => ({
+              value: opcion.value,
+              text: opcion.label,
+            })),
+          },
+        },
+        {
+          key: "privacidad",
+          label: "Privacidad",
+          sortable: true,
+          filter: {
+            type: "select",
+            options: [
+              { value: "PUBLICO", text: "Público" },
+              { value: "PRIVADO", text: "Privado" },
+            ],
+          },
+        },
+        { key: "acciones", label: "Acciones", sortable: false },
+      ];
+    },
   },
   mounted() {
     this.cargarProyectos();
   },
   methods: {
-    async cargarProyectos(page = this.paginacion.paginaActual) {
+    /**
+     * El endpoint de admin pagina de a 100 como máximo. Para que los filtros
+     * y el orden por columna trabajen sobre todo el listado, se recorren todas
+     * las páginas y se acumulan los proyectos.
+     */
+    async cargarProyectos() {
       this.cargando = true;
       this.errorMessage = "";
       try {
-        const params = { page, size: 20 };
-        if (this.estado) params.estado = this.estado;
-        const data = (await adminService.listarProyectos(params))?.data || {};
-        this.proyectos = Array.isArray(data.contenido) ? data.contenido : [];
-        this.paginacion = {
-          paginaActual: data.paginaActual ?? page,
-          totalPaginas: data.totalPaginas ?? 1,
-          primera: data.primera ?? true,
-          ultima: data.ultima ?? true,
-        };
+        const acumulados = [];
+        let page = 0;
+        let ultima = false;
+
+        do {
+          const params = { page, size: 100 };
+          if (this.estado) params.estado = this.estado;
+          const data = (await adminService.listarProyectos(params))?.data || {};
+          const contenido = Array.isArray(data.contenido) ? data.contenido : [];
+          acumulados.push(...contenido);
+          ultima = data.ultima ?? true;
+          page += 1;
+          if (page > 100) break;
+        } while (!ultima);
+
+        this.proyectos = acumulados;
       } catch (error) {
         this.proyectos = [];
         this.errorMessage = error?.response?.data?.message || "No se pudieron cargar los proyectos.";
@@ -130,8 +200,7 @@ export default {
 }
 
 .proyectos-admin__header,
-.proyectos-admin__toolbar,
-.proyectos-admin__pagination {
+.proyectos-admin__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -144,7 +213,9 @@ export default {
 
 .proyectos-admin h1 {
   margin: 0;
-  color: var(--color-text);
+  color: var(--color-primary);
+  font-size: 2.25rem;
+  font-weight: 800;
 }
 
 .proyectos-admin p {
@@ -152,8 +223,7 @@ export default {
   color: var(--color-text-muted);
 }
 
-.proyectos-admin__refresh,
-.proyectos-admin__pagination button {
+.proyectos-admin__refresh {
   padding: 0.6rem 0.85rem;
   color: var(--color-primary);
   background: var(--color-surface);
@@ -170,26 +240,37 @@ export default {
   gap: 0.4rem;
 }
 
-.proyectos-admin__refresh:disabled,
-.proyectos-admin__pagination button:disabled {
+.proyectos-admin__refresh:disabled {
   cursor: wait;
   opacity: 0.5;
 }
 
 .proyectos-admin__toolbar {
   justify-content: flex-start;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
   color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
+.proyectos-admin__input,
 .proyectos-admin__toolbar select {
-  min-width: 220px;
-  padding: 0.65rem 0.75rem;
+  min-height: 2.4rem;
+  padding: 0.6rem 0.75rem;
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.proyectos-admin__input {
+  min-width: 240px;
+  flex: 1 1 240px;
+}
+
+.proyectos-admin__toolbar select {
+  min-width: 220px;
 }
 
 .proyectos-admin__error {
@@ -200,44 +281,6 @@ export default {
   border: 1px solid var(--color-danger-border);
   border-radius: 0.5rem;
   font-size: 0.85rem;
-}
-
-.proyectos-admin__state {
-  padding: 3rem 1rem;
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-soft);
-  border-radius: 0.75rem;
-  text-align: center;
-}
-
-.proyectos-admin__table-wrapper {
-  overflow-x: auto;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-soft);
-  border-radius: 0.75rem;
-}
-
-.proyectos-admin__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-
-.proyectos-admin__table th,
-.proyectos-admin__table td {
-  padding: 0.9rem 1rem;
-  border-bottom: 1px solid var(--color-border-soft);
-  text-align: left;
-}
-
-.proyectos-admin__table th {
-  color: var(--color-text-muted);
-  font-weight: 600;
-}
-
-.proyectos-admin__table td {
-  color: var(--color-text);
 }
 
 .proyectos-admin__status {
@@ -257,13 +300,6 @@ export default {
   cursor: pointer;
   font: inherit;
   font-size: 0.78rem;
-}
-
-.proyectos-admin__pagination {
-  justify-content: center;
-  margin-top: 1rem;
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
 }
 
 @media (max-width: 620px) {

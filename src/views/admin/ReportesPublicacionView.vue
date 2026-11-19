@@ -204,6 +204,7 @@ import {
   OPCIONES_MOTIVO_FILTRO_REPORTE_PUBLICACION,
   OPCIONES_TAMANO_REPORTES_PUBLICACION,
   TAMANO_REPORTES_PUBLICACION_POR_DEFECTO,
+  VALOR_FILTRO_TODOS,
   colorEstadoReportePublicacion,
   construirParamsReportesPublicacion,
   etiquetaEstadoReportePublicacion,
@@ -213,7 +214,7 @@ import {
 function filtrosIniciales() {
   return {
     estado: ESTADO_REPORTE_PUBLICACION_POR_DEFECTO,
-    motivo: "",
+    motivo: VALOR_FILTRO_TODOS,
     fechaDesde: "",
     fechaHasta: "",
     tamano: TAMANO_REPORTES_PUBLICACION_POR_DEFECTO,
@@ -259,8 +260,9 @@ export default {
     },
     hayFiltros() {
       return (
-        this.filtros.estado !== ESTADO_REPORTE_PUBLICACION_POR_DEFECTO ||
-        !!this.filtros.motivo ||
+        (this.filtros.estado !== ESTADO_REPORTE_PUBLICACION_POR_DEFECTO &&
+          this.filtros.estado !== VALOR_FILTRO_TODOS) ||
+        (!!this.filtros.motivo && this.filtros.motivo !== VALOR_FILTRO_TODOS) ||
         !!this.filtros.fechaDesde ||
         !!this.filtros.fechaHasta
       );
@@ -412,8 +414,8 @@ export default {
 
 .reportes-publicacion__encabezado h1 {
   margin: 0;
-  color: var(--color-text);
-  font-size: 1.45rem;
+  color: var(--color-primary);
+  font-size: 2.25rem;
   font-weight: 800;
 }
 

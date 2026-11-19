@@ -278,7 +278,9 @@ export default {
 }
 
 .dashboard-admin h1 {
-  font-size: clamp(1.5rem, 2vw, 2rem);
+  color: var(--color-primary);
+  font-size: 2.25rem;
+  font-weight: 800;
 }
 
 .dashboard-admin h2 {

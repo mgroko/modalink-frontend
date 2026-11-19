@@ -40,7 +40,7 @@
     </dl>
 
     <p class="confirmar-modificacion-modal__aviso">
-      El backend reconciliará las firmas, creará una nueva versión y notificará
+      Se reconciliarán las firmas, se creará una nueva versión y se notificará
       a las partes actuales. Las firmas registradas bloquean la modificación.
     </p>
 

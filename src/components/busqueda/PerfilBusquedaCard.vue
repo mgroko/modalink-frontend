@@ -102,7 +102,7 @@
         Ver perfil
       </VaButton>
       <VaButton
-        v-if="!permitirConexion"
+        v-if="!esPerfilPropio && !permitirConexion"
         preset="secondary"
         size="small"
         disabled
@@ -113,7 +113,7 @@
         Conectar · Próximamente
       </VaButton>
       <VaButton
-        v-else-if="esConectar"
+        v-else-if="!esPerfilPropio && esConectar"
         color="#5CA4A9"
         size="small"
         :disabled="conectando"
@@ -123,7 +123,7 @@
         {{ etiquetaConexion }}
       </VaButton>
       <VaButton
-        v-else
+        v-else-if="!esPerfilPropio"
         preset="secondary"
         size="small"
         disabled
@@ -150,6 +150,7 @@ import {
   normCodigo,
 } from "../../utils/perfilConstants.js";
 import IndicadorPresencia from "../conexion/IndicadorPresencia.vue";
+import { state as authState } from "../../services/authState";
 
 const LIMITE_CARACTERISTICAS_CARD = 3;
 
@@ -188,6 +189,19 @@ export default {
   computed: {
     estadoNormalizado() {
       return normalizarEstadoConexion(this.estadoConexion);
+    },
+    /**
+     * No se ofrece conectar con el propio usuario: cualquier perfil de la
+     * misma cuenta (incluido el activo) queda sin acción de conexión.
+     */
+    esPerfilPropio() {
+      const idUsuarioActual = authState.usuario?.idUsuario;
+      const idUsuarioPerfil = this.perfil?.idUsuario;
+      return (
+        idUsuarioActual != null &&
+        idUsuarioPerfil != null &&
+        String(idUsuarioActual) === String(idUsuarioPerfil)
+      );
     },
     etiquetaConexion() {
       return etiquetaAccionConexion(this.estadoNormalizado);

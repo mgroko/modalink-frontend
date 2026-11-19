@@ -22,6 +22,60 @@
         </div>
       </section>
 
+      <section
+        v-if="cargandoProyecto"
+        class="detalle-invitacion__proyecto-info detalle-invitacion__proyecto-info--cargando"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">hourglass_empty</span>
+        Cargando información del proyecto…
+      </section>
+
+      <section v-else-if="proyecto" class="detalle-invitacion__proyecto-info">
+        <header class="detalle-invitacion__proyecto-info-cabecera">
+          <span class="detalle-invitacion__label">Información general</span>
+          <EstadoProyectoBadge :estado="proyecto.estado" />
+        </header>
+
+        <p
+          v-if="proyecto.descripcion"
+          class="detalle-invitacion__proyecto-descripcion"
+          :title="proyecto.descripcion"
+        >
+          {{ proyecto.descripcion }}
+        </p>
+
+        <dl class="detalle-invitacion__proyecto-meta">
+          <div>
+            <dt>Privacidad</dt>
+            <dd>{{ privacidadProyecto }}</dd>
+          </div>
+          <div>
+            <dt>Inicio</dt>
+            <dd>{{ formatearFechaCorta(proyecto.fechaInicio) }}</dd>
+          </div>
+          <div>
+            <dt>Entrega estimada</dt>
+            <dd>{{ formatearFechaCorta(proyecto.fechaEntregaEstipulada) }}</dd>
+          </div>
+          <div v-if="proyecto.fechaFinalizacion">
+            <dt>Finalización</dt>
+            <dd>{{ formatearFechaCorta(proyecto.fechaFinalizacion) }}</dd>
+          </div>
+          <div>
+            <dt>Director</dt>
+            <dd>{{ proyecto.nombreDirector || "—" }}</dd>
+          </div>
+          <div v-if="ubicacionProyecto">
+            <dt>Ubicación</dt>
+            <dd>{{ ubicacionProyecto }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <p v-else-if="errorProyecto" class="detalle-invitacion__proyecto-nota">
+        {{ errorProyecto }}
+      </p>
+
       <dl class="detalle-invitacion__meta">
         <div>
           <dt>Tipo</dt>
@@ -143,6 +197,14 @@
         </div>
 
         <div class="detalle-invitacion__acciones-principales">
+          <VaButton
+            v-if="puedeIrAlProyecto && !puedeVerProyecto"
+            preset="secondary"
+            icon="mso-open_in_new"
+            @click="$emit('ver-proyecto', invitacion)"
+          >
+            Ver proyecto
+          </VaButton>
           <VaButton preset="secondary" @click="cerrar">Cerrar</VaButton>
           <VaButton
             v-if="puedeGestionarInvitacion"
@@ -166,7 +228,9 @@
 
 <script>
 import EstadoInvitacionBadge from "./EstadoInvitacionBadge.vue";
+import EstadoProyectoBadge from "../proyecto/EstadoProyectoBadge.vue";
 import perfilService from "../../services/perfilService.js";
+import proyectoService from "../../services/proyectoService.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 import {
@@ -180,7 +244,7 @@ import { TIPOS_INVITACION } from "../../utils/invitacionConstants.js";
 
 export default {
   name: "ModalDetalleInvitacion",
-  components: { EstadoInvitacionBadge },
+  components: { EstadoInvitacionBadge, EstadoProyectoBadge },
   props: {
     modelValue: {
       type: Boolean,
@@ -211,6 +275,10 @@ export default {
       fotoUrl: null,
       fotoRota: false,
       idCarga: 0,
+      proyecto: null,
+      cargandoProyecto: false,
+      errorProyecto: "",
+      idCargaProyecto: 0,
     };
   },
   computed: {
@@ -219,6 +287,30 @@ export default {
     },
     puedeVerProyecto() {
       return this.invitacion?.estado === ESTADOS_INVITACION.ACEPTADA;
+    },
+    idProyectoInvitacion() {
+      return this.invitacion?.idProyecto ?? null;
+    },
+    /**
+     * Se puede abrir el proyecto cuando la invitación ya fue aceptada o cuando
+     * la información se pudo cargar (proyecto público / miembro del proyecto).
+     */
+    puedeIrAlProyecto() {
+      return (
+        this.idProyectoInvitacion != null &&
+        (this.puedeVerProyecto || !!this.proyecto)
+      );
+    },
+    privacidadProyecto() {
+      const privacidad = this.proyecto?.privacidad;
+      if (privacidad === "PUBLICO") return "Público";
+      if (privacidad === "PRIVADO") return "Privado";
+      return privacidad || "—";
+    },
+    ubicacionProyecto() {
+      const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
+      const provincia = this.proyecto?.ubicacion?.ciudad?.provincia?.nombre;
+      return [ciudad, provincia].filter(Boolean).join(", ");
     },
     puedeGestionarInvitacion() {
       return (
@@ -277,20 +369,35 @@ export default {
     modelValue(valor) {
       if (valor) {
         this.cargarFoto();
+        this.cargarProyecto();
       } else {
         this.idCarga += 1;
+        this.idCargaProyecto += 1;
       }
     },
     "invitacion.idInvitacion"() {
       this.fotoUrl = null;
       this.fotoRota = false;
-      if (this.modelValue) this.cargarFoto();
+      this.proyecto = null;
+      this.errorProyecto = "";
+      if (this.modelValue) {
+        this.cargarFoto();
+        this.cargarProyecto();
+      }
     },
+  },
+  mounted() {
+    if (this.modelValue) {
+      this.cargarFoto();
+      this.cargarProyecto();
+    }
   },
   beforeUnmount() {
     this.idCarga += 1;
+    this.idCargaProyecto += 1;
   },
   methods: {
+    formatearFechaCorta,
     etiquetaTipoInvitacion,
     onCambioVisibilidad(valor) {
       this.$emit("update:modelValue", valor);
@@ -335,6 +442,34 @@ export default {
         if (corrida === this.idCarga) this.fotoUrl = null;
       }
     },
+    async cargarProyecto() {
+      const idProyecto = this.idProyectoInvitacion;
+      this.proyecto = null;
+      this.errorProyecto = "";
+
+      if (idProyecto == null) {
+        this.cargandoProyecto = false;
+        return;
+      }
+
+      const corrida = ++this.idCargaProyecto;
+      this.cargandoProyecto = true;
+
+      try {
+        const response = await proyectoService.obtener(idProyecto);
+        if (corrida !== this.idCargaProyecto) return;
+        this.proyecto = response?.data || null;
+      } catch (error) {
+        if (corrida !== this.idCargaProyecto) return;
+        this.proyecto = null;
+        this.errorProyecto =
+          error?.response?.status === 403
+            ? "El proyecto es privado: vas a poder ver su información cuando aceptes la invitación."
+            : "No se pudo cargar la información del proyecto.";
+      } finally {
+        if (corrida === this.idCargaProyecto) this.cargandoProyecto = false;
+      }
+    },
   },
 };
 </script>
@@ -372,6 +507,86 @@ export default {
   color: var(--color-text);
   font-size: 1rem;
   font-weight: 700;
+}
+
+/* Información general del proyecto */
+.detalle-invitacion__proyecto-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-soft);
+}
+
+.detalle-invitacion__proyecto-info--cargando {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.detalle-invitacion__proyecto-info--cargando .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+.detalle-invitacion__proyecto-info-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.detalle-invitacion__proyecto-descripcion {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.detalle-invitacion__proyecto-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem 0.9rem;
+  margin: 0;
+}
+
+.detalle-invitacion__proyecto-meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.detalle-invitacion__proyecto-meta dt {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.detalle-invitacion__proyecto-meta dd {
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detalle-invitacion__proyecto-nota {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 
 .detalle-invitacion__label {
@@ -526,6 +741,8 @@ export default {
 .detalle-invitacion__acciones-principales {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-left: auto;
 }
@@ -533,6 +750,10 @@ export default {
 @media (max-width: 560px) {
   .detalle-invitacion__meta {
     grid-template-columns: 1fr;
+  }
+
+  .detalle-invitacion__proyecto-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .detalle-invitacion__proyecto-linea {

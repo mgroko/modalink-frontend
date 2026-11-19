@@ -246,13 +246,9 @@
             v-for="invitacion in reemplazos"
             :key="invitacion.idCandidato"
             :invitacion="invitacion"
+            :gestionando="estaGestionandoReemplazo(invitacion)"
             @abrir="abrirDetalleReemplazo"
-            @aceptar="
-              abrirGestionReemplazo(
-                $event,
-                ACCIONES_GESTION_REEMPLAZO.ACEPTAR
-              )
-            "
+            @aceptar="aceptarInvitacionReemplazo($event)"
             @rechazar="
               abrirGestionReemplazo(
                 $event,
@@ -307,11 +303,12 @@
     <ModalDetalleInvitacionReemplazo
       :model-value="modalDetalleReemplazo.visible"
       :invitacion="modalDetalleReemplazo.invitacion"
-      :gestionando="gestionandoDetalleReemplazo"
+      :gestionando="gestionandoReemplazo"
       :error="errorDetalleReemplazo"
       :mostrar-rechazo="mostrarRechazoDetalleReemplazo"
       @update:model-value="onCambioVisibilidadDetalleReemplazo"
-      @aceptar="confirmarAceptacionDesdeDetalleReemplazo"
+      @aceptar="aceptarInvitacionReemplazo($event, { desdeDetalle: true })"
+      @ver-proyecto="verProyectoDesdeReemplazo"
       @rechazar="
         onGestionDesdeDetalleReemplazo(
           $event,
@@ -487,7 +484,6 @@ export default {
         visible: false,
         invitacion: null,
       },
-      gestionandoDetalleReemplazo: false,
       errorDetalleReemplazo: "",
       mostrarRechazoDetalleReemplazo: false,
       modalGestionReemplazo: {
@@ -496,6 +492,7 @@ export default {
         invitacion: null,
       },
       gestionandoReemplazo: false,
+      idGestionReemplazo: null,
       errorGestionReemplazo: "",
       mostrarRechazoReemplazo: false,
       idCargaReemplazos: 0,
@@ -1127,23 +1124,31 @@ export default {
       };
     },
     cerrarModalDetalleReemplazo(forzar = false) {
-      if (this.gestionandoDetalleReemplazo && !forzar) return;
+      if (this.idGestionReemplazo != null && !forzar) return;
       this.modalDetalleReemplazo = { visible: false, invitacion: null };
       this.errorDetalleReemplazo = "";
       this.mostrarRechazoDetalleReemplazo = false;
     },
-    async confirmarAceptacionDesdeDetalleReemplazo(invitacion) {
+    /**
+     * Aceptar en un solo paso: tanto la tarjeta como el detalle disparan la
+     * aceptación directamente, sin un segundo modal de confirmación.
+     */
+    async aceptarInvitacionReemplazo(invitacion, { desdeDetalle = false } = {}) {
       if (
-        this.gestionandoDetalleReemplazo ||
+        this.idGestionReemplazo != null ||
         !invitacion ||
         !puedeGestionarInvitacionReemplazo(invitacion)
       ) {
         return;
       }
 
-      this.gestionandoDetalleReemplazo = true;
-      this.errorDetalleReemplazo = "";
-      this.mostrarRechazoDetalleReemplazo = false;
+      this.idGestionReemplazo = invitacion.idCandidato;
+      this.gestionandoReemplazo = true;
+      if (desdeDetalle) {
+        this.errorDetalleReemplazo = "";
+        this.mostrarRechazoDetalleReemplazo = false;
+      }
+
       if (controladorGestionReemplazo) controladorGestionReemplazo.abort();
       controladorGestionReemplazo = new AbortController();
 
@@ -1166,10 +1171,30 @@ export default {
         await this.cargarReemplazosRechazados();
       } catch (error) {
         if (this.esCancelacion(error)) return;
-        await this.manejarErrorGestionReemplazo(error, true, "detalle");
+        await this.manejarErrorGestionReemplazo(
+          error,
+          true,
+          desdeDetalle ? "detalle" : "directo",
+          invitacion
+        );
       } finally {
-        this.gestionandoDetalleReemplazo = false;
+        this.gestionandoReemplazo = false;
+        this.idGestionReemplazo = null;
       }
+    },
+    estaGestionandoReemplazo(invitacion) {
+      const id = invitacion?.idCandidato;
+      if (id == null || this.idGestionReemplazo == null) return false;
+      return String(this.idGestionReemplazo) === String(id);
+    },
+    verProyectoDesdeReemplazo(invitacion) {
+      const idProyecto = invitacion?.idProyecto;
+      if (idProyecto == null) return;
+      this.cerrarModalDetalleReemplazo(true);
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: idProyecto },
+      });
     },
     onGestionDesdeDetalleReemplazo(invitacion, accion) {
       this.modalDetalleReemplazo = { visible: false, invitacion: null };
@@ -1277,26 +1302,43 @@ export default {
     async manejarErrorGestionReemplazo(
       error,
       esAceptar,
-      origen = "gestion"
+      origen = "gestion",
+      invitacionDirecta = null
     ) {
       const esDetalle = origen === "detalle";
+      const esDirecto = origen === "directo";
       const clasificacion = clasificarErrorReemplazo(error);
       const { tipo, mensaje, codigo } = clasificacion;
-      const invitacion = esDetalle
-        ? this.modalDetalleReemplazo.invitacion
-        : this.modalGestionReemplazo.invitacion;
+      const invitacion = esDirecto
+        ? invitacionDirecta
+        : esDetalle
+          ? this.modalDetalleReemplazo.invitacion
+          : this.modalGestionReemplazo.invitacion;
 
       const cerrar = (forzar = false) => {
-        if (esDetalle) this.cerrarModalDetalleReemplazo(forzar);
+        if (esDetalle || esDirecto) this.cerrarModalDetalleReemplazo(forzar);
         else this.cerrarModalGestionReemplazo(forzar);
       };
       const asignarError = (valor) => {
-        if (esDetalle) this.errorDetalleReemplazo = valor;
-        else this.errorGestionReemplazo = valor;
+        if (esDetalle) {
+          this.errorDetalleReemplazo = valor;
+          return;
+        }
+        if (esDirecto) {
+          this.toast.init({
+            title: "No se pudo aceptar",
+            message: valor,
+            color: "danger",
+            position: "top-right",
+            duration: 6000,
+          });
+          return;
+        }
+        this.errorGestionReemplazo = valor;
       };
       const asignarMostrarRechazo = (valor) => {
         if (esDetalle) this.mostrarRechazoDetalleReemplazo = valor;
-        else this.mostrarRechazoReemplazo = valor;
+        else if (!esDirecto) this.mostrarRechazoReemplazo = valor;
       };
 
       if (tipo === TIPOS_ERROR_REEMPLAZO.SESION) {
@@ -1326,9 +1368,11 @@ export default {
       ];
 
       if (esAceptar && codigosConRechazo.includes(codigo)) {
+        const texto = mensaje || "No se pudo aceptar la invitación.";
         asignarError(
-          mensaje ||
-            "No se pudo aceptar la invitación. Podés rechazarla para cerrar la gestión."
+          esDirecto
+            ? `${texto} Podés rechazarla desde la tarjeta.`
+            : `${texto} Podés rechazarla para cerrar la gestión.`
         );
         asignarMostrarRechazo(true);
         return;
@@ -1388,7 +1432,9 @@ export default {
       asignarError(
         mensajeErrorApi(
           error,
-          "No se pudo gestionar la invitación de reemplazo."
+          esAceptar
+            ? "No se pudo aceptar la invitación de reemplazo."
+            : "No se pudo gestionar la invitación de reemplazo."
         )
       );
       asignarMostrarRechazo(false);

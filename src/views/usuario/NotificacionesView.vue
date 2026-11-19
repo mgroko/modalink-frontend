@@ -357,6 +357,14 @@ export default {
   font-size: 0.85rem;
 }
 
+/* El panel de administración comparte el encabezado grande del resto de sus páginas. */
+.admin-layout .notificaciones-view__title {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 2.25rem;
+  font-weight: 800;
+}
+
 .notificaciones-view__actions {
   display: flex;
   align-items: center;

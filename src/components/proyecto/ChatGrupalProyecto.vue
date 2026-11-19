@@ -540,7 +540,7 @@ export default {
         this.paginacion = normalizarPagina(data);
 
         if (pagina === 0) {
-          this.$nextTick(() => this.scrollAlFinal());
+          this.scrollAlFinalTrasCargar();
           this.programarMarcarLeido();
         } else {
           this.restaurarScroll(previo);
@@ -812,6 +812,22 @@ export default {
       if (!lista) return;
       lista.scrollTop = lista.scrollHeight;
     },
+    /**
+     * Al entrar a la pestaña el historial se renderiza recién y el alto de la
+     * lista puede terminar de acomodarse unos frames después. Se repite el
+     * scroll para garantizar que quede en el último mensaje.
+     */
+    scrollAlFinalTrasCargar() {
+      this.$nextTick(() => {
+        this.scrollAlFinal();
+        if (typeof requestAnimationFrame === "function") {
+          requestAnimationFrame(() => {
+            this.scrollAlFinal();
+            setTimeout(() => this.scrollAlFinal(), 120);
+          });
+        }
+      });
+    },
     estaCercaDelFinal() {
       const lista = this.$refs.lista;
       if (!lista) return true;
@@ -1071,7 +1087,7 @@ export default {
   flex: none;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.85rem 1rem;
+  padding: 0.7rem 1rem 0.5rem;
   border-top: 1px solid var(--color-border-soft);
 }
 

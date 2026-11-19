@@ -185,6 +185,7 @@
 
         <ChatGrupalProyecto
           v-else-if="tabActiva === 'chat' && esMiembro"
+          ref="chatGrupal"
           :id-proyecto="idProyecto"
           :nombre-proyecto="proyecto.nombre"
           @ir-miembros="cambiarTab('integrantes')"
@@ -1171,6 +1172,7 @@ data() {
         return;
       }
       this.tabActiva = tab;
+      if (tab === "chat") this.scrollearAlChat();
     },
     actualizarActividadResaltada() {
       const valor = Number(
@@ -1203,6 +1205,18 @@ data() {
       else query.tab = tab;
       if (tab !== "planificacion") delete query.vista;
       this.reemplazarQuery(query);
+      if (tab === "chat") this.scrollearAlChat();
+    },
+    /**
+     * Al entrar a la pestaña de chat se baja el scroll principal hasta el
+     * comienzo del chat, para no tener que recorrer el encabezado del proyecto.
+     */
+    scrollearAlChat() {
+      this.$nextTick(() => {
+        const el = this.$refs.chatGrupal?.$el;
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     },
     limpiarActividadResaltada() {
       this.idActividadResaltada = null;

@@ -1,5 +1,10 @@
 <template>
   <div class="busqueda-usuarios">
+    <AdminVolver
+      :to="{ name: 'gestion-usuarios' }"
+      texto="Volver a usuarios"
+    />
+
     <section class="busqueda-usuarios__encabezado">
       <h1>Búsqueda de usuarios</h1>
       <p class="busqueda-usuarios__subtitulo">
@@ -359,6 +364,7 @@
 <script>
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminVolver from "../../components/admin/AdminVolver.vue";
 import { state, tienePermiso } from "../../services/authState";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -370,6 +376,7 @@ export default {
   name: "BusquedaUsuariosView",
   components: {
     BaseAlert,
+    AdminVolver,
   },
   setup() {
     return { toast: useToast() };
@@ -708,12 +715,10 @@ export default {
 }
 
 .busqueda-usuarios__encabezado h1 {
+  margin: 0;
+  color: var(--color-primary);
   font-size: 2.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .busqueda-usuarios__subtitulo {

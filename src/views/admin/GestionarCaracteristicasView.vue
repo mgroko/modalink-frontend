@@ -7,139 +7,141 @@
       </p>
     </section>
 
-    <div class="gestion-caracteristicas__toolbar">
-      <VaInput
-        v-model="busqueda"
-        preset="bordered"
-        placeholder="Buscar por nombre, código o profesión"
-        removable
-        class="gestion-caracteristicas__buscador"
-      >
-        <template #prependInner>
-          <VaIcon name="mso-search" color="grey" size="small" />
-        </template>
-      </VaInput>
-
-      <div class="gestion-caracteristicas__toolbar-acciones">
-        <VaButton
-          preset="secondary"
-          icon="mso-refresh"
-          :loading="cargando"
-          @click="cargarCaracteristicas"
-        >
-          Actualizar
-        </VaButton>
-
-        <VaButton
-          v-if="puedeCrear"
-          color="primary"
-          icon="mso-add"
-          @click="abrirCrear"
-        >
-          Nueva característica
-        </VaButton>
-      </div>
-    </div>
-
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
-    <div v-if="!puedeVer" class="gestion-caracteristicas__estado">
-      <span class="material-symbols-outlined gestion-caracteristicas__estado-icono">lock</span>
-      No tenés permisos para ver las características técnicas.
-    </div>
+    <AdminTablaPanel class="gestion-caracteristicas__panel">
+      <template #toolbar>
+        <div class="gestion-caracteristicas__toolbar">
+          <VaInput
+            v-model="busqueda"
+            preset="bordered"
+            placeholder="Buscar por nombre, código o profesión"
+            removable
+            class="gestion-caracteristicas__buscador"
+          >
+            <template #prependInner>
+              <VaIcon name="mso-search" color="grey" size="small" />
+            </template>
+          </VaInput>
 
-    <div v-else-if="cargando" class="gestion-caracteristicas__estado">
-      <span class="material-symbols-outlined gestion-caracteristicas__estado-icono">hourglass_empty</span>
-      Cargando características...
-    </div>
+          <div class="gestion-caracteristicas__toolbar-acciones">
+            <VaButton
+              preset="secondary"
+              icon="mso-refresh"
+              :loading="cargando"
+              @click="cargarCaracteristicas"
+            >
+              Actualizar
+            </VaButton>
 
-    <div v-else-if="caracteristicas.length === 0" class="gestion-caracteristicas__estado">
-      <span class="material-symbols-outlined gestion-caracteristicas__estado-icono">tune</span>
-      No hay características técnicas registradas.
-    </div>
+            <VaButton
+              v-if="puedeCrear"
+              color="primary"
+              icon="mso-add"
+              @click="abrirCrear"
+            >
+              Nueva característica
+            </VaButton>
+          </div>
+        </div>
+      </template>
 
-    <template v-else>
+      <div v-if="!puedeVer" class="gestion-caracteristicas__estado">
+        <span class="material-symbols-outlined gestion-caracteristicas__estado-icono">lock</span>
+        No tenés permisos para ver las características técnicas.
+      </div>
+
+      <div v-else-if="cargando" class="gestion-caracteristicas__estado">
+        <span class="material-symbols-outlined gestion-caracteristicas__estado-icono">hourglass_empty</span>
+        Cargando características...
+      </div>
+
+      <div v-else-if="caracteristicas.length === 0" class="gestion-caracteristicas__estado">
+        <span class="material-symbols-outlined gestion-caracteristicas__estado-icono">tune</span>
+        No hay características técnicas registradas.
+      </div>
+
       <VaDataTable
+        v-else
         class="gestion-caracteristicas__tabla"
         :items="caracteristicasFiltradas"
         :columns="columnas"
         :per-page="porPaginaCaracteristicas"
         :current-page="paginaCaracteristicas"
-        striped
         hoverable
       >
-      <template #cell(idCaracteristica)="{ value }">
-        <span class="gestion-caracteristicas__id">{{ value }}</span>
-      </template>
+        <template #cell(idCaracteristica)="{ value }">
+          <span class="gestion-caracteristicas__id">{{ value }}</span>
+        </template>
 
-      <template #cell(nombre)="{ value }">
-        <span :title="value">{{ value || '—' }}</span>
-      </template>
+        <template #cell(nombre)="{ value }">
+          <span :title="value">{{ value || '—' }}</span>
+        </template>
 
-      <template #cell(unidad)="{ rowData }">
-        <span>{{ resolverSimbolo(rowData) }}</span>
-      </template>
+        <template #cell(unidad)="{ rowData }">
+          <span>{{ resolverSimbolo(rowData) }}</span>
+        </template>
 
-      <template #cell(tipoDato)="{ value }">
-        <VaBadge :text="value" :color="colorTipoDato(value)" outline />
-      </template>
+        <template #cell(tipoDato)="{ value }">
+          <VaBadge :text="value" :color="colorTipoDato(value)" outline />
+        </template>
 
-      <template #cell(cantValores)="{ rowData }">
-        <span>{{ (rowData.valores || []).length }}</span>
-      </template>
+        <template #cell(cantValores)="{ rowData }">
+          <span>{{ (rowData.valores || []).length }}</span>
+        </template>
 
-      <template #cell(enUso)="{ rowData }">
-        <VaBadge
-          v-if="rowData.enUso === true"
-          text="En uso"
-          color="warning"
-        />
-        <span v-else class="gestion-caracteristicas__texto-muted">—</span>
-      </template>
+        <template #cell(enUso)="{ rowData }">
+          <VaBadge
+            v-if="rowData.enUso === true"
+            text="En uso"
+            color="warning"
+          />
+          <span v-else class="gestion-caracteristicas__texto-muted">—</span>
+        </template>
 
-      <template #cell(acciones)="{ rowData }">
-        <div class="gestion-caracteristicas__acciones">
-          <div class="gestion-caracteristicas__acciones-col">
-            <VaButton
-              v-if="puedeModificar && rowData.tipoDato === 'ENUMERADO'"
-              size="small"
-              preset="secondary"
-              icon="mso-format_list_numbered"
-              @click="abrirValores(rowData)"
-            >
-              Valores
-            </VaButton>
+        <template #cell(acciones)="{ rowData }">
+          <div class="gestion-caracteristicas__acciones">
+            <div class="gestion-caracteristicas__acciones-col">
+              <VaButton
+                v-if="puedeModificar && rowData.tipoDato === 'ENUMERADO'"
+                size="small"
+                preset="secondary"
+                icon="mso-format_list_numbered"
+                @click="abrirValores(rowData)"
+              >
+                Valores
+              </VaButton>
+            </div>
+            <div class="gestion-caracteristicas__acciones-col">
+              <VaButton
+                v-if="puedeModificar"
+                size="small"
+                preset="primary"
+                icon="mso-edit"
+                @click="abrirEditar(rowData)"
+              >
+                Editar
+              </VaButton>
+            </div>
+            <div class="gestion-caracteristicas__acciones-col">
+              <VaButton
+                v-if="puedeEliminar"
+                size="small"
+                color="danger"
+                icon="mso-delete"
+                :disabled="rowData.enUso === true"
+                :title="rowData.enUso === true ? 'En uso por perfiles o requerimientos: no se puede eliminar' : 'Eliminar'"
+                @click="confirmarEliminar(rowData)"
+              >
+                Eliminar
+              </VaButton>
+            </div>
           </div>
-          <div class="gestion-caracteristicas__acciones-col">
-            <VaButton
-              v-if="puedeModificar"
-              size="small"
-              preset="primary"
-              icon="mso-edit"
-              @click="abrirEditar(rowData)"
-            >
-              Editar
-            </VaButton>
-          </div>
-          <div class="gestion-caracteristicas__acciones-col">
-            <VaButton
-              v-if="puedeEliminar"
-              size="small"
-              color="danger"
-              icon="mso-delete"
-              :disabled="rowData.enUso === true"
-              :title="rowData.enUso === true ? 'En uso por perfiles o requerimientos: no se puede eliminar' : 'Eliminar'"
-              @click="confirmarEliminar(rowData)"
-            >
-              Eliminar
-            </VaButton>
-          </div>
-        </div>
-      </template>
+        </template>
       </VaDataTable>
 
-      <div v-if="caracteristicasFiltradas.length > 0" class="gestion-caracteristicas__paginacion">
+      <template v-if="puedeVer && !cargando && caracteristicasFiltradas.length > 0" #footer>
         <span class="gestion-caracteristicas__paginacion-info">
           {{ caracteristicasPaginadasInfo }}
         </span>
@@ -152,8 +154,8 @@
           direction-links
           hide-on-single-page
         />
-      </div>
-    </template>
+      </template>
+    </AdminTablaPanel>
 
     <!-- Modal crear / editar característica -->
     <VaModal
@@ -411,6 +413,7 @@ import adminCaracteristicasService from "../../services/adminCaracteristicasServ
 import adminUnidadesMedidaService from "../../services/adminUnidadesMedidaService";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
 
 const TIPOS = ["ENUMERADO", "TEXTO", "NUMERICO"];
 
@@ -439,6 +442,7 @@ export default {
   name: "GestionarCaracteristicasView",
   components: {
     BaseAlert,
+    AdminTablaPanel,
   },
   data() {
     return {
@@ -888,14 +892,15 @@ export default {
   margin: 0 auto;
 }
 
+.gestion-caracteristicas__panel {
+  margin-top: 1rem;
+}
+
 .gestion-caracteristicas__encabezado h1 {
+  margin: 0 0 0.25rem;
+  color: var(--color-primary);
   font-size: 2.25rem;
   font-weight: 800;
-  margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .gestion-caracteristicas__subtitulo {
@@ -910,7 +915,6 @@ export default {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  margin: 1.25rem 0 1rem;
 }
 
 .gestion-caracteristicas__buscador {
@@ -924,7 +928,7 @@ export default {
 }
 
 .gestion-caracteristicas__tabla {
-  --va-table-padding: 0.5rem;
+  width: 100%;
 }
 
 .gestion-caracteristicas__id {

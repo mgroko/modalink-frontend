@@ -101,8 +101,7 @@
 
       <p v-if="modo === 'desktop' && cambios.length" class="auditoria-detalle__nota">
         Los valores nulos se muestran como —. Los textos largos se truncan; usá
-        Copiar para obtener el texto completo. El backend nunca envía
-        contraseñas, tokens ni secretos.
+        Copiar para ver el valor completo.
       </p>
     </section>
   </div>

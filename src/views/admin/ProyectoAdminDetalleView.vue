@@ -121,7 +121,7 @@
         <div v-if="proyecto.miembros?.length" class="admin-proyecto-detalle__table-wrapper">
           <table class="admin-proyecto-detalle__table">
             <thead>
-              <tr><th>Miembro</th><th>Profesión</th><th>Rol</th><th>Participación</th><th>Alta</th><th>Baja</th><th>Motivo</th></tr>
+              <tr><th>Miembro</th><th>Profesión</th><th>Rol</th><th>Participación</th><th>Alta</th><th>Baja</th><th>Motivo</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               <tr v-for="miembro in proyecto.miembros" :key="miembro.idMiembro">
@@ -132,6 +132,18 @@
                 <td>{{ miembro.fechaAlta ? formatearFecha(miembro.fechaAlta) : '—' }}</td>
                 <td>{{ miembro.fechaBaja ? formatearFecha(miembro.fechaBaja) : '—' }}</td>
                 <td>{{ miembro.motivoBaja || '—' }}</td>
+                <td>
+                  <button
+                    v-if="miembro.idPerfil"
+                    type="button"
+                    class="admin-proyecto-detalle__link"
+                    title="Ver perfil y usuario"
+                    @click="verPerfil(miembro)"
+                  >
+                    Ver perfil
+                  </button>
+                  <span v-else>—</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -188,6 +200,13 @@ export default {
   methods: {
     formatearFecha,
     resolverFotoUrl,
+    verPerfil(miembro) {
+      if (!miembro?.idPerfil) return;
+      this.$router.push({
+        name: "admin-perfil-detalle",
+        params: { id: miembro.idPerfil },
+      });
+    },
     async cargarProyecto() {
       this.cargando = true;
       this.errorMessage = "";

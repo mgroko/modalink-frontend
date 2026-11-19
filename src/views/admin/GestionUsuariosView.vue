@@ -7,64 +7,60 @@
       </p>
     </section>
 
-    <div class="gestion-usuarios__toolbar">
-      <VaInput
-        v-model="busqueda"
-        preset="bordered"
-        placeholder="Buscar por nombre, apellido o correo"
-        removable
-        class="gestion-usuarios__buscador"
-        @input="programarBusqueda"
-        @keyup.enter="buscarAhora"
-      >
-        <template #prependInner>
-          <VaIcon name="mso-search" color="grey" size="small" />
-        </template>
-      </VaInput>
-
-      <div class="gestion-usuarios__toolbar-acciones">
-        <VaSelect
-          v-model="estadoFiltro"
-          :options="opcionesEstado"
-          value-by="value"
-          text-by="text"
-          placeholder="Estado"
-          clearable
-          class="gestion-usuarios__select-estado"
-          @update:modelValue="buscarAhora"
-        />
-
-        <VaSelect
-          v-model="tamanoPagina"
-          :options="opcionesTamano"
-          value-by="value"
-          text-by="text"
-          class="gestion-usuarios__select-tamano"
-          @update:modelValue="buscarAhora"
-        />
-
-        <VaButton
-          preset="secondary"
-          icon="mso-refresh"
-          :loading="cargando"
-          @click="recargarActual"
-        >
-          Actualizar
-        </VaButton>
-      </div>
-    </div>
-
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
 
-    <p v-if="!cargando && paginacion.totalElementos > 0" class="gestion-usuarios__resumen">
-      {{ paginacion.totalElementos }} usuario(s) encontrado(s)
-      <template v-if="!esTodos">
-        · Página {{ paginacion.paginaActual + 1 }} de {{ paginacion.totalPaginas }}
-      </template>
-    </p>
+    <AdminTablaPanel class="gestion-usuarios__panel">
+      <template #toolbar>
+        <div class="gestion-usuarios__toolbar">
+          <VaInput
+            v-model="busqueda"
+            preset="bordered"
+            placeholder="Buscar por nombre, apellido o correo"
+            removable
+            class="gestion-usuarios__buscador"
+            @input="programarBusqueda"
+            @keyup.enter="buscarAhora"
+          >
+            <template #prependInner>
+              <VaIcon name="mso-search" color="grey" size="small" />
+            </template>
+          </VaInput>
 
-    <VaDataTable
+          <div class="gestion-usuarios__toolbar-acciones">
+            <VaSelect
+              v-model="estadoFiltro"
+              :options="opcionesEstado"
+              value-by="value"
+              text-by="text"
+              placeholder="Estado"
+              clearable
+              class="gestion-usuarios__select-estado"
+              @update:modelValue="buscarAhora"
+            />
+
+            <VaSelect
+              v-model="tamanoPagina"
+              :options="opcionesTamano"
+              value-by="value"
+              text-by="text"
+              class="gestion-usuarios__select-tamano"
+              @update:modelValue="buscarAhora"
+            />
+
+            <VaButton
+              preset="secondary"
+              icon="mso-refresh"
+              :loading="cargando"
+              @click="recargarActual"
+            >
+              Actualizar
+            </VaButton>
+          </div>
+        </div>
+      </template>
+
+      <VaDataTable
       class="gestion-usuarios__tabla"
       :items="usuariosOrdenados"
       :columns="columnas"
@@ -74,26 +70,41 @@
       no-pagination
     >
       <template #cell(idUsuario)="{ value }">
-        <span class="gestion-usuarios__id">{{ value }}</span>
+        <span class="gestion-usuarios__id">#{{ value }}</span>
       </template>
 
       <template #cell(nombre)="{ rowData }">
         <div class="gestion-usuarios__usuario">
-          <strong class="gestion-usuarios__usuario-nombre">
-            {{ [rowData.nombre, rowData.apellido].filter(Boolean).join(" ") || "—" }}
-          </strong>
-          <span class="gestion-usuarios__usuario-meta">
-            <VaBadge :text="rowData.rolGlobal || '—'" color="info" />
-            <span class="gestion-usuarios__usuario-genero">
-              {{ textoGenero(rowData.genero) }}
-            </span>
+          <span
+            class="gestion-usuarios__avatar"
+            :class="`gestion-usuarios__avatar--${varianteAvatar(rowData)}`"
+            aria-hidden="true"
+          >
+            {{ inicialesUsuario(rowData) }}
           </span>
+          <div class="gestion-usuarios__usuario-datos">
+            <strong class="gestion-usuarios__usuario-nombre">
+              {{ [rowData.nombre, rowData.apellido].filter(Boolean).join(" ") || "—" }}
+            </strong>
+            <span class="gestion-usuarios__usuario-meta">
+              <VaBadge :text="rowData.rolGlobal || '—'" color="info" />
+              <span class="gestion-usuarios__usuario-genero">
+                {{ textoGenero(rowData.genero) }}
+              </span>
+            </span>
+          </div>
         </div>
       </template>
 
       <template #cell(estado)="{ rowData }">
         <div class="gestion-usuarios__estado-cuenta">
-          <VaBadge :text="rowData.estado" :color="colorEstado(rowData.estado)" outline />
+          <span
+            class="gestion-usuarios__estado"
+            :class="`gestion-usuarios__estado--${claseEstado(rowData.estado)}`"
+          >
+            <span class="gestion-usuarios__estado-dot" aria-hidden="true"></span>
+            {{ rowData.estado }}
+          </span>
 
           <div
             v-if="rowData.estado === 'Deshabilitado'"
@@ -120,7 +131,7 @@
         <div class="gestion-usuarios__acciones">
           <VaButton
             size="small"
-            preset="primary"
+            preset="secondary"
             icon="mso-person"
             @click="abrirDetalle(rowData)"
           >
@@ -131,6 +142,7 @@
             <VaButton
               v-if="rowData.estado === 'Activo'"
               size="small"
+              preset="secondary"
               color="danger"
               icon="mso-block"
               :loading="estaProcesando(rowData)"
@@ -142,6 +154,7 @@
             <VaButton
               v-else-if="rowData.estado === 'Deshabilitado'"
               size="small"
+              preset="secondary"
               color="success"
               icon="mso-check_circle"
               :loading="estaProcesando(rowData)"
@@ -152,28 +165,30 @@
           </template>
         </div>
       </template>
-    </VaDataTable>
+      </VaDataTable>
 
-    <div v-if="!esTodos && paginacion.totalPaginas > 1" class="gestion-usuarios__paginacion">
-      <VaButton
-        preset="secondary"
-        size="small"
-        icon="mso-chevron_left"
-        :disabled="paginacion.primera"
-        @click="cambiarPagina(-1)"
-      >
-        Anterior
-      </VaButton>
-      <VaButton
-        preset="secondary"
-        size="small"
-        icon-right="mso-chevron_right"
-        :disabled="paginacion.ultima"
-        @click="cambiarPagina(1)"
-      >
-        Siguiente
-      </VaButton>
-    </div>
+      <template #footer>
+        <span v-if="!cargando" class="gestion-usuarios__pie-info">
+          {{ paginacion.totalElementos }} usuario(s) encontrado(s)
+          <template v-if="!esTodos">
+            · Página {{ paginacion.paginaActual + 1 }} de {{ paginacion.totalPaginas }}
+          </template>
+        </span>
+        <span v-else class="gestion-usuarios__pie-info">Cargando usuarios…</span>
+
+        <div v-if="!esTodos && paginacion.totalPaginas > 1" class="gestion-usuarios__paginacion">
+          <VaPagination
+            :model-value="paginacion.paginaActual + 1"
+            :total="paginacion.totalElementos"
+            :page-size="tamanoPagina || paginacion.totalElementos || 1"
+            :visible-pages="5"
+            boundary-links
+            direction-links
+            @update:model-value="irAPagina"
+          />
+        </div>
+      </template>
+    </AdminTablaPanel>
 
     <!-- Modal detalle de usuario -->
     <VaModal
@@ -409,6 +424,7 @@
 <script>
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
 import { state } from "../../services/authState";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
@@ -417,6 +433,7 @@ export default {
   name: "GestionUsuariosView",
   components: {
     BaseAlert,
+    AdminTablaPanel,
   },
   data() {
     return {
@@ -565,6 +582,26 @@ export default {
       return codigos[genero] || genero;
     },
 
+    inicialesUsuario(usuario) {
+      const nombre = String(usuario?.nombre || "").trim();
+      const apellido = String(usuario?.apellido || "").trim();
+      const iniciales = `${nombre.charAt(0)}${apellido.charAt(0)}`;
+      return iniciales.toUpperCase() || "?";
+    },
+
+    varianteAvatar(usuario) {
+      const id = Number(this.obtenerId(usuario));
+      const base = Number.isFinite(id) ? id : String(usuario?.nombre || "").length;
+      return base % 6;
+    },
+
+    claseEstado(estado) {
+      if (estado === "Activo") return "activo";
+      if (estado === "Deshabilitado") return "deshabilitado";
+      if (estado === "PendienteBaja") return "pendiente";
+      return "baja";
+    },
+
     formatearFecha,
     formatearFechaCorta,
 
@@ -586,9 +623,9 @@ export default {
       this.buscar(this.paginacion.paginaActual);
     },
 
-    cambiarPagina(delta) {
-      const destino = this.paginacion.paginaActual + delta;
-      if (destino < 0 || destino >= this.paginacion.totalPaginas) return;
+    irAPagina(pagina) {
+      const destino = Math.max(0, Number(pagina) - 1);
+      if (destino === this.paginacion.paginaActual) return;
       this.buscar(destino);
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
@@ -781,13 +818,15 @@ export default {
   margin: 0 auto;
 }
 
+.gestion-usuarios__panel {
+  margin-top: 1rem;
+}
+
 .gestion-usuarios__encabezado h1 {
+  margin: 0;
+  color: var(--color-primary);
   font-size: 2.25rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-secondary) 50%, var(--color-primary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .gestion-usuarios__subtitulo {
@@ -802,13 +841,11 @@ export default {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
 }
 
 .gestion-usuarios__buscador {
   width: 100%;
-  height: 1.4rem;
-  max-width: 320px;
+  max-width: 420px;
 }
 
 .gestion-usuarios__toolbar-acciones {
@@ -826,21 +863,20 @@ export default {
   min-width: 150px;
 }
 
-.gestion-usuarios__resumen {
-  margin: 0 0 0.75rem;
-  font-size: 0.82rem;
+.gestion-usuarios__pie-info {
+  font-size: 0.8rem;
   color: var(--color-text-muted);
 }
 
 .gestion-usuarios__paginacion {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 0.75rem;
-  margin-top: 1.25rem;
+  margin: 0;
 }
 
 .gestion-usuarios__tabla {
-  --va-data-table-cell-padding: 0.4rem 0.55rem;
+  --va-data-table-cell-padding: 0.45rem 0.6rem;
   font-size: 0.85rem;
 }
 
@@ -852,8 +888,58 @@ export default {
 
 .gestion-usuarios__usuario {
   display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.gestion-usuarios__usuario-datos {
+  display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
+}
+
+.gestion-usuarios__avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.gestion-usuarios__avatar--0 {
+  background: #e9e5ff;
+  color: #4c4670;
+}
+
+.gestion-usuarios__avatar--1 {
+  background: #fdf0d5;
+  color: #8a6a1c;
+}
+
+.gestion-usuarios__avatar--2 {
+  background: #e3f2fd;
+  color: #1e5a8a;
+}
+
+.gestion-usuarios__avatar--3 {
+  background: #e7f6ec;
+  color: #2f6b45;
+}
+
+.gestion-usuarios__avatar--4 {
+  background: #fde8f1;
+  color: #9c3565;
+}
+
+.gestion-usuarios__avatar--5 {
+  background: #ede7f6;
+  color: #5b3f8a;
 }
 
 .gestion-usuarios__usuario-nombre {
@@ -880,6 +966,43 @@ export default {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.15rem;
+}
+
+.gestion-usuarios__estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.gestion-usuarios__estado-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.gestion-usuarios__estado--activo {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+.gestion-usuarios__estado--deshabilitado {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.gestion-usuarios__estado--pendiente {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.gestion-usuarios__estado--baja {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .gestion-usuarios__estado-detalle {
