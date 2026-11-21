@@ -57,12 +57,13 @@
             </span>
             <VaButton
               preset="secondary"
-              icon="mso-download"
-              :loading="exportando === 'CSV'"
+              icon="mso-print"
+              :loading="exportando === 'IMPRESION'"
               :disabled="!puedeExportar || !!exportando"
-              @click="exportar('CSV')"
+              title="Abre el informe en una pestaña para imprimirlo"
+              @click="imprimir"
             >
-              Exportar CSV
+              Imprimir
             </VaButton>
             <VaButton
               preset="secondary"
@@ -72,6 +73,15 @@
               @click="exportar('PDF')"
             >
               Exportar PDF
+            </VaButton>
+            <VaButton
+              preset="secondary"
+              icon="mso-download"
+              :loading="exportando === 'CSV'"
+              :disabled="!puedeExportar || !!exportando"
+              @click="exportar('CSV')"
+            >
+              Exportar CSV
             </VaButton>
           </div>
         </header>
@@ -378,14 +388,30 @@ export default {
     /* ---------------- Exportación ---------------- */
 
     async exportar(formato) {
+      await this.solicitarExportacion(formato, formato, false);
+    },
+
+    /**
+     * Abre el PDF en una pestaña nueva para que el usuario lo imprima desde
+     * el visor. El PDF ya incluye fecha de impresión y «Hoja X / Y».
+     */
+    async imprimir() {
+      await this.solicitarExportacion("PDF", "IMPRESION", true);
+    },
+
+    async solicitarExportacion(formato, estado, paraImprimir) {
       if (!this.puedeExportar || this.exportando) return;
+
+      // La pestaña se abre antes del await para que el navegador no la
+      // bloquee como popup.
+      const ventana = paraImprimir ? window.open("", "_blank") : null;
+      if (ventana) ventana.opener = null;
 
       const corrida = ++this.idCargaExportacion;
       if (this.controladorExportacion) this.controladorExportacion.abort();
       this.controladorExportacion = new AbortController();
-      if (corrida !== this.idCargaExportacion) return;
 
-      this.exportando = formato;
+      this.exportando = estado;
       this.exportacionMensaje = "";
 
       const params = construirParamsExportacion(formato, this.aplicados);
@@ -404,12 +430,37 @@ export default {
             this.aplicados.fechaHasta,
             formato
           );
-        this.descargarArchivo(response?.data, nombre);
+
+        if (paraImprimir) {
+          this.abrirPdfParaImprimir(response?.data, ventana, nombre);
+        } else {
+          this.descargarArchivo(response?.data, nombre);
+        }
       } catch (error) {
+        ventana?.close();
         await this.manejarErrorExportacion(error);
       } finally {
         if (corrida === this.idCargaExportacion) this.exportando = null;
       }
+    },
+
+    abrirPdfParaImprimir(blob, ventana, nombre) {
+      if (!blob) {
+        ventana?.close();
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      if (ventana) {
+        ventana.location.href = url;
+      } else {
+        // Popup bloqueado: se descarga el PDF para abrirlo e imprimir.
+        this.descargarArchivo(blob, nombre);
+        this.exportacionMensaje =
+          "El navegador bloqueó la pestaña de impresión. Se descargó el PDF.";
+      }
+      // Se libera con margen para que el visor alcance a cargar el archivo.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     },
 
     descargarArchivo(blob, nombre) {
