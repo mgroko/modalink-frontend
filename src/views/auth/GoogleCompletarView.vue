@@ -54,6 +54,7 @@
 <script>
 import authService from "../../services/authService";
 import { marcarSesionRestaurada, refrescarSesion } from "../../services/authState";
+import { mensajeErrorValidacion } from "../../utils/apiError";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
@@ -114,9 +115,10 @@ export default {
         const refrescado = await refrescarSesion();
         this.entrarSegun({ ...usuario, ...refrescado });
       } catch (error) {
-        this.errorMessage =
-          error?.response?.data?.message ||
-          "No se pudo completar el registro. Revisá los datos e intentá de nuevo.";
+        this.errorMessage = mensajeErrorValidacion(
+          error,
+          "No se pudo completar el registro. Revisá los datos e intentá de nuevo."
+        );
       } finally {
         this.enviando = false;
       }

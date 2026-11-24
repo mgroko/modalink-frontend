@@ -413,6 +413,8 @@ import {
   ETIQUETAS_CARACTERISTICAS,
   ETIQUETAS_VALORES,
   ORDEN_PRIORIDAD,
+  CODIGOS_ALTURA,
+  CODIGOS_MEDIDAS,
   normCodigo,
   normTexto,
   simboloUnidad,
@@ -757,11 +759,24 @@ export default {
       return carac.tipoDato === "NUMERICO";
     },
 
+    esMedida(carac) {
+      if (!carac) return false;
+      const codigo = normCodigo(carac.codigo);
+      return (
+        CODIGOS_ALTURA.includes(codigo) ||
+        CODIGOS_MEDIDAS.includes(codigo) ||
+        normCodigo(simboloUnidad(carac.unidad)) === "cm"
+      );
+    },
+
     reglasCampo(carac) {
       const lista = [this.reglas.requerido];
       const permitido = tipoDatoUnidad(carac?.unidad);
       if (this.esNumerico(carac) && (permitido === "" || permitido === "NUMERICO")) {
         lista.push(this.reglas.numerico);
+      }
+      if (this.esMedida(carac)) {
+        lista.push(this.reglas.noNegativo);
       }
       return lista;
     },

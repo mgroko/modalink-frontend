@@ -120,3 +120,57 @@ export function mensajeErrorApi(error, fallback = "Ocurrió un error inesperado.
   }
   return fallback;
 }
+
+const ETIQUETAS_CAMPOS_API = {
+  nombre: "Nombre",
+  apellido: "Apellido",
+  dni: "DNI",
+  fechaNacimiento: "Fecha de nacimiento",
+  genero: "Género",
+  correo: "Correo",
+  password: "Contraseña",
+};
+
+function etiquetaCampoApi(campo) {
+  if (ETIQUETAS_CAMPOS_API[campo]) return ETIQUETAS_CAMPOS_API[campo];
+  return campo.charAt(0).toUpperCase() + campo.slice(1);
+}
+
+function textoErrorCampo(valor) {
+  if (Array.isArray(valor)) {
+    return valor.filter((item) => typeof item === "string" && item.trim()).join(" ");
+  }
+  return typeof valor === "string" ? valor.trim() : "";
+}
+
+/**
+ * Mensaje de error que incluye el detalle de `data.errores` (validación por
+ * campo del backend), p. ej. "Validación fallida: DNI: El DNI debe contener
+ * únicamente dígitos numéricos."
+ * @param {unknown} error
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+export function mensajeErrorValidacion(
+  error,
+  fallback = "Revisá los datos ingresados."
+) {
+  const errores = error?.response?.data?.errores;
+  if (!errores || typeof errores !== "object" || Array.isArray(errores)) {
+    return mensajeErrorApi(error, fallback);
+  }
+
+  const detalles = Object.entries(errores)
+    .map(([campo, valor]) => {
+      const texto = textoErrorCampo(valor);
+      return texto ? `${etiquetaCampoApi(campo)}: ${texto}` : "";
+    })
+    .filter(Boolean);
+
+  if (!detalles.length) {
+    return mensajeErrorApi(error, fallback);
+  }
+
+  const mensaje = formatearFechasEnTexto(error?.response?.data?.message);
+  return `${mensaje || fallback}: ${detalles.join(". ")}`;
+}

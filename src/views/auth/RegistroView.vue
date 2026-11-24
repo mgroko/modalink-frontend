@@ -19,7 +19,7 @@
       <VaInput v-model="datosUsuario.nombre" :rules="[reglas.requerido]" label="Nombre" type="text" />
       <VaInput v-model="datosUsuario.apellido" :rules="[reglas.requerido]" label="Apellido" type="text" />
 
-      <VaInput v-model="datosUsuario.dni" :rules="[reglas.requerido]" label="DNI" type="text" />
+      <VaInput v-model="datosUsuario.dni" :rules="[reglas.requerido, reglas.dni]" label="DNI" type="text" />
       <VaInput
         v-model="datosUsuario.fechaNacimiento"
         :rules="[reglas.requerido]"
@@ -82,6 +82,7 @@
 import "../../styles/auth.css";
 import authService from "../../services/authService";
 import { marcarSesionRestaurada } from "../../services/authState";
+import { mensajeErrorValidacion } from "../../utils/apiError";
 import BaseAlert from "../../components/AlertaBase.vue";
 
 export default {
@@ -111,6 +112,9 @@ export default {
       reglas: {
         requerido: (v) => !!v || 'Este campo es requerido',
         email: (v) => /.+@.+\..+/.test(v) || 'El correo debe ser válido',
+        dni: (v) =>
+          /^[0-9]+$/.test(v || "") ||
+          'El DNI debe contener únicamente dígitos numéricos',
         password: [
           (v) => !!v || 'La contraseña es requerida',
           (v) => (v && v.length >= 8) || 'Debe tener al menos 8 caracteres'
@@ -143,8 +147,10 @@ export default {
           this.$router.push({ name: "dashboard-usuario" });
         }
       } catch (error) {
-        this.errorMessage =
-          error?.response?.data?.message || "No se pudo completar el registro. Verificá los datos ingresados.";
+        this.errorMessage = mensajeErrorValidacion(
+          error,
+          "No se pudo completar el registro. Verificá los datos ingresados."
+        );
       }
     },
   },
