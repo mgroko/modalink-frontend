@@ -157,7 +157,15 @@
             v-if="urlImagen"
             class="detalle-colaboracion__evidencia"
           >
-            <img :src="urlImagen" alt="Imagen compartida" />
+            <button
+              type="button"
+              class="detalle-colaboracion__evidencia-abrir"
+              aria-label="Ampliar imagen en común"
+              title="Ampliar imagen en común"
+              @click="abrirImagen"
+            >
+              <img :src="urlImagen" alt="Imagen compartida" />
+            </button>
             <p>
               Esta imagen fue la evidencia usada para detectar la
               colaboración automática.
@@ -265,6 +273,12 @@
       :error="errorModal"
       @confirmar="gestionar"
     />
+
+    <GaleriaPublicacionModal
+      v-model="visorAbierto"
+      :imagenes="imagenesVisor"
+      titulo="Imagen en común"
+    />
   </div>
 </template>
 
@@ -273,6 +287,7 @@ import { useToast } from "vuestic-ui";
 import BaseAlert from "../../components/AlertaBase.vue";
 import EstadoColaboracionAutomaticaBadge from "../../components/colaboracion/EstadoColaboracionAutomaticaBadge.vue";
 import ModalGestionColaboracionAutomatica from "../../components/colaboracion/ModalGestionColaboracionAutomatica.vue";
+import GaleriaPublicacionModal from "../../components/perfil/GaleriaPublicacionModal.vue";
 import colaboracionAutomaticaService from "../../services/colaboracionAutomaticaService";
 import perfilService from "../../services/perfilService";
 import { cargarResumenColaboracionesAutomaticas } from "../../services/colaboracionAutomaticaState";
@@ -297,6 +312,7 @@ export default {
     BaseAlert,
     EstadoColaboracionAutomaticaBadge,
     ModalGestionColaboracionAutomatica,
+    GaleriaPublicacionModal,
   },
   setup() {
     return {
@@ -314,6 +330,7 @@ export default {
       controlador: null,
       procesando: false,
       accionProcesando: "",
+      visorAbierto: false,
       modal: {
         visible: false,
         accion: ACCIONES_COLABORACION_AUTOMATICA.CONFIRMAR,
@@ -366,8 +383,19 @@ export default {
     portadaContraparte() {
       return resolverFotoUrl(this.contraparte?.portadaUrl);
     },
+    imagenesVisor() {
+      const plural = Array.isArray(this.colaboracion?.imagenes)
+        ? this.colaboracion.imagenes
+        : [];
+      const lista = plural.length
+        ? plural
+        : this.imagen
+          ? [this.imagen]
+          : [];
+      return lista.filter((imagen) => imagen?.url);
+    },
     urlImagen() {
-      return resolverFotoUrl(this.imagen?.url);
+      return resolverFotoUrl(this.imagenesVisor[0]?.url);
     },
     propiaEliminada() {
       return this.propia?.eliminada === true;
@@ -627,6 +655,10 @@ export default {
         params: { id: perfil.idPerfil },
       });
     },
+    abrirImagen() {
+      if (!this.imagenesVisor.length) return;
+      this.visorAbierto = true;
+    },
   },
 };
 </script>
@@ -872,6 +904,21 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+}
+
+.detalle-colaboracion__evidencia-abrir {
+  display: block;
+  flex: 0 0 auto;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: zoom-in;
+}
+
+.detalle-colaboracion__evidencia-abrir:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .detalle-colaboracion__evidencia img {
