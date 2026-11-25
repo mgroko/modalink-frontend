@@ -225,13 +225,17 @@ export default {
     menuAbierto(abierto) {
       if (abierto) {
         document.addEventListener("keydown", this.manejarEscape);
+        document.body.style.overflow = "hidden";
       } else {
         document.removeEventListener("keydown", this.manejarEscape);
+        document.body.style.overflow = "";
       }
     },
   },
   beforeUnmount() {
     document.removeEventListener("keydown", this.manejarEscape);
+    document.body.style.overflow = "";
+    window.removeEventListener("resize", this.cerrarMenuEnDesktop);
     window.removeEventListener(
       "reportes-publicacion-actualizados",
       this.cargarReportesPublicacionPendientes
@@ -279,6 +283,7 @@ export default {
       "reportes-publicacion-actualizados",
       this.cargarReportesPublicacionPendientes
     );
+    window.addEventListener("resize", this.cerrarMenuEnDesktop);
     await cargarResumenUsuario();
     this.cargarReportesPublicacionPendientes();
   },
@@ -302,6 +307,9 @@ export default {
     },
     cerrarMenu() {
       this.menuAbierto = false;
+    },
+    cerrarMenuEnDesktop() {
+      if (window.innerWidth > 768) this.cerrarMenu();
     },
     manejarEscape(event) {
       if (event.key === "Escape") this.cerrarMenu();
@@ -728,7 +736,7 @@ export default {
   padding: 1.5rem 2.5rem 2.5rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .admin-layout__sidebar {
     width: 220px;
     flex-basis: 220px;
@@ -751,7 +759,7 @@ export default {
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 768px) {
   .admin-layout {
     display: block;
   }
@@ -814,6 +822,7 @@ export default {
 
   .admin-layout__header .admin-layout__actions {
     width: 100%;
+    min-height: auto;
     justify-content: space-between;
   }
 

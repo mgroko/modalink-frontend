@@ -223,10 +223,36 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   transition: background-color 0.2s ease, color 0.2s ease;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-wrap: break-word;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #app {
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/*
+ * En iOS, los campos con tipografía menor a 16px hacen zoom automático al
+ * enfocarse. Se fuerza un tamaño legible en móvil para evitar ese salto.
+ */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 ::placeholder {

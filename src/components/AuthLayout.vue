@@ -151,6 +151,7 @@ export default {
 .auth-layout {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   background: var(--color-bg);
 }
@@ -307,6 +308,7 @@ export default {
   overflow-y: auto;
   padding: 2.5rem 1.5rem;
   max-height: 100vh;
+  max-height: 100dvh;
 }
 
 /* ---------- Responsive ---------- */
@@ -340,6 +342,44 @@ export default {
   .auth-layout__content {
     max-height: none;
     padding: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-layout__brand {
+    min-height: 180px;
+  }
+
+  .auth-layout__brand-link {
+    margin: 1rem 1.25rem 0;
+  }
+
+  .auth-layout__brand-bottom {
+    padding: 0 1.25rem 1rem;
+  }
+
+  .auth-layout__content {
+    padding: 1.25rem 1rem;
+  }
+
+  .auth-layout__theme {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .auth-layout__arrow {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 400px) {
+  .auth-layout__brand {
+    min-height: 150px;
+  }
+
+  .auth-layout__content {
+    padding: 1rem 0.85rem;
   }
 }
 </style>
