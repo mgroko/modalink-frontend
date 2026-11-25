@@ -33,6 +33,9 @@ export const TIPOS_NOTIFICACION = {
   PUBLICACION_REACTIVADA: "PUBLICACION_REACTIVADA",
   INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
   INTEGRANTE_BAJA_VOLUNTARIA: "INTEGRANTE_BAJA_VOLUNTARIA",
+  REQUERIMIENTO_ASIGNADO: "REQUERIMIENTO_ASIGNADO",
+  REQUERIMIENTO_DESASIGNADO: "REQUERIMIENTO_DESASIGNADO",
+  REQUERIMIENTO_REASIGNADO: "REQUERIMIENTO_REASIGNADO",
   HABILIDAD_MODIFICADA: "HABILIDAD_MODIFICADA",
   HABILIDAD_ELIMINADA: "HABILIDAD_ELIMINADA",
   CARACTERISTICA_TECNICA_CREADA: "CARACTERISTICA_TECNICA_CREADA",
@@ -110,6 +113,12 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA]: "Publicación reactivada",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "Baja voluntaria de integrante",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_ASIGNADO]:
+    "Requerimiento general asignado",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_DESASIGNADO]:
+    "Requerimiento general desasignado",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_REASIGNADO]:
+    "Requerimiento general reasignado",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "Habilidad modificada",
   [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "Habilidad eliminada",
   [TIPOS_NOTIFICACION.CARACTERISTICA_TECNICA_CREADA]:
@@ -185,6 +194,9 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA]: "visibility",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "person_remove",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_ASIGNADO]: "assignment_ind",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_DESASIGNADO]: "person_remove",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_REASIGNADO]: "swap_horiz",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "edit",
   [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "delete",
   [TIPOS_NOTIFICACION.CARACTERISTICA_TECNICA_CREADA]: "playlist_add",
@@ -487,6 +499,23 @@ export function destinoNotificacion(notificacion) {
               params: { id },
               query: { tab: "chat" },
             },
+          };
+    }
+
+    case TIPOS_NOTIFICACION.REQUERIMIENTO_ASIGNADO:
+    case TIPOS_NOTIFICACION.REQUERIMIENTO_DESASIGNADO:
+    case TIPOS_NOTIFICACION.REQUERIMIENTO_REASIGNADO: {
+      // El backend envía entidadTipo=PROYECTO y entidadId=idProyecto.
+      const id =
+        idValido(notificacion.idProyecto) ??
+        (notificacion.entidadTipo === "PROYECTO"
+          ? idValido(notificacion.entidadId)
+          : null);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver proyecto",
+            ruta: { name: RUTAS_NOTIFICACION.PROYECTO, params: { id } },
           };
     }
 

@@ -1515,6 +1515,8 @@ export default {
 
       const esAceptar = accion === ACCIONES_GESTION_INVITACION.ACEPTAR;
       const esActividad = invitacion.tipo === TIPOS_INVITACION.ACTIVIDAD;
+      const esRequerimientoGeneral =
+        invitacion.tipo === TIPOS_INVITACION.REQUERIMIENTO_GENERAL;
 
       this.gestionando = true;
       this.errorGestion = "";
@@ -1523,25 +1525,42 @@ export default {
       controladorGestion = new AbortController();
 
       try {
-        const response = esAceptar
-          ? esActividad
-            ? await invitacionService.aceptarActividad(
-                invitacion.idInvitacion,
-                controladorGestion.signal
-              )
-            : await invitacionService.aceptarGeneral(
-                invitacion.idInvitacion,
-                controladorGestion.signal
-              )
-          : esActividad
-            ? await invitacionService.rechazarActividad(
-                invitacion.idInvitacion,
-                controladorGestion.signal
-              )
-            : await invitacionService.rechazarGeneral(
+        let response;
+        if (esAceptar) {
+          if (esActividad) {
+            response = await invitacionService.aceptarActividad(
+              invitacion.idInvitacion,
+              controladorGestion.signal
+            );
+          } else if (esRequerimientoGeneral) {
+            response =
+              await invitacionService.aceptarRequerimientoGeneral(
                 invitacion.idInvitacion,
                 controladorGestion.signal
               );
+          } else {
+            response = await invitacionService.aceptarProyecto(
+              invitacion.idInvitacion,
+              controladorGestion.signal
+            );
+          }
+        } else if (esActividad) {
+          response = await invitacionService.rechazarActividad(
+            invitacion.idInvitacion,
+            controladorGestion.signal
+          );
+        } else if (esRequerimientoGeneral) {
+          response =
+            await invitacionService.rechazarRequerimientoGeneral(
+              invitacion.idInvitacion,
+              controladorGestion.signal
+            );
+        } else {
+          response = await invitacionService.rechazarProyecto(
+            invitacion.idInvitacion,
+            controladorGestion.signal
+          );
+        }
 
         const data = response?.data || {};
         this.gestionando = false;
@@ -1561,7 +1580,9 @@ export default {
             title: "Invitación aceptada",
             message: esActividad
               ? "La invitación fue aceptada y quedaste asignado a la actividad."
-              : "La invitación fue aceptada. Ya sos miembro del proyecto.",
+              : esRequerimientoGeneral
+                ? "La invitación fue aceptada y quedaste vinculado al requerimiento general."
+                : "La invitación fue aceptada. Ya sos miembro del proyecto.",
             color: "success",
             position: "top-right",
             duration: 6000,
@@ -1785,8 +1806,16 @@ export default {
             invitacion.idInvitacion,
             controladorEliminar.signal
           );
+        } else if (
+          invitacion.tipo === TIPOS_INVITACION.REQUERIMIENTO_GENERAL
+        ) {
+          await invitacionService.eliminarRequerimientoGeneral(
+            invitacion.idProyecto,
+            invitacion.idInvitacion,
+            controladorEliminar.signal
+          );
         } else {
-          await invitacionService.eliminarGeneral(
+          await invitacionService.eliminarProyecto(
             invitacion.idProyecto,
             invitacion.idInvitacion,
             controladorEliminar.signal

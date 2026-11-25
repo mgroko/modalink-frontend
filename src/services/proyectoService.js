@@ -72,9 +72,10 @@ import { serializarParams } from "../utils/queryParams.js";
  *   protegido que se omite sí se elimina, por eso hay que enviar completos
  *   todos los no protegidos que deban conservarse. Un requerimiento existente
  *   enviado sin cambios no se valida ni se reescribe; si cambia, se actualiza
- *   en el lugar conservando su id.
- * @property {number} [idRequerimientoGral] sólo en requerimientos existentes
- *           editables (omitir en los nuevos)
+ *   en el lugar conservando su id. Los requerimientos nuevos NO se envían por
+ *   este payload: se crean con `POST /proyectos/{id}/requerimientos-generales`.
+ * @property {number} idRequerimientoGral obligatorio: identifica el
+ *           requerimiento existente que se actualiza
  * @property {number} cantidad > 0
  * @property {number} idProfesion debe existir
  * @property {string} [descripcion] máx. 200 caracteres
@@ -101,8 +102,10 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {ObjetivoProyectoRequest[]|null} [objetivos] si se envía
  *           reemplaza todos; [] elimina todos
  * @property {RequerimientoGralModificarRequest[]|null} [requerimientosGral]
- *           lista completa deseada (no delta); incluir todos los no
- *           protegidos que deban conservarse y omitir los protegidos
+ *           lista completa deseada de requerimientos EXISTENTES (no delta);
+ *           incluir todos los no protegidos que deban conservarse, omitir los
+ *           protegidos y no incluir altas: los nuevos se crean con
+ *           `POST /proyectos/{id}/requerimientos-generales`.
  * @property {MoodboardRequest|null} [moodboard] si se envía actualiza/crea;
  *           descripcion null borra la descripción. `imagenesConservadas`
  *           permite eliminar imágenes del moodboard (UC-36).
@@ -592,7 +595,8 @@ import { serializarParams } from "../utils/queryParams.js";
  *   Item de `GET /proyectos/{idProyecto}/miembros` (UC-70). Sólo incluye
  *   miembros con participación ACTIVA.
  * @property {number} idMiembro
- * @property {number} idPerfil clave para el POST de asignación
+ * @property {number} idPerfil clave para abrir el perfil; la asignación de
+ *           requerimiento usa `idMiembro`
  * @property {number} idUsuario
  * @property {string} nombreArtistico
  * @property {string} nombreUsuario
@@ -609,6 +613,29 @@ import { serializarParams } from "../utils/queryParams.js";
  *           `eliminable` es false.
  * @property {number|null} [idTycAceptado] versión de T&C aceptada al
  *           incorporarse; null en membresías históricas.
+ * @property {number|null} [idRequerimientoGral] requerimiento general que
+ *           cubre el miembro; null si no tiene uno asignado. Los Directores
+ *           no cubren requerimientos generales.
+ * @property {string|null} [nombreProfesionRequerimiento] profesión del
+ *           requerimiento general asignado, para mostrar en el listado.
+ */
+
+/**
+ * @typedef {Object} AsignarRequerimientoGralRequest
+ * @property {number|null} idRequerimientoGral requerimiento a asignar;
+ *           null desasigna al miembro
+ */
+
+/**
+ * @typedef {Object} AsignacionRequerimientoGralResponse
+ * @property {number} idMiembro
+ * @property {number} idPerfil
+ * @property {number|null} idRequerimientoGral requerimiento resultante;
+ *           null si quedó desasignado
+ * @property {object|null} cupo cupo calculado del requerimiento anterior o
+ *           del nuevo, según la operación
+ * @property {boolean} satisfecho
+ * @property {number} faltantes
  */
 
 /**
@@ -882,6 +909,84 @@ const proyectoService = {
       data: { motivo: String(motivo || "").trim() },
       signal,
     });
+  },
+
+  /**
+   * PUT /proyectos/{idProyecto}/miembros/{idMiembro}/requerimiento-general — UC-36.
+   * Asigna, reasigna o desasigna el requerimiento general de un miembro.
+   * El backend exige Director activo con `ASIGNAR_REQUERIMIENTO`, proyecto
+   * Publicado/Confirmado, miembro activo no Director, misma profesión y cupo
+   * disponible. `idRequerimientoGral = null` desasigna.
+   *
+   * Errores:
+   * - 403 sin permiso, sin membresía activa o sin rol Director
+   * - 404 perfil activo, proyecto, miembro o requerimiento inexistente
+   * - 409 `PROYECTO_ESTADO_INVALIDO`, `MIEMBRO_DIRECTOR`,
+   *   `PROFESION_INCOMPATIBLE`, `REQUERIMIENTO_SATISFECHO`,
+   *   `MIEMBRO_NO_ACTIVO` o `MIEMBRO_NO_PERTENECE`
+   * @param {number|string} idProyecto
+   * @param {number|string} idMiembro
+   * @param {number|null} idRequerimientoGral null para desasignar
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: AsignacionRequerimientoGralResponse}>} 200 OK
+   */
+  asignarRequerimientoGeneral(
+    idProyecto,
+    idMiembro,
+    idRequerimientoGral,
+    signal
+  ) {
+    return http.put(
+      `/proyectos/${idProyecto}/miembros/${idMiembro}/requerimiento-general`,
+      { idRequerimientoGral: idRequerimientoGral ?? null },
+      { signal }
+    );
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/requerimientos-generales — UC-36.
+   * Crea un requerimiento general nuevo y devuelve su id. El `PUT` del
+   * proyecto ya no crea requerimientos: sólo actualiza o elimina existentes.
+   *
+   * Errores:
+   * - 400 validación de cantidad, profesión, características o habilidades
+   * - 403 sin `MODIFICAR_PROYECTO` o proyecto no modificable
+   * - 404 perfil activo, proyecto, profesión o habilidad inexistente
+   * - 409 proyecto Finalizado/Cancelado
+   * @param {number|string} idProyecto
+   * @param {RequerimientoGralRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: RequerimientoGralResponse}>} 201 Created
+   */
+  crearRequerimiento(idProyecto, request, signal) {
+    return http.post(
+      `/proyectos/${idProyecto}/requerimientos-generales`,
+      request,
+      { signal }
+    );
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/requerimientos-generales/{idRequerimientoGral}
+   * — UC-36. Elimina un requerimiento general no protegido. El `PUT` del
+   * proyecto también elimina los no protegidos omitidos; este endpoint sirve
+   * para bajas puntuales.
+   *
+   * Errores:
+   * - 400 requerimiento inválido o de otro proyecto
+   * - 403 sin `MODIFICAR_PROYECTO`
+   * - 404 perfil activo, proyecto o requerimiento inexistente
+   * - 409 requerimiento protegido o proyecto Finalizado/Cancelado
+   * @param {number|string} idProyecto
+   * @param {number|string} idRequerimientoGral
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  eliminarRequerimiento(idProyecto, idRequerimientoGral, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/requerimientos-generales/${idRequerimientoGral}`,
+      { signal }
+    );
   },
 
   /**
@@ -1342,7 +1447,8 @@ const proyectoService = {
    * omitirse y el backend los conserva; los no protegidos que se omiten se
    * eliminan, así que hay que enviar completos los que deban conservarse. Un
    * existente enviado con cambios se actualiza conservando su id (ya no se
-   * recrea).
+   * recrea) y SIEMPRE debe incluir `idRequerimientoGral`. Las altas se hacen
+   * antes con `POST /proyectos/{id}/requerimientos-generales`.
    *
    * Errores:
    * - 400 MethodArgumentNotValidException → body { errores: { campo: msg } }

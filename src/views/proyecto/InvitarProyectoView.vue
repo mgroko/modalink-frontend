@@ -169,6 +169,37 @@
               </div>
 
               <div
+                v-if="
+                  tipoInvitacion ===
+                  TIPOS_INVITACION.REQUERIMIENTO_GENERAL
+                "
+                class="invitar-proyecto__requerimiento"
+              >
+                <p class="invitar-proyecto__campo-label">
+                  Requerimiento general
+                </p>
+
+                <p
+                  v-if="!requerimientosGeneralesDisponibles.length"
+                  class="invitar-proyecto__nota"
+                >
+                  Este proyecto no tiene requerimientos generales con cupo
+                  disponible. Podés crear o ampliar uno desde la modificación
+                  del proyecto.
+                </p>
+
+                <SelectorRequerimientoGeneral
+                  v-else
+                  :model-value="
+                    requerimientoGeneral?.idRequerimientoGral ?? null
+                  "
+                  :requerimientos="requerimientosGeneralesDisponibles"
+                  :deshabilitado="enviando"
+                  @seleccionado="onRequerimientoGeneralSeleccionado"
+                />
+              </div>
+
+              <div
                 v-if="tipoInvitacion === TIPOS_INVITACION.ACTIVIDAD"
                 class="invitar-proyecto__requerimiento"
               >
@@ -195,12 +226,10 @@
 
               <BuscadorPerfilInvitacion
                 v-model="perfilesSeleccionados"
-                :id-profesion="
-                  tipoInvitacion === TIPOS_INVITACION.ACTIVIDAD
-                    ? requerimiento?.idProfesion ?? null
-                    : null
+                :id-profesion="profesionRequerimientoSeleccionado.idProfesion"
+                :nombre-profesion="
+                  profesionRequerimientoSeleccionado.nombreProfesion
                 "
-                :nombre-profesion="requerimiento?.nombreProfesion || ''"
                 :id-usuario-actual="idUsuarioActual"
                 :id-perfiles-excluidos="perfilesExcluidos"
                 :token-refresco="tokenRefrescoPerfiles"
@@ -419,6 +448,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import EstadoProyectoBadge from "../../components/proyecto/EstadoProyectoBadge.vue";
 import BuscadorPerfilInvitacion from "../../components/proyecto/BuscadorPerfilInvitacion.vue";
 import BuscadorRequerimientoActividad from "../../components/proyecto/BuscadorRequerimientoActividad.vue";
+import SelectorRequerimientoGeneral from "../../components/proyecto/SelectorRequerimientoGeneral.vue";
 import ModalResultadoInvitaciones from "../../components/invitacion/ModalResultadoInvitaciones.vue";
 import AceptacionTerminosPerfil from "../../components/perfil/AceptacionTerminosPerfil.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -436,7 +466,9 @@ import {
   TIPOS_INVITACION,
   clasificarErrorInvitacion,
   motivoNoInvitable,
+  normalizarRequerimientoGeneral,
   puedeInvitarProyecto,
+  requerimientoGeneralDisponible,
 } from "../../utils/invitacionConstants.js";
 
 let controladorProyecto = null;
@@ -446,8 +478,15 @@ let controladorEnvio = null;
 const OPCIONES_TIPO = [
   {
     value: TIPOS_INVITACION.GENERAL,
-    titulo: "Invitación general",
-    descripcion: "Invitás a los perfiles a sumarse al proyecto, sin un rol puntual.",
+    titulo: "Invitación al proyecto",
+    descripcion:
+      "Invitás a los perfiles a sumarse al proyecto, sin un requerimiento puntual.",
+  },
+  {
+    value: TIPOS_INVITACION.REQUERIMIENTO_GENERAL,
+    titulo: "Invitación a requerimiento general",
+    descripcion:
+      "Invitás a los perfiles para cubrir un requerimiento general existente del proyecto.",
   },
   {
     value: TIPOS_INVITACION.ACTIVIDAD,
@@ -470,6 +509,7 @@ export default {
     EstadoProyectoBadge,
     BuscadorPerfilInvitacion,
     BuscadorRequerimientoActividad,
+    SelectorRequerimientoGeneral,
     ModalResultadoInvitaciones,
     AceptacionTerminosPerfil,
   },
@@ -486,6 +526,7 @@ export default {
       paso: 1,
       tipoInvitacion: null,
       requerimiento: null,
+      requerimientoGeneral: null,
       perfilesSeleccionados: [],
       mensaje: "",
       enviando: false,
@@ -551,9 +592,34 @@ export default {
         actual: item.numero === this.paso,
       }));
     },
+    requerimientosGeneralesDisponibles() {
+      return (this.proyecto?.requerimientosGral || [])
+        .map(normalizarRequerimientoGeneral)
+        .filter(requerimientoGeneralDisponible);
+    },
+    profesionRequerimientoSeleccionado() {
+      if (this.tipoInvitacion === TIPOS_INVITACION.REQUERIMIENTO_GENERAL) {
+        return {
+          idProfesion: this.requerimientoGeneral?.idProfesion ?? null,
+          nombreProfesion: this.requerimientoGeneral?.nombreProfesion || "",
+        };
+      }
+      if (this.tipoInvitacion === TIPOS_INVITACION.ACTIVIDAD) {
+        return {
+          idProfesion: this.requerimiento?.idProfesion ?? null,
+          nombreProfesion: this.requerimiento?.nombreProfesion || "",
+        };
+      }
+      return { idProfesion: null, nombreProfesion: "" };
+    },
     puedeContinuarPaso1() {
       if (!this.tipoInvitacion) return false;
       if (this.tipoInvitacion === TIPOS_INVITACION.GENERAL) return true;
+      if (
+        this.tipoInvitacion === TIPOS_INVITACION.REQUERIMIENTO_GENERAL
+      ) {
+        return this.requerimientoGeneral?.idRequerimientoGral != null;
+      }
       return this.requerimiento?.idRequerimiento != null;
     },
     puedeContinuarPaso2() {
@@ -591,6 +657,13 @@ export default {
         : "—";
     },
     resumenRequerimiento() {
+      if (this.tipoInvitacion === TIPOS_INVITACION.REQUERIMIENTO_GENERAL) {
+        if (!this.requerimientoGeneral) return "—";
+        const nombre =
+          this.requerimientoGeneral.nombreProfesion || "Requerimiento";
+        return `${nombre} (#${this.requerimientoGeneral.idRequerimientoGral})`;
+      }
+
       if (
         this.tipoInvitacion !== TIPOS_INVITACION.ACTIVIDAD ||
         !this.requerimiento
@@ -646,6 +719,17 @@ export default {
         vigentes
       );
     },
+    requerimientosGeneralesDisponibles(lista) {
+      const actual = this.requerimientoGeneral?.idRequerimientoGral;
+      if (actual == null) return;
+      const sigueDisponible = (lista || []).some(
+        (requerimiento) =>
+          String(requerimiento.idRequerimientoGral) === String(actual)
+      );
+      if (sigueDisponible) return;
+      this.requerimientoGeneral = null;
+      this.perfilesSeleccionados = [];
+    },
   },
   mounted() {
     this.cargar();
@@ -665,6 +749,7 @@ export default {
       this.paso = 1;
       this.tipoInvitacion = null;
       this.requerimiento = null;
+      this.requerimientoGeneral = null;
       this.perfilesSeleccionados = [];
       this.mensaje = "";
       this.enviando = false;
@@ -807,6 +892,15 @@ export default {
         if (!this.esCancelacion(error)) this.miembrosActivos = [];
       }
     },
+    async refrescarProyecto() {
+      try {
+        const response = await proyectoService.obtener(this.idProyecto);
+        if (response?.data) this.proyecto = response.data;
+      } catch {
+        // Si falla, se conserva el proyecto actual y el usuario puede
+        // reintentar desde la pantalla.
+      }
+    },
     async manejarErrorCarga(error) {
       const status = error?.response?.status;
       const mensaje = error?.response?.data?.message || "";
@@ -855,6 +949,16 @@ export default {
       this.erroresEnvio = {};
       this.perfilesSeleccionados = [];
       this.requerimiento = null;
+      this.requerimientoGeneral = null;
+    },
+    onRequerimientoGeneralSeleccionado(requerimiento) {
+      const anterior = this.requerimientoGeneral?.idRequerimientoGral;
+      const siguiente = requerimiento?.idRequerimientoGral ?? null;
+      if (String(anterior) !== String(siguiente)) {
+        this.perfilesSeleccionados = [];
+      }
+      this.requerimientoGeneral = requerimiento || null;
+      this.limpiarErrorEnvio();
     },
     onRequerimientoSeleccionado(requerimiento) {
       const anterior = this.requerimiento?.idRequerimiento;
@@ -942,9 +1046,19 @@ export default {
       }
 
       const esActividad = this.tipoInvitacion === TIPOS_INVITACION.ACTIVIDAD;
+      const esRequerimientoGeneral =
+        this.tipoInvitacion === TIPOS_INVITACION.REQUERIMIENTO_GENERAL;
       const idRequerimientoActividad = this.requerimiento?.idRequerimiento;
+      const idRequerimientoGral =
+        this.requerimientoGeneral?.idRequerimientoGral;
+
       if (esActividad && idRequerimientoActividad == null) {
         this.errorEnvio = "Seleccioná un requerimiento de actividad.";
+        this.paso = 1;
+        return;
+      }
+      if (esRequerimientoGeneral && idRequerimientoGral == null) {
+        this.errorEnvio = "Seleccioná un requerimiento general.";
         this.paso = 1;
         return;
       }
@@ -957,22 +1071,38 @@ export default {
       try {
         const mensaje = this.mensaje.trim().slice(0, LIMITE_MENSAJE_INVITACION);
         const aceptacionesTerminos = this.construirAceptacionesTerminos();
-        const response = esActividad
-          ? await invitacionService.invitarActividadBatch(
+
+        let response;
+        if (esActividad) {
+          response = await invitacionService.invitarActividadBatch(
+            this.idProyecto,
+            {
+              idRequerimientoActividad,
+              idsPerfilDestinatario,
+              mensaje,
+              aceptacionesTerminos,
+            },
+            controladorEnvio.signal
+          );
+        } else if (esRequerimientoGeneral) {
+          response =
+            await invitacionService.invitarRequerimientoGeneralBatch(
               this.idProyecto,
               {
-                idRequerimientoActividad,
+                idRequerimientoGral,
                 idsPerfilDestinatario,
                 mensaje,
                 aceptacionesTerminos,
               },
               controladorEnvio.signal
-            )
-          : await invitacionService.invitarGeneralBatch(
-              this.idProyecto,
-              { idsPerfilDestinatario, mensaje, aceptacionesTerminos },
-              controladorEnvio.signal
             );
+        } else {
+          response = await invitacionService.invitarProyectoBatch(
+            this.idProyecto,
+            { idsPerfilDestinatario, mensaje, aceptacionesTerminos },
+            controladorEnvio.signal
+          );
+        }
 
         const data = response?.data || {};
         this.resultadoBatch = {
@@ -1080,8 +1210,12 @@ export default {
       ) {
         this.paso = 1;
         this.requerimiento = null;
+        this.requerimientoGeneral = null;
         this.perfilesSeleccionados = [];
         this.tokenRefrescoRequerimientos += 1;
+        if (this.tipoInvitacion === TIPOS_INVITACION.REQUERIMIENTO_GENERAL) {
+          await this.refrescarProyecto();
+        }
         return;
       }
 
@@ -1112,6 +1246,13 @@ export default {
           this.requerimiento = null;
           this.perfilesSeleccionados = [];
           this.tokenRefrescoRequerimientos += 1;
+          return;
+        }
+        if (campo === "idRequerimientoGral") {
+          this.paso = 1;
+          this.requerimientoGeneral = null;
+          this.perfilesSeleccionados = [];
+          return;
         }
         return;
       }

@@ -137,6 +137,10 @@ export default {
       opcionesTipo: [
         { value: "", text: "Todos" },
         { value: TIPOS_INVITACION_BUSQUEDA.GENERAL, text: "General" },
+        {
+          value: TIPOS_INVITACION_BUSQUEDA.REQUERIMIENTO_GENERAL,
+          text: "Requerimiento general",
+        },
         { value: TIPOS_INVITACION_BUSQUEDA.ACTIVIDAD, text: "Por actividad" },
       ],
     };

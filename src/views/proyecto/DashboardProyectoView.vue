@@ -176,11 +176,15 @@
           v-else-if="tabActiva === 'integrantes' && esMiembro"
           ref="integrantes"
           :id-proyecto="idProyecto"
+          :nombre-proyecto="proyecto?.nombre || ''"
           :token-refresco="tokenRefrescoIntegrantes"
           :puede-invitar="puedeInvitarIntegrante"
+          :puede-asignar-requerimiento="puedeAsignarRequerimiento"
+          :requerimientos-generales="proyecto?.requerimientosGral || []"
           :id-perfil-activo="idPerfilActivoSesion"
           @eliminar="abrirEliminarIntegrante"
           @invitar="irAInvitarProyecto"
+          @requerimiento-asignado="refrescarTrasAsignacionRequerimiento"
         />
 
         <ChatGrupalProyecto
@@ -735,6 +739,19 @@ data() {
       return puedeInvitarProyecto(this.proyecto);
     },
     /**
+     * UC-36: el backend exige Director activo con `ASIGNAR_REQUERIMIENTO` y
+     * proyecto Publicado/Confirmado. La UI replica esas condiciones para no
+     * ofrecer una acción que será rechazada.
+     */
+    puedeAsignarRequerimiento() {
+      const estado = normalizarEstadoProyecto(this.proyecto?.estado);
+      return (
+        this.esDirector &&
+        this.permisos.includes("ASIGNAR_REQUERIMIENTO") &&
+        [ESTADOS_PROYECTO.PUBLICADO, ESTADOS_PROYECTO.CONFIRMADO].includes(estado)
+      );
+    },
+    /**
      * UC-68: la pestaña Contratos se muestra a cualquier miembro activo. El
      * backend filtra qué contratos ve cada perfil (Director: todos; firmante:
      * los suyos; sin contratos: página vacía). También queda visible en
@@ -1063,6 +1080,14 @@ data() {
       this.tokenRefrescoIntegrantes += 1;
       this.tokenRefrescoPlanificacion += 1;
       this.refrescarNotificacionesPerfil();
+    },
+    /**
+     * UC-36: al asignar/desasignar cambia el cupo de los requerimientos
+     * generales. El listado de miembros ya se recarga dentro del componente;
+     * acá se refresca el proyecto para que el próximo modal vea el cupo real.
+     */
+    async refrescarTrasAsignacionRequerimiento() {
+      await this.cargar();
     },
     async manejarError(error) {
       const status = error?.response?.status;

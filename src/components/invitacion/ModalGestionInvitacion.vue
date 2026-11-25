@@ -153,6 +153,11 @@ export default {
     esActividad() {
       return this.invitacion?.tipo === TIPOS_INVITACION.ACTIVIDAD;
     },
+    esRequerimientoGeneral() {
+      return (
+        this.invitacion?.tipo === TIPOS_INVITACION.REQUERIMIENTO_GENERAL
+      );
+    },
     titulo() {
       return this.esAceptar ? "Aceptar invitación" : "Rechazar invitación";
     },
@@ -161,9 +166,13 @@ export default {
     },
     textoIntro() {
       if (this.esAceptar) {
-        return this.esActividad
-          ? "Vas a aceptar la invitación y, si hay disponibilidad, quedarás asignado a la actividad."
-          : "Vas a aceptar la invitación y pasarás a ser miembro del proyecto.";
+        if (this.esActividad) {
+          return "Vas a aceptar la invitación y, si hay disponibilidad, quedarás asignado a la actividad.";
+        }
+        if (this.esRequerimientoGeneral) {
+          return "Vas a aceptar la invitación y quedarás vinculado al requerimiento general del proyecto.";
+        }
+        return "Vas a aceptar la invitación y pasarás a ser miembro del proyecto.";
       }
       return "Vas a rechazar esta invitación.";
     },
