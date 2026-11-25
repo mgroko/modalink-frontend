@@ -158,8 +158,8 @@ export default {
 
 .auth-layout__theme {
   position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
+  top: calc(1.25rem + env(safe-area-inset-top));
+  right: calc(1.25rem + env(safe-area-inset-right));
   z-index: 5;
 }
 
@@ -306,7 +306,7 @@ export default {
   align-items: center;
   justify-content: center;
   overflow-y: auto;
-  padding: 2.5rem 1.5rem;
+  padding: 2.5rem 1.5rem calc(2.5rem + env(safe-area-inset-bottom));
   max-height: 100vh;
   max-height: 100dvh;
 }
@@ -342,6 +342,7 @@ export default {
   .auth-layout__content {
     max-height: none;
     padding: 1.5rem;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -360,11 +361,12 @@ export default {
 
   .auth-layout__content {
     padding: 1.25rem 1rem;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
   }
 
   .auth-layout__theme {
-    top: 0.75rem;
-    right: 0.75rem;
+    top: calc(0.75rem + env(safe-area-inset-top));
+    right: calc(0.75rem + env(safe-area-inset-right));
   }
 
   .auth-layout__arrow {
@@ -380,6 +382,7 @@ export default {
 
   .auth-layout__content {
     padding: 1rem 0.85rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 }
 </style>

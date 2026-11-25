@@ -104,8 +104,8 @@
           No se detectaron inconsistencias con los filtros actuales.
         </p>
 
-        <div v-else class="reparacion-cronograma__tabla-wrapper">
-          <table class="reparacion-cronograma__tabla">
+        <div v-else class="reparacion-cronograma__tabla-wrapper admin-tabla-responsive-wrapper">
+          <table class="reparacion-cronograma__tabla admin-tabla-responsive">
             <thead>
               <tr>
                 <th>Proyecto</th>
@@ -121,26 +121,26 @@
                 v-for="(item, indice) in inconsistencias"
                 :key="`${item.idProyecto}-${item.idActividad}-${indice}`"
               >
-                <td>
+                <td data-label="Proyecto">
                   <strong>{{ item.nombreProyecto || "—" }}</strong>
                   <span v-if="item.idProyecto != null" class="reparacion-cronograma__secundario">
                     #{{ item.idProyecto }}
                   </span>
                 </td>
-                <td>
+                <td data-label="Actividad">
                   <strong>{{ item.nombreActividad || "—" }}</strong>
                   <span v-if="item.idActividad != null" class="reparacion-cronograma__secundario">
                     #{{ item.idActividad }}
                   </span>
                 </td>
-                <td>
+                <td data-label="Tipo">
                   <span class="reparacion-cronograma__chip">
                     {{ etiquetaTipoInconsistencia(item.tipo) }}
                   </span>
                 </td>
-                <td>{{ item.detalle || "—" }}</td>
-                <td>{{ formatearFecha(item.inicioActual) }}</td>
-                <td>{{ formatearFecha(item.finMaximoPredecesoras) }}</td>
+                <td data-label="Detalle">{{ item.detalle || "—" }}</td>
+                <td data-label="Inicio actual">{{ formatearFecha(item.inicioActual) }}</td>
+                <td data-label="Fin máx. predecesoras">{{ formatearFecha(item.finMaximoPredecesoras) }}</td>
               </tr>
             </tbody>
           </table>

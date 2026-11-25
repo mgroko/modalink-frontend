@@ -80,19 +80,19 @@
 
       <section class="admin-contrato-detalle__card">
         <h2>Partes y firmas <span>{{ contrato.partes?.length || 0 }}</span></h2>
-        <div v-if="contrato.partes?.length" class="admin-contrato-detalle__table-wrapper">
-          <table class="admin-contrato-detalle__table">
+        <div v-if="contrato.partes?.length" class="admin-contrato-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-contrato-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Parte</th><th>Perfil</th><th>DNI</th><th>Rol</th><th>Estado</th><th>Fecha de firma</th></tr>
             </thead>
             <tbody>
               <tr v-for="parte in contrato.partes" :key="parte.idMiembro">
-                <td>{{ parte.nombreCompleto || parte.nombreArtistico || '—' }}</td>
-                <td>{{ parte.idPerfil ?? '—' }}</td>
-                <td>{{ parte.dni || '—' }}</td>
-                <td>{{ parte.rolParte || '—' }}</td>
-                <td>{{ parte.estadoFirma || '—' }}</td>
-                <td>{{ parte.fechaFirma ? formatearFecha(parte.fechaFirma) : '—' }}</td>
+                <td data-label="Parte">{{ parte.nombreCompleto || parte.nombreArtistico || '—' }}</td>
+                <td data-label="Perfil">{{ parte.idPerfil ?? '—' }}</td>
+                <td data-label="DNI">{{ parte.dni || '—' }}</td>
+                <td data-label="Rol">{{ parte.rolParte || '—' }}</td>
+                <td data-label="Estado">{{ parte.estadoFirma || '—' }}</td>
+                <td data-label="Fecha de firma">{{ parte.fechaFirma ? formatearFecha(parte.fechaFirma) : '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -108,19 +108,19 @@
 
       <section class="admin-contrato-detalle__card">
         <h2>Eventos <span>{{ eventos.length }}</span></h2>
-        <div v-if="eventos.length" class="admin-contrato-detalle__table-wrapper">
-          <table class="admin-contrato-detalle__table">
+        <div v-if="eventos.length" class="admin-contrato-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-contrato-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Evento</th><th>Fecha</th><th>Parte</th><th>Operador</th><th>Versión</th><th>Motivo</th></tr>
             </thead>
             <tbody>
               <tr v-for="evento in eventos" :key="evento.idEvento">
-                <td>{{ evento.tipoEvento || '—' }}</td>
-                <td>{{ evento.fechaHora ? formatearFecha(evento.fechaHora) : '—' }}</td>
-                <td>{{ evento.nombreParte || '—' }}</td>
-                <td>{{ evento.nombreOperador || '—' }}</td>
-                <td>{{ evento.version ?? '—' }}</td>
-                <td>{{ evento.motivo || '—' }}</td>
+                <td data-label="Evento">{{ evento.tipoEvento || '—' }}</td>
+                <td data-label="Fecha">{{ evento.fechaHora ? formatearFecha(evento.fechaHora) : '—' }}</td>
+                <td data-label="Parte">{{ evento.nombreParte || '—' }}</td>
+                <td data-label="Operador">{{ evento.nombreOperador || '—' }}</td>
+                <td data-label="Versión">{{ evento.version ?? '—' }}</td>
+                <td data-label="Motivo">{{ evento.motivo || '—' }}</td>
               </tr>
             </tbody>
           </table>

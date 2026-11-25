@@ -102,6 +102,7 @@
     <template v-else-if="!mensajeError">
       <VaDataTable
         class="reportes-publicacion__tabla"
+        v-bind="propsTablaResponsive"
         :items="reportes"
         :columns="columnas"
         striped
@@ -195,6 +196,7 @@
 <script>
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { formatearFecha } from "../../utils/fechas.js";
 import { validarRangoFechas } from "../../utils/parametrosPostulaciones.js";
@@ -223,6 +225,7 @@ function filtrosIniciales() {
 
 export default {
   name: "ReportesPublicacionView",
+  mixins: [tablaResponsiveMixin],
   components: { BaseAlert },
   data() {
     return {

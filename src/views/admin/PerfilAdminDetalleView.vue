@@ -132,19 +132,19 @@
 
       <section class="admin-perfil-detalle__card">
         <h2>Proyectos relacionados <span>{{ perfil.resumenRelacionados?.totalProyectos || 0 }}</span></h2>
-        <div v-if="perfil.proyectos?.length" class="admin-perfil-detalle__table-wrapper">
-          <table class="admin-perfil-detalle__table">
+        <div v-if="perfil.proyectos?.length" class="admin-perfil-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-perfil-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Proyecto</th><th>Estado</th><th>Rol</th><th>Participación</th><th>Alta</th><th>Baja</th></tr>
             </thead>
             <tbody>
               <tr v-for="proyecto in perfil.proyectos" :key="`${proyecto.idProyecto}-${proyecto.fechaAlta}`">
-                <td>{{ proyecto.nombre || '—' }}</td>
-                <td>{{ proyecto.estadoProyecto || '—' }}</td>
-                <td>{{ proyecto.rolProyecto || '—' }}</td>
-                <td>{{ proyecto.estadoParticipacion || '—' }}</td>
-                <td>{{ proyecto.fechaAlta ? formatearFecha(proyecto.fechaAlta) : '—' }}</td>
-                <td>{{ proyecto.fechaBaja ? formatearFecha(proyecto.fechaBaja) : '—' }}</td>
+                <td data-label="Proyecto">{{ proyecto.nombre || '—' }}</td>
+                <td data-label="Estado">{{ proyecto.estadoProyecto || '—' }}</td>
+                <td data-label="Rol">{{ proyecto.rolProyecto || '—' }}</td>
+                <td data-label="Participación">{{ proyecto.estadoParticipacion || '—' }}</td>
+                <td data-label="Alta">{{ proyecto.fechaAlta ? formatearFecha(proyecto.fechaAlta) : '—' }}</td>
+                <td data-label="Baja">{{ proyecto.fechaBaja ? formatearFecha(proyecto.fechaBaja) : '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -154,20 +154,20 @@
 
       <section class="admin-perfil-detalle__card">
         <h2>Contratos relacionados <span>{{ perfil.resumenRelacionados?.totalContratos || 0 }}</span></h2>
-        <div v-if="perfil.contratos?.length" class="admin-perfil-detalle__table-wrapper">
-          <table class="admin-perfil-detalle__table">
+        <div v-if="perfil.contratos?.length" class="admin-perfil-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-perfil-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Contrato</th><th>Proyecto</th><th>Estado</th><th>Parte</th><th>Firma</th><th>Emisión</th><th></th></tr>
             </thead>
             <tbody>
               <tr v-for="contrato in perfil.contratos" :key="contrato.idContrato">
-                <td>{{ contrato.nombre || '—' }}</td>
-                <td>{{ contrato.nombreProyecto || '—' }}</td>
-                <td>{{ contrato.estado || '—' }}</td>
-                <td>{{ contrato.rolParte || '—' }}</td>
-                <td>{{ contrato.estadoFirma || '—' }}</td>
-                <td>{{ contrato.fechaEmision ? formatearFecha(contrato.fechaEmision) : '—' }}</td>
-                <td>
+                <td data-label="Contrato">{{ contrato.nombre || '—' }}</td>
+                <td data-label="Proyecto">{{ contrato.nombreProyecto || '—' }}</td>
+                <td data-label="Estado">{{ contrato.estado || '—' }}</td>
+                <td data-label="Parte">{{ contrato.rolParte || '—' }}</td>
+                <td data-label="Firma">{{ contrato.estadoFirma || '—' }}</td>
+                <td data-label="Emisión">{{ contrato.fechaEmision ? formatearFecha(contrato.fechaEmision) : '—' }}</td>
+                <td data-label="Acciones">
                   <button type="button" class="admin-perfil-detalle__link" @click="$router.push({ name: 'admin-contrato-detalle', params: { id: contrato.idContrato } })">
                     Ver
                   </button>
@@ -181,17 +181,17 @@
 
       <section class="admin-perfil-detalle__card">
         <h2>Publicaciones relacionadas <span>{{ perfil.resumenRelacionados?.totalPublicaciones || 0 }}</span></h2>
-        <div v-if="perfil.publicaciones?.length" class="admin-perfil-detalle__table-wrapper">
-          <table class="admin-perfil-detalle__table">
+        <div v-if="perfil.publicaciones?.length" class="admin-perfil-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-perfil-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Publicación</th><th>Estado</th><th>Fecha</th><th>Proyecto</th></tr>
             </thead>
             <tbody>
               <tr v-for="publicacion in perfil.publicaciones" :key="publicacion.idPublicacion">
-                <td>{{ publicacion.titulo || '—' }}</td>
-                <td>{{ publicacion.estado || '—' }}</td>
-                <td>{{ publicacion.fechaPublicacion ? formatearFecha(publicacion.fechaPublicacion) : '—' }}</td>
-                <td>{{ publicacion.nombreProyecto || '—' }}</td>
+                <td data-label="Publicación">{{ publicacion.titulo || '—' }}</td>
+                <td data-label="Estado">{{ publicacion.estado || '—' }}</td>
+                <td data-label="Fecha">{{ publicacion.fechaPublicacion ? formatearFecha(publicacion.fechaPublicacion) : '—' }}</td>
+                <td data-label="Proyecto">{{ publicacion.nombreProyecto || '—' }}</td>
               </tr>
             </tbody>
           </table>

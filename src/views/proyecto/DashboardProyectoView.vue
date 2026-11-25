@@ -3705,6 +3705,29 @@ data() {
   color: #ffffff !important;
 }
 
+@media (max-width: 640px) {
+  .dashboard-proyecto {
+    gap: 0.75rem;
+  }
+
+  .dashboard-proyecto__panel {
+    padding: 1rem;
+  }
+
+  .dashboard-proyecto__titulo {
+    font-size: 0.98rem;
+  }
+
+  .dashboard-proyecto__peligro-boton {
+    width: 100%;
+  }
+
+  .dashboard-proyecto__reintento {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .btn-publicar:hover:not(:disabled) {
   --va-background-color: #1e3a8a !important;
   background: #1e3a8a !important;

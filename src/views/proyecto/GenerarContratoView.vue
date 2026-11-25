@@ -2036,6 +2036,11 @@ export default {
     flex-direction: column;
   }
 
+  .generar-contrato__cabecera-texto {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
   .generar-contrato__stepper {
     flex-wrap: wrap;
     row-gap: 0.65rem;
@@ -2049,6 +2054,10 @@ export default {
   .generar-contrato__acciones {
     flex-direction: column-reverse;
     align-items: stretch;
+  }
+
+  .generar-contrato__acciones > * {
+    width: 100%;
   }
 }
 </style>

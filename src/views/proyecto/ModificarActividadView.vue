@@ -2909,5 +2909,15 @@ export default {
   .modificar-actividad__seccion-cabecera {
     flex-direction: column;
   }
+
+  .modificar-actividad__acciones,
+  .modificar-actividad-modal__acciones {
+    flex-direction: column-reverse;
+  }
+
+  .modificar-actividad__acciones > *,
+  .modificar-actividad-modal__acciones > * {
+    width: 100%;
+  }
 }
 </style>

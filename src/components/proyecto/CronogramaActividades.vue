@@ -28,7 +28,11 @@
       No hay actividades programables con fechas para graficar.
     </p>
 
-    <div v-else class="cronograma-actividades__scroll">
+    <p v-if="items.length" class="cronograma-actividades__scroll-hint">
+      Deslizá horizontalmente para ver el cronograma completo.
+    </p>
+
+    <div v-if="items.length" class="cronograma-actividades__scroll">
       <div class="cronograma-actividades__eje">
         <span class="cronograma-actividades__eje-label"></span>
         <div class="cronograma-actividades__eje-marcas">
@@ -332,8 +336,28 @@ export default {
 }
 
 .cronograma-actividades__scroll {
-  min-width: 620px;
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cronograma-actividades__eje,
+.cronograma-actividades__fila {
+  min-width: 620px;
+}
+
+.cronograma-actividades__scroll-hint {
+  display: none;
+  margin: 0 0 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 768px) {
+  .cronograma-actividades__scroll-hint {
+    display: block;
+  }
 }
 
 .cronograma-actividades__eje,

@@ -4,6 +4,15 @@ Documento de referencia para mantener el frontend usable en teléfonos, tablets 
 desktop. No es necesario reescribir todo el CSS existente: las pantallas que se
 toquen deben migrar a estas convenciones.
 
+## Estado de la implementación
+
+- Fases 0 a 5 completadas: base global, layouts, área de usuario, proyectos,
+  contratos, panel administrativo y pulido.
+- Las tablas de datos usan tarjetas en móvil. Los Gantt y líneas de tiempo
+  conservan scroll horizontal intencional.
+- Safe-area y `100dvh` aplicados en layouts, modales, chat y barras principales.
+- El documento sigue siendo la referencia para nuevas pantallas.
+
 ## Breakpoints oficiales
 
 | Rango | Uso |

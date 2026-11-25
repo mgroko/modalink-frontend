@@ -420,13 +420,13 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 1.25rem 0;
+  padding: calc(1.25rem + env(safe-area-inset-top)) 0 1.25rem env(safe-area-inset-left);
 }
 
 .sidebar__close {
   display: none;
   position: absolute;
-  top: 0.65rem;
+  top: calc(0.65rem + env(safe-area-inset-top));
   right: 0.65rem;
   z-index: 2;
   align-items: center;
@@ -971,6 +971,7 @@ font-size: 1.5rem;
     height: auto;
     min-height: 64px;
     padding: 0.7rem 1rem;
+    padding-top: calc(0.7rem + env(safe-area-inset-top));
     gap: 0.75rem;
   }
 
@@ -980,6 +981,7 @@ font-size: 1.5rem;
 
   .dashboard-main__content {
     padding: 1rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 
   .modalink-main__title {
@@ -1033,6 +1035,7 @@ font-size: 1.5rem;
 @media (max-width: 400px) {
   .dashboard-main__header {
     padding: 0.6rem 0.75rem;
+    padding-top: calc(0.6rem + env(safe-area-inset-top));
   }
 
   .dashboard-main__title {

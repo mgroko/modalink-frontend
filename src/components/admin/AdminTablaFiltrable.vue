@@ -14,55 +14,118 @@
       {{ emptyText }}
     </div>
 
-    <VaDataTable
-      v-else
-      class="admin-tabla-filtrable__tabla"
-      :items="filasFiltradas"
-      :columns="columnasTabla"
-      :per-page="pageSize"
-      :current-page="paginaActual"
-      no-data-html="No hay resultados con los filtros aplicados."
-      hoverable
-    >
-      <template #headerAppend>
-        <tr class="admin-tabla-filtrable__filtros">
-          <th v-for="columna in columns" :key="`filtro-${columna.key}`">
-            <select
-              v-if="columna.filter && columna.filter.type === 'select'"
-              v-model="filtros[columna.key]"
-              class="admin-tabla-filtrable__select"
-              :aria-label="`Filtrar ${columna.label}`"
-            >
-              <option value="">Todos</option>
-              <option
-                v-for="opcion in columna.filter.options || []"
-                :key="opcion.value"
-                :value="opcion.value"
-              >
-                {{ opcion.text }}
-              </option>
-            </select>
+    <template v-else>
+      <div v-if="esPantallaAngosta && columnasConFiltro.length" class="admin-tabla-filtrable__filtros-mobile">
+        <button
+          type="button"
+          class="admin-tabla-filtrable__filtros-boton"
+          :aria-expanded="filtrosAbiertos ? 'true' : 'false'"
+          @click="filtrosAbiertos = !filtrosAbiertos"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+          <span>Filtros</span>
+          <span v-if="cantidadFiltrosActivos" class="admin-tabla-filtrable__filtros-badge">
+            {{ cantidadFiltrosActivos }}
+          </span>
+          <span class="material-symbols-outlined admin-tabla-filtrable__filtros-chevron" aria-hidden="true">
+            {{ filtrosAbiertos ? "expand_less" : "expand_more" }}
+          </span>
+        </button>
+      </div>
 
-            <input
-              v-else-if="columna.filter"
-              v-model="filtros[columna.key]"
-              type="search"
-              class="admin-tabla-filtrable__input"
-              :placeholder="columna.filter.placeholder || 'Filtrar'"
-              :aria-label="`Filtrar ${columna.label}`"
-            />
-          </th>
-        </tr>
-      </template>
-
-      <template
-        v-for="(_, nombre) in $slots"
-        :key="nombre"
-        #[nombre]="slotProps"
+      <div
+        v-if="esPantallaAngosta && filtrosAbiertos"
+        class="admin-tabla-filtrable__panel-filtros"
       >
-        <slot :name="nombre" v-bind="slotProps || {}" />
-      </template>
-    </VaDataTable>
+        <label
+          v-for="columna in columnasConFiltro"
+          :key="`filtro-movil-${columna.key}`"
+          class="admin-tabla-filtrable__campo-filtro"
+        >
+          <span>{{ columna.label }}</span>
+          <select
+            v-if="columna.filter.type === 'select'"
+            v-model="filtros[columna.key]"
+            class="admin-tabla-filtrable__select"
+          >
+            <option value="">Todos</option>
+            <option
+              v-for="opcion in columna.filter.options || []"
+              :key="opcion.value"
+              :value="opcion.value"
+            >
+              {{ opcion.text }}
+            </option>
+          </select>
+          <input
+            v-else
+            v-model="filtros[columna.key]"
+            type="search"
+            class="admin-tabla-filtrable__input"
+            :placeholder="columna.filter.placeholder || 'Filtrar'"
+          />
+        </label>
+
+        <button
+          v-if="cantidadFiltrosActivos"
+          type="button"
+          class="admin-tabla-filtrable__limpiar"
+          @click="limpiarFiltros"
+        >
+          Limpiar filtros
+        </button>
+      </div>
+
+      <VaDataTable
+        class="admin-tabla-filtrable__tabla"
+        v-bind="propsTablaResponsive"
+        :items="filasFiltradas"
+        :columns="columnasTabla"
+        :per-page="pageSize"
+        :current-page="paginaActual"
+        no-data-html="No hay resultados con los filtros aplicados."
+        hoverable
+      >
+        <template #headerAppend>
+          <tr v-if="!esPantallaAngosta" class="admin-tabla-filtrable__filtros">
+            <th v-for="columna in columns" :key="`filtro-${columna.key}`">
+              <select
+                v-if="columna.filter && columna.filter.type === 'select'"
+                v-model="filtros[columna.key]"
+                class="admin-tabla-filtrable__select"
+                :aria-label="`Filtrar ${columna.label}`"
+              >
+                <option value="">Todos</option>
+                <option
+                  v-for="opcion in columna.filter.options || []"
+                  :key="opcion.value"
+                  :value="opcion.value"
+                >
+                  {{ opcion.text }}
+                </option>
+              </select>
+
+              <input
+                v-else-if="columna.filter"
+                v-model="filtros[columna.key]"
+                type="search"
+                class="admin-tabla-filtrable__input"
+                :placeholder="columna.filter.placeholder || 'Filtrar'"
+                :aria-label="`Filtrar ${columna.label}`"
+              />
+            </th>
+          </tr>
+        </template>
+
+        <template
+          v-for="(_, nombre) in $slots"
+          :key="nombre"
+          #[nombre]="slotProps"
+        >
+          <slot :name="nombre" v-bind="slotProps || {}" />
+        </template>
+      </VaDataTable>
+    </template>
 
     <template #footer>
       <span class="admin-tabla-filtrable__info">
@@ -87,6 +150,7 @@
 
 <script>
 import AdminTablaPanel from "./AdminTablaPanel.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 
 function normalizar(valor) {
   return String(valor ?? "")
@@ -108,6 +172,7 @@ function normalizar(valor) {
 export default {
   name: "AdminTablaFiltrable",
   components: { AdminTablaPanel },
+  mixins: [tablaResponsiveMixin],
   props: {
     columns: {
       type: Array,
@@ -143,9 +208,18 @@ export default {
     return {
       filtros: {},
       pagina: 1,
+      filtrosAbiertos: false,
     };
   },
   computed: {
+    columnasConFiltro() {
+      return this.columns.filter((columna) => columna.filter);
+    },
+    cantidadFiltrosActivos() {
+      return Object.values(this.filtros).filter(
+        (valor) => valor !== "" && valor != null
+      ).length;
+    },
     columnasTabla() {
       return this.columns.map((columna) => {
         const columnaTabla = {
@@ -216,6 +290,11 @@ export default {
     this.filtros = filtros;
   },
   methods: {
+    limpiarFiltros() {
+      for (const clave of Object.keys(this.filtros)) {
+        this.filtros[clave] = "";
+      }
+    },
     valorDe(columna, item) {
       if (typeof columna.value === "function") return columna.value(item);
       return item?.[columna.key];
@@ -283,6 +362,94 @@ export default {
 .admin-tabla-filtrable__select:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: -1px;
+}
+
+.admin-tabla-filtrable__filtros-mobile {
+  display: none;
+}
+
+.admin-tabla-filtrable__filtros-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-tabla-filtrable__filtros-boton .material-symbols-outlined {
+  font-size: 1.05rem;
+}
+
+.admin-tabla-filtrable__filtros-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.admin-tabla-filtrable__filtros-chevron {
+  margin-left: auto;
+}
+
+.admin-tabla-filtrable__panel-filtros {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: var(--color-surface-soft);
+}
+
+.admin-tabla-filtrable__campo-filtro {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.admin-tabla-filtrable__campo-filtro .admin-tabla-filtrable__input,
+.admin-tabla-filtrable__campo-filtro .admin-tabla-filtrable__select {
+  height: 2.2rem;
+  font-size: 0.82rem;
+  text-transform: none;
+}
+
+.admin-tabla-filtrable__limpiar {
+  justify-self: start;
+  padding: 0.35rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .admin-tabla-filtrable__filtros-mobile {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--color-border-soft);
+  }
 }
 
 /* Permite que las columnas se ajusten sin forzar scroll horizontal. */

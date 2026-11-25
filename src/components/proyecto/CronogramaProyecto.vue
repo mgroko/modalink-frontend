@@ -293,8 +293,8 @@
                 }"
                 @click="seleccionar(fila.idActividad)"
               >
-                <td>{{ fila.indice }}</td>
-                <td>
+                <td data-label="#">{{ fila.indice }}</td>
+                <td data-label="Actividad">
                   <span class="cronograma-proyecto__nombre-actividad">
                     {{ fila.nombre }}
                   </span>
@@ -305,18 +305,18 @@
                     Estimada
                   </span>
                 </td>
-                <td class="cronograma-proyecto__ahora">
+                <td class="cronograma-proyecto__ahora" data-label="Duración">
                   {{ formatearDuracionMinutos(fila.duracionMinutos) }}
                 </td>
-                <td>
+                <td data-label="Depende de">
                   <span v-if="fila.predecesoras.length">
                     {{ fila.predecesorasTexto }}
                   </span>
                   <span v-else class="cronograma-proyecto__secundario">—</span>
                 </td>
-                <td class="cronograma-proyecto__ahora">{{ fila.rango }}</td>
-                <td class="cronograma-proyecto__ahora">{{ fila.holgura }}</td>
-                <td>
+                <td class="cronograma-proyecto__ahora" data-label="Inicio – Fin">{{ fila.rango }}</td>
+                <td class="cronograma-proyecto__ahora" data-label="Holgura">{{ fila.holgura }}</td>
+                <td data-label="Crítica">
                   <span
                     v-if="fila.enRutaCritica"
                     class="cronograma-proyecto__chip cronograma-proyecto__chip--critica"
@@ -1288,5 +1288,64 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.85rem;
   font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .cronograma-proyecto__tabla-scroll {
+    overflow-x: visible;
+  }
+
+  .cronograma-proyecto__tabla {
+    min-width: 0;
+  }
+
+  .cronograma-proyecto__tabla thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .cronograma-proyecto__tabla,
+  .cronograma-proyecto__tabla tbody,
+  .cronograma-proyecto__tabla tr,
+  .cronograma-proyecto__tabla td {
+    display: block;
+    width: 100%;
+  }
+
+  .cronograma-proyecto__fila {
+    margin-bottom: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+  }
+
+  .cronograma-proyecto__tabla td {
+    position: relative;
+    padding: 0.35rem 0 0.35rem 8rem;
+    border: 0;
+    text-align: left;
+  }
+
+  .cronograma-proyecto__tabla td::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.35rem;
+    left: 0;
+    width: 7.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .cronograma-proyecto__ahora {
+    white-space: normal;
+  }
 }
 </style>

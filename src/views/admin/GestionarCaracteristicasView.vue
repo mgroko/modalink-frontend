@@ -65,6 +65,7 @@
       <VaDataTable
         v-else
         class="gestion-caracteristicas__tabla"
+        v-bind="propsTablaResponsive"
         :items="caracteristicasFiltradas"
         :columns="columnas"
         :per-page="porPaginaCaracteristicas"
@@ -351,6 +352,7 @@
 
       <VaDataTable
         v-else
+        v-bind="propsTablaResponsive"
         :items="caracteristicaValores.valores"
         :columns="columnasValores"
         :per-page="porPaginaValores"
@@ -414,6 +416,7 @@ import adminUnidadesMedidaService from "../../services/adminUnidadesMedidaServic
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 
 const TIPOS = ["ENUMERADO", "TEXTO", "NUMERICO"];
 
@@ -440,6 +443,7 @@ function etiquetaValor(codigo) {
 
 export default {
   name: "GestionarCaracteristicasView",
+  mixins: [tablaResponsiveMixin],
   components: {
     BaseAlert,
     AdminTablaPanel,
@@ -949,6 +953,21 @@ export default {
   width: 90px;
   display: flex;
   justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .gestion-caracteristicas__toolbar-acciones {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .gestion-caracteristicas__acciones {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .gestion-caracteristicas__acciones-col {
+    width: auto;
+  }
 }
 
 .gestion-caracteristicas__estado {

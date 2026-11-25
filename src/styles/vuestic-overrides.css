@@ -2,3 +2,55 @@
 .va-select__toggle-icon {
   color: var(--color-text-muted) !important;
 }
+
+/*
+ * VaDataTable en modo `grid`: cada fila se muestra como tarjeta, pensada
+ * para móvil/tablet. Se oculta el encabezado de columnas porque cada celda
+ * ya incluye su etiqueta.
+ */
+@media (max-width: 767.98px) {
+  .va-data-table--grid {
+    overflow: visible;
+  }
+
+  .va-data-table--grid .va-data-table__table-thead {
+    display: none;
+  }
+
+  .va-data-table--grid .va-data-table__table-tbody {
+    padding: 0.75rem 1rem 1rem;
+  }
+
+  .va-data-table--grid .va-data-table__table-tbody .va-data-table__table-tr {
+    background: var(--color-surface);
+  }
+
+  .va-data-table--grid .va-data-table__table-tbody .va-data-table__table-td {
+    padding: 0.3rem 0;
+    border: 0;
+  }
+
+  .va-data-table--grid .va-data-table__grid-column-header {
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+}
+
+/* Modales: altura usable con barras dinámicas y área segura inferior. */
+.va-modal__dialog {
+  max-height: calc(100dvh - 2rem);
+  overscroll-behavior: contain;
+}
+
+.va-modal__inner {
+  padding-bottom: calc(var(--va-modal-padding-bottom, 1rem) + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 576px) {
+  .va-modal__dialog {
+    max-height: calc(100dvh - 1rem);
+  }
+}

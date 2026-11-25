@@ -257,6 +257,7 @@ export default {
 
   .perfil-nav__item {
     flex: 0 0 auto;
+    min-height: 44px;
     border-right: 1px solid var(--color-border-soft);
     border-bottom: 0;
     white-space: nowrap;

@@ -112,11 +112,11 @@
           </thead>
           <tbody>
             <tr v-for="evento in eventos" :key="evento.clave">
-              <td class="historial-proyecto__fecha">
+              <td class="historial-proyecto__fecha" data-label="Fecha">
                 {{ formatearFecha(evento.fecha) }}
               </td>
 
-              <td>
+              <td data-label="Movimiento">
                 <span
                   class="historial-proyecto__chip"
                   :style="estiloTipo(evento.tipo)"
@@ -125,7 +125,7 @@
                 </span>
               </td>
 
-              <td>
+              <td data-label="Miembro">
                 <div class="historial-proyecto__perfil">
                   <strong>{{ nombreAfectadoHistorial(evento) }}</strong>
                   <span v-if="evento.nombreProfesionAfectado">
@@ -142,23 +142,23 @@
                 </div>
               </td>
 
-              <td>
+              <td data-label="Estado">
                 <span class="historial-proyecto__estado-participacion">
                   {{ etiquetaEstadoParticipacionHistorial(evento.estadoParticipacion) }}
                 </span>
               </td>
 
-              <td class="historial-proyecto__motivo">
+              <td class="historial-proyecto__motivo" data-label="Motivo">
                 {{ evento.motivo || "—" }}
               </td>
 
-              <td>
+              <td data-label="Responsable">
                 <div class="historial-proyecto__perfil">
                   <strong>{{ nombreActorHistorial(evento) }}</strong>
                 </div>
               </td>
 
-              <td class="historial-proyecto__actividad">
+              <td class="historial-proyecto__actividad" data-label="Actividades">
                 <ul
                   v-if="actividadesEvento(evento).length"
                   class="historial-proyecto__actividades"
@@ -619,7 +619,7 @@ export default {
   font-size: 0.82rem;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .historial-proyecto__filtros {
     align-items: stretch;
     flex-direction: column;
@@ -632,6 +632,65 @@ export default {
 
   .historial-proyecto__acciones-filtro {
     justify-content: flex-end;
+  }
+
+  .historial-proyecto__tabla-wrapper {
+    overflow-x: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .historial-proyecto__tabla {
+    min-width: 0;
+  }
+
+  .historial-proyecto__tabla thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .historial-proyecto__tabla,
+  .historial-proyecto__tabla tbody,
+  .historial-proyecto__tabla tr,
+  .historial-proyecto__tabla td {
+    display: block;
+    width: 100%;
+  }
+
+  .historial-proyecto__tabla tbody tr {
+    margin-bottom: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+  }
+
+  .historial-proyecto__tabla td {
+    position: relative;
+    padding: 0.35rem 0 0.35rem 8rem;
+    border: 0;
+    text-align: left;
+  }
+
+  .historial-proyecto__tabla td::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.35rem;
+    left: 0;
+    width: 7.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .historial-proyecto__fecha {
+    white-space: normal;
   }
 }
 </style>

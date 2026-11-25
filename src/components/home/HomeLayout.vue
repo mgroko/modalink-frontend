@@ -717,6 +717,7 @@ export default {
     justify-content: space-between;
     gap: 0.7rem 1rem;
     padding: 0.8rem 1rem;
+    padding-top: calc(0.8rem + env(safe-area-inset-top));
   }
 
   .home-layout__brand { order: 1; }
@@ -804,6 +805,7 @@ export default {
     order: 1;
     min-height: 0;
     padding: 1.25rem;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
   }
 
   .home-layout__logout { margin-top: 0; }
@@ -812,6 +814,7 @@ export default {
 @media (max-width: 640px) {
   .home-layout__topbar {
     padding: 0.65rem 0.75rem;
+    padding-top: calc(0.65rem + env(safe-area-inset-top));
   }
 
   .home-layout__brand {
@@ -837,6 +840,7 @@ export default {
 
   .home-layout__content {
     padding: 1rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
     border-radius: 8px;
   }
 
@@ -845,7 +849,10 @@ export default {
 }
 
 @media (max-width: 400px) {
-  .home-layout__topbar { padding: 0.55rem 0.6rem; }
+  .home-layout__topbar {
+    padding: 0.55rem 0.6rem;
+    padding-top: calc(0.55rem + env(safe-area-inset-top));
+  }
 
   .home-layout__brand strong { font-size: 0.95rem; }
 
@@ -854,7 +861,7 @@ export default {
     font-size: 0.6rem;
   }
 
-  .home-layout__content { padding: 0.75rem; }
+  .home-layout__content { padding: 0.75rem; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
 }
 
 </style>

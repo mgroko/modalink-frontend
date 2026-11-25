@@ -130,6 +130,7 @@
     <VaDataTable
       v-if="puedeVer && !accesoDenegado"
       class="busqueda-usuarios__tabla"
+      v-bind="propsTablaResponsive"
       :items="usuarios"
       :columns="columnas"
       striped
@@ -365,6 +366,7 @@
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import AdminVolver from "../../components/admin/AdminVolver.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 import { state, tienePermiso } from "../../services/authState";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { mensajeErrorApi } from "../../utils/apiError";
@@ -374,6 +376,7 @@ const DEBOUNCE_MS = 300;
 
 export default {
   name: "BusquedaUsuariosView",
+  mixins: [tablaResponsiveMixin],
   components: {
     BaseAlert,
     AdminVolver,
@@ -859,7 +862,7 @@ export default {
 
 .detalle-usuario__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -919,5 +922,38 @@ export default {
 .detalle-usuario__texto-muted {
   color: var(--color-text-muted);
   font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .busqueda-usuarios__encabezado h1 {
+    font-size: 1.6rem;
+  }
+
+  .busqueda-usuarios__filtros {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .busqueda-usuarios__campo,
+  .busqueda-usuarios__campo--amplio,
+  .busqueda-usuarios__campo--tamano {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .busqueda-usuarios__modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .busqueda-usuarios__modal-footer > * {
+    width: 100%;
+  }
+
+  .busqueda-usuarios__deshabilitacion,
+  .busqueda-usuarios__deshabilitacion-motivo {
+    max-width: none;
+    white-space: normal;
+  }
 }
 </style>

@@ -360,4 +360,25 @@ export default {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+@media (max-width: 640px) {
+  .proyecto-encabezado {
+    padding: 1rem 1rem 0;
+  }
+
+  .proyecto-encabezado__cuerpo {
+    min-width: 0;
+  }
+
+  .proyecto-encabezado__nombre {
+    font-size: 1.25rem;
+  }
+
+  .proyecto-encabezado__tabs {
+    gap: 1rem;
+    margin-right: -1rem;
+    margin-left: -1rem;
+    padding: 0 1rem;
+  }
+}
 </style>

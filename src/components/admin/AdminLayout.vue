@@ -367,7 +367,9 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  padding: 1.5rem 0.9rem 1rem;
+  padding: calc(1.5rem + env(safe-area-inset-top))
+    calc(0.9rem + env(safe-area-inset-right)) 1rem
+    calc(0.9rem + env(safe-area-inset-left));
   overflow: hidden;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border-soft);
@@ -733,7 +735,7 @@ export default {
 .admin-layout__content {
   flex: 1;
   min-width: 0;
-  padding: 1.5rem 2.5rem 2.5rem;
+  padding: 1.5rem 2.5rem calc(2.5rem + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 1024px) {
@@ -797,6 +799,9 @@ export default {
     max-width: 84vw;
     min-height: 100dvh;
     padding: 1rem;
+    padding-top: calc(1rem + env(safe-area-inset-top));
+    padding-left: calc(1rem + env(safe-area-inset-left));
+    padding-right: calc(1rem + env(safe-area-inset-right));
     overflow: hidden;
     background: var(--color-surface);
     border-right: 1px solid var(--color-border-soft);

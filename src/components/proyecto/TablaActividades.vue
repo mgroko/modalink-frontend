@@ -31,16 +31,16 @@
               actividad.estado === 'CANCELADA',
           }"
         >
-          <td>{{ indice + 1 }}</td>
+          <td data-label="#">{{ indice + 1 }}</td>
 
-          <td>
+          <td data-label="Actividad">
             <span class="tabla-actividades__nombre">{{ actividad.nombre }}</span>
             <span v-if="actividad.descripcion" class="tabla-actividades__descripcion">
               {{ actividad.descripcion }}
             </span>
           </td>
 
-          <td>
+          <td data-label="Responsables">
             <div v-if="responsables(actividad).length" class="tabla-actividades__chips">
               <span
                 v-for="responsable in responsables(actividad)"
@@ -72,11 +72,11 @@
             <span v-else class="tabla-actividades__vacio-celda">—</span>
           </td>
 
-          <td class="tabla-actividades__duracion">
+          <td class="tabla-actividades__duracion" data-label="Duración">
             {{ formatearDuracionMinutos(actividad.duracionMinutos) }}
           </td>
 
-          <td>
+          <td data-label="Depende de">
             <div
               v-if="(actividad.predecesoras || []).length"
               class="tabla-actividades__chips"
@@ -92,7 +92,7 @@
             <span v-else class="tabla-actividades__vacio-celda">—</span>
           </td>
 
-          <td class="tabla-actividades__fechas">
+          <td class="tabla-actividades__fechas" data-label="Inicio – Fin">
             <span class="tabla-actividades__fecha-rango">
               {{ rangoFechas(actividad) }}
             </span>
@@ -107,7 +107,7 @@
             </span>
           </td>
 
-          <td>
+          <td data-label="Estado">
             <div class="tabla-actividades__estado-celda">
               <span class="tabla-actividades__estado" :style="estiloEstado(actividad.estado)">
                 {{ etiquetaEstadoActividad(actividad.estado) }}
@@ -116,7 +116,7 @@
             </div>
           </td>
 
-          <td>
+          <td class="tabla-actividades__td-acciones" data-label="Acciones">
             <div class="tabla-actividades__acciones">
               <button
                 type="button"
@@ -538,5 +538,88 @@ export default {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+@media (max-width: 768px) {
+  .tabla-actividades {
+    overflow-x: visible;
+  }
+
+  .tabla-actividades__tabla {
+    min-width: 0;
+  }
+
+  .tabla-actividades__tabla thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .tabla-actividades__tabla,
+  .tabla-actividades__tabla tbody,
+  .tabla-actividades__tabla tr,
+  .tabla-actividades__tabla td {
+    display: block;
+    width: 100%;
+  }
+
+  .tabla-actividades__fila {
+    margin-bottom: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+  }
+
+  .tabla-actividades__tabla td {
+    position: relative;
+    padding: 0.35rem 0 0.35rem 7rem;
+    border: 0;
+    text-align: left;
+  }
+
+  .tabla-actividades__tabla td::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.35rem;
+    left: 0;
+    width: 6.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .tabla-actividades__fechas {
+    white-space: normal;
+  }
+
+  .tabla-actividades__td-acciones {
+    padding-left: 0;
+  }
+
+  .tabla-actividades__td-acciones::before {
+    position: static;
+    display: block;
+    width: auto;
+    margin-bottom: 0.35rem;
+  }
+
+  .tabla-actividades__acciones {
+    flex-wrap: wrap;
+  }
+
+  .tabla-actividades__accion {
+    width: 38px;
+    height: 38px;
+  }
+
+  .tabla-actividades__vacio {
+    padding: 1rem !important;
+  }
 }
 </style>

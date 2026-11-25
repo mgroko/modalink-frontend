@@ -62,6 +62,7 @@
 
       <VaDataTable
       class="gestion-usuarios__tabla"
+      v-bind="propsTablaResponsive"
       :items="usuariosOrdenados"
       :columns="columnas"
       :loading="cargando"
@@ -267,6 +268,7 @@
 
             <VaDataTable
               v-else
+              v-bind="propsTablaResponsive"
               :items="perfiles"
               :columns="columnasPerfiles"
               :loading="cargandoPerfiles"
@@ -425,12 +427,14 @@
 import adminService from "../../services/adminService";
 import BaseAlert from "../../components/AlertaBase.vue";
 import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 import { state } from "../../services/authState";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 
 export default {
   name: "GestionUsuariosView",
+  mixins: [tablaResponsiveMixin],
   components: {
     BaseAlert,
     AdminTablaPanel,

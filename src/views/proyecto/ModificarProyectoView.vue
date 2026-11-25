@@ -1979,4 +1979,97 @@ export default {
   gap: 1rem;
   width: 100%;
 }
+
+@media (max-width: 640px) {
+  .modificar-proyecto {
+    gap: 0.75rem;
+  }
+
+  .modificar-proyecto__titulo {
+    font-size: 1.2rem;
+  }
+
+  .modificar-proyecto__subtitulo {
+    font-size: 0.82rem;
+  }
+
+  .modificar-proyecto__stepper {
+    gap: 0.25rem;
+    padding-bottom: 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modificar-proyecto__stepper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .modificar-proyecto__paso {
+    flex: 0 0 auto;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+  }
+
+  .modificar-proyecto__paso-linea {
+    min-width: 12px;
+    margin: 0 0.25rem;
+  }
+
+  .modificar-proyecto__paso-nombre {
+    display: none;
+  }
+
+  .modificar-proyecto__paso--activo .modificar-proyecto__paso-nombre {
+    display: inline;
+  }
+
+  .modificar-proyecto__seccion {
+    padding: 1rem;
+  }
+
+  .modificar-proyecto__seccion-titulo {
+    font-size: 1.15rem;
+  }
+
+  .modificar-proyecto__fila {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 1rem;
+  }
+
+  .modificar-proyecto__nota {
+    padding-left: 0;
+  }
+
+  .modificar-proyecto__acciones-pie {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .modificar-proyecto__acciones-pie > * {
+    width: 100%;
+  }
+
+  .modificar-proyecto__acciones-derecha {
+    flex-direction: column-reverse;
+  }
+
+  .modificar-proyecto__acciones-derecha > * {
+    width: 100%;
+  }
+
+  .modificar-proyecto-modal__acciones {
+    flex-direction: column-reverse;
+  }
+
+  .modificar-proyecto-modal__acciones > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 400px) {
+  .modificar-proyecto__paso--activo .modificar-proyecto__paso-nombre {
+    display: none;
+  }
+}
 </style>
