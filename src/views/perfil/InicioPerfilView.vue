@@ -2709,11 +2709,25 @@ export default {
 
 @media (max-width: 900px) {
   .inicio-perfil__layout {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .inicio-perfil__sidebar {
-    order: -1;
+    display: contents;
+  }
+
+  .inicio-perfil__sidebar > * {
+    order: 3;
+  }
+
+  .inicio-perfil__sidebar :deep(.perfil-nav) {
+    order: 1;
+  }
+
+  .inicio-perfil__contenido {
+    order: 2;
   }
 }
 

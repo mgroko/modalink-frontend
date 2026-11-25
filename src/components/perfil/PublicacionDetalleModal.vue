@@ -613,6 +613,7 @@ export default {
   width: min(1240px, 96vw);
   max-width: min(1240px, 96vw);
   max-height: 90vh;
+  max-height: 90dvh;
   background: var(--color-surface);
   color: var(--color-text);
   border-radius: 18px;
@@ -627,6 +628,7 @@ export default {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.9fr);
   height: min(820px, 87vh);
+  height: min(820px, 87dvh);
   min-height: 0;
   background: var(--color-surface);
 }
@@ -931,14 +933,18 @@ a.detalle-publicacion__colaborador:focus-visible {
     width: 100vw;
     max-width: 100vw;
     height: 100vh;
+    height: 100dvh;
     max-height: 100vh;
+    max-height: 100dvh;
     border-radius: 0;
   }
 
   .detalle-publicacion__panel {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(220px, 38vh) minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 38dvh) minmax(0, 1fr);
     height: 100vh;
+    height: 100dvh;
   }
 
   .detalle-publicacion__galeria {

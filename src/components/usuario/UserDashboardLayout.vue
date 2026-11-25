@@ -1035,6 +1035,16 @@ font-size: 1.5rem;
     padding: 0.6rem 0.75rem;
   }
 
+  .dashboard-main__title {
+    display: none;
+  }
+
+  .dashboard-main__subtitle {
+    color: var(--color-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
   .perfil-switcher {
     padding: 0.3rem;
   }

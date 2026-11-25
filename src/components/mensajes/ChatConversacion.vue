@@ -724,7 +724,7 @@ export default {
   }
 
   .chat__compositor {
-    padding: 0.7rem 0.75rem;
+    padding: 0.7rem 0.75rem max(0.7rem, env(safe-area-inset-bottom));
   }
 
   .chat__escribiendo {

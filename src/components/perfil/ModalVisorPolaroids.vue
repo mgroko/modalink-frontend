@@ -175,6 +175,7 @@ export default {
 .visor-polaroids__imagen {
   width: 100%;
   max-height: 66vh;
+  max-height: 66dvh;
   object-fit: contain;
   background: var(--color-surface-muted);
   border-radius: 10px;

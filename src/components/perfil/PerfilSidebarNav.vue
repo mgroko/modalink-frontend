@@ -234,4 +234,43 @@ export default {
   background: var(--color-danger-soft);
 }
 
+@media (max-width: 900px) {
+  .perfil-nav {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .perfil-nav__menu {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .perfil-nav__menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .perfil-nav__item {
+    flex: 0 0 auto;
+    border-right: 1px solid var(--color-border-soft);
+    border-bottom: 0;
+    white-space: nowrap;
+    padding: 0.65rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .perfil-nav__item:last-child {
+    border-right: 0;
+  }
+
+  .perfil-nav__chevron {
+    display: none;
+  }
+}
+
 </style>

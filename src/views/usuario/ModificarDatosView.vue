@@ -507,5 +507,20 @@ export default {
 :deep(.va-input-wrapper__field) {
   min-height: 40px;
 }
+
+@media (max-width: 480px) {
+  .modificar-datos__acciones {
+    flex-direction: column-reverse;
+  }
+
+  .modificar-datos__acciones > * {
+    width: 100%;
+  }
+
+  .modificar-datos__bloque-titulo-fila {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
 </style>
  

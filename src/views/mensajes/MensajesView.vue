@@ -1687,4 +1687,14 @@ export default {
     display: flex;
   }
 }
+
+@media (max-width: 520px) {
+  .mensajes__titulo {
+    font-size: 1.5rem;
+  }
+
+  .mensajes__card {
+    border-radius: 12px;
+  }
+}
 </style>
