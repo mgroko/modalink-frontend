@@ -1,0 +1,50 @@
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# API del backend. handle_path quita el prefijo /api antes de proxear.
+	handle_path /api/* {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+		}
+	}
+
+	# OAuth2: el backend redirige a /oauth2/authorization/google y Google
+	# vuelve a /login/oauth2/code/google. Ambos viven en la raíz.
+	handle /oauth2/* {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+		}
+	}
+
+	handle /login/oauth2/* {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+		}
+	}
+
+	# Imágenes referenciadas desde emails (/uploads/... sin /api).
+	handle /uploads/* {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+		}
+	}
+
+	# SPA Vue: cualquier otra ruta devuelve index.html.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
