@@ -49,6 +49,12 @@
         </div>
       </dl>
 
+      <AvisoTerminosParticipantes
+        v-if="esAceptar"
+        :nombre-proyecto="invitacion.nombreProyecto"
+        contexto="invitacion"
+      />
+
       <p
         v-if="esAceptar && esActividad"
         class="gestion-invitacion__aviso"
@@ -109,6 +115,7 @@
 
 <script>
 import BaseAlert from "../AlertaBase.vue";
+import AvisoTerminosParticipantes from "../proyecto/AvisoTerminosParticipantes.vue";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 import {
   ACCIONES_GESTION_INVITACION,
@@ -118,7 +125,7 @@ import { TIPOS_INVITACION } from "../../utils/invitacionConstants.js";
 
 export default {
   name: "ModalGestionInvitacion",
-  components: { BaseAlert },
+  components: { BaseAlert, AvisoTerminosParticipantes },
   props: {
     modelValue: {
       type: Boolean,

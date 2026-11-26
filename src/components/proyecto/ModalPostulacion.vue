@@ -49,6 +49,12 @@
       </div>
     </dl>
 
+    <AvisoTerminosParticipantes
+      class="postulacion-modal__aviso-tyc"
+      :nombre-proyecto="nombreProyecto"
+      contexto="postulacion"
+    />
+
     <div
       v-if="esActividad && chipsActividad.length"
       class="postulacion-modal__chips"
@@ -143,6 +149,7 @@
  * error. Cerrar (X / overlay / ESC) se bloquea mientras `enviando`.
  */
 import BaseAlert from "../AlertaBase.vue";
+import AvisoTerminosParticipantes from "./AvisoTerminosParticipantes.vue";
 import DisponibilidadActividad from "./DisponibilidadActividad.vue";
 import { formatearDuracionMinutos } from "../../utils/actividadConstants.js";
 import {
@@ -155,7 +162,11 @@ import { TIPOS_POSTULACION } from "../../utils/postulacionConstants.js";
 
 export default {
   name: "ModalPostulacion",
-  components: { BaseAlert, DisponibilidadActividad },
+  components: {
+    AvisoTerminosParticipantes,
+    BaseAlert,
+    DisponibilidadActividad,
+  },
   props: {
     modelValue: {
       type: Boolean,
@@ -344,6 +355,10 @@ export default {
   color: var(--color-text);
   font-size: 0.88rem;
   line-height: 1.45;
+}
+
+.postulacion-modal__aviso-tyc {
+  margin-top: 0.85rem;
 }
 
 .postulacion-modal__nota {

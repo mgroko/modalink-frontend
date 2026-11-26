@@ -52,6 +52,12 @@
         </div>
       </dl>
 
+      <AvisoTerminosParticipantes
+        v-if="esAceptar"
+        :nombre-proyecto="invitacion.nombreProyecto"
+        contexto="reemplazo"
+      />
+
       <p v-if="esAceptar && esActividad" class="gestion-reemplazo__aviso">
         Se verificará tu disponibilidad. Si no hay una ventana válida, la
         invitación no se aceptará.
@@ -119,6 +125,7 @@
 
 <script>
 import BaseAlert from "../AlertaBase.vue";
+import AvisoTerminosParticipantes from "../proyecto/AvisoTerminosParticipantes.vue";
 import { formatearFecha, formatearFechaCorta } from "../../utils/fechas.js";
 import {
   ACCIONES_GESTION_REEMPLAZO,
@@ -130,7 +137,7 @@ import {
 
 export default {
   name: "ModalGestionInvitacionReemplazo",
-  components: { BaseAlert },
+  components: { BaseAlert, AvisoTerminosParticipantes },
   props: {
     modelValue: {
       type: Boolean,
