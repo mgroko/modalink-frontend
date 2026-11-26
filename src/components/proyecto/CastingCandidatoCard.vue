@@ -57,7 +57,7 @@
     </div>
 
     <section class="casting-card__seccion">
-      <h4 class="casting-card__seccion-titulo">Digitales</h4>
+      <h4 class="casting-card__seccion-titulo">Polaroids</h4>
       <CastingPolaroids :polaroids="candidato.polaroids || []" />
     </section>
 

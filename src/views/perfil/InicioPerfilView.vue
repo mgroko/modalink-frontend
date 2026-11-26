@@ -122,6 +122,7 @@
           <!-- Sección: Términos y condiciones -->
           <TerminosCondicionesPanel
             v-else-if="seccion === 'terminos'"
+            :id-perfil="perfil?.idPerfil"
             :terminos="terminos"
             :cargando="cargandoTerminos"
             :error="errorTerminos"

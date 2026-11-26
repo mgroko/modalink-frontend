@@ -81,6 +81,24 @@ import http from "./http";
  */
 
 /**
+ * @typedef {Object} TerminosCondicionesVersionResumenResponse
+ * @property {number} idTyc
+ * @property {string} fechaInicio ISO-8601 local
+ * @property {string|null} fechaFin ISO-8601 local; null si es la vigente
+ * @property {boolean} vigente
+ */
+
+/**
+ * @typedef {Object} TerminosCondicionesVersionResponse
+ * @property {number} idPerfil
+ * @property {number} idTyc
+ * @property {string} descripcion
+ * @property {string} fechaInicio ISO-8601 local
+ * @property {string|null} fechaFin ISO-8601 local
+ * @property {boolean} vigente
+ */
+
+/**
  * @typedef {Object} PerfilDetalleResponse
  * @property {number} idPerfil
  * @property {string} nombreArtistico
@@ -180,6 +198,36 @@ const perfilService = {
     return http.put(
       `/perfiles/${idPerfil}/terminos-condiciones`,
       { descripcion },
+      { signal }
+    );
+  },
+
+  /**
+   * GET /perfiles/{idPerfil}/terminos-condiciones/historial — UC-23.
+   * Devuelve las versiones de T&C del perfil, de la más reciente a la más
+   * antigua, con fechas y marca de vigente. No incluye la plantilla base.
+   * @param {number|string} idPerfil
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: TerminosCondicionesVersionResumenResponse[]}>}
+   */
+  obtenerHistorialTerminos(idPerfil, signal) {
+    return http.get(
+      `/perfiles/${idPerfil}/terminos-condiciones/historial`,
+      { signal }
+    );
+  },
+
+  /**
+   * GET /perfiles/{idPerfil}/terminos-condiciones/historial/{idTyc} — UC-23.
+   * Devuelve el texto completo de una versión histórica.
+   * @param {number|string} idPerfil
+   * @param {number|string} idTyc
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: TerminosCondicionesVersionResponse}>}
+   */
+  obtenerVersionTerminos(idPerfil, idTyc, signal) {
+    return http.get(
+      `/perfiles/${idPerfil}/terminos-condiciones/historial/${idTyc}`,
       { signal }
     );
   },

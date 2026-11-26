@@ -21,6 +21,33 @@ const adminService = {
     return http.get(`/admin/perfiles/${idPerfil}`, { signal });
   },
 
+  /**
+   * GET /admin/perfiles/{idPerfil}/terminos-condiciones/historial
+   * @param {number|string} idPerfil
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: object[]}>}
+   */
+  obtenerHistorialTerminosPerfil(idPerfil, signal) {
+    return http.get(
+      `/admin/perfiles/${idPerfil}/terminos-condiciones/historial`,
+      { signal }
+    );
+  },
+
+  /**
+   * GET /admin/perfiles/{idPerfil}/terminos-condiciones/historial/{idTyc}
+   * @param {number|string} idPerfil
+   * @param {number|string} idTyc
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: object}>}
+   */
+  obtenerVersionTerminosPerfil(idPerfil, idTyc, signal) {
+    return http.get(
+      `/admin/perfiles/${idPerfil}/terminos-condiciones/historial/${idTyc}`,
+      { signal }
+    );
+  },
+
   buscarContratos(params = {}, signal) {
     return http.get("/admin/contratos", { params, signal });
   },

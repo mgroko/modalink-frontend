@@ -128,6 +128,14 @@
           </div>
         </div>
         <p v-if="perfil.terminosCondiciones?.descripcion" class="admin-perfil-detalle__text">{{ perfil.terminosCondiciones.descripcion }}</p>
+        <button
+          v-if="perfil.terminosCondiciones"
+          type="button"
+          class="admin-perfil-detalle__link admin-perfil-detalle__link--block"
+          @click="modalHistorial = true"
+        >
+          Ver historial
+        </button>
       </section>
 
       <section class="admin-perfil-detalle__card">
@@ -199,19 +207,29 @@
         <p v-else class="admin-perfil-detalle__muted">Sin publicaciones relacionadas.</p>
       </section>
     </template>
+
+    <TerminosCondicionesHistorialModal
+      v-if="perfil"
+      v-model="modalHistorial"
+      :id-perfil="perfil.idPerfil"
+      modo="admin"
+    />
   </div>
 </template>
 
 <script>
 import adminService from "../../services/adminService";
+import TerminosCondicionesHistorialModal from "../../components/perfil/TerminosCondicionesHistorialModal.vue";
 import { formatearFecha } from "../../utils/fechas";
 import { resolverFotoUrl } from "../../utils/fotos";
 
 export default {
   name: "PerfilAdminDetalleView",
+  components: { TerminosCondicionesHistorialModal },
   data() {
     return {
       perfil: null,
+      modalHistorial: false,
       cargando: false,
       errorMessage: "",
     };
@@ -437,6 +455,9 @@ export default {
 .admin-perfil-detalle__table th {
   color: var(--color-text-muted);
   font-weight: 600;
+}
+.admin-perfil-detalle__link--block {
+  margin-top: 0.75rem;
 }
 .admin-perfil-detalle__link {
   padding: 0.35rem 0.55rem;
