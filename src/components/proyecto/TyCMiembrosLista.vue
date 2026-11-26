@@ -56,7 +56,7 @@
           >
             {{
               miembro.idTycAceptado != null
-                ? `Versión #${miembro.idTycAceptado}`
+                ? `Versión ${miembro.numeroVersionAceptado ?? miembro.idTycAceptado}`
                 : "Sin TyC aceptado"
             }}
           </span>

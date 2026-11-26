@@ -113,7 +113,7 @@
           <div class="admin-perfil-detalle__grid">
             <div class="admin-perfil-detalle__field">
               <span class="admin-perfil-detalle__label">Versión</span>
-              <span>{{ perfil.terminosCondiciones.idTyc || '—' }}</span>
+              <span>{{ perfil.terminosCondiciones.numeroVersion ?? '—' }}</span>
             </div>
             <div class="admin-perfil-detalle__field">
               <span class="admin-perfil-detalle__label">Desde</span>

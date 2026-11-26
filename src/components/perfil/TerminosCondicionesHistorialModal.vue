@@ -50,7 +50,7 @@
         >
           <div class="tyc-historial-modal__version-info">
             <div class="tyc-historial-modal__version-titulo">
-              <span>Versión #{{ version.idTyc }}</span>
+              <span>Versión {{ version.numeroVersion ?? '—' }}</span>
               <span
                 v-if="version.vigente"
                 class="tyc-historial-modal__badge"
@@ -78,7 +78,7 @@
       <div class="tyc-historial-modal__detalle-cabecera">
         <div>
           <div class="tyc-historial-modal__version-titulo">
-            <span>Versión #{{ versionActiva?.idTyc }}</span>
+            <span>Versión {{ versionActiva?.numeroVersion ?? '—' }}</span>
             <span
               v-if="versionActiva?.vigente"
               class="tyc-historial-modal__badge"

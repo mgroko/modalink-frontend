@@ -69,6 +69,7 @@ import http from "./http";
  * @typedef {Object} TerminosCondicionesResponse
  * @property {number} idPerfil
  * @property {number|null} idTyc
+ * @property {number|null} numeroVersion ordinal visible de la versión
  * @property {string} descripcion
  * @property {string|null} fechaInicio ISO-8601 local
  * @property {string|null} fechaFin
@@ -83,6 +84,7 @@ import http from "./http";
 /**
  * @typedef {Object} TerminosCondicionesVersionResumenResponse
  * @property {number} idTyc
+ * @property {number} numeroVersion
  * @property {string} fechaInicio ISO-8601 local
  * @property {string|null} fechaFin ISO-8601 local; null si es la vigente
  * @property {boolean} vigente
@@ -92,6 +94,7 @@ import http from "./http";
  * @typedef {Object} TerminosCondicionesVersionResponse
  * @property {number} idPerfil
  * @property {number} idTyc
+ * @property {number} numeroVersion
  * @property {string} descripcion
  * @property {string} fechaInicio ISO-8601 local
  * @property {string|null} fechaFin ISO-8601 local

@@ -647,6 +647,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} nombreArtistico
  * @property {string|null} nombreProfesion
  * @property {number|null} idTycAceptado
+ * @property {number|null} numeroVersionAceptado ordinal visible de la versión aceptada
  * @property {string|null} descripcion texto completo de la versión aceptada
  * @property {string|null} fechaInicio ISO-8601 local
  * @property {string|null} fechaFin ISO-8601 local; null si era la vigente
@@ -662,6 +663,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string|null} nombreProfesion
  * @property {"DIRECTOR"|"MIEMBRO"|null} rol
  * @property {number|null} idTycAceptado
+ * @property {number|null} numeroVersionAceptado ordinal visible de la versión aceptada
  * @property {string|null} descripcion texto completo del T&C aceptado
  * @property {string|null} fechaInicio ISO-8601 local
  * @property {string|null} fechaFin ISO-8601 local
