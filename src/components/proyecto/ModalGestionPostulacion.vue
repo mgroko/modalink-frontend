@@ -5,6 +5,7 @@
     :no-dismiss="enviando"
     blur
     size="small"
+    max-width="800px"
     class="gestion-postulacion-modal"
     @update:model-value="onCambioVisibilidad"
   >
@@ -18,119 +19,132 @@
       al proyecto <strong>{{ nombreProyecto || "este proyecto" }}</strong>.
     </p>
 
-    <dl class="gestion-postulacion-modal__detalle">
-      <div class="gestion-postulacion-modal__fila">
-        <dt>Profesión</dt>
-        <dd>{{ postulacion?.nombreProfesion || "—" }}</dd>
-      </div>
-
-      <div class="gestion-postulacion-modal__fila">
-        <dt>Tipo</dt>
-        <dd>{{ etiquetaTipoPostulacion(postulacion?.tipo) || "—" }}</dd>
-      </div>
-
-      <div class="gestion-postulacion-modal__fila">
-        <dt>Requerimiento</dt>
-        <dd>{{ postulacion?.descripcionRequerimiento || "Sin descripción" }}</dd>
-      </div>
-
-      <div class="gestion-postulacion-modal__fila">
-        <dt>Cupo</dt>
-        <dd>
-          {{ cupo }}
-          <span v-if="faltantesTexto" class="gestion-postulacion-modal__nota-cupo">
-            · {{ faltantesTexto }}
-          </span>
-          <span v-if="postulacion?.satisfecho" class="gestion-postulacion-modal__chip">
-            Cupo completo
-          </span>
-        </dd>
-      </div>
-
-      <div class="gestion-postulacion-modal__fila">
-        <dt>Estado</dt>
-        <dd>{{ etiquetaEstadoPostulacion(postulacion?.estado) }}</dd>
-      </div>
-    </dl>
-
-    <template v-if="esActividad">
-      <h4 class="gestion-postulacion-modal__subtitulo">Actividad</h4>
-
-      <p v-if="cargandoActividad" class="gestion-postulacion-modal__nota">
-        Cargando el horario de la actividad...
-      </p>
-
-      <template v-else>
+    <div
+      class="gestion-postulacion-modal__resumen"
+      :class="{
+        'gestion-postulacion-modal__resumen--dos-columnas': esActividad,
+      }"
+    >
+      <section class="gestion-postulacion-modal__bloque">
         <dl class="gestion-postulacion-modal__detalle">
           <div class="gestion-postulacion-modal__fila">
-            <dt>Nombre</dt>
-            <dd>{{ nombreActividad || "—" }}</dd>
+            <dt>Profesión</dt>
+            <dd>{{ postulacion?.nombreProfesion || "—" }}</dd>
           </div>
 
-          <div v-if="rangoActividad" class="gestion-postulacion-modal__fila">
-            <dt>Horario</dt>
-            <dd>{{ rangoActividad }}</dd>
+          <div class="gestion-postulacion-modal__fila">
+            <dt>Tipo</dt>
+            <dd>{{ etiquetaTipoPostulacion(postulacion?.tipo) || "—" }}</dd>
           </div>
 
-          <div v-if="duracion !== '—'" class="gestion-postulacion-modal__fila">
-            <dt>Duración</dt>
-            <dd>{{ duracion }}</dd>
+          <div class="gestion-postulacion-modal__fila">
+            <dt>Requerimiento</dt>
+            <dd>{{ postulacion?.descripcionRequerimiento || "Sin descripción" }}</dd>
           </div>
 
-          <div v-if="rangoProyectado" class="gestion-postulacion-modal__fila">
-            <dt>Origen de fechas</dt>
-            <dd>Proyectadas por CPM (no persistidas)</dd>
+          <div class="gestion-postulacion-modal__fila">
+            <dt>Cupo</dt>
+            <dd>
+              {{ cupo }}
+              <span v-if="faltantesTexto" class="gestion-postulacion-modal__nota-cupo">
+                · {{ faltantesTexto }}
+              </span>
+              <span v-if="postulacion?.satisfecho" class="gestion-postulacion-modal__chip">
+                Cupo completo
+              </span>
+            </dd>
+          </div>
+
+          <div class="gestion-postulacion-modal__fila">
+            <dt>Estado</dt>
+            <dd>{{ etiquetaEstadoPostulacion(postulacion?.estado) }}</dd>
           </div>
         </dl>
+      </section>
 
-        <div
-          v-if="chipsActividad.length"
-          class="gestion-postulacion-modal__chips"
-        >
-          <span
-            v-for="chip in chipsActividad"
-            :key="chip.tipo"
-            class="gestion-postulacion-modal__chip-cpm"
-            :title="chip.detalle"
-          >
-            {{ chip.etiqueta }}
-          </span>
-        </div>
-
-        <p v-if="errorActividad" class="gestion-postulacion-modal__nota">
-          No se pudo cargar el horario de la actividad. Podés continuar con los
-          datos del listado. La disponibilidad se revalidará con todos los
-          asignados al aceptar.
-        </p>
-      </template>
-
-      <p
-        v-if="esAceptar && esActividad && sinFechaEntrega"
-        class="gestion-postulacion-modal__aviso gestion-postulacion-modal__aviso--bloqueo"
+      <section
+        v-if="esActividad"
+        class="gestion-postulacion-modal__bloque"
       >
-        <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
-        El proyecto no tiene fecha de entrega. No se puede aceptar la postulación
-        hasta que se defina.
-      </p>
+        <h4 class="gestion-postulacion-modal__subtitulo">Actividad</h4>
 
-      <DisponibilidadActividad
-        v-if="
-          esAceptar &&
-          modelValue &&
-          idProyecto &&
-          postulacion?.idActividad &&
-          postulacion?.idPerfil
-        "
-        :id-proyecto="idProyecto"
-        :id-actividad="postulacion.idActividad"
-        :id-perfiles="idPerfilesDisponibilidad"
-        :sin-fecha-entrega="sinFechaEntrega"
-        :token-refresco="tokenDisponibilidad"
-        contexto="aceptacion"
-        :titulo="tituloDisponibilidad"
-        @actualizado="disponibilidad = $event"
-      />
-    </template>
+        <p v-if="cargandoActividad" class="gestion-postulacion-modal__nota">
+          Cargando el horario de la actividad...
+        </p>
+
+        <template v-else>
+          <dl class="gestion-postulacion-modal__detalle">
+            <div class="gestion-postulacion-modal__fila">
+              <dt>Nombre</dt>
+              <dd>{{ nombreActividad || "—" }}</dd>
+            </div>
+
+            <div v-if="rangoActividad" class="gestion-postulacion-modal__fila">
+              <dt>Horario</dt>
+              <dd>{{ rangoActividad }}</dd>
+            </div>
+
+            <div v-if="duracion !== '—'" class="gestion-postulacion-modal__fila">
+              <dt>Duración</dt>
+              <dd>{{ duracion }}</dd>
+            </div>
+
+            <div v-if="rangoProyectado" class="gestion-postulacion-modal__fila">
+              <dt>Origen de fechas</dt>
+              <dd>Proyectadas por CPM (no persistidas)</dd>
+            </div>
+          </dl>
+
+          <div
+            v-if="chipsActividad.length"
+            class="gestion-postulacion-modal__chips"
+          >
+            <span
+              v-for="chip in chipsActividad"
+              :key="chip.tipo"
+              class="gestion-postulacion-modal__chip-cpm"
+              :title="chip.detalle"
+            >
+              {{ chip.etiqueta }}
+            </span>
+          </div>
+
+          <p v-if="errorActividad" class="gestion-postulacion-modal__nota">
+            No se pudo cargar el horario de la actividad. Podés continuar con los
+            datos del listado. La disponibilidad se revalidará con todos los
+            asignados al aceptar.
+          </p>
+        </template>
+
+        <p
+          v-if="esAceptar && esActividad && sinFechaEntrega"
+          class="gestion-postulacion-modal__aviso gestion-postulacion-modal__aviso--bloqueo"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+          El proyecto no tiene fecha de entrega. No se puede aceptar la postulación
+          hasta que se defina.
+        </p>
+      </section>
+    </div>
+
+    <DisponibilidadActividad
+      v-if="
+        esAceptar &&
+        esActividad &&
+        modelValue &&
+        idProyecto &&
+        postulacion?.idActividad &&
+        postulacion?.idPerfil
+      "
+      :id-proyecto="idProyecto"
+      :id-actividad="postulacion.idActividad"
+      :id-perfiles="idPerfilesDisponibilidad"
+      :sin-fecha-entrega="sinFechaEntrega"
+      :token-refresco="tokenDisponibilidad"
+      contexto="aceptacion"
+      :titulo="tituloDisponibilidad"
+      @actualizado="disponibilidad = $event"
+    />
 
     <AceptacionTerminosPerfil
       v-if="esAceptar && modelValue && postulacion?.idPerfil"
@@ -464,11 +478,29 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  margin: 0 0 0.85rem;
+  margin: 0;
   padding: 0.9rem 1rem;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface-muted);
+}
+
+.gestion-postulacion-modal__resumen {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.gestion-postulacion-modal__bloque {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .gestion-postulacion-modal__resumen--dos-columnas {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+  }
 }
 
 .gestion-postulacion-modal__fila {
@@ -514,7 +546,7 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  margin: 0 0 0.85rem;
+  margin: 0.5rem 0 0;
 }
 
 .gestion-postulacion-modal__chip-cpm {

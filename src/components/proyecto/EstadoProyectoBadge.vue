@@ -47,11 +47,11 @@ export default {
   align-items: center;
   padding: 0.15rem 0.6rem;
   border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--color-surface-muted);
   color: var(--color-text);
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
 }
