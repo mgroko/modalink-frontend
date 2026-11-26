@@ -59,6 +59,16 @@
         <div class="detalle-contrato__acciones">
           <VaButton
             preset="secondary"
+            icon="mso-download"
+            :loading="exportandoPdf"
+            :disabled="exportandoPdf"
+            @click="exportarPdf"
+          >
+            Exportar PDF
+          </VaButton>
+
+          <VaButton
+            preset="secondary"
             :disabled="!puedeModificar"
             @click="irAModificar"
           >
@@ -281,6 +291,11 @@ import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import { formatearFecha } from "../../utils/fechas.js";
 import {
+  descargarBlob,
+  mensajeErrorDescarga,
+  nombreDesdeContentDisposition,
+} from "../../utils/descargas.js";
+import {
   CODIGOS_CONTRATO,
   ESTADOS_CONTRATO,
   clasificarErrorContrato,
@@ -332,6 +347,7 @@ export default {
       errorEliminar: "",
       firmando: false,
       rechazando: false,
+      exportandoPdf: false,
       aceptaContrato: false,
       mostrarTodasPartes: false,
       errorFirma: "",
@@ -587,6 +603,39 @@ export default {
     },
     volverAContratos() {
       this.$router.push(this.rutaVolver);
+    },
+    async exportarPdf() {
+      const idContrato = this.contrato?.idContrato;
+      if (!idContrato || this.exportandoPdf) return;
+
+      this.exportandoPdf = true;
+      try {
+        const response = await contratoService.exportarPdf(
+          this.idProyecto,
+          idContrato
+        );
+        const nombre =
+          nombreDesdeContentDisposition(
+            response?.headers?.["content-disposition"]
+          ) || `contrato-${idContrato}.pdf`;
+
+        descargarBlob(response?.data, nombre);
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        const mensaje = await mensajeErrorDescarga(
+          error,
+          "No se pudo exportar el contrato."
+        );
+        this.toast.init({
+          title: "No se pudo exportar",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+      } finally {
+        this.exportandoPdf = false;
+      }
     },
     abrirRechazar() {
       this.errorRechazo = "";

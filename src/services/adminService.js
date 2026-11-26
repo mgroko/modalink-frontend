@@ -33,6 +33,13 @@ const adminService = {
     return http.get(`/admin/contratos/${idContrato}/eventos`, { signal });
   },
 
+  exportarContratoPdf(idContrato, signal) {
+    return http.get(`/admin/contratos/${idContrato}/pdf`, {
+      responseType: "blob",
+      signal,
+    });
+  },
+
   listarUsuarios() {
     return http.get("/admin/usuarios");
   },

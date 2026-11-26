@@ -358,6 +358,26 @@ const contratoService = {
   },
 
   /**
+   * GET /proyectos/{idProyecto}/contratos/{idContrato}/pdf — UC-68.
+   * Descarga el contrato en PDF con datos, partes/firmas y cláusulas.
+   *
+   * Errores:
+   * - 403 ACCESO_DENEGADO_PROYECTO
+   * - 404 CONTRATO_NO_ENCONTRADO / PERFIL_ACTIVO_NO_SELECCIONADO
+   * - 409 PERFIL_EN_BAJA
+   * @param {number|string} idProyecto
+   * @param {number|string} idContrato
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: Blob, headers: Object}>} 200 OK application/pdf
+   */
+  exportarPdf(idProyecto, idContrato, signal) {
+    return http.get(
+      `/proyectos/${idProyecto}/contratos/${idContrato}/pdf`,
+      { responseType: "blob", signal }
+    );
+  },
+
+  /**
    * POST /proyectos/{idProyecto}/contratos/{idContrato}/previsualizar — UC-53.
    * Genera el borrador sin persistir. Responde 200 aunque haya conflictos:
    * `puedeModificarse` y `conflictos[]` permiten corregir antes del PUT.
