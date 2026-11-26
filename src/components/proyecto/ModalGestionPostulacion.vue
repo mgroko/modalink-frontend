@@ -38,6 +38,9 @@
         <dt>Cupo</dt>
         <dd>
           {{ cupo }}
+          <span v-if="faltantesTexto" class="gestion-postulacion-modal__nota-cupo">
+            · {{ faltantesTexto }}
+          </span>
           <span v-if="postulacion?.satisfecho" class="gestion-postulacion-modal__chip">
             Cupo completo
           </span>
@@ -377,10 +380,38 @@ export default {
       }
       return "Se creará una membresía activa del proyecto y la postulación pasará a Aceptada.";
     },
+    faltantesTexto() {
+      if (!this.postulacion || this.postulacion.satisfecho === true) {
+        return "";
+      }
+      const faltantes = Number(this.postulacion.faltantes);
+      if (!Number.isFinite(faltantes) || faltantes <= 0) return "";
+      return faltantes === 1 ? "falta 1 lugar" : `faltan ${faltantes} lugares`;
+    },
     avisoCupo() {
       if (!this.esAceptar) return "";
-      if (Number(this.postulacion?.faltantes) !== 1) return "";
-      return "Al aceptar se completará el cupo y se rechazarán automáticamente las demás postulaciones pendientes de este requerimiento.";
+
+      const faltantes = Number(this.postulacion?.faltantes);
+      if (!Number.isFinite(faltantes) || faltantes <= 0) return "";
+
+      if (faltantes > 1) {
+        const restantes = faltantes - 1;
+        return `Después de aceptar quedarán ${restantes} ${
+          restantes === 1 ? "lugar disponible" : "lugares disponibles"
+        }.`;
+      }
+
+      const pendientes = Number(this.postulacion?.postulacionesPendientes);
+      const otras = Number.isFinite(pendientes)
+        ? Math.max(0, pendientes - 1)
+        : null;
+      const detalle = otras === null
+        ? "las demás postulaciones pendientes"
+        : otras === 0
+          ? "las demás postulaciones pendientes"
+          : `las otras ${otras} postulaciones pendientes`;
+
+      return `Al aceptar se completará el cupo, el casting se cerrará y se rechazarán automáticamente ${detalle} y las invitaciones pendientes.`;
     },
     confirmarDeshabilitado() {
       return (
@@ -469,6 +500,13 @@ export default {
   background: var(--color-success-soft);
   color: var(--color-success-text);
   font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.gestion-postulacion-modal__nota-cupo {
+  margin-left: 0.25rem;
+  color: var(--color-warning-text);
+  font-size: 0.76rem;
   font-weight: 600;
 }
 

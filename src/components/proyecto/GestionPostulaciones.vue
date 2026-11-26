@@ -105,8 +105,10 @@
         <TablaPostulaciones
           :postulaciones="postulaciones"
           :accion-en-curso="enviando"
+          :ids-profesion-casting="idsProfesionCasting"
           @aceptar="abrirModalAceptar"
           @rechazar="abrirModalRechazar"
+          @casting="irACasting"
         />
 
         <div
@@ -287,6 +289,15 @@ export default {
     },
     esTodos() {
       return Number(this.filtros.tamano) === 0;
+    },
+    idsProfesionCasting() {
+      return (this.profesiones || [])
+        .filter(
+          (profesion) =>
+            String(profesion?.codigo || "").toUpperCase() === "MODELO"
+        )
+        .map((profesion) => profesion.idProfesion)
+        .filter((id) => id != null);
     },
     hayFiltrosActivos() {
       return (
@@ -532,6 +543,18 @@ export default {
       const destino = this.paginacion.paginaActual + delta;
       if (destino < 0 || destino >= this.paginacion.totalPaginas) return;
       this.buscar(destino);
+    },
+    irACasting(postulacion) {
+      if (!postulacion || postulacion.satisfecho === true) return;
+      this.$router.push({
+        name: "casting-virtual",
+        params: { id: this.idProyecto },
+        query: {
+          tipo: postulacion.tipo,
+          idRequerimiento: postulacion.idRequerimiento,
+          idPostulacionDestacada: postulacion.idPostulacion,
+        },
+      });
     },
     abrirModalAceptar(postulacion) {
       this.abrirModal(postulacion, ACCIONES_GESTION.ACEPTAR);

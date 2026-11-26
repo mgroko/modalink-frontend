@@ -38,6 +38,7 @@ import ColaboracionesAutomaticasView from "../views/colaboracion/ColaboracionesA
 import ColaboracionAutomaticaDetalleView from "../views/colaboracion/ColaboracionAutomaticaDetalleView.vue";
 import PublicacionDetalleView from "../views/perfil/PublicacionDetalleView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
+import CastingVirtualView from "../views/proyecto/CastingVirtualView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
@@ -380,6 +381,17 @@ const routes = [
       params: { id: to.params.id },
       query: { tab: "postulaciones" },
     }),
+  },
+  {
+    path: "/proyectos/:id/casting",
+    name: "casting-virtual",
+    component: CastingVirtualView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Casting virtual",
+      requiresActiveProfile: true,
+      navActiva: "proyectos",
+    },
   },
   {
     path: "/proyectos/:id/calificaciones",

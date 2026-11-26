@@ -109,9 +109,22 @@
               >
                 Rechazar
               </VaButton>
+              <VaButton
+                v-if="puedeAbrirCasting(postulacion)"
+                preset="secondary"
+                size="small"
+                icon="mso-photo_library"
+                :disabled="accionEnCurso"
+                :aria-label="`Abrir casting virtual de ${postulacion.nombreArtistico}`"
+                @click="$emit('casting', postulacion)"
+              >
+                Casting
+              </VaButton>
               <span
                 v-if="
-                  postulacion.estado !== 'PENDIENTE' && !postulacion.puedeRechazar
+                  postulacion.estado !== 'PENDIENTE' &&
+                  !postulacion.puedeRechazar &&
+                  !puedeAbrirCasting(postulacion)
                 "
                 class="tabla-postulaciones__sin-accion"
               >
@@ -152,8 +165,13 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Profesiones habilitadas para abrir el casting virtual (MODELO). */
+    idsProfesionCasting: {
+      type: Array,
+      default: () => [],
+    },
   },
-  emits: ["aceptar", "rechazar"],
+  emits: ["aceptar", "rechazar", "casting"],
   data() {
     return { textos: TEXTOS_POSTULACIONES };
   },
@@ -163,6 +181,14 @@ export default {
     formatearFecha,
     textoCupo(postulacion) {
       return textoCupoCubiertos(postulacion);
+    },
+    puedeAbrirCasting(postulacion) {
+      if (!postulacion || postulacion.satisfecho === true) return false;
+      const idProfesion = Number(postulacion.idProfesion);
+      if (!Number.isFinite(idProfesion)) return false;
+      return (this.idsProfesionCasting || [])
+        .map((id) => Number(id))
+        .includes(idProfesion);
     },
     tituloAceptar(postulacion) {
       if (postulacion?.puedeAceptar) return "";
