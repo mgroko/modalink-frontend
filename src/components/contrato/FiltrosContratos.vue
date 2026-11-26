@@ -95,7 +95,8 @@
       class="filtros-contratos__nota"
     >
       Sin estados seleccionados se aplican los estados predeterminados
-      (pendiente de firma, activo, rechazado, cancelado y eliminado).
+      (borrador, pendiente de firma, activo, rechazado, cancelado y eliminado).
+      Los borradores solo los ve el Director.
     </p>
 
     <p v-if="errorFechas" class="filtros-contratos__error" role="alert">
@@ -139,28 +140,6 @@
         />
       </div>
 
-      <div class="filtros-contratos__avanzados-estados">
-        <span class="filtros-contratos__rango-titulo">Estados avanzados</span>
-        <div class="filtros-contratos__chips">
-          <button
-            v-for="opcion in opcionesEstadoAvanzado"
-            :key="opcion.value"
-            type="button"
-            class="filtros-contratos__chip filtros-contratos__chip--avanzado"
-            :class="{
-              'filtros-contratos__chip--activo': estaSeleccionado(opcion.value),
-            }"
-            :aria-pressed="estaSeleccionado(opcion.value)"
-            @click="alternarEstado(opcion.value)"
-          >
-            {{ opcion.text }}
-          </button>
-        </div>
-        <p class="filtros-contratos__nota">
-          La selección de estados es excluyente: si elegís solo un estado
-          avanzado, dejás de ver los estados habituales.
-        </p>
-      </div>
     </section>
   </section>
 </template>
@@ -168,7 +147,6 @@
 <script>
 import {
   OPCIONES_ESTADO_CONTRATO,
-  OPCIONES_ESTADO_CONTRATO_AVANZADO,
   ESTADOS_CONTRATO_POR_DEFECTO,
 } from "../../utils/contratoConstants.js";
 import {
@@ -179,7 +157,7 @@ import {
 /*
  * Barra de filtros de UC-68. Es presentacional: el contenedor mantiene el
  * estado, el debounce y la paginación. Los chips principales muestran los
- * estados por defecto, incluido ELIMINADO; BORRADOR vive en filtros avanzados.
+ * estados por defecto, incluidos BORRADOR y ELIMINADO.
  */
 export default {
   name: "FiltrosContratos",
@@ -215,7 +193,6 @@ export default {
     return {
       mostrarAvanzados: false,
       opcionesEstado: OPCIONES_ESTADO_CONTRATO,
-      opcionesEstadoAvanzado: OPCIONES_ESTADO_CONTRATO_AVANZADO,
       opcionesTamano: OPCIONES_TAMANO_CONTRATOS,
     };
   },
@@ -326,10 +303,6 @@ export default {
   color: var(--color-info-text);
 }
 
-.filtros-contratos__chip--avanzado {
-  border-style: dashed;
-}
-
 .filtros-contratos__error {
   margin: 0;
   color: var(--color-danger-text);
@@ -359,12 +332,6 @@ export default {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.filtros-contratos__avanzados-estados {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
 }
 
 .filtros-contratos__nota {

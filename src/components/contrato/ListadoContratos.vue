@@ -156,6 +156,7 @@
         @ver="irADetalle"
         @modificar="irAModificar"
         @eliminar="abrirEliminar"
+        @emitir="irAEmitir"
       />
 
       <div v-else class="listado-contratos__vacio">
@@ -788,6 +789,22 @@ export default {
               idProyecto: this.idProyectoDe(contrato),
               idContrato: contrato.idContrato,
             },
+          },
+          crearRutaVolver(this.$route)
+        )
+      );
+    },
+    irAEmitir(contrato) {
+      if (!contrato?.puedeEmitir || contrato?.idContrato == null) return;
+      this.$router.push(
+        conVolver(
+          {
+            name: "detalle-contrato",
+            params: {
+              idProyecto: this.idProyectoDe(contrato),
+              idContrato: contrato.idContrato,
+            },
+            query: { emitir: "1" },
           },
           crearRutaVolver(this.$route)
         )

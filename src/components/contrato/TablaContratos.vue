@@ -66,7 +66,13 @@
 
           <td data-label="Mi firma">
             <span
-              v-if="contrato.miEstadoFirma"
+              v-if="esBorrador(contrato)"
+              class="tabla-contratos__secundario"
+            >
+              Sin emitir
+            </span>
+            <span
+              v-else-if="contrato.miEstadoFirma"
               class="tabla-contratos__mi-firma"
               :class="`tabla-contratos__mi-firma--${varianteMiFirma(contrato)}`"
             >
@@ -90,6 +96,16 @@
                 @click="$emit('ver', contrato)"
               >
                 Ver
+              </VaButton>
+
+              <VaButton
+                v-if="contrato.puedeEmitir"
+                preset="primary"
+                size="small"
+                icon="mso-send"
+                @click="$emit('emitir', contrato)"
+              >
+                Emitir
               </VaButton>
 
               <VaButton
@@ -130,8 +146,9 @@ import {
 
 /*
  * Tabla de contratos. Presentacional: los flags vienen del backend
- * (`puedeModificar`, `puedeEliminar`, `miEstadoFirma`, `puedeFirmar`) y no se
- * recalculan acá. Firmar y rechazar se realizan únicamente desde el detalle.
+ * (`puedeModificar`, `puedeEmitir`, `puedeEliminar`, `miEstadoFirma`,
+ * `puedeFirmar`) y no se recalculan acá. Firmar y rechazar se realizan
+ * únicamente desde el detalle.
  */
 export default {
   name: "TablaContratos",
@@ -142,7 +159,7 @@ export default {
       default: () => [],
     },
   },
-  emits: ["ver", "modificar", "eliminar"],
+  emits: ["ver", "modificar", "eliminar", "emitir"],
   methods: {
     formatearFecha,
     etiquetaEstadoFirmaContrato,
@@ -150,6 +167,9 @@ export default {
     esProyectoFinalizado(contrato) {
       const estado = String(contrato?.estadoProyecto || "").toUpperCase();
       return estado === "FINALIZADO" || estado === "CANCELADO";
+    },
+    esBorrador(contrato) {
+      return contrato?.estado === "BORRADOR";
     },
     varianteMiFirma(contrato) {
       if (contrato?.miEstadoFirma === "FIRMADO") return "firmado";

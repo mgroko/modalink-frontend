@@ -93,7 +93,44 @@
         class="generar-contrato__alerta"
       />
 
+      <BaseAlert
+        v-if="errorBorrador"
+        :message="errorBorrador"
+        type="error"
+        class="generar-contrato__alerta"
+      />
+
       <template v-if="paso === 1">
+        <section class="generar-contrato__panel">
+          <h2 class="generar-contrato__seccion-titulo">Datos del contrato</h2>
+
+          <VaInput
+            :model-value="nombre"
+            label="Nombre"
+            placeholder="Nombre del contrato"
+            :max-length="LIMITE_NOMBRE_CONTRATO"
+            counter
+            :disabled="emitiendo || guardandoBorrador"
+            @update:model-value="onNombre"
+          />
+
+          <VaTextarea
+            :model-value="descripcion"
+            label="Descripción"
+            placeholder="Descripción del contrato"
+            :max-length="LIMITE_DESCRIPCION_CONTRATO"
+            counter
+            :rows="3"
+            :disabled="emitiendo || guardandoBorrador"
+            @update:model-value="onDescripcion"
+          />
+
+          <p class="generar-contrato__nota">
+            Si dejás el nombre vacío se genera como “tipo - proyecto”. La
+            descripción también es opcional.
+          </p>
+        </section>
+
         <div class="generar-contrato__columnas">
           <section class="generar-contrato__panel">
             <h2 class="generar-contrato__seccion-titulo">Tipo de acuerdo</h2>
@@ -217,19 +254,29 @@
         <div class="generar-contrato__acciones">
           <VaButton
             preset="secondary"
-            :disabled="emitiendo"
+            :disabled="emitiendo || guardandoBorrador"
             @click="volverAProyecto"
           >
             Cancelar
           </VaButton>
-          <VaButton
-            preset="primary"
-            :disabled="!puedeContinuarDatos || emitiendo"
-            :loading="cargandoPreview"
-            @click="continuarABorrador"
-          >
-            Continuar al borrador
-          </VaButton>
+          <div class="generar-contrato__acciones-borrador">
+            <VaButton
+              preset="secondary"
+              :disabled="!puedeGuardarBorrador"
+              :loading="guardandoBorrador"
+              @click="guardarBorrador"
+            >
+              Guardar borrador
+            </VaButton>
+            <VaButton
+              preset="primary"
+              :disabled="!puedeContinuarDatos || emitiendo || guardandoBorrador"
+              :loading="cargandoPreview"
+              @click="continuarABorrador"
+            >
+              Continuar al borrador
+            </VaButton>
+          </div>
         </div>
       </template>
 
@@ -263,21 +310,68 @@
               </span>
             </div>
 
-            <p
-              v-if="!preview && cargandoPreview"
-              class="generar-contrato__documento-cargando"
+            <div
+              class="generar-contrato__modos"
+              role="group"
+              aria-label="Modo de texto"
             >
-              Generando el borrador con las cláusulas del tipo de acuerdo...
-            </p>
-            <p
-              v-else-if="!preview && !errorPreview"
-              class="generar-contrato__documento-cargando"
-            >
-              Todavía no hay un borrador disponible.
-            </p>
-            <div v-else-if="preview" class="generar-contrato__documento-texto">
-              {{ preview.texto }}
+              <button
+                type="button"
+                class="generar-contrato__modo"
+                :class="{
+                  'generar-contrato__modo--activo': modoTexto === 'regenerar',
+                }"
+                :aria-pressed="modoTexto === 'regenerar' ? 'true' : 'false'"
+                :disabled="emitiendo || guardandoBorrador"
+                @click="cambiarModoTexto('regenerar')"
+              >
+                Regenerar desde plantilla
+              </button>
+              <button
+                type="button"
+                class="generar-contrato__modo"
+                :class="{
+                  'generar-contrato__modo--activo': modoTexto === 'final',
+                }"
+                :aria-pressed="modoTexto === 'final' ? 'true' : 'false'"
+                :disabled="emitiendo || guardandoBorrador"
+                @click="cambiarModoTexto('final')"
+              >
+                Editar texto final
+              </button>
             </div>
+
+            <template v-if="modoTexto === 'final'">
+              <VaTextarea
+                :model-value="texto"
+                label="Texto final"
+                :max-length="LIMITE_TEXTO_CONTRATO"
+                :rows="16"
+                :disabled="emitiendo || guardandoBorrador"
+                @update:model-value="onTexto"
+              />
+              <p class="generar-contrato__nota">
+                El texto se envía tal cual. En este modo las cláusulas
+                adicionales no se aplican.
+              </p>
+            </template>
+            <template v-else>
+              <p
+                v-if="!preview && cargandoPreview"
+                class="generar-contrato__documento-cargando"
+              >
+                Generando el borrador con las cláusulas del tipo de acuerdo...
+              </p>
+              <p
+                v-else-if="!preview && !errorPreview"
+                class="generar-contrato__documento-cargando"
+              >
+                Todavía no hay un borrador disponible.
+              </p>
+              <div v-else-if="preview" class="generar-contrato__documento-texto">
+                {{ preview.texto }}
+              </div>
+            </template>
           </section>
 
           <aside class="generar-contrato__lateral">
@@ -308,7 +402,10 @@
               </ul>
             </section>
 
-            <section class="generar-contrato__panel generar-contrato__panel--compacto">
+            <section
+              v-if="modoTexto !== 'final'"
+              class="generar-contrato__panel generar-contrato__panel--compacto"
+            >
               <h3 class="generar-contrato__lateral-titulo">
                 Cláusulas adicionales (opcional)
               </h3>
@@ -385,7 +482,8 @@
             </div>
 
             <div v-else class="generar-contrato__aviso generar-contrato__aviso--info">
-              Al emitir, el contrato queda en estado
+              Podés guardar el borrador y editarlo más tarde sin notificar a
+              nadie. Al emitir, el contrato queda en estado
               <strong>Pendiente de firma</strong> y cada parte recibe una
               notificación.
             </div>
@@ -395,19 +493,29 @@
         <div class="generar-contrato__acciones">
           <VaButton
             preset="secondary"
-            :disabled="emitiendo"
+            :disabled="emitiendo || guardandoBorrador"
             @click="volverADatos"
           >
             Volver a los datos
           </VaButton>
-          <VaButton
-            preset="primary"
-            :loading="emitiendo"
-            :disabled="!puedeEmitir"
-            @click="emitir"
-          >
-            Emitir contrato
-          </VaButton>
+          <div class="generar-contrato__acciones-borrador">
+            <VaButton
+              preset="secondary"
+              :loading="guardandoBorrador"
+              :disabled="!puedeGuardarBorrador"
+              @click="guardarBorrador"
+            >
+              Guardar borrador
+            </VaButton>
+            <VaButton
+              preset="primary"
+              :loading="emitiendo"
+              :disabled="!puedeEmitir"
+              @click="emitir"
+            >
+              Emitir contrato
+            </VaButton>
+          </div>
         </div>
       </template>
 
@@ -431,7 +539,13 @@
             </div>
             <div>
               <dt>Tipo de acuerdo</dt>
-              <dd>{{ contratoEmitido?.tipoAcuerdo?.nombre || tipoSeleccionado?.nombre || "—" }}</dd>
+              <dd>
+                {{
+                  contratoEmitido?.nombreTipoAcuerdo ||
+                  tipoSeleccionado?.nombre ||
+                  "—"
+                }}
+              </dd>
             </div>
             <div>
               <dt>Estado</dt>
@@ -490,6 +604,9 @@ import { formatearFecha } from "../../utils/fechas.js";
 import {
   CODIGOS_CONTRATO,
   LIMITE_CLAUSULA_CONTRATO,
+  LIMITE_DESCRIPCION_CONTRATO,
+  LIMITE_NOMBRE_CONTRATO,
+  LIMITE_TEXTO_CONTRATO,
   PASOS_CONTRATO,
   TEXTO_CONFLICTO_CONTRATO_ACTIVO,
   clasificarErrorContrato,
@@ -499,6 +616,7 @@ import {
   etiquetaRolParteContrato,
   inicialParteContrato,
   nombreCortoContrato,
+  normalizarDetalleContrato,
   normalizarOpcionesContrato,
   normalizarPreviewContrato,
   partesPrevistasContrato,
@@ -506,15 +624,17 @@ import {
 
 let controladorOpciones = null;
 let controladorPreview = null;
+let controladorBorrador = null;
 let controladorEmision = null;
 
 /*
- * UC-39: wizard de generación de contrato (mockups Datos → Borrador → Emisión).
+ * UC-39: wizard de creación de contrato (Datos → Borrador → Emisión).
  *
- * El sistema es la fuente de verdad: el borrador, `puedeGenerarse` y los
- * conflictos llegan del backend. La previsualización es automática al entrar al
- * paso Borrador y se repite al agregar o quitar cláusulas. La emisión es un
- * único POST atómico; el frontend no crea firmas, eventos ni notificaciones.
+ * El contrato se crea como BORRADOR y se puede guardar sin notificar. El
+ * Director puede editar nombre, descripción, destinatarios y texto, y emitir
+ * recién cuando está listo. La previsualización es opcional: el backend valida
+ * al guardar y al emitir. La emisión es la única operación que crea la versión
+ * definitiva, la firma del director y las notificaciones.
  */
 export default {
   name: "GenerarContratoView",
@@ -533,6 +653,12 @@ export default {
       paso: 1,
       idTipoAcuerdo: null,
       idsSeleccionados: [],
+      nombre: "",
+      descripcion: "",
+      modoTexto: "regenerar",
+      texto: "",
+      /** Id del borrador persistido para reutilizar el PUT. */
+      idContratoBorrador: null,
       /** Conflictos devueltos por el 409 al emitir, para bloquear en Datos. */
       conflictosServidor: [],
       preview: null,
@@ -541,12 +667,17 @@ export default {
       clausulas: [],
       textoClausula: "",
       errorClausula: "",
+      guardandoBorrador: false,
+      errorBorrador: "",
       emitiendo: false,
       errorEmision: "",
       contratoEmitido: null,
       idCarga: 0,
       idCargaPreview: 0,
       LIMITE_CLAUSULA: LIMITE_CLAUSULA_CONTRATO,
+      LIMITE_NOMBRE_CONTRATO,
+      LIMITE_DESCRIPCION_CONTRATO,
+      LIMITE_TEXTO_CONTRATO,
     };
   },
   computed: {
@@ -663,16 +794,32 @@ export default {
         (!this.preview.puedeGenerarse || this.preview.conflictos.length > 0)
       );
     },
+    puedeGuardarBorrador() {
+      return (
+        this.idTipoAcuerdo != null &&
+        !this.guardandoBorrador &&
+        !this.emitiendo
+      );
+    },
     puedeEmitir() {
+      const textoListo =
+        this.modoTexto === "final"
+          ? String(this.texto || "").trim().length > 0
+          : true;
+      const previewSinConflictos =
+        !this.preview ||
+        (this.preview.puedeGenerarse === true &&
+          this.preview.conflictos.length === 0);
+
       return (
         this.paso === 2 &&
-        !!this.preview &&
-        this.preview.puedeGenerarse === true &&
-        this.preview.conflictos.length === 0 &&
-        String(this.preview.texto || "").trim().length > 0 &&
+        this.idTipoAcuerdo != null &&
+        this.idsSeleccionados.length > 0 &&
+        textoListo &&
+        previewSinConflictos &&
         !this.cargandoPreview &&
         !this.emitiendo &&
-        !this.errorPreview
+        !this.guardandoBorrador
       );
     },
     pasos() {
@@ -683,7 +830,7 @@ export default {
       }));
     },
     tituloPaso() {
-      if (this.paso === 2) return "Revisá el borrador y emití el contrato";
+      if (this.paso === 2) return "Editá el borrador y decidí cuándo emitir";
       if (this.paso === 3) return "Contrato emitido";
       return "Nuevo contrato";
     },
@@ -724,6 +871,7 @@ export default {
   beforeUnmount() {
     if (controladorOpciones) controladorOpciones.abort();
     if (controladorPreview) controladorPreview.abort();
+    if (controladorBorrador) controladorBorrador.abort();
     if (controladorEmision) controladorEmision.abort();
   },
   methods: {
@@ -742,6 +890,11 @@ export default {
       this.paso = 1;
       this.idTipoAcuerdo = null;
       this.idsSeleccionados = [];
+      this.nombre = "";
+      this.descripcion = "";
+      this.modoTexto = "regenerar";
+      this.texto = "";
+      this.idContratoBorrador = null;
       this.conflictosServidor = [];
       this.preview = null;
       this.cargandoPreview = false;
@@ -749,6 +902,8 @@ export default {
       this.clausulas = [];
       this.textoClausula = "";
       this.errorClausula = "";
+      this.guardandoBorrador = false;
+      this.errorBorrador = "";
       this.emitiendo = false;
       this.errorEmision = "";
       this.contratoEmitido = null;
@@ -756,6 +911,14 @@ export default {
       if (controladorPreview) {
         controladorPreview.abort();
         controladorPreview = null;
+      }
+      if (controladorBorrador) {
+        controladorBorrador.abort();
+        controladorBorrador = null;
+      }
+      if (controladorEmision) {
+        controladorEmision.abort();
+        controladorEmision = null;
       }
       this.cargandoPreview = false;
     },
@@ -982,17 +1145,64 @@ export default {
       }
       this.cargandoPreview = false;
     },
+    onNombre(valor) {
+      this.nombre = String(valor || "").slice(0, LIMITE_NOMBRE_CONTRATO);
+      this.errorBorrador = "";
+    },
+    onDescripcion(valor) {
+      this.descripcion = String(valor || "").slice(
+        0,
+        LIMITE_DESCRIPCION_CONTRATO
+      );
+      this.errorBorrador = "";
+    },
+    onTexto(valor) {
+      this.texto = String(valor || "").slice(0, LIMITE_TEXTO_CONTRATO);
+      this.errorEmision = "";
+    },
+    async cambiarModoTexto(modo) {
+      if (this.emitiendo || this.guardandoBorrador || this.modoTexto === modo) {
+        return;
+      }
+
+      this.modoTexto = modo;
+      this.errorPreview = "";
+      this.errorEmision = "";
+
+      if (modo === "final") {
+        if (!String(this.texto || "").trim() && this.preview?.texto) {
+          this.texto = this.preview.texto;
+        }
+        return;
+      }
+
+      if (this.paso === 2) await this.previsualizar();
+    },
     construirRequest() {
+      const esTextoFinal = this.modoTexto === "final";
+      const texto = String(this.texto || "").trim();
+
       return {
         idTipoAcuerdo: Number(this.idTipoAcuerdo),
         idsMiembro: this.idsSeleccionados.map((id) => Number(id)),
-        clausulasAdicionales: this.clausulas
-          .map((clausula) => clausula.trim())
-          .filter(Boolean),
+        modoTexto: esTextoFinal ? "MANUAL" : "AUTO",
+        texto: esTextoFinal ? texto || null : null,
+        clausulasAdicionales: esTextoFinal
+          ? []
+          : this.clausulas.map((clausula) => clausula.trim()).filter(Boolean),
+        nombre: String(this.nombre || "").trim() || null,
+        descripcion: String(this.descripcion || "").trim() || null,
       };
     },
     async previsualizar() {
       if (this.idTipoAcuerdo == null || !this.idsSeleccionados.length) {
+        return;
+      }
+      if (
+        this.modoTexto === "final" &&
+        !String(this.texto || "").trim()
+      ) {
+        this.errorPreview = "El texto final no puede estar vacío.";
         return;
       }
 
@@ -1057,22 +1267,156 @@ export default {
 
       this.errorPreview = this.mensajeErrorContrato(clasificacion, error);
     },
+    async persistirBorrador(signal) {
+      if (this.idTipoAcuerdo == null) {
+        throw new Error("Seleccioná un tipo de acuerdo.");
+      }
+
+      const request = this.construirRequest();
+      const response =
+        this.idContratoBorrador == null
+          ? await contratoService.crearBorrador(
+              this.idProyecto,
+              request,
+              signal
+            )
+          : await contratoService.modificar(
+              this.idProyecto,
+              this.idContratoBorrador,
+              request,
+              signal
+            );
+
+      const detalle = normalizarDetalleContrato(response?.data);
+      if (detalle.idContrato) {
+        this.idContratoBorrador = detalle.idContrato;
+        this.contratoEmitido = detalle;
+      }
+      return detalle;
+    },
+    async guardarBorrador() {
+      if (!this.puedeGuardarBorrador) return;
+
+      this.guardandoBorrador = true;
+      this.errorBorrador = "";
+      this.errorEmision = "";
+      if (controladorBorrador) controladorBorrador.abort();
+      controladorBorrador = new AbortController();
+
+      try {
+        const detalle = await this.persistirBorrador(
+          controladorBorrador.signal
+        );
+
+        this.toast.init({
+          title: "Borrador guardado",
+          message:
+            "El contrato quedó en borrador. Las partes todavía no fueron notificadas.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        if (detalle.idContrato) {
+          this.$router.push({
+            name: "detalle-contrato",
+            params: {
+              idProyecto: this.idProyecto,
+              idContrato: detalle.idContrato,
+            },
+          });
+        }
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        await this.manejarErrorBorrador(error);
+      } finally {
+        this.guardandoBorrador = false;
+      }
+    },
+    async manejarErrorBorrador(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorContrato(error);
+      const mensaje = this.mensajeErrorContrato(clasificacion, error);
+
+      if (error?._esSesionExpirada) {
+        await refrescarSesion();
+        this.$router.push({ name: "login" });
+        return;
+      }
+
+      if (status === 403) {
+        this.toast.init({
+          title: "Sin permiso",
+          message:
+            clasificacion.mensaje ||
+            "No tenés permiso para crear contratos en este proyecto.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.volverAProyecto();
+        return;
+      }
+
+      if (status === 404) {
+        if (
+          clasificacion.codigo === CODIGOS_CONTRATO.PERFIL_NO_ENCONTRADO
+        ) {
+          await refrescarSesion();
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+        this.estadoNoEncontrado = true;
+        this.cargando = false;
+        this.errorCarga = clasificacion.mensaje || "El proyecto ya no existe.";
+        return;
+      }
+
+      if (clasificacion.esDuplicado) {
+        this.conflictosServidor = clasificacion.conflictos;
+        this.quitarMiembrosEnConflicto();
+        this.errorBorrador =
+          clasificacion.mensaje ||
+          "Algunos destinatarios ya tienen un contrato activo de este tipo.";
+        return;
+      }
+
+      if (
+        clasificacion.codigo === CODIGOS_CONTRATO.DESTINATARIO_INVALIDO ||
+        clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_SIN_DESTINATARIOS
+      ) {
+        this.paso = 1;
+        this.errorBorrador = mensaje;
+        await this.refrescarOpciones();
+        return;
+      }
+
+      this.errorBorrador = mensaje;
+    },
     async emitir() {
-      if (!this.puedeEmitir || this.emitiendo || this.contratoEmitido) return;
+      if (!this.puedeEmitir || this.emitiendo) return;
 
       this.emitiendo = true;
       this.errorEmision = "";
+      this.errorBorrador = "";
       if (controladorEmision) controladorEmision.abort();
       controladorEmision = new AbortController();
 
       try {
-        const response = await contratoService.generar(
+        const borrador = await this.persistirBorrador(
+          controladorEmision.signal
+        );
+        if (!borrador.idContrato) {
+          throw new Error("No se pudo guardar el borrador.");
+        }
+
+        const response = await contratoService.emitir(
           this.idProyecto,
-          this.construirRequest(),
+          borrador.idContrato,
           controladorEmision.signal
         );
 
-        this.contratoEmitido = response?.data || null;
+        this.contratoEmitido = normalizarDetalleContrato(response?.data);
         this.paso = 3;
         this.toast.init({
           title: "Contrato emitido",
@@ -1689,6 +2033,43 @@ export default {
   justify-content: space-between;
   gap: 1rem;
   padding-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.generar-contrato__acciones-borrador {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.generar-contrato__modos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.generar-contrato__modo {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.generar-contrato__modo--activo {
+  border-color: var(--color-primary);
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+}
+
+.generar-contrato__modo:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .generar-contrato__documento-encabezado {

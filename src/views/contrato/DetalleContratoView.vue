@@ -68,6 +68,17 @@
           </VaButton>
 
           <VaButton
+            v-if="puedeEmitir"
+            preset="primary"
+            icon="mso-send"
+            :loading="emitiendo"
+            :disabled="emitiendo"
+            @click="abrirEmitir"
+          >
+            Emitir contrato
+          </VaButton>
+
+          <VaButton
             preset="secondary"
             :disabled="!puedeModificar"
             @click="irAModificar"
@@ -112,6 +123,12 @@
         v-else-if="estaRechazado"
         class="detalle-contrato__alerta-estado"
         message="El contrato fue rechazado por las partes."
+        type="warning"
+      />
+      <BaseAlert
+        v-else-if="estaBorrador"
+        class="detalle-contrato__alerta-estado"
+        :message="mensajeBorrador"
         type="warning"
       />
       <BaseAlert
@@ -274,6 +291,59 @@
       :error="errorEliminar"
       @confirmar="confirmarEliminar"
     />
+
+    <VaModal
+      v-model="modalEmitirVisible"
+      hide-default-actions
+      :no-dismiss="emitiendo"
+      blur
+      size="small"
+    >
+      <template #header>
+        <h3 class="detalle-contrato__modal-titulo">Emitir contrato</h3>
+      </template>
+
+      <p class="detalle-contrato__modal-intro">
+        Vas a emitir
+        <strong>{{ contrato?.nombre || "este contrato" }}</strong>
+        <template v-if="contrato?.nombreProyecto">
+          del proyecto <strong>{{ contrato.nombreProyecto }}</strong>
+        </template>.
+      </p>
+
+      <p class="detalle-contrato__modal-aviso">
+        El contrato pasará a <strong>Pendiente de firma</strong> y cada parte
+        recibirá una notificación. Después de emitido ya no se podrá editar sin
+        notificar a las partes.
+      </p>
+
+      <BaseAlert
+        v-if="errorEmitir"
+        :message="errorEmitir"
+        type="error"
+        class="detalle-contrato__modal-error"
+      />
+
+      <template #footer>
+        <div class="detalle-contrato__modal-acciones">
+          <VaButton
+            preset="secondary"
+            :disabled="emitiendo"
+            @click="modalEmitirVisible = false"
+          >
+            Volver
+          </VaButton>
+          <VaButton
+            preset="primary"
+            :loading="emitiendo"
+            :disabled="emitiendo"
+            @click="confirmarEmision"
+          >
+            {{ emitiendo ? "Emitiendo…" : "Emitir contrato" }}
+          </VaButton>
+        </div>
+      </template>
+    </VaModal>
   </div>
 </template>
 
@@ -301,9 +371,11 @@ import {
   clasificarErrorContrato,
   esErrorEstadoFirmaObsoleto,
   esPerfilEnBaja,
+  etiquetaMotivoNoEmitible,
   mensajeErrorContrato,
   nombreEmisorContrato,
   normalizarDetalleContrato,
+  puedeEmitirContrato,
   puedeModificarContrato,
 } from "../../utils/contratoConstants.js";
 import {
@@ -343,8 +415,11 @@ export default {
       idCarga: 0,
       modalRechazarVisible: false,
       modalEliminarVisible: false,
+      modalEmitirVisible: false,
       eliminando: false,
+      emitiendo: false,
       errorEliminar: "",
+      errorEmitir: "",
       firmando: false,
       rechazando: false,
       exportandoPdf: false,
@@ -379,6 +454,9 @@ export default {
     },
     estaActivo() {
       return this.contrato?.estado === ESTADOS_CONTRATO.ACTIVO;
+    },
+    estaBorrador() {
+      return this.contrato?.estado === ESTADOS_CONTRATO.BORRADOR;
     },
     estaRechazado() {
       return this.contrato?.estado === ESTADOS_CONTRATO.RECHAZADO_POR_PARTES;
@@ -429,6 +507,21 @@ export default {
     puedeModificar() {
       return puedeModificarContrato(this.contrato);
     },
+    puedeEmitir() {
+      return puedeEmitirContrato(this.contrato);
+    },
+    motivoNoEmitible() {
+      return etiquetaMotivoNoEmitible(this.contrato?.motivoNoEmitible);
+    },
+    mensajeBorrador() {
+      if (this.puedeEmitir) {
+        return "Este contrato está en borrador. Las partes todavía no fueron notificadas. Podés editar el texto y emitirlo cuando esté listo.";
+      }
+      const motivo = this.motivoNoEmitible;
+      return motivo
+        ? `Este contrato está en borrador. Todavía no se puede emitir: ${motivo}`
+        : "Este contrato está en borrador. Todavía no se puede emitir.";
+    },
     puedeEliminar() {
       return this.contrato?.puedeEliminar === true;
     },
@@ -469,6 +562,8 @@ export default {
       this.aceptaContrato = false;
       this.mostrarTodasPartes = false;
       this.errorFirma = "";
+      this.errorEmitir = "";
+      this.modalEmitirVisible = false;
       this.nombresArtisticos = {};
 
       try {
@@ -487,6 +582,7 @@ export default {
           // Best-effort: el detalle puede no traer el nombre artístico de cada
           // parte. Se completa desde el perfil sin bloquear el render.
           void this.cargarNombresArtisticos(this.contrato, corrida);
+          this.abrirEmitirSiCorresponde();
         }
       } catch (error) {
         if (this.esCancelacion(error) || corrida !== this.idCarga) return;
@@ -636,6 +732,137 @@ export default {
       } finally {
         this.exportandoPdf = false;
       }
+    },
+    abrirEmitirSiCorresponde() {
+      const emitir = Array.isArray(this.$route?.query?.emitir)
+        ? this.$route.query.emitir[0]
+        : this.$route?.query?.emitir;
+      if (String(emitir || "") !== "1") return;
+      if (!this.puedeEmitir) return;
+      this.abrirEmitir();
+      const query = { ...this.$route.query };
+      delete query.emitir;
+      this.$router.replace({ query }).catch(() => {});
+    },
+    abrirEmitir() {
+      if (!this.puedeEmitir || this.emitiendo) return;
+      this.errorEmitir = "";
+      this.modalEmitirVisible = true;
+    },
+    async confirmarEmision() {
+      if (!this.puedeEmitir || this.emitiendo) return;
+
+      this.emitiendo = true;
+      this.errorEmitir = "";
+
+      try {
+        const response = await contratoService.emitir(
+          this.idProyecto,
+          this.idContrato
+        );
+        const detalle = normalizarDetalleContrato(response?.data);
+        if (detalle.idContrato) {
+          this.contrato = detalle;
+          void this.cargarNombresArtisticos(detalle, this.idCarga);
+        } else {
+          await this.cargar();
+        }
+        this.modalEmitirVisible = false;
+        this.toast.init({
+          title: "Contrato emitido",
+          message:
+            "El contrato quedó pendiente de firma y las partes fueron notificadas.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        this.errorEmitir = await this.manejarErrorEmitir(error);
+      } finally {
+        this.emitiendo = false;
+      }
+    },
+    async manejarErrorEmitir(error) {
+      const status = error?.response?.status;
+      const clasificacion = clasificarErrorContrato(error);
+      const mensaje = mensajeErrorContrato(
+        error,
+        "No se pudo emitir el contrato."
+      );
+
+      if (error?._esSesionExpirada) {
+        await refrescarSesion();
+        this.$router.push({ name: "login" });
+        return "";
+      }
+
+      if (esPerfilEnBaja(clasificacion.codigo)) {
+        this.modalEmitirVisible = false;
+        await refrescarSesion();
+        this.$router.push({ name: "dashboard-usuario" });
+        return "";
+      }
+
+      if (status === 403) {
+        this.modalEmitirVisible = false;
+        this.toast.init({
+          title: "Sin acceso",
+          message:
+            clasificacion.mensaje ||
+            "Ya no tenés acceso a este contrato.",
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.volverAlOrigen();
+        return "";
+      }
+
+      if (status === 404) {
+        this.modalEmitirVisible = false;
+        this.toast.init({
+          title: "Contrato no disponible",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+        this.volverAlOrigen();
+        return "";
+      }
+
+      if (
+        clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_NO_BORRADOR
+      ) {
+        this.modalEmitirVisible = false;
+        this.toast.init({
+          title: "El contrato cambió",
+          message: mensaje,
+          color: "warning",
+          position: "top-right",
+          duration: 6000,
+        });
+        await this.cargar();
+        return "";
+      }
+
+      if (clasificacion.esDuplicado) {
+        this.errorEmitir = mensaje;
+        return mensaje;
+      }
+
+      if (
+        clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_SIN_DESTINATARIOS ||
+        clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_TEXTO_INVALIDO ||
+        clasificacion.codigo === CODIGOS_CONTRATO.TIPO_ACUERDO_INVALIDO
+      ) {
+        this.errorEmitir = mensaje;
+        return mensaje;
+      }
+
+      this.errorEmitir = mensaje;
+      return mensaje;
     },
     abrirRechazar() {
       this.errorRechazo = "";
@@ -1162,6 +1389,42 @@ export default {
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.6rem;
+}
+
+.detalle-contrato__modal-titulo {
+  margin: 0;
+}
+
+.detalle-contrato__modal-intro {
+  margin: 0.2rem 0 0.85rem;
+  color: var(--color-text);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.detalle-contrato__modal-aviso {
+  margin: 0 0 0.85rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: 10px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.detalle-contrato__modal-error {
+  margin-top: 0 !important;
+  margin-bottom: 0.85rem;
+}
+
+.detalle-contrato__modal-acciones {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  width: 100%;
 }
 
 @media (max-width: 900px) {

@@ -40,8 +40,14 @@
     </dl>
 
     <p class="confirmar-modificacion-modal__aviso">
-      Se reconciliarán las firmas, se creará una nueva versión y se notificará
-      a las partes actuales. Las firmas registradas bloquean la modificación.
+      <template v-if="esBorrador">
+        Se guardará el borrador sin notificar a las partes. Podés seguir
+        editándolo o emitirlo cuando esté listo.
+      </template>
+      <template v-else>
+        Se reconciliarán las firmas, se creará una nueva versión y se notificará
+        a las partes actuales. Las firmas registradas bloquean la modificación.
+      </template>
     </p>
 
     <BaseAlert
@@ -99,6 +105,11 @@ export default {
     },
   },
   emits: ["update:modelValue", "confirmar"],
+  computed: {
+    esBorrador() {
+      return this.contrato?.estado === "BORRADOR";
+    },
+  },
   methods: {
     onCambioVisibilidad(valor) {
       if (this.guardando && !valor) return;
