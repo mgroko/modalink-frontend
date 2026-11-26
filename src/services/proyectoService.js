@@ -654,6 +654,20 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} MiembroPublicoTycProyectoResponse
+ *   Item de `GET /proyectos/{idProyecto}/miembros/publico`. Es la vista
+ *   pública del miembro y su T&C aceptado al incorporarse.
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string|null} nombreProfesion
+ * @property {"DIRECTOR"|"MIEMBRO"|null} rol
+ * @property {number|null} idTycAceptado
+ * @property {string|null} descripcion texto completo del T&C aceptado
+ * @property {string|null} fechaInicio ISO-8601 local
+ * @property {string|null} fechaFin ISO-8601 local
+ */
+
+/**
  * @typedef {Object} PaginaMiembrosResponse
  * @property {MiembroProyectoResponse[]} contenido
  * @property {number} paginaActual base 0
@@ -780,6 +794,24 @@ const proyectoService = {
    */
   listarTycMiembros(idProyecto, signal) {
     return http.get(`/proyectos/${idProyecto}/miembros/tyc`, { signal });
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/miembros/publico — vista pública de miembros.
+   *
+   * No exige membresía: aplica la visibilidad del proyecto. Devuelve nombre,
+   * profesión, rol y el T&C histórico aceptado por cada miembro activo, sin
+   * datos de contacto ni ids internos de usuario.
+   *
+   * Errores:
+   * - 403 proyecto no visible para el perfil activo
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: MiembroPublicoTycProyectoResponse[]}>} 200 OK
+   */
+  listarMiembrosPublicos(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/miembros/publico`, { signal });
   },
 
   /**

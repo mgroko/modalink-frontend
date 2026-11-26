@@ -37,6 +37,7 @@
           :mostrar-detalles="tabActiva !== 'informacion'"
           :mostrar-planificacion="esMiembro"
           :mostrar-integrantes="esMiembro"
+          :mostrar-integrantes-publicos="!esMiembro"
           :mostrar-chat="esMiembro"
           :mostrar-historial="puedeVerHistorial"
           :mostrar-reemplazos="esDirector"
@@ -196,6 +197,11 @@
           @eliminar="abrirEliminarIntegrante"
           @invitar="irAInvitarProyecto"
           @requerimiento-asignado="refrescarTrasAsignacionRequerimiento"
+        />
+
+        <MiembrosPublicosProyecto
+          v-else-if="tabActiva === 'miembros-publicos' && !esMiembro"
+          :id-proyecto="idProyecto"
         />
 
         <ChatGrupalProyecto
@@ -410,6 +416,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
 import IntegrantesProyecto from "../../components/proyecto/IntegrantesProyecto.vue";
+import MiembrosPublicosProyecto from "../../components/proyecto/MiembrosPublicosProyecto.vue";
 import ChatGrupalProyecto from "../../components/proyecto/ChatGrupalProyecto.vue";
 import HistorialProyecto from "../../components/proyecto/HistorialProyecto.vue";
 import ReemplazosProyecto from "../../components/proyecto/ReemplazosProyecto.vue";
@@ -521,6 +528,7 @@ export default {
     ProyectoEncabezado,
     PlanificacionProyecto,
     IntegrantesProyecto,
+    MiembrosPublicosProyecto,
     ChatGrupalProyecto,
     HistorialProyecto,
     ReemplazosProyecto,
@@ -1195,6 +1203,7 @@ data() {
         "informacion",
         "planificacion",
         "integrantes",
+        "miembros-publicos",
         "chat",
         "historial",
         "reemplazos",
@@ -1205,6 +1214,10 @@ data() {
 
       if (["planificacion", "integrantes", "chat"].includes(tab) && !this.esMiembro) {
         this.tabActiva = "informacion";
+        return;
+      }
+      if (tab === "miembros-publicos" && this.esMiembro) {
+        this.tabActiva = "integrantes";
         return;
       }
       if (tab === "historial" && !this.puedeVerHistorial) {
@@ -1242,6 +1255,7 @@ data() {
     },
     cambiarTab(tab) {
       if (["planificacion", "integrantes", "chat"].includes(tab) && !this.esMiembro) return;
+      if (tab === "miembros-publicos" && this.esMiembro) return;
       if (tab === "historial" && !this.puedeVerHistorial) return;
       if (tab === "reemplazos" && !this.esDirector) return;
       if (tab === "contratos" && !this.puedeVerContratos) return;

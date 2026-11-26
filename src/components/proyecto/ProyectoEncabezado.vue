@@ -114,6 +114,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Pestaña pública de Miembros y TyC aceptados. Sólo no miembros. */
+    mostrarIntegrantesPublicos: {
+      type: Boolean,
+      default: false,
+    },
     /** Pestaña Chat grupal (UC-41). Sólo miembros activos. */
     mostrarChat: {
       type: Boolean,
@@ -175,6 +180,9 @@ export default {
       }
       if (this.mostrarIntegrantes) {
         tabs.push({ id: "integrantes", label: "Miembros" });
+      }
+      if (this.mostrarIntegrantesPublicos) {
+        tabs.push({ id: "miembros-publicos", label: "Miembros" });
       }
       if (this.mostrarChat) {
         tabs.push({ id: "chat", label: "Chat grupal" });

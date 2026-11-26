@@ -186,93 +186,13 @@
     </template>
 
     <template v-else>
-      <BaseAlert v-if="errorTyc" :message="errorTyc" type="error" />
-
-      <div
-        v-if="errorTyc && puedeReintentarTyc"
-        class="miembros-proyecto__reintento"
-      >
-        <VaButton preset="primary" size="small" @click="refrescarTyc">
-          Reintentar
-        </VaButton>
-      </div>
-
-      <p
-        v-if="cargandoTyc && !tycMiembros.length"
-        class="miembros-proyecto__nota"
-      >
-        Cargando TyC de miembros...
-      </p>
-
-      <p
-        v-else-if="!errorTyc && !tycMiembros.length"
-        class="miembros-proyecto__vacio"
-      >
-        Este proyecto todavía no tiene TyC aceptados registrados.
-      </p>
-
-      <ul
-        v-else-if="!errorTyc"
-        class="miembros-proyecto__lista miembros-proyecto__lista--tyc"
-        aria-label="TyC aceptados por los miembros del proyecto"
-      >
-        <li
-          v-for="miembro in tycMiembros"
-          :key="`tyc-${miembro.idMiembro}`"
-          class="miembro-tyc"
-        >
-          <header class="miembro-tyc__cabecera">
-            <div class="miembro-tyc__identidad">
-              <span class="miembro-tyc__nombre">
-                {{ miembro.nombreArtistico || "Perfil" }}
-              </span>
-              <span
-                v-if="miembro.nombreProfesion"
-                class="miembro-tyc__profesion"
-              >
-                {{ miembro.nombreProfesion }}
-              </span>
-            </div>
-
-            <span
-              class="miembro-tyc__version"
-              :class="{
-                'miembro-tyc__version--vacia':
-                  miembro.idTycAceptado == null,
-              }"
-            >
-              {{
-                miembro.idTycAceptado != null
-                  ? `Versión #${miembro.idTycAceptado}`
-                  : "Sin TyC aceptado"
-              }}
-            </span>
-          </header>
-
-          <p
-            v-if="miembro.fechaInicio || miembro.fechaFin"
-            class="miembro-tyc__fechas"
-          >
-            <template v-if="miembro.fechaInicio">
-              Aceptado el {{ formatearFechaCorta(miembro.fechaInicio) }}
-            </template>
-            <template v-if="miembro.fechaFin">
-              · Versión cerrada el
-              {{ formatearFechaCorta(miembro.fechaFin) }}
-            </template>
-          </p>
-
-          <div
-            v-if="miembro.descripcion"
-            class="miembro-tyc__texto"
-          >
-            {{ miembro.descripcion }}
-          </div>
-          <p v-else class="miembro-tyc__vacio">
-            No hay una versión de TyC registrada para este miembro.
-          </p>
-        </li>
-      </ul>
+      <TyCMiembrosLista
+        :miembros="tycMiembros"
+        :cargando="cargandoTyc"
+        :error="errorTyc"
+        :puede-reintentar="puedeReintentarTyc"
+        @reintentar="refrescarTyc"
+      />
     </template>
 
     <ModalAsignarRequerimientoGeneral
@@ -292,11 +212,11 @@
 import { useToast } from "vuestic-ui";
 import BaseAlert from "../AlertaBase.vue";
 import ModalAsignarRequerimientoGeneral from "./ModalAsignarRequerimientoGeneral.vue";
+import TyCMiembrosLista from "./TyCMiembrosLista.vue";
 import proyectoService from "../../services/proyectoService.js";
 import perfilService from "../../services/perfilService.js";
 import { refrescarSesion } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
-import { formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
   colorAvatarMiembro,
@@ -317,7 +237,11 @@ import {
  */
 export default {
   name: "IntegrantesProyecto",
-  components: { BaseAlert, ModalAsignarRequerimientoGeneral },
+  components: {
+    BaseAlert,
+    ModalAsignarRequerimientoGeneral,
+    TyCMiembrosLista,
+  },
   setup() {
     return { toast: useToast() };
   },
@@ -407,7 +331,6 @@ export default {
   },
   methods: {
     colorAvatarMiembro,
-    formatearFechaCorta,
     inicialesMiembro,
     nombreCompletoMiembro,
     puedeVerPerfilMiembro,
@@ -1047,91 +970,6 @@ export default {
 
 .miembro-fila__tooltip {
   display: inline-flex;
-}
-
-.miembros-proyecto__lista--tyc {
-  padding-top: 0.35rem;
-}
-
-.miembro-tyc {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.9rem 1.5rem;
-  border-top: 1px solid var(--color-border-soft);
-}
-
-.miembro-tyc__cabecera {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.miembro-tyc__identidad {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
-.miembro-tyc__nombre {
-  color: var(--color-text);
-  font-size: 0.94rem;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.miembro-tyc__profesion {
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-}
-
-.miembro-tyc__version {
-  flex: 0 0 auto;
-  padding: 0.12rem 0.55rem;
-  border: 1px solid var(--color-info-border);
-  border-radius: 999px;
-  background: var(--color-info-soft);
-  color: var(--color-info-text);
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.miembro-tyc__version--vacia {
-  border-color: var(--color-border);
-  background: var(--color-surface-muted);
-  color: var(--color-text-muted);
-}
-
-.miembro-tyc__fechas {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.76rem;
-  line-height: 1.4;
-}
-
-.miembro-tyc__texto {
-  max-height: 22rem;
-  overflow-y: auto;
-  padding: 0.75rem 0.85rem;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface-muted);
-  color: var(--color-text);
-  font-size: 0.82rem;
-  line-height: 1.55;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-
-.miembro-tyc__vacio {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
 }
 
 @media (max-width: 720px) {
