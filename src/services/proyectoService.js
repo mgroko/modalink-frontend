@@ -1085,6 +1085,27 @@ const proyectoService = {
   },
 
   /**
+   * GET /proyectos/{idProyecto}/informe/pdf — informe ejecutivo en PDF.
+   *
+   * El backend solo lo permite al Director activo del proyecto. La respuesta
+   * es binaria; el nombre sugerido viaja en `Content-Disposition`.
+   *
+   * Errores:
+   * - 403 sin acceso, sin rol Director activo o perfil inactivo
+   * - 404 perfil activo o proyecto inexistente
+   * - 500 error al generar el informe
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal] cancela la descarga en vuelo
+   * @returns {Promise<{data: Blob, headers: Object}>} 200 OK application/pdf
+   */
+  descargarInformePdf(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/informe/pdf`, {
+      responseType: "blob",
+      signal,
+    });
+  },
+
+  /**
    * POST /proyectos/{idProyecto}/postulaciones/general — UC-26.
    * Da de alta una postulación PENDIENTE a un requerimiento general. El
    * sistema resuelve el perfil activo desde la sesión: NO enviar idPerfil,

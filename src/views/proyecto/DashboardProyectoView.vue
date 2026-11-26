@@ -56,6 +56,17 @@
               Editar
             </VaButton>
             <VaButton
+              v-if="esDirector"
+              preset="secondary"
+              icon="mso-download"
+              :loading="generandoInforme"
+              :disabled="generandoInforme"
+              title="Descargar informe ejecutivo del proyecto en PDF"
+              @click="descargarInforme"
+            >
+              {{ generandoInforme ? "Generando informe..." : "Informe PDF" }}
+            </VaButton>
+            <VaButton
               v-if="puedePublicar"
               preset="primary"
               class="btn-publicar"
@@ -454,6 +465,11 @@ import {
 } from "../../utils/eliminacionActividadConstants.js";
 import { formatearFecha } from "../../utils/fechas.js";
 import {
+  descargarBlob,
+  mensajeErrorDescarga,
+  nombreDesdeContentDisposition,
+} from "../../utils/descargas.js";
+import {
   CODIGOS_CONFIRMACION,
   clasificarErrorConfirmacion,
   normalizarPreview,
@@ -496,6 +512,7 @@ let controladorPostulacion = null;
 let controladorConfirmacion = null;
 let controladorFinalizacion = null;
 let controladorResumenReemplazos = null;
+let controladorInforme = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -617,6 +634,7 @@ data() {
       tokenRefrescoPlanificacion: 0,
       reemplazosPendientes: 0,
       reemplazosSinCandidatos: 0,
+      generandoInforme: false,
     };
   },
   computed: {
@@ -875,6 +893,11 @@ data() {
         controladorFinalizacion.abort();
         controladorFinalizacion = null;
       }
+      if (controladorInforme) {
+        controladorInforme.abort();
+        controladorInforme = null;
+      }
+      this.generandoInforme = false;
       this.cargar();
     },
     "$route.query.tab"() {
@@ -1286,6 +1309,65 @@ data() {
         name: "modificar-proyecto",
         params: { id: this.idProyecto },
       });
+    },
+    /**
+     * Descarga el informe ejecutivo del proyecto.
+     *
+     * El backend valida que el perfil activo sea Director. El nombre sugerido
+     * llega en Content-Disposition; si no, se usa un fallback local.
+     */
+    async descargarInforme() {
+      if (!this.esDirector || this.generandoInforme) return;
+
+      this.generandoInforme = true;
+      if (controladorInforme) controladorInforme.abort();
+      controladorInforme = new AbortController();
+
+      try {
+        const response = await proyectoService.descargarInformePdf(
+          this.idProyecto,
+          controladorInforme.signal
+        );
+
+        const nombre =
+          nombreDesdeContentDisposition(
+            response?.headers?.["content-disposition"]
+          ) || `informe-proyecto-${this.idProyecto}.pdf`;
+
+        if (!descargarBlob(response?.data, nombre)) {
+          throw new Error("El backend devolvió un archivo vacío.");
+        }
+
+        this.toast.init({
+          title: "Informe generado",
+          message: "El PDF del proyecto se descargó correctamente.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        if (
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError" ||
+          error?.name === "AbortError"
+        ) {
+          return;
+        }
+
+        const mensaje = await mensajeErrorDescarga(
+          error,
+          "No se pudo generar el informe del proyecto."
+        );
+        this.toast.init({
+          title: "No se pudo generar el informe",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+      } finally {
+        this.generandoInforme = false;
+      }
     },
     abrirPublicacion() {
       if (!this.tieneFechaEntrega) return;
@@ -3630,6 +3712,7 @@ data() {
     if (controladorDesasignacion) controladorDesasignacion.abort();
     if (controladorPostulacion) controladorPostulacion.abort();
     if (controladorConfirmacion) controladorConfirmacion.abort();
+    if (controladorInforme) controladorInforme.abort();
   },
 };
 </script>
