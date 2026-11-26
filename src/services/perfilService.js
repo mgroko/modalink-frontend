@@ -43,6 +43,16 @@ import http from "./http";
  */
 
 /**
+ * @typedef {Object} ProfesionResponse
+ * @property {number} idProfesion
+ * @property {string} codigo
+ * @property {string} nombre forma canónica (masculino/genérico)
+ * @property {string|null} nombreFemenino variante para género MUJER; puede ser
+ *           null o igual a nombre si la palabra es invariable
+ * @property {string|null} descripcion
+ */
+
+/**
  * @typedef {"Activo"|"PendienteBaja"|"Deshabilitado"|"Baja"} EstadoPerfil
  *   Solo "Baja" es inaccesible desde esta vista (404).
  */
@@ -79,7 +89,7 @@ import http from "./http";
  * @property {string|null} fechaSolicitudBaja ISO 8601 si estado === "PendienteBaja";
  *           null en caso contrario
  * @property {number} idProfesion
- * @property {string} profesion
+ * @property {string} profesion nombre visible según el género del dueño del perfil
  * @property {number|null} idImagen
  * @property {string|null} fotoUrl ruta relativa p. ej. "/uploads/perfiles/foto.jpg"
  *           (resolver con resolverFotoUrl de utils/fotos.js)
@@ -255,6 +265,10 @@ const perfilService = {
     return http.delete(`/perfiles/${idPerfil}/habilidades/${idHabilidad}`);
   },
 
+  /**
+   * GET /profesiones — catálogo de profesiones.
+   * @returns {Promise<{data: ProfesionResponse[]}>}
+   */
   listarProfesiones({ forzarRecarga = false } = {}) {
     if (cacheProfesiones && !forzarRecarga) {
       return Promise.resolve(cacheProfesiones);

@@ -90,7 +90,7 @@ Editarperfilview · VUE
               :model-value="form.idProfesion"
               :options="profesiones"
               value-by="idProfesion"
-              :text-by="(option) => capitalizarEtiqueta(option.nombre)"
+              :text-by="etiquetaProfesion"
               label="Profesión"
               disabled
             />
@@ -432,6 +432,7 @@ Editarperfilview · VUE
 <script>
 import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
+import { state as authState } from "../../services/authState.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import {
   ETIQUETAS_CARACTERISTICAS,
@@ -440,11 +441,11 @@ import {
   CODIGOS_ALTURA,
   CODIGOS_MEDIDAS,
   normCodigo,
-  normTexto,
   simboloUnidad,
   esUnidadColor,
   tipoDatoUnidad,
 } from "../../utils/perfilConstants.js";
+import { coincideProfesion, etiquetaProfesion as etiquetaProfesionSegunGenero } from "../../utils/profesion.js";
 import { reglasPerfil } from "../../utils/reglas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
  
@@ -616,9 +617,16 @@ export default {
         this.cargandoInicial = false;
       }
     },
+    etiquetaProfesion(profesion) {
+      return etiquetaProfesionSegunGenero(
+        profesion,
+        authState.usuario?.genero || null
+      );
+    },
     resolverIdProfesion(nombreProfesion, profesiones) {
-      const nombreNorm = normTexto(nombreProfesion);
-      const encontrada = profesiones.find((p) => normTexto(p.nombre) === nombreNorm);
+      const encontrada = profesiones.find((p) =>
+        coincideProfesion(p, nombreProfesion)
+      );
       return encontrada ? encontrada.idProfesion : null;
     },
     async cargarProfesiones() {

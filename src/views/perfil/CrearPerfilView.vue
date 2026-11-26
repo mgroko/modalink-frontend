@@ -152,7 +152,7 @@
               <span class="material-symbols-outlined" aria-hidden="true">
                 {{ iconoProfesion(profesion.nombre) }}
               </span>
-              <span>{{ nombreProfesion(profesion.nombre) }}</span>
+              <span>{{ nombreProfesion(profesion) }}</span>
             </button>
           </div>
 
@@ -515,7 +515,7 @@
 <script>
 import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
-import { refrescarSesion } from "../../services/authState.js";
+import { refrescarSesion, state as authState } from "../../services/authState.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import {
   ETIQUETAS_CARACTERISTICAS,
@@ -530,6 +530,7 @@ import {
   esUnidadColor,
   tipoDatoUnidad,
 } from "../../utils/perfilConstants.js";
+import { coincideProfesion, etiquetaProfesion as etiquetaProfesionSegunGenero } from "../../utils/profesion.js";
 import { reglasPerfil } from "../../utils/reglas.js";
 
 const MAX_HABILIDADES = 10;
@@ -604,8 +605,8 @@ export default {
     tituloPantalla() {
       if (this.paso === 1) return "Crear nuevo perfil";
       if (!this.profesionSeleccionada) return "Crear nuevo perfil";
-      return `Crear perfil de ${this.capitalizarEtiqueta(
-        this.profesionSeleccionada.nombre
+      return `Crear perfil de ${this.nombreProfesion(
+        this.profesionSeleccionada
       ).toLowerCase()}`;
     },
     subtituloPantalla() {
@@ -739,10 +740,8 @@ export default {
           this.profesionesOcupadas = new Set(
             perfiles
               .map((perfil) => {
-                const nombreNorm = normTexto(perfil.profesion);
-                const encontrada = this.profesiones.find(
-                  (profesion) =>
-                    normTexto(profesion.nombre) === nombreNorm
+                const encontrada = this.profesiones.find((profesion) =>
+                  coincideProfesion(profesion, perfil.profesion)
                 );
                 return encontrada?.idProfesion;
               })
@@ -937,10 +936,11 @@ export default {
       return capitalizadas.join(" ");
     },
 
-    nombreProfesion(nombre) {
-      const texto = String(nombre || "").trim();
-      if (!texto) return "";
-      return texto.charAt(0).toUpperCase() + texto.slice(1);
+    nombreProfesion(profesion) {
+      return etiquetaProfesionSegunGenero(
+        profesion,
+        authState.usuario?.genero || null
+      );
     },
 
     etiquetaCaracteristica(caracteristica) {
