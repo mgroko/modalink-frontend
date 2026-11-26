@@ -109,33 +109,37 @@
 
       <section class="admin-perfil-detalle__card">
         <h2>Términos y condiciones vigentes</h2>
-        <div v-if="perfil.terminosCondiciones" class="admin-perfil-detalle__grid">
-          <div class="admin-perfil-detalle__field">
-            <span class="admin-perfil-detalle__label">Versión</span>
-            <span>{{ perfil.terminosCondiciones.idTyc || 'Plantilla' }}</span>
+        <template v-if="hayTerminosConfigurados">
+          <div class="admin-perfil-detalle__grid">
+            <div class="admin-perfil-detalle__field">
+              <span class="admin-perfil-detalle__label">Versión</span>
+              <span>{{ perfil.terminosCondiciones.idTyc || '—' }}</span>
+            </div>
+            <div class="admin-perfil-detalle__field">
+              <span class="admin-perfil-detalle__label">Desde</span>
+              <span>{{ perfil.terminosCondiciones.fechaInicio ? formatearFecha(perfil.terminosCondiciones.fechaInicio) : '—' }}</span>
+            </div>
+            <div class="admin-perfil-detalle__field">
+              <span class="admin-perfil-detalle__label">Hasta</span>
+              <span>{{ perfil.terminosCondiciones.fechaFin ? formatearFecha(perfil.terminosCondiciones.fechaFin) : '—' }}</span>
+            </div>
+            <div class="admin-perfil-detalle__field">
+              <span class="admin-perfil-detalle__label">Origen</span>
+              <span>Configurado por el perfil</span>
+            </div>
           </div>
-          <div class="admin-perfil-detalle__field">
-            <span class="admin-perfil-detalle__label">Desde</span>
-            <span>{{ perfil.terminosCondiciones.fechaInicio ? formatearFecha(perfil.terminosCondiciones.fechaInicio) : '—' }}</span>
-          </div>
-          <div class="admin-perfil-detalle__field">
-            <span class="admin-perfil-detalle__label">Hasta</span>
-            <span>{{ perfil.terminosCondiciones.fechaFin ? formatearFecha(perfil.terminosCondiciones.fechaFin) : '—' }}</span>
-          </div>
-          <div class="admin-perfil-detalle__field">
-            <span class="admin-perfil-detalle__label">Origen</span>
-            <span>{{ perfil.terminosCondiciones.esPlantilla ? 'Plantilla del sistema' : 'Configurado por el perfil' }}</span>
-          </div>
-        </div>
-        <p v-if="perfil.terminosCondiciones?.descripcion" class="admin-perfil-detalle__text">{{ perfil.terminosCondiciones.descripcion }}</p>
-        <button
-          v-if="perfil.terminosCondiciones"
-          type="button"
-          class="admin-perfil-detalle__link admin-perfil-detalle__link--block"
-          @click="modalHistorial = true"
-        >
-          Ver historial
-        </button>
+          <p v-if="perfil.terminosCondiciones.descripcion" class="admin-perfil-detalle__text">{{ perfil.terminosCondiciones.descripcion }}</p>
+          <button
+            type="button"
+            class="admin-perfil-detalle__link admin-perfil-detalle__link--block"
+            @click="modalHistorial = true"
+          >
+            Ver historial
+          </button>
+        </template>
+        <p v-else class="admin-perfil-detalle__muted">
+          Sin términos y condiciones configurados.
+        </p>
       </section>
 
       <section class="admin-perfil-detalle__card">
@@ -246,6 +250,14 @@ export default {
       cargando: false,
       errorMessage: "",
     };
+  },
+  computed: {
+    hayTerminosConfigurados() {
+      return Boolean(
+        this.perfil?.terminosCondiciones &&
+        !this.perfil.terminosCondiciones.esPlantilla
+      );
+    },
   },
   async mounted() {
     await this.cargarPerfil();
