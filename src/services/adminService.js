@@ -167,6 +167,18 @@ const adminService = {
   },
 
   /**
+   * GET /admin/publicaciones/{idPublicacion} - UC-69, solo lectura.
+   * Devuelve la publicación completa (imágenes, autor, proyecto, ubicación y
+   * métricas) sin requerir un perfil activo.
+   * @param {number|string} idPublicacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: object}>} AdminPublicacionResponse
+   */
+  obtenerPublicacion(idPublicacion, signal) {
+    return http.get(`/admin/publicaciones/${idPublicacion}`, { signal });
+  },
+
+  /**
    * PATCH /admin/publicaciones/{idPublicacion}/estado - UC-69.
    * Oculta o reactiva una publicación reportada.
    * - OCULTA exige motivo.

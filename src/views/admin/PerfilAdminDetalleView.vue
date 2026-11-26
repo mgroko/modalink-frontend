@@ -192,7 +192,7 @@
         <div v-if="perfil.publicaciones?.length" class="admin-perfil-detalle__table-wrapper admin-tabla-responsive-wrapper">
           <table class="admin-perfil-detalle__table admin-tabla-responsive">
             <thead>
-              <tr><th>Publicación</th><th>Estado</th><th>Fecha</th><th>Proyecto</th></tr>
+              <tr><th>Publicación</th><th>Estado</th><th>Fecha</th><th>Proyecto</th><th></th></tr>
             </thead>
             <tbody>
               <tr v-for="publicacion in perfil.publicaciones" :key="publicacion.idPublicacion">
@@ -200,6 +200,11 @@
                 <td data-label="Estado">{{ publicacion.estado || '—' }}</td>
                 <td data-label="Fecha">{{ publicacion.fechaPublicacion ? formatearFecha(publicacion.fechaPublicacion) : '—' }}</td>
                 <td data-label="Proyecto">{{ publicacion.nombreProyecto || '—' }}</td>
+                <td data-label="Acciones">
+                  <button type="button" class="admin-perfil-detalle__link" @click="abrirPublicacion(publicacion)">
+                    Ver
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -214,22 +219,30 @@
       :id-perfil="perfil.idPerfil"
       modo="admin"
     />
+
+    <PublicacionAdminDetalleModal
+      v-model="modalPublicacion"
+      :id-publicacion="publicacionSeleccionada?.idPublicacion"
+    />
   </div>
 </template>
 
 <script>
 import adminService from "../../services/adminService";
 import TerminosCondicionesHistorialModal from "../../components/perfil/TerminosCondicionesHistorialModal.vue";
+import PublicacionAdminDetalleModal from "../../components/admin/PublicacionAdminDetalleModal.vue";
 import { formatearFecha } from "../../utils/fechas";
 import { resolverFotoUrl } from "../../utils/fotos";
 
 export default {
   name: "PerfilAdminDetalleView",
-  components: { TerminosCondicionesHistorialModal },
+  components: { TerminosCondicionesHistorialModal, PublicacionAdminDetalleModal },
   data() {
     return {
       perfil: null,
       modalHistorial: false,
+      modalPublicacion: false,
+      publicacionSeleccionada: null,
       cargando: false,
       errorMessage: "",
     };
@@ -251,6 +264,11 @@ export default {
       } finally {
         this.cargando = false;
       }
+    },
+    abrirPublicacion(publicacion) {
+      if (publicacion?.idPublicacion == null) return;
+      this.publicacionSeleccionada = publicacion;
+      this.modalPublicacion = true;
     },
     nombreUsuario() {
       const usuario = this.perfil?.usuario;
