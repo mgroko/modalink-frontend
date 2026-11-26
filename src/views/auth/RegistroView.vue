@@ -73,6 +73,12 @@
       <RouterLink :to="{ name: 'login' }">Iniciá sesión</RouterLink>
     </p>
 
+    <p class="auth-footer auth-footer--legal">
+      <RouterLink :to="{ name: 'normas-convivencia' }">
+        Normas de convivencia
+      </RouterLink>
+    </p>
+
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />
   </VaForm>

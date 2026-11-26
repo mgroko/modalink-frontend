@@ -274,6 +274,13 @@
             Ajustes
           </button>
           <button
+            :class="{ 'home-layout__quick-link--active': esQuickActivo('ayuda') }"
+            @click="$router.push({ name: 'manual' })"
+          >
+            <span class="material-symbols-outlined">menu_book</span>
+            Ayuda
+          </button>
+          <button
             :class="{ 'home-layout__quick-link--active': esQuickActivo('panel') }"
             @click="$router.push({ name: 'dashboard-usuario' })"
           >
@@ -605,6 +612,9 @@ export default {
       }
       if (clave === "panel") {
         return ruta.name === "dashboard-usuario";
+      }
+      if (clave === "ayuda") {
+        return ruta.meta.navActiva === "ayuda";
       }
       return false;
     },

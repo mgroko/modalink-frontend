@@ -24,6 +24,14 @@
         convivencia de Modalink: se aplican los términos y condiciones vigentes
         de todos los participantes.
       </template>
+      <RouterLink
+        :to="{ name: 'normas-convivencia' }"
+        class="aviso-tyc-participantes__enlace"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Leer las normas completas
+      </RouterLink>.
     </p>
   </aside>
 </template>
@@ -82,5 +90,15 @@ export default {
 
 .aviso-tyc-participantes__texto strong {
   font-weight: 700;
+}
+
+.aviso-tyc-participantes__enlace {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.aviso-tyc-participantes__enlace:hover {
+  color: var(--color-primary-dark);
 }
 </style>

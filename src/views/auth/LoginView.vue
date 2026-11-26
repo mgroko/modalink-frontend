@@ -51,6 +51,12 @@
       <RouterLink :to="{ name: 'registro' }">Registrate</RouterLink>
     </p>
 
+    <p class="auth-footer auth-footer--legal">
+      <RouterLink :to="{ name: 'normas-convivencia' }">
+        Normas de convivencia
+      </RouterLink>
+    </p>
+
     <!-- alertas -->
     <BaseAlert :message="successMessage" type="success" />
     <BaseAlert :message="errorMessage" type="error" />

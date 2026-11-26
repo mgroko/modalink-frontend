@@ -113,6 +113,10 @@
       </nav>
 
       <div class="admin-layout__footer">
+        <RouterLink to="/admin/ayuda" class="admin-layout__link">
+          <span class="material-symbols-outlined">menu_book</span>
+          <span>Ayuda</span>
+        </RouterLink>
         <RouterLink to="/admin/configuracion" class="admin-layout__link">
           <span class="material-symbols-outlined">settings</span>
           <span>Configuración del sistema</span>

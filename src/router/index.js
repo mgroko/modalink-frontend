@@ -4,9 +4,12 @@ import AuthLayout from "../components/AuthLayout.vue";
 import AdminLayout from "../components/admin/AdminLayout.vue";
 import UserDashboardLayout from "../components/usuario/UserDashboardLayout.vue";
 import HomeLayout from "../components/home/HomeLayout.vue";
+import PublicLayout from "../components/PublicLayout.vue";
 
 import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
+import NormasConvivenciaView from "../views/publico/NormasConvivenciaView.vue";
+import ManualView from "../views/manual/ManualView.vue";
 import GoogleCallbackView from "../views/auth/GoogleCallbackView.vue";
 import GoogleCompletarView from "../views/auth/GoogleCompletarView.vue";
 import EmailLoginView from "../views/auth/EmailLoginView.vue";
@@ -90,10 +93,42 @@ const routes = [
     meta: { layout: AuthLayout }
   },
   {
+    path: "/normas-de-convivencia",
+    name: "normas-convivencia",
+    component: NormasConvivenciaView,
+    meta: { layout: PublicLayout, titulo: "Normas de convivencia" }
+  },
+  {
     path: "/home",
     name: "home",
     component: HomeView,
     meta: { layout: HomeLayout, titulo: "Inicio", requiresActiveProfile: true, navActiva: "inicio" },
+  },
+  {
+    path: "/ayuda",
+    name: "manual",
+    component: ManualView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Ayuda",
+      permiteSinPerfil: true,
+      sinSidebarPerfil: true,
+      sinFondoBlanco: true,
+      navActiva: "ayuda",
+    },
+  },
+  {
+    path: "/ayuda/:id",
+    name: "manual-capitulo",
+    component: ManualView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Ayuda",
+      permiteSinPerfil: true,
+      sinSidebarPerfil: true,
+      sinFondoBlanco: true,
+      navActiva: "ayuda",
+    },
   },
   {
     path: "/inicio-perfil",
@@ -495,6 +530,18 @@ const routes = [
     name: "dashboard-admin",
     component: DashboardAdminView,
     meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_USUARIOS" }
+  },
+  {
+    path: "/admin/ayuda",
+    name: "admin-manual",
+    component: ManualView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Ayuda" }
+  },
+  {
+    path: "/admin/ayuda/:id",
+    name: "admin-manual-capitulo",
+    component: ManualView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Ayuda" }
   },
   {
     path: "/admin/notificaciones",
