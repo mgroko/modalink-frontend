@@ -639,6 +639,21 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} MiembroTycProyectoResponse
+ *   Item de `GET /proyectos/{idProyecto}/miembros/tyc`. Devuelve el T&C
+ *   histórico aceptado por cada miembro activo, no su versión vigente actual.
+ * @property {number} idMiembro
+ * @property {number} idPerfil
+ * @property {string} nombreArtistico
+ * @property {string|null} nombreProfesion
+ * @property {number|null} idTycAceptado
+ * @property {string|null} descripcion texto completo de la versión aceptada
+ * @property {string|null} fechaInicio ISO-8601 local
+ * @property {string|null} fechaFin ISO-8601 local; null si era la vigente
+ *           al momento de la consulta
+ */
+
+/**
  * @typedef {Object} PaginaMiembrosResponse
  * @property {MiembroProyectoResponse[]} contenido
  * @property {number} paginaActual base 0
@@ -746,6 +761,25 @@ const proyectoService = {
       `/proyectos/${idProyecto}/miembros${query ? `?${query}` : ""}`,
       { signal }
     );
+  },
+
+  /**
+   * GET /proyectos/{idProyecto}/miembros/tyc — T&C aceptados por los miembros.
+   *
+   * Devuelve, por cada miembro activo, la versión histórica de T&C que quedó
+   * registrada al incorporarse (`id_tyc_aceptado`) y el texto completo. No es
+   * la versión vigente actual del perfil. Disponible para cualquier miembro
+   * activo con `VER_PROYECTO`.
+   *
+   * Errores:
+   * - 403 sin membresía activa o sin `VER_PROYECTO`
+   * - 404 perfil activo o proyecto inexistente
+   * @param {number|string} idProyecto
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: MiembroTycProyectoResponse[]}>} 200 OK
+   */
+  listarTycMiembros(idProyecto, signal) {
+    return http.get(`/proyectos/${idProyecto}/miembros/tyc`, { signal });
   },
 
   /**

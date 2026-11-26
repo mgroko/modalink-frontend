@@ -9,7 +9,7 @@
       </h2>
 
       <VaButton
-        v-if="puedeInvitar"
+        v-if="vistaActual === 'miembros' && puedeInvitar"
         class="miembros-proyecto__invitar"
         preset="primary"
         size="small"
@@ -19,7 +19,37 @@
       </VaButton>
     </header>
 
-    <BaseAlert v-if="error" :message="error" type="error" />
+    <div
+      class="miembros-proyecto__tabs"
+      role="tablist"
+      aria-label="Secciones de miembros"
+    >
+      <button
+        type="button"
+        role="tab"
+        class="miembros-proyecto__tab"
+        :class="{
+          'miembros-proyecto__tab--activa': vistaActual === 'miembros',
+        }"
+        :aria-selected="vistaActual === 'miembros'"
+        @click="cambiarVista('miembros')"
+      >
+        Miembros
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="miembros-proyecto__tab"
+        :class="{ 'miembros-proyecto__tab--activa': vistaActual === 'tyc' }"
+        :aria-selected="vistaActual === 'tyc'"
+        @click="cambiarVista('tyc')"
+      >
+        TyC de miembros
+      </button>
+    </div>
+
+    <template v-if="vistaActual === 'miembros'">
+      <BaseAlert v-if="error" :message="error" type="error" />
 
     <div v-if="error && puedeReintentar" class="miembros-proyecto__reintento">
       <VaButton preset="primary" size="small" @click="refrescar">
@@ -153,6 +183,97 @@
         </div>
       </li>
     </ul>
+    </template>
+
+    <template v-else>
+      <BaseAlert v-if="errorTyc" :message="errorTyc" type="error" />
+
+      <div
+        v-if="errorTyc && puedeReintentarTyc"
+        class="miembros-proyecto__reintento"
+      >
+        <VaButton preset="primary" size="small" @click="refrescarTyc">
+          Reintentar
+        </VaButton>
+      </div>
+
+      <p
+        v-if="cargandoTyc && !tycMiembros.length"
+        class="miembros-proyecto__nota"
+      >
+        Cargando TyC de miembros...
+      </p>
+
+      <p
+        v-else-if="!errorTyc && !tycMiembros.length"
+        class="miembros-proyecto__vacio"
+      >
+        Este proyecto todavía no tiene TyC aceptados registrados.
+      </p>
+
+      <ul
+        v-else-if="!errorTyc"
+        class="miembros-proyecto__lista miembros-proyecto__lista--tyc"
+        aria-label="TyC aceptados por los miembros del proyecto"
+      >
+        <li
+          v-for="miembro in tycMiembros"
+          :key="`tyc-${miembro.idMiembro}`"
+          class="miembro-tyc"
+        >
+          <header class="miembro-tyc__cabecera">
+            <div class="miembro-tyc__identidad">
+              <span class="miembro-tyc__nombre">
+                {{ miembro.nombreArtistico || "Perfil" }}
+              </span>
+              <span
+                v-if="miembro.nombreProfesion"
+                class="miembro-tyc__profesion"
+              >
+                {{ miembro.nombreProfesion }}
+              </span>
+            </div>
+
+            <span
+              class="miembro-tyc__version"
+              :class="{
+                'miembro-tyc__version--vacia':
+                  miembro.idTycAceptado == null,
+              }"
+            >
+              {{
+                miembro.idTycAceptado != null
+                  ? `Versión #${miembro.idTycAceptado}`
+                  : "Sin TyC aceptado"
+              }}
+            </span>
+          </header>
+
+          <p
+            v-if="miembro.fechaInicio || miembro.fechaFin"
+            class="miembro-tyc__fechas"
+          >
+            <template v-if="miembro.fechaInicio">
+              Aceptado el {{ formatearFechaCorta(miembro.fechaInicio) }}
+            </template>
+            <template v-if="miembro.fechaFin">
+              · Versión cerrada el
+              {{ formatearFechaCorta(miembro.fechaFin) }}
+            </template>
+          </p>
+
+          <div
+            v-if="miembro.descripcion"
+            class="miembro-tyc__texto"
+          >
+            {{ miembro.descripcion }}
+          </div>
+          <p v-else class="miembro-tyc__vacio">
+            No hay una versión de TyC registrada para este miembro.
+          </p>
+        </li>
+      </ul>
+    </template>
 
     <ModalAsignarRequerimientoGeneral
       :model-value="modalAsignarVisible"
@@ -175,6 +296,7 @@ import proyectoService from "../../services/proyectoService.js";
 import perfilService from "../../services/perfilService.js";
 import { refrescarSesion } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { formatearFechaCorta } from "../../utils/fechas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import {
   colorAvatarMiembro,
@@ -249,28 +371,43 @@ export default {
       miembroAsignar: null,
       asignando: false,
       errorAsignar: "",
+      vistaActual: "miembros",
+      tycMiembros: [],
+      cargandoTyc: false,
+      errorTyc: "",
+      puedeReintentarTyc: false,
+      idCargaTyc: 0,
     };
   },
   watch: {
     idProyecto() {
       this.cerrarAsignarRequerimiento(true);
+      this.abortarTyc();
+      this.vistaActual = "miembros";
+      this.tycMiembros = [];
+      this.errorTyc = "";
+      this.puedeReintentarTyc = false;
       this.cargar();
     },
     tokenRefresco() {
       this.cargar();
+      if (this.vistaActual === "tyc") this.cargarTyc();
     },
   },
   created() {
     this.controlador = null;
+    this.controladorTyc = null;
   },
   mounted() {
     this.cargar();
   },
   beforeUnmount() {
     this.abortar();
+    this.abortarTyc();
   },
   methods: {
     colorAvatarMiembro,
+    formatearFechaCorta,
     inicialesMiembro,
     nombreCompletoMiembro,
     puedeVerPerfilMiembro,
@@ -514,6 +651,88 @@ export default {
     refrescar() {
       this.cargar();
     },
+    cambiarVista(vista) {
+      if (this.vistaActual === vista) return;
+      this.vistaActual = vista;
+      if (vista === "tyc") this.cargarTyc();
+    },
+    refrescarTyc() {
+      this.cargarTyc();
+    },
+    abortarTyc() {
+      if (this.controladorTyc) {
+        this.controladorTyc.abort();
+        this.controladorTyc = null;
+      }
+    },
+    async cargarTyc() {
+      if (this.idProyecto == null || this.idProyecto === "") return;
+
+      const corrida = ++this.idCargaTyc;
+      this.abortarTyc();
+      this.controladorTyc = new AbortController();
+
+      this.cargandoTyc = true;
+      this.errorTyc = "";
+      this.puedeReintentarTyc = false;
+
+      try {
+        const response = await proyectoService.listarTycMiembros(
+          this.idProyecto,
+          this.controladorTyc.signal
+        );
+        if (corrida !== this.idCargaTyc) return;
+
+        const data = response?.data;
+        this.tycMiembros = Array.isArray(data) ? data : [];
+      } catch (error) {
+        if (this.esCancelacion(error) || corrida !== this.idCargaTyc) return;
+        await this.manejarErrorTyc(error);
+      } finally {
+        if (corrida === this.idCargaTyc) this.cargandoTyc = false;
+      }
+    },
+    async manejarErrorTyc(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+      this.tycMiembros = [];
+      this.errorTyc = "";
+      this.puedeReintentarTyc = false;
+
+      if (error?._esSesionExpirada || status === 401) {
+        return;
+      }
+
+      if (status === 403) {
+        this.errorTyc =
+          mensaje ||
+          "No tenés permiso para ver los TyC de los miembros de este proyecto.";
+        return;
+      }
+
+      if (status === 404) {
+        if (/perfil/i.test(mensaje)) {
+          await refrescarSesion();
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+        this.errorTyc =
+          mensaje || "El proyecto ya no está disponible o no tenés acceso.";
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.puedeReintentarTyc = true;
+        this.errorTyc =
+          "Ocurrió un error al cargar los TyC de los miembros. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorTyc = mensajeErrorApi(
+        error,
+        "No se pudieron cargar los TyC de los miembros."
+      );
+    },
     async cargar() {
       if (this.idProyecto == null || this.idProyecto === "") return;
 
@@ -647,6 +866,35 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.miembros-proyecto__tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 0 0.85rem;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.miembros-proyecto__tab {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.miembros-proyecto__tab:hover {
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+}
+
+.miembros-proyecto__tab--activa {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
 }
 
 .miembros-proyecto__tooltip {
@@ -799,6 +1047,91 @@ export default {
 
 .miembro-fila__tooltip {
   display: inline-flex;
+}
+
+.miembros-proyecto__lista--tyc {
+  padding-top: 0.35rem;
+}
+
+.miembro-tyc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1.5rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.miembro-tyc__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.miembro-tyc__identidad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.miembro-tyc__nombre {
+  color: var(--color-text);
+  font-size: 0.94rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.miembro-tyc__profesion {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.miembro-tyc__version {
+  flex: 0 0 auto;
+  padding: 0.12rem 0.55rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: 999px;
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.miembro-tyc__version--vacia {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.miembro-tyc__fechas {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.miembro-tyc__texto {
+  max-height: 22rem;
+  overflow-y: auto;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.miembro-tyc__vacio {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 @media (max-width: 720px) {

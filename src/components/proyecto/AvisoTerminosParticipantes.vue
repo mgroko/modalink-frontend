@@ -7,22 +7,23 @@
     <span class="material-symbols-outlined" aria-hidden="true">info</span>
     <p class="aviso-tyc-participantes__texto">
       <template v-if="contexto === 'postulacion'">
-        Al postularte y, si el director te incorpora a
-        <strong>{{ nombreProyectoTexto }}</strong>,
-        aceptás los términos y condiciones vigentes de todos los participantes.
+        Modalink establece como regla de convivencia que, al incorporarte a un
+        proyecto, aceptás que se aplican los términos y condiciones vigentes de
+        todos sus participantes. Al postularte, aceptás esta regla para el caso
+        de que el director te incorpore.
       </template>
       <template v-else-if="contexto === 'reemplazo'">
         Al aceptar esta invitación de reemplazo y unirte a
-        <strong>{{ nombreProyectoTexto }}</strong>,
-        aceptás los términos y condiciones vigentes de todos los participantes.
+        <strong>{{ nombreProyectoTexto }}</strong>, aceptás la regla de
+        convivencia de Modalink: se aplican los términos y condiciones vigentes
+        de todos los participantes.
       </template>
       <template v-else>
         Al aceptar esta invitación y unirte a
-        <strong>{{ nombreProyectoTexto }}</strong>,
-        aceptás los términos y condiciones vigentes de todos los participantes.
+        <strong>{{ nombreProyectoTexto }}</strong>, aceptás la regla de
+        convivencia de Modalink: se aplican los términos y condiciones vigentes
+        de todos los participantes.
       </template>
-      Esta aceptación se entiende otorgada por tu decisión de trabajar en el
-      proyecto.
     </p>
   </aside>
 </template>
