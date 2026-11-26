@@ -1,42 +1,117 @@
 <template>
   <section class="listado-contratos">
     <header v-if="mostrarEncabezado" class="listado-contratos__cabecera">
-      <div>
-        <h1 class="listado-contratos__titulo">{{ titulo }}</h1>
-        <p v-if="subtitulo" class="listado-contratos__subtitulo">
-          {{ subtitulo }}
-        </p>
-      </div>
+      <div class="listado-contratos__presentacion">
+        <div class="listado-contratos__identidad">
+          <h1 class="listado-contratos__titulo">{{ titulo }}</h1>
+          <p v-if="subtitulo" class="listado-contratos__subtitulo">
+            {{ subtitulo }}
+          </p>
+        </div>
 
-      <div class="listado-contratos__acciones-cabecera">
-        <VaButton
-          v-if="!miFirmaPendienteFijo"
-          preset="secondary"
-          size="small"
-          icon="mso-draw"
-          @click="irAPendientesMiFirma"
-        >
-          Pendientes de mi firma
-        </VaButton>
-        <VaButton
-          v-if="miFirmaPendienteFijo || idProyecto != null"
-          preset="secondary"
-          size="small"
-          icon="mso-open_in_new"
-          @click="irABusquedaGlobal"
-        >
-          Ver todos mis contratos
-        </VaButton>
         <VaButton
           v-if="puedeCrear"
           preset="primary"
-          size="small"
           icon="mso-add"
+          class="listado-contratos__crear"
           @click="$emit('nuevo-contrato')"
         >
           Nuevo contrato
         </VaButton>
       </div>
+
+      <nav class="listado-contratos__alcance" aria-label="Alcance de los contratos">
+        <div class="listado-contratos__alcance-tabs" role="tablist">
+          <button
+            v-if="miFirmaPendienteFijo"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            class="listado-contratos__alcance-tab listado-contratos__alcance-tab--activa"
+          >
+            Pendientes de mi firma
+          </button>
+
+          <template v-else>
+            <button
+              v-if="idProyecto != null"
+              type="button"
+              role="tab"
+              :aria-selected="alcanceActivo === 'proyecto'"
+              class="listado-contratos__alcance-tab"
+              :class="{
+                'listado-contratos__alcance-tab--activa':
+                  alcanceActivo === 'proyecto',
+              }"
+              @click="seleccionarAlcance('proyecto')"
+            >
+              De este proyecto
+            </button>
+            <button
+              v-else
+              type="button"
+              role="tab"
+              :aria-selected="alcanceActivo === 'todos'"
+              class="listado-contratos__alcance-tab"
+              :class="{
+                'listado-contratos__alcance-tab--activa':
+                  alcanceActivo === 'todos',
+              }"
+              @click="seleccionarAlcance('todos')"
+            >
+              Todos mis contratos
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="alcanceActivo === 'pendientes'"
+              class="listado-contratos__alcance-tab"
+              :class="{
+                'listado-contratos__alcance-tab--activa':
+                  alcanceActivo === 'pendientes',
+              }"
+              @click="seleccionarAlcance('pendientes')"
+            >
+              Pendientes de mi firma
+            </button>
+          </template>
+
+          <button
+            v-if="miFirmaPendienteFijo"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            class="listado-contratos__alcance-tab"
+            @click="irABusquedaGlobal"
+          >
+            Todos mis contratos
+          </button>
+        </div>
+
+        <button
+          v-if="idProyecto != null && !miFirmaPendienteFijo"
+          type="button"
+          class="listado-contratos__alcance-enlace"
+          @click="irABusquedaGlobal"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">
+            open_in_new
+          </span>
+          Ver todos mis contratos
+        </button>
+        <button
+          v-else-if="miFirmaPendienteFijo && idProyectoDesdeRuta != null"
+          type="button"
+          class="listado-contratos__alcance-enlace"
+          @click="irAProyectoDesdeBandeja"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">
+            arrow_back
+          </span>
+          Volver al proyecto
+        </button>
+      </nav>
     </header>
 
     <FiltrosContratos
@@ -44,7 +119,7 @@
       :proyectos="proyectos"
       :cargando-proyectos="cargandoProyectos"
       :mostrar-filtro-proyecto="mostrarFiltroProyecto"
-      :mostrar-filtro-mi-firma="!miFirmaPendienteFijo"
+      :mi-firma-pendiente-fijo="miFirmaPendienteFijo"
       :error-fechas="errorFechas"
       @cambio="cambiarFiltro"
       @limpiar="limpiarFiltros"
@@ -290,6 +365,22 @@ export default {
   computed: {
     esBusquedaGlobal() {
       return this.idProyecto == null;
+    },
+    /**
+     * Alcance visible en el selector de la cabecera. En la bandeja de
+     * pendientes manda el flag fijo; en el proyecto, la pestaña local; en la
+     * búsqueda global, el conjunto completo de contratos.
+     */
+    alcanceActivo() {
+      if (this.miFirmaPendienteFijo || this.filtros.miFirmaPendiente === true) {
+        return "pendientes";
+      }
+      return this.idProyecto != null ? "proyecto" : "todos";
+    },
+    /** Proyecto desde el que se abrió la bandeja de pendientes, si vino en la URL. */
+    idProyectoDesdeRuta() {
+      const valor = Number(primerValor(this.$route?.query?.idProyecto));
+      return Number.isFinite(valor) && valor > 0 ? valor : null;
     },
     textoVacio() {
       if (this.miFirmaPendienteFijo) {
@@ -627,6 +718,35 @@ export default {
       // conservar el proyecto actualmente seleccionado.
       this.$router.push({ name: "buscar-contratos" });
     },
+    /**
+     * Cambia el alcance del listado. En la pestaña del proyecto las dos
+     * opciones se resuelven en el mismo listado; desde la búsqueda global,
+     * "Pendientes de mi firma" abre la bandeja dedicada.
+     */
+    seleccionarAlcance(alcance) {
+      if (alcance === "pendientes") {
+        if (this.alcanceActivo === "pendientes") return;
+        if (this.idProyecto != null) {
+          this.cambiarFiltro({ clave: "miFirmaPendiente", valor: true });
+          return;
+        }
+        this.irAPendientesMiFirma();
+        return;
+      }
+
+      if (this.filtros.miFirmaPendiente) {
+        this.cambiarFiltro({ clave: "miFirmaPendiente", valor: false });
+      }
+    },
+    irAProyectoDesdeBandeja() {
+      const idProyecto = this.idProyectoDesdeRuta;
+      if (idProyecto == null) return;
+      this.$router.push({
+        name: "dashboard-proyecto",
+        params: { id: idProyecto },
+        query: { tab: "contratos" },
+      });
+    },
     irAPendientesMiFirma() {
       const idProyecto = this.idProyecto ?? this.filtros.idProyecto;
       this.$router.push({
@@ -801,6 +921,13 @@ export default {
 }
 
 .listado-contratos__cabecera {
+  padding: 1.1rem 1.25rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.listado-contratos__presentacion {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -808,11 +935,85 @@ export default {
   flex-wrap: wrap;
 }
 
-.listado-contratos__acciones-cabecera {
+.listado-contratos__identidad {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.listado-contratos__crear {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.listado-contratos__alcance {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  margin: 1rem -1.25rem 0;
+  padding: 0 1.25rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.listado-contratos__alcance-tabs {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  overflow-x: auto;
+}
+
+.listado-contratos__alcance-tab {
+  padding: 0.75rem 0.05rem 0.65rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.listado-contratos__alcance-tab:hover {
+  color: var(--color-text);
+}
+
+.listado-contratos__alcance-tab--activa {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.listado-contratos__alcance-tab:focus-visible,
+.listado-contratos__alcance-enlace:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.listado-contratos__alcance-enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.listado-contratos__alcance-enlace:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.listado-contratos__alcance-enlace .material-symbols-outlined {
+  font-size: 1rem;
 }
 
 .listado-contratos__titulo {
@@ -824,6 +1025,7 @@ export default {
 
 .listado-contratos__subtitulo {
   margin: 0.35rem 0 0;
+  max-width: 65ch;
   color: var(--color-text-muted);
   font-size: 0.84rem;
   line-height: 1.5;
@@ -870,5 +1072,28 @@ export default {
   margin: 0;
   max-width: 32rem;
   line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .listado-contratos__cabecera {
+    padding: 1rem 1rem 0;
+  }
+
+  .listado-contratos__alcance {
+    margin: 0.9rem -1rem 0;
+    padding: 0 1rem;
+  }
+
+  .listado-contratos__alcance-tabs {
+    gap: 1rem;
+  }
+
+  .listado-contratos__alcance-tab {
+    font-size: 0.84rem;
+  }
+
+  .listado-contratos__alcance-enlace {
+    font-size: 0.78rem;
+  }
 }
 </style>

@@ -74,31 +74,20 @@
       </div>
     </div>
 
-    <div class="filtros-contratos__estados">
-      <div class="filtros-contratos__chips" role="group" aria-label="Filtrar por estado">
-        <button
-          v-for="opcion in opcionesEstado"
-          :key="opcion.value"
-          type="button"
-          class="filtros-contratos__chip"
-          :class="{
-            'filtros-contratos__chip--activo': estaSeleccionado(opcion.value),
-          }"
-          :aria-pressed="estaSeleccionado(opcion.value)"
-          @click="alternarEstado(opcion.value)"
-        >
-          {{ opcion.text }}
-        </button>
-      </div>
-
-      <label v-if="mostrarFiltroMiFirma" class="filtros-contratos__check">
-        <input
-          :checked="filtros.miFirmaPendiente"
-          type="checkbox"
-          @change="cambiar('miFirmaPendiente', $event.target.checked)"
-        />
-        <span>Solo pendientes de mi firma</span>
-      </label>
+    <div class="filtros-contratos__chips" role="group" aria-label="Filtrar por estado">
+      <button
+        v-for="opcion in opcionesEstado"
+        :key="opcion.value"
+        type="button"
+        class="filtros-contratos__chip"
+        :class="{
+          'filtros-contratos__chip--activo': estaSeleccionado(opcion.value),
+        }"
+        :aria-pressed="estaSeleccionado(opcion.value)"
+        @click="alternarEstado(opcion.value)"
+      >
+        {{ opcion.text }}
+      </button>
     </div>
 
     <p
@@ -211,9 +200,10 @@ export default {
       type: Boolean,
       default: true,
     },
-    mostrarFiltroMiFirma: {
+    /** Bandeja de pendientes: el alcance no se puede quitar desde los filtros. */
+    miFirmaPendienteFijo: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     errorFechas: {
       type: String,
@@ -238,7 +228,7 @@ export default {
         String(this.filtros.nombreContrato || "").trim() !== "" ||
         String(this.filtros.parte || "").trim() !== "" ||
         (this.mostrarFiltroProyecto && this.filtros.idProyecto != null) ||
-        (this.mostrarFiltroMiFirma && this.filtros.miFirmaPendiente === true) ||
+        (!this.miFirmaPendienteFijo && this.filtros.miFirmaPendiente === true) ||
         this.filtros.fechaEmisionDesde ||
         this.filtros.fechaEmisionHasta ||
         this.filtros.fechaFirmaDesde ||
@@ -307,14 +297,6 @@ export default {
   gap: 0.5rem;
 }
 
-.filtros-contratos__estados {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
 .filtros-contratos__chips {
   display: flex;
   align-items: center;
@@ -346,19 +328,6 @@ export default {
 
 .filtros-contratos__chip--avanzado {
   border-style: dashed;
-}
-
-.filtros-contratos__check {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--color-text);
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.filtros-contratos__check input {
-  accent-color: var(--color-primary);
 }
 
 .filtros-contratos__error {
