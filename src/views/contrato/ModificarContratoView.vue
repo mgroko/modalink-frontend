@@ -362,8 +362,7 @@
             </div>
 
             <p v-if="!preview && !cargandoPreview" class="modificar-contrato__nota">
-              La previsualización es opcional. Podés guardar directamente; el
-              backend valida el texto y los conflictos al guardar y al emitir.
+              La previsualización es opcional.
             </p>
             <div v-else-if="preview" class="modificar-contrato__preview-texto">
               {{ preview.texto || "Sin texto generado." }}
