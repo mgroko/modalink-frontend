@@ -17,6 +17,7 @@ import {
   refrescarSesion,
 } from "../../services/authState";
 import { destinoSeguro } from "../../utils/redirect";
+import { destinoInicial } from "../../utils/navegacion";
 
 export default {
   name: "EmailLoginView",
@@ -77,16 +78,7 @@ export default {
         this.$router.replace(destino);
         return;
       }
-
-      if (usuario?.rolGlobal === "Administrador") {
-        this.$router.replace({ name: "dashboard-admin" });
-        return;
-      }
-      if (usuario?.idPerfilActivo != null) {
-        this.$router.replace({ name: "home" });
-        return;
-      }
-      this.$router.replace({ name: "dashboard-usuario" });
+      this.$router.replace(destinoInicial(usuario));
     },
     irAlLogin(codigo, redirect) {
       const destino = destinoSeguro(redirect);

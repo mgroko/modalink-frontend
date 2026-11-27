@@ -520,4 +520,14 @@ export default {
     width: 100%;
   }
 }
+
+@media (max-width: 400px) {
+  .ajustes-perfil__modal-acciones {
+    flex-direction: column-reverse;
+  }
+
+  .ajustes-perfil__modal-acciones > * {
+    width: 100%;
+  }
+}
 </style>

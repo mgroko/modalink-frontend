@@ -37,6 +37,7 @@
           :mostrar-detalles="tabActiva !== 'informacion'"
           :mostrar-planificacion="esMiembro"
           :mostrar-integrantes="esMiembro"
+          :mostrar-integrantes-publicos="!esMiembro"
           :mostrar-chat="esMiembro"
           :mostrar-historial="puedeVerHistorial"
           :mostrar-reemplazos="esDirector"
@@ -54,6 +55,17 @@
               @click="irAModificar"
             >
               Editar
+            </VaButton>
+            <VaButton
+              v-if="esDirector"
+              preset="secondary"
+              icon="mso-download"
+              :loading="generandoInforme"
+              :disabled="generandoInforme"
+              title="Descargar informe ejecutivo del proyecto en PDF"
+              @click="descargarInforme"
+            >
+              {{ generandoInforme ? "Generando informe..." : "Informe PDF" }}
             </VaButton>
             <VaButton
               v-if="puedePublicar"
@@ -176,11 +188,20 @@
           v-else-if="tabActiva === 'integrantes' && esMiembro"
           ref="integrantes"
           :id-proyecto="idProyecto"
+          :nombre-proyecto="proyecto?.nombre || ''"
           :token-refresco="tokenRefrescoIntegrantes"
           :puede-invitar="puedeInvitarIntegrante"
+          :puede-asignar-requerimiento="puedeAsignarRequerimiento"
+          :requerimientos-generales="proyecto?.requerimientosGral || []"
           :id-perfil-activo="idPerfilActivoSesion"
           @eliminar="abrirEliminarIntegrante"
           @invitar="irAInvitarProyecto"
+          @requerimiento-asignado="refrescarTrasAsignacionRequerimiento"
+        />
+
+        <MiembrosPublicosProyecto
+          v-else-if="tabActiva === 'miembros-publicos' && !esMiembro"
+          :id-proyecto="idProyecto"
         />
 
         <ChatGrupalProyecto
@@ -395,6 +416,7 @@ import BaseAlert from "../../components/AlertaBase.vue";
 import ProyectoEncabezado from "../../components/proyecto/ProyectoEncabezado.vue";
 import PlanificacionProyecto from "../../components/proyecto/PlanificacionProyecto.vue";
 import IntegrantesProyecto from "../../components/proyecto/IntegrantesProyecto.vue";
+import MiembrosPublicosProyecto from "../../components/proyecto/MiembrosPublicosProyecto.vue";
 import ChatGrupalProyecto from "../../components/proyecto/ChatGrupalProyecto.vue";
 import HistorialProyecto from "../../components/proyecto/HistorialProyecto.vue";
 import ReemplazosProyecto from "../../components/proyecto/ReemplazosProyecto.vue";
@@ -450,6 +472,11 @@ import {
 } from "../../utils/eliminacionActividadConstants.js";
 import { formatearFecha } from "../../utils/fechas.js";
 import {
+  descargarBlob,
+  mensajeErrorDescarga,
+  nombreDesdeContentDisposition,
+} from "../../utils/descargas.js";
+import {
   CODIGOS_CONFIRMACION,
   clasificarErrorConfirmacion,
   normalizarPreview,
@@ -492,6 +519,7 @@ let controladorPostulacion = null;
 let controladorConfirmacion = null;
 let controladorFinalizacion = null;
 let controladorResumenReemplazos = null;
+let controladorInforme = null;
 
 export default {
   name: "DashboardProyectoView",
@@ -500,6 +528,7 @@ export default {
     ProyectoEncabezado,
     PlanificacionProyecto,
     IntegrantesProyecto,
+    MiembrosPublicosProyecto,
     ChatGrupalProyecto,
     HistorialProyecto,
     ReemplazosProyecto,
@@ -613,6 +642,7 @@ data() {
       tokenRefrescoPlanificacion: 0,
       reemplazosPendientes: 0,
       reemplazosSinCandidatos: 0,
+      generandoInforme: false,
     };
   },
   computed: {
@@ -733,6 +763,19 @@ data() {
     /** UC-31: Director con `INVITAR_MIEMBRO` en proyecto Publicado/Confirmado. */
     puedeInvitarIntegrante() {
       return puedeInvitarProyecto(this.proyecto);
+    },
+    /**
+     * UC-36: el backend exige Director activo con `ASIGNAR_REQUERIMIENTO` y
+     * proyecto Publicado/Confirmado. La UI replica esas condiciones para no
+     * ofrecer una acción que será rechazada.
+     */
+    puedeAsignarRequerimiento() {
+      const estado = normalizarEstadoProyecto(this.proyecto?.estado);
+      return (
+        this.esDirector &&
+        this.permisos.includes("ASIGNAR_REQUERIMIENTO") &&
+        [ESTADOS_PROYECTO.PUBLICADO, ESTADOS_PROYECTO.CONFIRMADO].includes(estado)
+      );
     },
     /**
      * UC-68: la pestaña Contratos se muestra a cualquier miembro activo. El
@@ -858,6 +901,11 @@ data() {
         controladorFinalizacion.abort();
         controladorFinalizacion = null;
       }
+      if (controladorInforme) {
+        controladorInforme.abort();
+        controladorInforme = null;
+      }
+      this.generandoInforme = false;
       this.cargar();
     },
     "$route.query.tab"() {
@@ -1064,6 +1112,14 @@ data() {
       this.tokenRefrescoPlanificacion += 1;
       this.refrescarNotificacionesPerfil();
     },
+    /**
+     * UC-36: al asignar/desasignar cambia el cupo de los requerimientos
+     * generales. El listado de miembros ya se recarga dentro del componente;
+     * acá se refresca el proyecto para que el próximo modal vea el cupo real.
+     */
+    async refrescarTrasAsignacionRequerimiento() {
+      await this.cargar();
+    },
     async manejarError(error) {
       const status = error?.response?.status;
       const mensaje = error?.response?.data?.message || "";
@@ -1147,6 +1203,7 @@ data() {
         "informacion",
         "planificacion",
         "integrantes",
+        "miembros-publicos",
         "chat",
         "historial",
         "reemplazos",
@@ -1157,6 +1214,10 @@ data() {
 
       if (["planificacion", "integrantes", "chat"].includes(tab) && !this.esMiembro) {
         this.tabActiva = "informacion";
+        return;
+      }
+      if (tab === "miembros-publicos" && this.esMiembro) {
+        this.tabActiva = "integrantes";
         return;
       }
       if (tab === "historial" && !this.puedeVerHistorial) {
@@ -1194,6 +1255,7 @@ data() {
     },
     cambiarTab(tab) {
       if (["planificacion", "integrantes", "chat"].includes(tab) && !this.esMiembro) return;
+      if (tab === "miembros-publicos" && this.esMiembro) return;
       if (tab === "historial" && !this.puedeVerHistorial) return;
       if (tab === "reemplazos" && !this.esDirector) return;
       if (tab === "contratos" && !this.puedeVerContratos) return;
@@ -1261,6 +1323,65 @@ data() {
         name: "modificar-proyecto",
         params: { id: this.idProyecto },
       });
+    },
+    /**
+     * Descarga el informe ejecutivo del proyecto.
+     *
+     * El backend valida que el perfil activo sea Director. El nombre sugerido
+     * llega en Content-Disposition; si no, se usa un fallback local.
+     */
+    async descargarInforme() {
+      if (!this.esDirector || this.generandoInforme) return;
+
+      this.generandoInforme = true;
+      if (controladorInforme) controladorInforme.abort();
+      controladorInforme = new AbortController();
+
+      try {
+        const response = await proyectoService.descargarInformePdf(
+          this.idProyecto,
+          controladorInforme.signal
+        );
+
+        const nombre =
+          nombreDesdeContentDisposition(
+            response?.headers?.["content-disposition"]
+          ) || `informe-proyecto-${this.idProyecto}.pdf`;
+
+        if (!descargarBlob(response?.data, nombre)) {
+          throw new Error("El backend devolvió un archivo vacío.");
+        }
+
+        this.toast.init({
+          title: "Informe generado",
+          message: "El PDF del proyecto se descargó correctamente.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+      } catch (error) {
+        if (
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError" ||
+          error?.name === "AbortError"
+        ) {
+          return;
+        }
+
+        const mensaje = await mensajeErrorDescarga(
+          error,
+          "No se pudo generar el informe del proyecto."
+        );
+        this.toast.init({
+          title: "No se pudo generar el informe",
+          message: mensaje,
+          color: "danger",
+          position: "top-right",
+          duration: 6000,
+        });
+      } finally {
+        this.generandoInforme = false;
+      }
     },
     abrirPublicacion() {
       if (!this.tieneFechaEntrega) return;
@@ -3605,6 +3726,7 @@ data() {
     if (controladorDesasignacion) controladorDesasignacion.abort();
     if (controladorPostulacion) controladorPostulacion.abort();
     if (controladorConfirmacion) controladorConfirmacion.abort();
+    if (controladorInforme) controladorInforme.abort();
   },
 };
 </script>
@@ -3703,6 +3825,29 @@ data() {
 
 .btn-publicar :deep(.va-button__content) {
   color: #ffffff !important;
+}
+
+@media (max-width: 640px) {
+  .dashboard-proyecto {
+    gap: 0.75rem;
+  }
+
+  .dashboard-proyecto__panel {
+    padding: 1rem;
+  }
+
+  .dashboard-proyecto__titulo {
+    font-size: 0.98rem;
+  }
+
+  .dashboard-proyecto__peligro-boton {
+    width: 100%;
+  }
+
+  .dashboard-proyecto__reintento {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .btn-publicar:hover:not(:disabled) {

@@ -23,11 +23,13 @@ export const PERMISO_INVITAR_MIEMBRO = "INVITAR_MIEMBRO";
 
 export const TIPOS_INVITACION = {
   GENERAL: "GENERAL",
+  REQUERIMIENTO_GENERAL: "REQUERIMIENTO_GENERAL",
   ACTIVIDAD: "ACTIVIDAD",
 };
 
 export const ETIQUETAS_TIPO_INVITACION = {
   [TIPOS_INVITACION.GENERAL]: "General",
+  [TIPOS_INVITACION.REQUERIMIENTO_GENERAL]: "Requerimiento general",
   [TIPOS_INVITACION.ACTIVIDAD]: "Por actividad",
 };
 
@@ -120,6 +122,59 @@ export function requerimientoAdmiteInvitacion(requerimiento) {
   const estado = normalizarEstadoActividad(requerimiento.estadoActividad);
   if (!estado) return true;
   return ESTADOS_ACTIVIDAD_INVITABLES.includes(estado);
+}
+
+/**
+ * ¿El requerimiento general del proyecto todavía admite invitaciones?
+ * El backend es la fuente de verdad del cupo; acá sólo se descartan los que
+ * ya están satisfechos para no ofrecer una invitación que será rechazada.
+ * @param {object|null|undefined} requerimiento
+ * @returns {boolean}
+ */
+export function requerimientoGeneralDisponible(requerimiento) {
+  if (!requerimiento || requerimiento.idRequerimientoGral == null) return false;
+  if (requerimiento.satisfecho === true) return false;
+
+  if (requerimiento.faltantes != null) {
+    const faltantes = Number(requerimiento.faltantes);
+    if (Number.isFinite(faltantes) && faltantes <= 0) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Normaliza un requerimiento general del `GET /proyectos/{id}`.
+ * @param {object|null|undefined} item
+ * @returns {{
+ *   idRequerimientoGral: number|null,
+ *   cantidad: number|null,
+ *   descripcion: string|null,
+ *   idProfesion: number|null,
+ *   nombreProfesion: string|null,
+ *   cubiertos: number|null,
+ *   faltantes: number|null,
+ *   satisfecho: boolean,
+ *   protegido: boolean
+ * }}
+ */
+export function normalizarRequerimientoGeneral(item) {
+  const dato = item && typeof item === "object" ? item : {};
+  const cantidad = dato.cantidad == null ? null : Number(dato.cantidad);
+  const cubiertos = dato.cubiertos == null ? null : Number(dato.cubiertos);
+  const faltantes = dato.faltantes == null ? null : Number(dato.faltantes);
+
+  return {
+    idRequerimientoGral: dato.idRequerimientoGral ?? null,
+    cantidad: Number.isFinite(cantidad) ? cantidad : null,
+    descripcion: String(dato.descripcion || "").trim() || null,
+    idProfesion: dato.idProfesion ?? null,
+    nombreProfesion: String(dato.nombreProfesion || "").trim() || null,
+    cubiertos: Number.isFinite(cubiertos) ? cubiertos : null,
+    faltantes: Number.isFinite(faltantes) ? faltantes : null,
+    satisfecho: dato.satisfecho === true,
+    protegido: dato.protegido === true,
+  };
 }
 
 /**
@@ -230,6 +285,13 @@ export function clasificarErrorInvitacion(error) {
         TIPOS_ERROR_INVITACION.VALIDACION,
         mensaje || "Seleccioná un perfil destinatario.",
         "idPerfilDestinatario"
+      );
+    }
+    if (/requerimiento general/i.test(mensaje)) {
+      return crear(
+        TIPOS_ERROR_INVITACION.VALIDACION,
+        mensaje || "Seleccioná un requerimiento general.",
+        "idRequerimientoGral"
       );
     }
     if (/idRequerimiento|requerimiento/i.test(mensaje)) {

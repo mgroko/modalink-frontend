@@ -6,7 +6,7 @@
     :query-base="queryBase"
     sincronizar-query
     titulo="Contratos"
-    subtitulo="Contratos visibles para tu perfil en este proyecto. El Director ve todos; cada firmante ve los suyos."
+    subtitulo="Contratos visibles para tu perfil en este proyecto. El Director ve todos, incluidos los borradores; cada firmante ve los suyos."
     @nuevo-contrato="$emit('nuevo-contrato')"
   />
 </template>

@@ -533,4 +533,15 @@ function esCancelado(error) {
   justify-content: center;
   padding-top: 0.25rem;
 }
+
+@media (max-width: 520px) {
+  .resenas-lista {
+    padding: 1rem;
+  }
+
+  .resenas-lista__cabecera,
+  .resenas-lista__promedio {
+    flex-wrap: wrap;
+  }
+}
 </style>

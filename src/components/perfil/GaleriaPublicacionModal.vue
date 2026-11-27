@@ -246,6 +246,7 @@ export default {
 .galeria-publicacion__zoom {
   overflow: auto;
   max-height: 68vh;
+  max-height: 68dvh;
   background: var(--color-surface-muted);
   border-radius: 10px;
 }
@@ -254,6 +255,7 @@ export default {
   display: block;
   width: 100%;
   max-height: 68vh;
+  max-height: 68dvh;
   margin: 0 auto;
   border-radius: 10px;
   object-fit: contain;

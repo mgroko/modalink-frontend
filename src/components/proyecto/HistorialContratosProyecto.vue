@@ -101,11 +101,11 @@
           </thead>
           <tbody>
             <tr v-for="evento in eventos" :key="evento.clave">
-              <td class="historial-contratos__fecha">
+              <td class="historial-contratos__fecha" data-label="Fecha">
                 {{ formatearFecha(evento.fechaHora) }}
               </td>
 
-              <td>
+              <td data-label="Contrato">
                 <button
                   type="button"
                   class="historial-contratos__contrato"
@@ -125,9 +125,9 @@
                 </div>
               </td>
 
-              <td>{{ evento.nombreTipoAcuerdo || evento.codigoTipoAcuerdo || "—" }}</td>
+              <td data-label="Tipo">{{ evento.nombreTipoAcuerdo || evento.codigoTipoAcuerdo || "—" }}</td>
 
-              <td>
+              <td data-label="Evento">
                 <span
                   class="historial-contratos__chip"
                   :style="estiloTipo(evento.tipoEvento)"
@@ -136,10 +136,10 @@
                 </span>
               </td>
 
-              <td>{{ evento.nombreParte || "—" }}</td>
-              <td>{{ evento.nombreOperador || "—" }}</td>
-              <td>{{ evento.version ?? "—" }}</td>
-              <td class="historial-contratos__motivo">{{ evento.motivo || "—" }}</td>
+              <td data-label="Parte">{{ evento.nombreParte || "—" }}</td>
+              <td data-label="Responsable">{{ evento.nombreOperador || "—" }}</td>
+              <td data-label="Versión">{{ evento.version ?? "—" }}</td>
+              <td class="historial-contratos__motivo" data-label="Motivo">{{ evento.motivo || "—" }}</td>
             </tr>
           </tbody>
         </table>
@@ -555,7 +555,7 @@ export default {
   font-size: 0.82rem;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .historial-contratos__filtros {
     align-items: stretch;
     flex-direction: column;
@@ -568,6 +568,65 @@ export default {
 
   .historial-contratos__acciones-filtro {
     justify-content: flex-end;
+  }
+
+  .historial-contratos__tabla-wrapper {
+    overflow-x: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .historial-contratos__tabla {
+    min-width: 0;
+  }
+
+  .historial-contratos__tabla thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .historial-contratos__tabla,
+  .historial-contratos__tabla tbody,
+  .historial-contratos__tabla tr,
+  .historial-contratos__tabla td {
+    display: block;
+    width: 100%;
+  }
+
+  .historial-contratos__tabla tbody tr {
+    margin-bottom: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+  }
+
+  .historial-contratos__tabla td {
+    position: relative;
+    padding: 0.35rem 0 0.35rem 8rem;
+    border: 0;
+    text-align: left;
+  }
+
+  .historial-contratos__tabla td::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.35rem;
+    left: 0;
+    width: 7.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .historial-contratos__fecha {
+    white-space: normal;
   }
 }
 </style>

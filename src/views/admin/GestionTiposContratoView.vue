@@ -79,6 +79,7 @@
       <VaDataTable
         v-else
         class="gestion-tipos-contrato__tabla"
+        v-bind="propsTablaResponsive"
         :items="tiposFiltrados"
         :columns="columnas"
         :per-page="porPaginaTipos"
@@ -432,6 +433,7 @@ import adminTiposContratoService from "../../services/adminTiposContratoService"
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 
 const PLACEHOLDERS = [
   { token: "{{proyecto}}", descripcion: "Nombre y descripción del proyecto" },
@@ -451,6 +453,7 @@ const COLUMNAS = [
 
 export default {
   name: "GestionTiposContratoView",
+  mixins: [tablaResponsiveMixin],
   components: { BaseAlert, AdminTablaPanel },
   data() {
     return {

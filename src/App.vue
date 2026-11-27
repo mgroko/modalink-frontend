@@ -2,11 +2,13 @@
   <component :is="$route.meta.layout || 'div'" :titulo="$route.meta.titulo || 'Perfiles'">
     <RouterView :key="viewKey" />
   </component>
+  <AsistenteErrores />
 </template>
 
 <script>
 import { watch } from "vue";
 import { useColors } from "vuestic-ui";
+import AsistenteErrores from "./components/AsistenteErrores.vue";
 import { restaurarSesion, state } from "./services/authState";
 import {
   detenerPresencia,
@@ -20,6 +22,7 @@ import { applyDomTheme, resolvedTheme } from "./services/themeState";
 
 export default {
   name: "App",
+  components: { AsistenteErrores },
   setup() {
     const { applyPreset } = useColors();
 

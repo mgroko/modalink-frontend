@@ -129,8 +129,15 @@
       </div>
 
       <div
-        v-if="urlImagen"
+        v-if="imagenesVisor.length"
         class="colaboracion-automatica-card__evidencia"
+        role="button"
+        tabindex="0"
+        aria-label="Ampliar imagen en común"
+        title="Ampliar imagen en común"
+        @click="abrirImagen"
+        @keydown.enter.prevent="abrirImagen"
+        @keydown.space.prevent="abrirImagen"
       >
         <img :src="urlImagen" alt="Imagen compartida" />
         <div>
@@ -208,11 +215,18 @@
         Ver detalle
       </button>
     </footer>
+
+    <GaleriaPublicacionModal
+      v-model="visorAbierto"
+      :imagenes="imagenesVisor"
+      titulo="Imagen en común"
+    />
   </article>
 </template>
 
 <script>
 import EstadoColaboracionAutomaticaBadge from "./EstadoColaboracionAutomaticaBadge.vue";
+import GaleriaPublicacionModal from "../perfil/GaleriaPublicacionModal.vue";
 import { resolverFotoUrl } from "../../utils/fotos.js";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 import {
@@ -223,7 +237,7 @@ import {
 
 export default {
   name: "ColaboracionAutomaticaCard",
-  components: { EstadoColaboracionAutomaticaBadge },
+  components: { EstadoColaboracionAutomaticaBadge, GaleriaPublicacionModal },
   props: {
     colaboracion: {
       type: Object,
@@ -243,6 +257,11 @@ export default {
     },
   },
   emits: ["confirmar", "rechazar", "ver-detalle", "ver-perfil", "ver-publicacion"],
+  data() {
+    return {
+      visorAbierto: false,
+    };
+  },
   computed: {
     propia() {
       return this.colaboracion?.publicacionPropia || null;
@@ -279,8 +298,19 @@ export default {
     portadaContraparte() {
       return resolverFotoUrl(this.contraparte?.portadaUrl);
     },
+    imagenesVisor() {
+      const plural = Array.isArray(this.colaboracion?.imagenes)
+        ? this.colaboracion.imagenes
+        : [];
+      const lista = plural.length
+        ? plural
+        : this.imagen
+          ? [this.imagen]
+          : [];
+      return lista.filter((imagen) => imagen?.url);
+    },
     urlImagen() {
-      return resolverFotoUrl(this.imagen?.url);
+      return resolverFotoUrl(this.imagenesVisor[0]?.url);
     },
     propiaEliminada() {
       return this.propia?.eliminada === true;
@@ -379,6 +409,10 @@ export default {
     verPublicacion(publicacion) {
       if (publicacion?.eliminada || publicacion?.idPublicacion == null) return;
       this.$emit("ver-publicacion", publicacion);
+    },
+    abrirImagen() {
+      if (!this.imagenesVisor.length) return;
+      this.visorAbierto = true;
     },
   },
 };
@@ -598,6 +632,15 @@ export default {
   background: var(--color-surface-soft);
   border: 1px solid var(--color-border-soft);
   border-radius: 8px;
+  cursor: zoom-in;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.colaboracion-automatica-card__evidencia:hover,
+.colaboracion-automatica-card__evidencia:focus-visible {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+  outline: none;
 }
 
 .colaboracion-automatica-card__evidencia img {

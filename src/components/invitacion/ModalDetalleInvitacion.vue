@@ -115,6 +115,40 @@
         </p>
       </section>
 
+      <section
+        v-if="
+          esRequerimientoGeneral && invitacion.idRequerimientoGral != null
+        "
+        class="detalle-invitacion__bloque"
+      >
+        <span class="detalle-invitacion__label">Requerimiento general</span>
+        <p
+          v-if="requerimientoGeneralProyecto"
+          class="detalle-invitacion__texto"
+        >
+          {{ requerimientoGeneralProyecto.nombreProfesion || "Requerimiento" }}
+          <template v-if="requerimientoGeneralProyecto.cantidad != null">
+            · {{ requerimientoGeneralProyecto.cantidad }}
+            {{
+              requerimientoGeneralProyecto.cantidad === 1
+                ? "persona"
+                : "personas"
+            }}
+          </template>
+          <template v-if="requerimientoGeneralProyecto.faltantes != null">
+            · {{ requerimientoGeneralProyecto.faltantes }}
+            {{
+              requerimientoGeneralProyecto.faltantes === 1
+                ? "vacante"
+                : "vacantes"
+            }}
+          </template>
+        </p>
+        <p v-else class="detalle-invitacion__texto">
+          #{{ invitacion.idRequerimientoGral }}
+        </p>
+      </section>
+
       <section class="detalle-invitacion__bloque">
         <span class="detalle-invitacion__label">Mensaje</span>
         <p
@@ -284,6 +318,22 @@ export default {
   computed: {
     esActividad() {
       return this.invitacion?.tipo === TIPOS_INVITACION.ACTIVIDAD;
+    },
+    esRequerimientoGeneral() {
+      return (
+        this.invitacion?.tipo === TIPOS_INVITACION.REQUERIMIENTO_GENERAL
+      );
+    },
+    requerimientoGeneralProyecto() {
+      if (!this.esRequerimientoGeneral) return null;
+      const id = this.invitacion?.idRequerimientoGral;
+      if (id == null) return null;
+      return (
+        (this.proyecto?.requerimientosGral || []).find(
+          (requerimiento) =>
+            String(requerimiento?.idRequerimientoGral) === String(id)
+        ) || null
+      );
     },
     puedeVerProyecto() {
       return this.invitacion?.estado === ESTADOS_INVITACION.ACEPTADA;

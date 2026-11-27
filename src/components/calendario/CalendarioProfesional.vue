@@ -60,6 +60,31 @@
         </div>
       </div>
 
+      <div
+        class="calendario__dias-mobile"
+        role="tablist"
+        aria-label="Días de la semana"
+      >
+        <button
+          v-for="dia in diasSemana"
+          :key="'mobile-' + dia.fechaKey"
+          type="button"
+          class="calendario__dia-mobile"
+          :class="{
+            'calendario__dia-mobile--activo': esDiaSeleccionado(dia),
+            'calendario__dia-mobile--hoy': dia.esHoy,
+            'calendario__dia-mobile--nolaborable': !dia.laborable,
+          }"
+          role="tab"
+          :aria-selected="esDiaSeleccionado(dia) ? 'true' : 'false'"
+          @click="seleccionarDia(dia)"
+        >
+          <span class="calendario__dia-mobile-nombre">{{ dia.nombre }}</span>
+          <strong>{{ dia.numero }}</strong>
+          <span v-if="dia.esHoy" class="calendario__dia-mobile-hoy">Hoy</span>
+        </button>
+      </div>
+
       <div class="calendario__grid-wrap">
         <div class="calendario__grid">
           <div class="calendario__grid-corner"></div>
@@ -428,6 +453,11 @@ export default {
       const nueva = new Date(this.semanaInicio);
       nueva.setDate(nueva.getDate() + dir * 7);
       this.semanaInicio = nueva;
+      const hoy = new Date();
+      this.diaSeleccionado =
+        this.inicioDeSemana(hoy).getTime() === nueva.getTime()
+          ? hoy
+          : new Date(nueva);
     },
     irAHoy() {
       this.semanaInicio = this.inicioDeSemana(new Date());
@@ -527,6 +557,10 @@ export default {
     },
     seleccionarDia(dia) {
       this.diaSeleccionado = dia.fecha;
+    },
+    esDiaSeleccionado(dia) {
+      if (!this.diaSeleccionado || !dia) return false;
+      return toFechaKey(this.diaSeleccionado) === dia.fechaKey;
     },
     abrirJornada() {
       this.modalJornadaVisible = true;
@@ -796,6 +830,10 @@ export default {
   border: 1px solid var(--color-border-strong);
 }
 
+.calendario__dias-mobile {
+  display: none;
+}
+
 .calendario__grid-wrap {
   overflow-x: auto;
   border: 1px solid var(--color-border);
@@ -1035,6 +1073,103 @@ export default {
   .calendario__toolbar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .calendario__nav {
+    width: 100%;
+  }
+
+  .calendario__periodo {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.95rem;
+    text-align: center;
+  }
+
+  .calendario__hoy {
+    margin-left: auto;
+  }
+
+  .calendario__acciones {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .calendario__acciones > * {
+    flex: 1 1 160px;
+  }
+
+  .calendario__leyenda {
+    gap: 0.6rem 1rem;
+    font-size: 0.72rem;
+  }
+
+  .calendario__dias-mobile {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendario__dias-mobile::-webkit-scrollbar {
+    display: none;
+  }
+
+  .calendario__dia-mobile {
+    display: flex;
+    min-width: 56px;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  .calendario__dia-mobile--activo {
+    border-color: var(--color-primary);
+    background: var(--color-chip);
+    color: var(--color-primary);
+  }
+
+  .calendario__dia-mobile--hoy strong {
+    color: var(--color-primary);
+  }
+
+  .calendario__dia-mobile--nolaborable {
+    opacity: 0.65;
+  }
+
+  .calendario__dia-mobile-nombre {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+  }
+
+  .calendario__dia-mobile strong {
+    font-size: 1rem;
+    line-height: 1.1;
+  }
+
+  .calendario__dia-mobile-hoy {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  .calendario__grid-wrap {
+    display: none;
+  }
+
+  .calendario__detalle {
+    margin-top: 0.5rem;
+    padding-top: 0.9rem;
   }
 
   .calendario__detalle-grid {

@@ -90,7 +90,7 @@ Editarperfilview · VUE
               :model-value="form.idProfesion"
               :options="profesiones"
               value-by="idProfesion"
-              :text-by="(option) => capitalizarEtiqueta(option.nombre)"
+              :text-by="etiquetaProfesion"
               label="Profesión"
               disabled
             />
@@ -107,8 +107,20 @@ Editarperfilview · VUE
           </div>
 
           <template v-else>
+            <div v-if="hayCaracteristicasResaltadas" class="editar-perfil__aviso-resaltado">
+              <span class="material-symbols-outlined" aria-hidden="true">new_releases</span>
+              Hay campos nuevos o actualizados para tu profesión. Los resaltamos en amarillo.
+            </div>
+
             <div class="editar-perfil__campos">
-              <div v-if="caracteristicaAltura" class="editar-perfil__campo-caracteristica">
+              <div
+                v-if="caracteristicaAltura"
+                class="editar-perfil__campo-caracteristica"
+                :class="{
+                  'editar-perfil__campo-caracteristica--resaltada':
+                    esCaracteristicaResaltada(caracteristicaAltura.idCaracteristica)
+                }"
+              >
                 <VaInput
                   v-if="!esEnumerado(caracteristicaAltura)"
                   v-model="form.caracteristicas[caracteristicaAltura.idCaracteristica].valor"
@@ -148,6 +160,10 @@ Editarperfilview · VUE
                     v-for="carac in caracteristicasMedidas"
                     :key="carac.idCaracteristica"
                     class="editar-perfil__campo-caracteristica"
+                    :class="{
+                      'editar-perfil__campo-caracteristica--resaltada':
+                        esCaracteristicaResaltada(carac.idCaracteristica)
+                    }"
                   >
                     <VaSelect
                       v-if="esEnumerado(carac)"
@@ -188,6 +204,10 @@ Editarperfilview · VUE
                 v-for="carac in caracteristicasColores"
                 :key="carac.idCaracteristica"
                 class="editar-perfil__campo-caracteristica"
+                :class="{
+                  'editar-perfil__campo-caracteristica--resaltada':
+                    esCaracteristicaResaltada(carac.idCaracteristica)
+                }"
               >
                 <VaSelect
                   v-if="esEnumerado(carac)"
@@ -226,6 +246,10 @@ Editarperfilview · VUE
                 v-for="carac in caracteristicasRestantes"
                 :key="carac.idCaracteristica"
                 class="editar-perfil__campo-caracteristica"
+                :class="{
+                  'editar-perfil__campo-caracteristica--resaltada':
+                    esCaracteristicaResaltada(carac.idCaracteristica)
+                }"
               >
                 <VaSelect
                   v-if="esEnumerado(carac)"
@@ -408,17 +432,20 @@ Editarperfilview · VUE
 <script>
 import perfilService from "../../services/perfilService.js";
 import habilidadService from "../../services/habilidadService.js";
+import { state as authState } from "../../services/authState.js";
 import BaseAlert from "../../components/AlertaBase.vue";
 import {
   ETIQUETAS_CARACTERISTICAS,
   ETIQUETAS_VALORES,
   ORDEN_PRIORIDAD,
+  CODIGOS_ALTURA,
+  CODIGOS_MEDIDAS,
   normCodigo,
-  normTexto,
   simboloUnidad,
   esUnidadColor,
   tipoDatoUnidad,
 } from "../../utils/perfilConstants.js";
+import { coincideProfesion, etiquetaProfesion as etiquetaProfesionSegunGenero } from "../../utils/profesion.js";
 import { reglasPerfil } from "../../utils/reglas.js";
 import { resolverFotoUrl } from "../../utils/fotos.js";
  
@@ -482,6 +509,22 @@ export default {
       );
       return this.habilidadesCatalogo.filter(
         (habilidad) => !actuales.has(String(habilidad.idHabilidad))
+      );
+    },
+    idsCaracteristicasResaltadas() {
+      const raw = this.$route.query.resaltarCaracteristicas;
+      const valores = Array.isArray(raw) ? raw : String(raw ?? "").split(",");
+      return new Set(
+        valores
+          .map((valor) => Number(valor))
+          .filter((valor) => Number.isInteger(valor) && valor > 0)
+      );
+    },
+    hayCaracteristicasResaltadas() {
+      return this.caracteristicas.some((carac) =>
+        this.idsCaracteristicasResaltadas.has(
+          Number(carac.idCaracteristica)
+        )
       );
     },
   },
@@ -574,9 +617,16 @@ export default {
         this.cargandoInicial = false;
       }
     },
+    etiquetaProfesion(profesion) {
+      return etiquetaProfesionSegunGenero(
+        profesion,
+        authState.usuario?.genero || null
+      );
+    },
     resolverIdProfesion(nombreProfesion, profesiones) {
-      const nombreNorm = normTexto(nombreProfesion);
-      const encontrada = profesiones.find((p) => normTexto(p.nombre) === nombreNorm);
+      const encontrada = profesiones.find((p) =>
+        coincideProfesion(p, nombreProfesion)
+      );
       return encontrada ? encontrada.idProfesion : null;
     },
     async cargarProfesiones() {
@@ -741,6 +791,7 @@ export default {
  
         this.$nextTick(() => {
           this.$refs.form?.resetValidation?.();
+          this.desplazarAResaltada();
         });
       } catch (error) {
         this.mensajeError =
@@ -753,8 +804,28 @@ export default {
     esEnumerado(carac) {
       return carac.tipoDato === "ENUMERADO";
     },
+    esCaracteristicaResaltada(id) {
+      return this.idsCaracteristicasResaltadas.has(Number(id));
+    },
+    desplazarAResaltada() {
+      if (!this.hayCaracteristicasResaltadas) return;
+      const resaltada = this.$el?.querySelector?.(
+        ".editar-perfil__campo-caracteristica--resaltada"
+      );
+      resaltada?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    },
     esNumerico(carac) {
       return carac.tipoDato === "NUMERICO";
+    },
+
+    esMedida(carac) {
+      if (!carac) return false;
+      const codigo = normCodigo(carac.codigo);
+      return (
+        CODIGOS_ALTURA.includes(codigo) ||
+        CODIGOS_MEDIDAS.includes(codigo) ||
+        normCodigo(simboloUnidad(carac.unidad)) === "cm"
+      );
     },
 
     reglasCampo(carac) {
@@ -762,6 +833,9 @@ export default {
       const permitido = tipoDatoUnidad(carac?.unidad);
       if (this.esNumerico(carac) && (permitido === "" || permitido === "NUMERICO")) {
         lista.push(this.reglas.numerico);
+      }
+      if (this.esMedida(carac)) {
+        lista.push(this.reglas.noNegativo);
       }
       return lista;
     },
@@ -887,6 +961,18 @@ export default {
           this.limpiarFoto();
         } else {
           this.mensajeExito = "Perfil actualizado correctamente.";
+        }
+
+        if (this.$route.query.resaltarCaracteristicas != null) {
+          const resto = { ...this.$route.query };
+          delete resto.resaltarCaracteristicas;
+          this.$router
+            .replace({
+              name: this.$route.name,
+              params: this.$route.params,
+              query: resto,
+            })
+            .catch(() => {});
         }
 
         setTimeout(() => {
@@ -1068,6 +1154,34 @@ export default {
 
 .editar-perfil__campo-caracteristica :deep(.va-input-wrapper__field) {
   min-height: 40px;
+}
+
+.editar-perfil__aviso-resaltado {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  margin-bottom: 0.85rem;
+  background: #fff8d6;
+  border: 1px solid #facc15;
+  border-radius: 0.6rem;
+  color: #7a5b00;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.editar-perfil__campo-caracteristica--resaltada {
+  background: #fff8d6;
+  border: 1px solid #facc15;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  scroll-margin-top: 6rem;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.editar-perfil__campo-caracteristica--resaltada :deep(.va-input-wrapper) {
+  border-radius: 0.4rem;
+  box-shadow: 0 0 0 2px #facc15;
 }
 
 .editar-perfil__medidas-linea {

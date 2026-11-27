@@ -80,7 +80,7 @@ export default {
   computed: {
     subtitulo() {
       return this.esDirector
-        ? "Movimientos de miembros y eventos de contratos del proyecto."
+        ? "Historial de eventos del proyecto."
         : "Eventos de los contratos donde participaste.";
     },
     tipoInicial() {

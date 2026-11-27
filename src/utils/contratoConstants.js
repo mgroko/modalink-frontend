@@ -29,6 +29,8 @@ export const CODIGOS_CONTRATO = {
   PROYECTO_SIN_MIEMBROS_ACTIVOS: "PROYECTO_SIN_MIEMBROS_ACTIVOS",
   CONTRATO_NO_ENCONTRADO: "CONTRATO_NO_ENCONTRADO",
   CONTRATO_NO_PENDIENTE_FIRMA: "CONTRATO_NO_PENDIENTE_FIRMA",
+  CONTRATO_NO_EDITABLE: "CONTRATO_NO_EDITABLE",
+  CONTRATO_NO_BORRADOR: "CONTRATO_NO_BORRADOR",
   CONTRATO_CON_FIRMAS_REGISTRADAS: "CONTRATO_CON_FIRMAS_REGISTRADAS",
   CONTRATO_SIN_DESTINATARIOS: "CONTRATO_SIN_DESTINATARIOS",
   DESTINATARIO_INVALIDO: "DESTINATARIO_INVALIDO",
@@ -71,6 +73,10 @@ export const MENSAJES_CODIGO_CONTRATO = {
     "El contrato no existe o pertenece a otro proyecto.",
   [CODIGOS_CONTRATO.CONTRATO_NO_PENDIENTE_FIRMA]:
     "El contrato ya no está pendiente de firma.",
+  [CODIGOS_CONTRATO.CONTRATO_NO_EDITABLE]:
+    "El contrato no se puede editar en su estado actual.",
+  [CODIGOS_CONTRATO.CONTRATO_NO_BORRADOR]:
+    "El contrato ya no está en borrador.",
   [CODIGOS_CONTRATO.CONTRATO_CON_FIRMAS_REGISTRADAS]:
     "Alguna parte ya firmó o rechazó el contrato.",
   [CODIGOS_CONTRATO.RANGO_FECHAS_CONTRATO_INVALIDO]:
@@ -110,10 +116,12 @@ export const ETIQUETAS_ESTADO_CONTRATO = {
 
 /**
  * Conjunto que aplica el backend cuando no se envía `estados` (UC-68).
+ * Incluye `BORRADOR`: el backend solo lo devuelve al Director del proyecto.
  * Los contratos eliminados se incluyen por defecto para que sigan visibles;
- * el chip "Eliminado" permite ocultarlos. `BORRADOR` queda fuera por defecto.
+ * el chip "Eliminado" permite ocultarlos.
  */
 export const ESTADOS_CONTRATO_POR_DEFECTO = [
+  ESTADOS_CONTRATO.BORRADOR,
   ESTADOS_CONTRATO.PENDIENTE_FIRMA,
   ESTADOS_CONTRATO.ACTIVO,
   ESTADOS_CONTRATO.RECHAZADO_POR_PARTES,
@@ -121,11 +129,12 @@ export const ESTADOS_CONTRATO_POR_DEFECTO = [
   ESTADOS_CONTRATO.ELIMINADO,
 ];
 
-/** Estados que la UI muestra sólo en filtros avanzados. */
-export const ESTADOS_CONTRATO_AVANZADOS = [ESTADOS_CONTRATO.BORRADOR];
-
 /** Opciones de los chips principales de búsqueda. */
 export const OPCIONES_ESTADO_CONTRATO = [
+  {
+    value: ESTADOS_CONTRATO.BORRADOR,
+    text: ETIQUETAS_ESTADO_CONTRATO[ESTADOS_CONTRATO.BORRADOR],
+  },
   {
     value: ESTADOS_CONTRATO.PENDIENTE_FIRMA,
     text: ETIQUETAS_ESTADO_CONTRATO[ESTADOS_CONTRATO.PENDIENTE_FIRMA],
@@ -145,13 +154,6 @@ export const OPCIONES_ESTADO_CONTRATO = [
   {
     value: ESTADOS_CONTRATO.ELIMINADO,
     text: ETIQUETAS_ESTADO_CONTRATO[ESTADOS_CONTRATO.ELIMINADO],
-  },
-];
-
-export const OPCIONES_ESTADO_CONTRATO_AVANZADO = [
-  {
-    value: ESTADOS_CONTRATO.BORRADOR,
-    text: ETIQUETAS_ESTADO_CONTRATO[ESTADOS_CONTRATO.BORRADOR],
   },
 ];
 
@@ -456,13 +458,16 @@ export function clasificarErrorContrato(error) {
     esEstado:
       codigo === CODIGOS_CONTRATO.PROYECTO_NO_APTO_PARA_CONTRATO ||
       codigo === CODIGOS_CONTRATO.PROYECTO_SIN_MIEMBROS_ACTIVOS ||
-      codigo === CODIGOS_CONTRATO.TIPO_ACUERDO_INVALIDO,
+      codigo === CODIGOS_CONTRATO.TIPO_ACUERDO_INVALIDO ||
+      codigo === CODIGOS_CONTRATO.CONTRATO_NO_BORRADOR ||
+      codigo === CODIGOS_CONTRATO.CONTRATO_NO_EDITABLE,
   };
 }
 
 /** Motivos de bloqueo de UC-53 y su texto para la UI. */
 export const MOTIVOS_NO_MODIFICABLE = {
   SIN_PERMISO: "SIN_PERMISO",
+  CONTRATO_NO_EDITABLE: "CONTRATO_NO_EDITABLE",
   CONTRATO_NO_PENDIENTE_FIRMA: "CONTRATO_NO_PENDIENTE_FIRMA",
   PROYECTO_NO_APTO_PARA_CONTRATO: "PROYECTO_NO_APTO_PARA_CONTRATO",
   CONTRATO_CON_FIRMAS_REGISTRADAS: "CONTRATO_CON_FIRMAS_REGISTRADAS",
@@ -471,12 +476,42 @@ export const MOTIVOS_NO_MODIFICABLE = {
 export const ETIQUETAS_MOTIVO_NO_MODIFICABLE = {
   [MOTIVOS_NO_MODIFICABLE.SIN_PERMISO]:
     "Solo el Director activo del proyecto puede modificar este contrato.",
+  [MOTIVOS_NO_MODIFICABLE.CONTRATO_NO_EDITABLE]:
+    "El contrato no se puede editar en su estado actual.",
   [MOTIVOS_NO_MODIFICABLE.CONTRATO_NO_PENDIENTE_FIRMA]:
     "El contrato ya no está pendiente de firma.",
   [MOTIVOS_NO_MODIFICABLE.PROYECTO_NO_APTO_PARA_CONTRATO]:
     "El proyecto no está Publicado o Confirmado.",
   [MOTIVOS_NO_MODIFICABLE.CONTRATO_CON_FIRMAS_REGISTRADAS]:
     "Alguna parte ya firmó o rechazó el contrato.",
+};
+
+/** Motivos por los que un borrador todavía no se puede emitir. */
+export const MOTIVOS_NO_EMITIBLE = {
+  SIN_PERMISO: "SIN_PERMISO",
+  CONTRATO_NO_BORRADOR: "CONTRATO_NO_BORRADOR",
+  PROYECTO_NO_APTO_PARA_CONTRATO: "PROYECTO_NO_APTO_PARA_CONTRATO",
+  CONTRATO_SIN_DESTINATARIOS: "CONTRATO_SIN_DESTINATARIOS",
+  CONTRATO_TEXTO_INVALIDO: "CONTRATO_TEXTO_INVALIDO",
+  TIPO_ACUERDO_INVALIDO: "TIPO_ACUERDO_INVALIDO",
+  CONTRATO_DUPLICADO_ACTIVO: "CONTRATO_DUPLICADO_ACTIVO",
+};
+
+export const ETIQUETAS_MOTIVO_NO_EMITIBLE = {
+  [MOTIVOS_NO_EMITIBLE.SIN_PERMISO]:
+    "Solo el Director activo del proyecto puede emitir este contrato.",
+  [MOTIVOS_NO_EMITIBLE.CONTRATO_NO_BORRADOR]:
+    "El contrato ya no está en borrador.",
+  [MOTIVOS_NO_EMITIBLE.PROYECTO_NO_APTO_PARA_CONTRATO]:
+    "El proyecto no está Publicado o Confirmado.",
+  [MOTIVOS_NO_EMITIBLE.CONTRATO_SIN_DESTINATARIOS]:
+    "Seleccioná al menos un destinatario.",
+  [MOTIVOS_NO_EMITIBLE.CONTRATO_TEXTO_INVALIDO]:
+    "El contrato necesita un texto antes de emitirse.",
+  [MOTIVOS_NO_EMITIBLE.TIPO_ACUERDO_INVALIDO]:
+    "El tipo de acuerdo no existe o no está activo.",
+  [MOTIVOS_NO_EMITIBLE.CONTRATO_DUPLICADO_ACTIVO]:
+    "Algún destinatario ya tiene un contrato activo de este tipo en el proyecto.",
 };
 
 /**
@@ -486,6 +521,15 @@ export const ETIQUETAS_MOTIVO_NO_MODIFICABLE = {
 export function etiquetaMotivoNoModificable(motivo) {
   if (!motivo) return "";
   return ETIQUETAS_MOTIVO_NO_MODIFICABLE[motivo] || String(motivo);
+}
+
+/**
+ * @param {string|null|undefined} motivo
+ * @returns {string}
+ */
+export function etiquetaMotivoNoEmitible(motivo) {
+  if (!motivo) return "";
+  return ETIQUETAS_MOTIVO_NO_EMITIBLE[motivo] || String(motivo);
 }
 
 /** Motivos de bloqueo de UC-54 y su texto para la UI. */
@@ -591,6 +635,8 @@ export function normalizarDetalleContrato(data) {
         ? contrato.puedeModificarse
         : contrato.puedeModificar === true,
     motivoNoModificable: textoONull(contrato.motivoNoModificable),
+    puedeEmitir: contrato.puedeEmitir === true,
+    motivoNoEmitible: textoONull(contrato.motivoNoEmitible),
     puedeEliminar: contrato.puedeEliminar === true,
     motivoNoEliminable: textoONull(contrato.motivoNoEliminable),
     puedeFirmar: contrato.puedeFirmar === true,
@@ -686,6 +732,23 @@ export function puedeModificarContrato(contrato) {
     return contrato.puedeModificarse;
   }
   return contrato.puedeModificar === true;
+}
+
+/**
+ * El backend es la fuente de verdad de `puedeEmitir`.
+ * @param {object|null|undefined} contrato
+ * @returns {boolean}
+ */
+export function puedeEmitirContrato(contrato) {
+  return contrato?.puedeEmitir === true;
+}
+
+/**
+ * @param {object|null|undefined} contrato
+ * @returns {boolean}
+ */
+export function esContratoBorrador(contrato) {
+  return contrato?.estado === ESTADOS_CONTRATO.BORRADOR;
 }
 
 /**

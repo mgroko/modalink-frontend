@@ -256,6 +256,7 @@
           <template v-else-if="!errorErrores">
             <div class="detalle-historica__tabla-wrapper">
               <VaDataTable
+                v-bind="propsTablaResponsive"
                 :items="errores"
                 :columns="columnasErrores"
                 striped
@@ -338,6 +339,7 @@ import adminColaboracionAutomaticaHistoricaService from "../../services/adminCol
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 import { formatearFecha } from "../../utils/fechas.js";
 import {
   INTERVALO_POLLING_MS,
@@ -355,6 +357,7 @@ import {
 
 export default {
   name: "ColaboracionAutomaticaHistoricaDetalleView",
+  mixins: [tablaResponsiveMixin],
   components: {
     BaseAlert,
     PaginacionResultados,

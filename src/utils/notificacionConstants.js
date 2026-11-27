@@ -33,8 +33,13 @@ export const TIPOS_NOTIFICACION = {
   PUBLICACION_REACTIVADA: "PUBLICACION_REACTIVADA",
   INTEGRANTE_ELIMINADO: "INTEGRANTE_ELIMINADO",
   INTEGRANTE_BAJA_VOLUNTARIA: "INTEGRANTE_BAJA_VOLUNTARIA",
+  REQUERIMIENTO_ASIGNADO: "REQUERIMIENTO_ASIGNADO",
+  REQUERIMIENTO_DESASIGNADO: "REQUERIMIENTO_DESASIGNADO",
+  REQUERIMIENTO_REASIGNADO: "REQUERIMIENTO_REASIGNADO",
   HABILIDAD_MODIFICADA: "HABILIDAD_MODIFICADA",
   HABILIDAD_ELIMINADA: "HABILIDAD_ELIMINADA",
+  CARACTERISTICA_TECNICA_CREADA: "CARACTERISTICA_TECNICA_CREADA",
+  CARACTERISTICA_TECNICA_MODIFICADA: "CARACTERISTICA_TECNICA_MODIFICADA",
   CALIFICACION_SOLICITADA: "CALIFICACION_SOLICITADA",
   REEMPLAZO_CANDIDATOS_DISPONIBLES: "REEMPLAZO_CANDIDATOS_DISPONIBLES",
   REEMPLAZO_SIN_CANDIDATOS: "REEMPLAZO_SIN_CANDIDATOS",
@@ -108,8 +113,18 @@ const ETIQUETAS_TIPO = {
   [TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA]: "Publicación reactivada",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "Integrante eliminado",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "Baja voluntaria de integrante",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_ASIGNADO]:
+    "Requerimiento general asignado",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_DESASIGNADO]:
+    "Requerimiento general desasignado",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_REASIGNADO]:
+    "Requerimiento general reasignado",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "Habilidad modificada",
   [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "Habilidad eliminada",
+  [TIPOS_NOTIFICACION.CARACTERISTICA_TECNICA_CREADA]:
+    "Nueva característica técnica",
+  [TIPOS_NOTIFICACION.CARACTERISTICA_TECNICA_MODIFICADA]:
+    "Característica técnica modificada",
   [TIPOS_NOTIFICACION.CALIFICACION_SOLICITADA]: "Calificación solicitada",
   [TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATOS_DISPONIBLES]:
     "Candidatos de reemplazo",
@@ -179,8 +194,13 @@ const ICONOS_TIPO = {
   [TIPOS_NOTIFICACION.PUBLICACION_REACTIVADA]: "visibility",
   [TIPOS_NOTIFICACION.INTEGRANTE_ELIMINADO]: "person_remove",
   [TIPOS_NOTIFICACION.INTEGRANTE_BAJA_VOLUNTARIA]: "person_remove",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_ASIGNADO]: "assignment_ind",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_DESASIGNADO]: "person_remove",
+  [TIPOS_NOTIFICACION.REQUERIMIENTO_REASIGNADO]: "swap_horiz",
   [TIPOS_NOTIFICACION.HABILIDAD_MODIFICADA]: "edit",
   [TIPOS_NOTIFICACION.HABILIDAD_ELIMINADA]: "delete",
+  [TIPOS_NOTIFICACION.CARACTERISTICA_TECNICA_CREADA]: "playlist_add",
+  [TIPOS_NOTIFICACION.CARACTERISTICA_TECNICA_MODIFICADA]: "edit_note",
   [TIPOS_NOTIFICACION.CALIFICACION_SOLICITADA]: "reviews",
   [TIPOS_NOTIFICACION.REEMPLAZO_CANDIDATOS_DISPONIBLES]: "person_search",
   [TIPOS_NOTIFICACION.REEMPLAZO_SIN_CANDIDATOS]: "person_off",
@@ -482,6 +502,23 @@ export function destinoNotificacion(notificacion) {
           };
     }
 
+    case TIPOS_NOTIFICACION.REQUERIMIENTO_ASIGNADO:
+    case TIPOS_NOTIFICACION.REQUERIMIENTO_DESASIGNADO:
+    case TIPOS_NOTIFICACION.REQUERIMIENTO_REASIGNADO: {
+      // El backend envía entidadTipo=PROYECTO y entidadId=idProyecto.
+      const id =
+        idValido(notificacion.idProyecto) ??
+        (notificacion.entidadTipo === "PROYECTO"
+          ? idValido(notificacion.entidadId)
+          : null);
+      return id == null
+        ? null
+        : {
+            etiqueta: "Ver proyecto",
+            ruta: { name: RUTAS_NOTIFICACION.PROYECTO, params: { id } },
+          };
+    }
+
     case TIPOS_NOTIFICACION.PROYECTO_CANCELADO: {
       // Compatibilidad con notificaciones históricas: para entidad PROYECTO,
       // `entidadId` es el id del proyecto. Las nuevas traen `idProyecto`.
@@ -673,6 +710,30 @@ export function destinoNotificacion(notificacion) {
               params: { id },
             },
           };
+    }
+
+    case TIPOS_NOTIFICACION.CARACTERISTICA_TECNICA_CREADA:
+    case TIPOS_NOTIFICACION.CARACTERISTICA_TECNICA_MODIFICADA: {
+      const idPerfil = idValido(notificacion.idPerfilContexto);
+      if (idPerfil == null) return null;
+
+      const idCaracteristica =
+        idValido(notificacion.idCaracteristica) ??
+        (notificacion.entidadTipo === "CARACTERISTICA_TECNICA"
+          ? idValido(notificacion.entidadId)
+          : null);
+
+      return {
+        etiqueta: "Completar perfil",
+        ruta: {
+          name: "editar-perfil",
+          params: { id: idPerfil },
+          query:
+            idCaracteristica != null
+              ? { resaltarCaracteristicas: String(idCaracteristica) }
+              : {},
+        },
+      };
     }
 
     // POSTULACION_RECHAZADA, INVITACION_RECHAZADA y el resto: sin link.

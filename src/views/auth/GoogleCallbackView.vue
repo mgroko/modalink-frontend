@@ -9,6 +9,7 @@
 
 <script>
 import { refrescarSesion } from "../../services/authState";
+import { destinoInicial } from "../../utils/navegacion";
 
 export default {
   name: "GoogleCallbackView",
@@ -47,15 +48,7 @@ export default {
       this.$router.replace({ name: "login", query: { googleError: codigo } });
     },
     entrarSegun(usuario) {
-      if (usuario?.rolGlobal === "Administrador") {
-        this.$router.replace({ name: "dashboard-admin" });
-        return;
-      }
-      if (usuario?.idPerfilActivo != null) {
-        this.$router.replace({ name: "home" });
-        return;
-      }
-      this.$router.replace({ name: "dashboard-usuario" });
+      this.$router.replace(destinoInicial(usuario));
     },
   },
 };

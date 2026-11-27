@@ -1874,5 +1874,15 @@ export default {
   .crear-actividad__duracion {
     grid-template-columns: 1fr;
   }
+
+  .crear-actividad__acciones,
+  .crear-actividad-modal__acciones {
+    flex-direction: column-reverse;
+  }
+
+  .crear-actividad__acciones > *,
+  .crear-actividad-modal__acciones > * {
+    width: 100%;
+  }
 }
 </style>

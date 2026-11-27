@@ -4,9 +4,12 @@ import AuthLayout from "../components/AuthLayout.vue";
 import AdminLayout from "../components/admin/AdminLayout.vue";
 import UserDashboardLayout from "../components/usuario/UserDashboardLayout.vue";
 import HomeLayout from "../components/home/HomeLayout.vue";
+import PublicLayout from "../components/PublicLayout.vue";
 
 import LoginView from "../views/auth/LoginView.vue";
 import RegistroView from "../views/auth/RegistroView.vue";
+import NormasConvivenciaView from "../views/publico/NormasConvivenciaView.vue";
+import ManualView from "../views/manual/ManualView.vue";
 import GoogleCallbackView from "../views/auth/GoogleCallbackView.vue";
 import GoogleCompletarView from "../views/auth/GoogleCompletarView.vue";
 import EmailLoginView from "../views/auth/EmailLoginView.vue";
@@ -38,6 +41,7 @@ import ColaboracionesAutomaticasView from "../views/colaboracion/ColaboracionesA
 import ColaboracionAutomaticaDetalleView from "../views/colaboracion/ColaboracionAutomaticaDetalleView.vue";
 import PublicacionDetalleView from "../views/perfil/PublicacionDetalleView.vue";
 import MisPostulacionesView from "../views/proyecto/MisPostulacionesView.vue";
+import CastingVirtualView from "../views/proyecto/CastingVirtualView.vue";
 import CalificacionesProyectoView from "../views/proyecto/CalificacionesProyectoView.vue";
 import ModificarDatosView from "../views/usuario/ModificarDatosView.vue";
 import CalendarioView from "../views/usuario/CalendarioView.vue";
@@ -70,6 +74,8 @@ import ReportePublicacionDetalleView from "../views/admin/ReportePublicacionDeta
 import AuditoriaAdminView from "../views/admin/AuditoriaAdminView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
+import { destinoSeguro } from "../utils/redirect";
+import { destinoInicial } from "../utils/navegacion";
 
 const routes = [
   {
@@ -80,19 +86,51 @@ const routes = [
     path: "/login",
     name: "login",
     component: LoginView,
-    meta: { layout: AuthLayout }
+    meta: { layout: AuthLayout, soloInvitado: true }
   },
   {
     path: "/registro",
     name: "registro",
     component: RegistroView,
-    meta: { layout: AuthLayout }
+    meta: { layout: AuthLayout, soloInvitado: true }
+  },
+  {
+    path: "/normas-de-convivencia",
+    name: "normas-convivencia",
+    component: NormasConvivenciaView,
+    meta: { layout: PublicLayout, titulo: "Normas de convivencia" }
   },
   {
     path: "/home",
     name: "home",
     component: HomeView,
     meta: { layout: HomeLayout, titulo: "Inicio", requiresActiveProfile: true, navActiva: "inicio" },
+  },
+  {
+    path: "/ayuda",
+    name: "manual",
+    component: ManualView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Ayuda",
+      permiteSinPerfil: true,
+      sinSidebarPerfil: true,
+      sinFondoBlanco: true,
+      navActiva: "ayuda",
+    },
+  },
+  {
+    path: "/ayuda/:id",
+    name: "manual-capitulo",
+    component: ManualView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Ayuda",
+      permiteSinPerfil: true,
+      sinSidebarPerfil: true,
+      sinFondoBlanco: true,
+      navActiva: "ayuda",
+    },
   },
   {
     path: "/inicio-perfil",
@@ -382,6 +420,17 @@ const routes = [
     }),
   },
   {
+    path: "/proyectos/:id/casting",
+    name: "casting-virtual",
+    component: CastingVirtualView,
+    meta: {
+      layout: HomeLayout,
+      titulo: "Casting virtual",
+      requiresActiveProfile: true,
+      navActiva: "proyectos",
+    },
+  },
+  {
     path: "/proyectos/:id/calificaciones",
     name: "calificaciones-proyecto",
     component: CalificacionesProyectoView,
@@ -483,6 +532,18 @@ const routes = [
     name: "dashboard-admin",
     component: DashboardAdminView,
     meta: { layout: AdminLayout, requiereAdmin: true, requierePermiso: "VER_USUARIOS" }
+  },
+  {
+    path: "/admin/ayuda",
+    name: "admin-manual",
+    component: ManualView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Ayuda" }
+  },
+  {
+    path: "/admin/ayuda/:id",
+    name: "admin-manual-capitulo",
+    component: ManualView,
+    meta: { layout: AdminLayout, requiereAdmin: true, titulo: "Ayuda" }
   },
   {
     path: "/admin/notificaciones",
@@ -722,6 +783,24 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
+  // Rutas de invitado (login/registro): si ya hay una sesión vigente no deben
+  // mostrarse. Se restaura la sesión antes de decidir porque en una carga
+  // directa (o al entrar a "/", que redirige a "/login") el estado local
+  // todavía no se hidrató.
+  if (to.meta.soloInvitado) {
+    await restaurarSesion();
+
+    if (state.usuario) {
+      const redirect = destinoSeguro(to.query?.redirect);
+      if (redirect && !router.resolve(redirect).meta?.soloInvitado) {
+        return redirect;
+      }
+      return destinoInicial(state.usuario);
+    }
+
+    return true;
+  }
+
   if (to.meta.requiereAdmin) {
     await restaurarSesion();
     if (!esAdmin()) return { name: "login" };

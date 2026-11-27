@@ -6,6 +6,12 @@ export const reglasPerfil = {
     String(v).trim() === "" ||
     Number.isFinite(Number(v)) ||
     "Debe ser un valor numérico",
+  noNegativo: (v) =>
+    v === null ||
+    v === undefined ||
+    String(v).trim() === "" ||
+    (Number.isFinite(Number(v)) && Number(v) >= 0) ||
+    "No puede ser un valor negativo",
   min2: (v) => !v || v.length >= 2 || "Debe tener al menos 2 caracteres",
   max50: (v) => !v || v.length <= 50 || "No puede superar los 50 caracteres",
   max200: (v) => !v || String(v).length <= 200 || "No puede superar los 200 caracteres",

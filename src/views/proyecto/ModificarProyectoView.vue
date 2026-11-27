@@ -1180,6 +1180,14 @@ export default {
       controladorGuardado = new AbortController();
 
       try {
+        // UC-36: el PUT ya no crea requerimientos. Primero se dan de alta los
+        // nuevos por POST; al recibir su id quedan incluidos en el PUT como
+        // existentes y un reintento no los duplica.
+        const nuevosCreados = await this.crearRequerimientosNuevos(
+          controladorGuardado.signal
+        );
+        if (!nuevosCreados) return false;
+
         const response = await proyectoService.modificar(
           this.idProyecto,
           this.buildRequest(),
@@ -1206,6 +1214,89 @@ export default {
       } finally {
         this.guardando = false;
       }
+    },
+
+    async crearRequerimientosNuevos(signal) {
+      const nuevos = this.requerimientosNuevos();
+      if (!nuevos.length) return true;
+
+      for (const requerimiento of nuevos) {
+        try {
+          const response = await proyectoService.crearRequerimiento(
+            this.idProyecto,
+            this.payloadRequerimiento(requerimiento),
+            signal
+          );
+          const creado = response?.data;
+          if (!creado?.idRequerimientoGral) {
+            throw new Error(
+              "El servidor no devolvió el id del requerimiento creado."
+            );
+          }
+
+          this.actualizarRequerimientoDesdeRespuesta(requerimiento, creado);
+          // Snapshot del estado ya persistido: si luego falla otro alta, el
+          // botón "Descartar cambios" de esta fila vuelve a lo guardado.
+          this.requerimientosOriginales.push(
+            JSON.parse(JSON.stringify(requerimiento))
+          );
+        } catch (error) {
+          if (
+            error?.code === "ERR_CANCELED" ||
+            error?.name === "CanceledError"
+          ) {
+            return false;
+          }
+          this.manejarErrorCreacionRequerimiento(error, requerimiento);
+          return false;
+        }
+      }
+
+      return true;
+    },
+
+    manejarErrorCreacionRequerimiento(error, requerimiento) {
+      const indice = this.form.requerimientosGral.indexOf(requerimiento);
+      const clasificacion = clasificarErrorProyecto(error);
+      const mensaje =
+        error?.response?.data?.message ||
+        error?.message ||
+        "No se pudo crear el requerimiento de personal.";
+
+      if (clasificacion?.tipo === "campos") {
+        const errores = mapearErroresBackend(clasificacion.errores);
+        const mapeados = {};
+        for (const [campo, texto] of Object.entries(errores)) {
+          mapeados[`requerimientosGral.${indice}.${campo}`] = texto;
+        }
+        if (Object.keys(mapeados).length > 0) {
+          this.modalConfirmar = false;
+          this.erroresBackend = { ...this.erroresBackend, ...mapeados };
+          this.mensajeError =
+            "Revisá los datos del nuevo requerimiento antes de continuar.";
+          this.irAlPasoDeErrores(Object.keys(mapeados));
+          return;
+        }
+      }
+
+      if (
+        clasificacion?.tipo === "seccion" ||
+        clasificacion?.tipo === "habilidad" ||
+        clasificacion?.tipo === "profesion"
+      ) {
+        this.modalConfirmar = false;
+        this.seccionErrores = {
+          ...this.seccionErrores,
+          requerimientosGral: [mensaje],
+        };
+        this.mensajeError = "Revisá los requerimientos de personal.";
+        this.irAlPasoDeErrores(["requerimientosGral"]);
+        return;
+      }
+
+      this.modalConfirmar = false;
+      this.mensajeError = mensaje;
+      this.irAPaso(3);
     },
 
     async finalizarGuardado(proyecto) {
@@ -1353,29 +1444,18 @@ export default {
         // Ficha modificar-proyecto-confirmado §6: los protegidos se omiten
         // (el backend los conserva) y todos los no protegidos que queden en el
         // formulario se envían completos, porque omitir uno no protegido lo
-        // elimina. Los existentes conservan su id: ya no se recrean.
+        // elimina. El PUT sólo acepta requerimientos EXISTENTES y siempre con
+        // su id; las altas se hacen con POST /requerimientos-generales.
         request.requerimientosGral = this.form.requerimientosGral
-          .filter((requerimiento) => !this.esProtegido(requerimiento))
-          .map((requerimiento) => {
-            const item = {
-              cantidad: Number(requerimiento.cantidad),
-              idProfesion: requerimiento.idProfesion,
-              descripcion: String(requerimiento.descripcion || "").trim() || undefined,
-              caracteristicas: (requerimiento.caracteristicas || []).map((carac) => ({
-                idCaracteristica: carac.idCaracteristica,
-                valorMin: this.aNumeroONull(carac.valorMin),
-                valorMax: this.aNumeroONull(carac.valorMax),
-                valores: Array.isArray(carac.valores) ? carac.valores : [],
-              })),
-              habilidades: Array.isArray(requerimiento.habilidades)
-                ? requerimiento.habilidades
-                : [],
-            };
-            if (requerimiento.idRequerimientoGral != null) {
-              item.idRequerimientoGral = requerimiento.idRequerimientoGral;
-            }
-            return item;
-          });
+          .filter(
+            (requerimiento) =>
+              !this.esProtegido(requerimiento) &&
+              requerimiento.idRequerimientoGral != null
+          )
+          .map((requerimiento) => ({
+            idRequerimientoGral: requerimiento.idRequerimientoGral,
+            ...this.payloadRequerimiento(requerimiento),
+          }));
       }
 
       if (this.dirty.moodboard) {
@@ -1391,6 +1471,47 @@ export default {
       }
 
       return request;
+    },
+
+    payloadRequerimiento(requerimiento) {
+      return {
+        cantidad: Number(requerimiento.cantidad),
+        idProfesion: requerimiento.idProfesion,
+        descripcion:
+          String(requerimiento.descripcion || "").trim() || undefined,
+        caracteristicas: (requerimiento.caracteristicas || []).map(
+          (carac) => ({
+            idCaracteristica: carac.idCaracteristica,
+            valorMin: this.aNumeroONull(carac.valorMin),
+            valorMax: this.aNumeroONull(carac.valorMax),
+            valores: Array.isArray(carac.valores) ? carac.valores : [],
+          })
+        ),
+        habilidades: Array.isArray(requerimiento.habilidades)
+          ? requerimiento.habilidades
+          : [],
+      };
+    },
+
+    requerimientosNuevos() {
+      return this.form.requerimientosGral.filter(
+        (requerimiento) =>
+          !this.esProtegido(requerimiento) &&
+          requerimiento.idRequerimientoGral == null
+      );
+    },
+
+    actualizarRequerimientoDesdeRespuesta(requerimiento, creado) {
+      if (!requerimiento || !creado) return;
+      requerimiento.idRequerimientoGral =
+        creado.idRequerimientoGral ?? requerimiento.idRequerimientoGral;
+      requerimiento.satisfecho = creado.satisfecho === true;
+      requerimiento.protegido = creado.protegido === true;
+      requerimiento.cubiertos = Number(creado.cubiertos) || 0;
+      requerimiento.faltantes =
+        creado.faltantes != null ? Number(creado.faltantes) : null;
+      requerimiento.nombreProfesion =
+        creado.nombreProfesion || requerimiento.nombreProfesion || "";
     },
 
     aNumeroONull(valor) {
@@ -1978,5 +2099,98 @@ export default {
   justify-content: flex-end;
   gap: 1rem;
   width: 100%;
+}
+
+@media (max-width: 640px) {
+  .modificar-proyecto {
+    gap: 0.75rem;
+  }
+
+  .modificar-proyecto__titulo {
+    font-size: 1.2rem;
+  }
+
+  .modificar-proyecto__subtitulo {
+    font-size: 0.82rem;
+  }
+
+  .modificar-proyecto__stepper {
+    gap: 0.25rem;
+    padding-bottom: 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modificar-proyecto__stepper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .modificar-proyecto__paso {
+    flex: 0 0 auto;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+  }
+
+  .modificar-proyecto__paso-linea {
+    min-width: 12px;
+    margin: 0 0.25rem;
+  }
+
+  .modificar-proyecto__paso-nombre {
+    display: none;
+  }
+
+  .modificar-proyecto__paso--activo .modificar-proyecto__paso-nombre {
+    display: inline;
+  }
+
+  .modificar-proyecto__seccion {
+    padding: 1rem;
+  }
+
+  .modificar-proyecto__seccion-titulo {
+    font-size: 1.15rem;
+  }
+
+  .modificar-proyecto__fila {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 1rem;
+  }
+
+  .modificar-proyecto__nota {
+    padding-left: 0;
+  }
+
+  .modificar-proyecto__acciones-pie {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .modificar-proyecto__acciones-pie > * {
+    width: 100%;
+  }
+
+  .modificar-proyecto__acciones-derecha {
+    flex-direction: column-reverse;
+  }
+
+  .modificar-proyecto__acciones-derecha > * {
+    width: 100%;
+  }
+
+  .modificar-proyecto-modal__acciones {
+    flex-direction: column-reverse;
+  }
+
+  .modificar-proyecto-modal__acciones > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 400px) {
+  .modificar-proyecto__paso--activo .modificar-proyecto__paso-nombre {
+    display: none;
+  }
 }
 </style>

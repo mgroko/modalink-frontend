@@ -888,7 +888,7 @@ export default {
 /* Grid de perfiles */
 .dashboard-usuario__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 1.25rem;
 }
 
@@ -1725,6 +1725,52 @@ export default {
   .detalle-perfil__footer-der {
     width: 100%;
     justify-content: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-usuario__tabs {
+    gap: 1rem;
+  }
+
+  .dashboard-usuario__tab {
+    padding: 0.5rem 0;
+    font-size: 0.85rem;
+  }
+
+  .dashboard-usuario__toolbar {
+    gap: 0.65rem;
+  }
+
+  .dashboard-usuario__toolbar-right {
+    width: 100%;
+  }
+
+  .dashboard-usuario__crear {
+    flex: 1 1 auto;
+  }
+
+  .detalle-perfil__datos--medidas {
+    grid-template-columns: 1fr;
+  }
+
+  .detalle-perfil__biografia-texto,
+  .detalle-perfil__aviso,
+  .detalle-perfil__seccion {
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
+
+  .detalle-perfil > .detalle-perfil__footer {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .detalle-perfil__footer-der {
+    justify-content: flex-start;
+  }
+
+  .detalle-perfil__footer-der > * {
+    flex: 1 1 auto;
   }
 }
 

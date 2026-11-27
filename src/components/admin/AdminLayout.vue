@@ -113,6 +113,10 @@
       </nav>
 
       <div class="admin-layout__footer">
+        <RouterLink to="/admin/ayuda" class="admin-layout__link">
+          <span class="material-symbols-outlined">menu_book</span>
+          <span>Ayuda</span>
+        </RouterLink>
         <RouterLink to="/admin/configuracion" class="admin-layout__link">
           <span class="material-symbols-outlined">settings</span>
           <span>Configuración del sistema</span>
@@ -225,13 +229,17 @@ export default {
     menuAbierto(abierto) {
       if (abierto) {
         document.addEventListener("keydown", this.manejarEscape);
+        document.body.style.overflow = "hidden";
       } else {
         document.removeEventListener("keydown", this.manejarEscape);
+        document.body.style.overflow = "";
       }
     },
   },
   beforeUnmount() {
     document.removeEventListener("keydown", this.manejarEscape);
+    document.body.style.overflow = "";
+    window.removeEventListener("resize", this.cerrarMenuEnDesktop);
     window.removeEventListener(
       "reportes-publicacion-actualizados",
       this.cargarReportesPublicacionPendientes
@@ -279,6 +287,7 @@ export default {
       "reportes-publicacion-actualizados",
       this.cargarReportesPublicacionPendientes
     );
+    window.addEventListener("resize", this.cerrarMenuEnDesktop);
     await cargarResumenUsuario();
     this.cargarReportesPublicacionPendientes();
   },
@@ -302,6 +311,9 @@ export default {
     },
     cerrarMenu() {
       this.menuAbierto = false;
+    },
+    cerrarMenuEnDesktop() {
+      if (window.innerWidth > 768) this.cerrarMenu();
     },
     manejarEscape(event) {
       if (event.key === "Escape") this.cerrarMenu();
@@ -359,7 +371,9 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  padding: 1.5rem 0.9rem 1rem;
+  padding: calc(1.5rem + env(safe-area-inset-top))
+    calc(0.9rem + env(safe-area-inset-right)) 1rem
+    calc(0.9rem + env(safe-area-inset-left));
   overflow: hidden;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border-soft);
@@ -725,10 +739,10 @@ export default {
 .admin-layout__content {
   flex: 1;
   min-width: 0;
-  padding: 1.5rem 2.5rem 2.5rem;
+  padding: 1.5rem 2.5rem calc(2.5rem + env(safe-area-inset-bottom));
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .admin-layout__sidebar {
     width: 220px;
     flex-basis: 220px;
@@ -751,7 +765,7 @@ export default {
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 768px) {
   .admin-layout {
     display: block;
   }
@@ -789,6 +803,9 @@ export default {
     max-width: 84vw;
     min-height: 100dvh;
     padding: 1rem;
+    padding-top: calc(1rem + env(safe-area-inset-top));
+    padding-left: calc(1rem + env(safe-area-inset-left));
+    padding-right: calc(1rem + env(safe-area-inset-right));
     overflow: hidden;
     background: var(--color-surface);
     border-right: 1px solid var(--color-border-soft);
@@ -814,6 +831,7 @@ export default {
 
   .admin-layout__header .admin-layout__actions {
     width: 100%;
+    min-height: auto;
     justify-content: space-between;
   }
 

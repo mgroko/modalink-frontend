@@ -21,49 +21,76 @@
     </div>
 
     <div class="req-card__cabecera">
-      <span class="req-card__cantidad">{{ requerimiento.cantidad }}</span>
-      <span class="req-card__profesion">{{ requerimiento.nombreProfesion }}</span>
-      <span
-        v-if="protegido"
-        class="req-card__badge req-card__badge--protegido"
-        :title="textoProteccion"
-      >
-        Protegido
+      <span v-if="cantidadMostrar" class="req-card__cantidad" aria-hidden="true">
+        {{ cantidadMostrar }}
       </span>
-      <span v-if="cupoCompleto" class="req-card__badge">
-        {{ textos.CUPO_COMPLETO }}
-      </span>
-      <span v-else class="req-card__cupo">{{ textoCupo }}</span>
-    </div>
-
-    <div
-      class="req-card__barra"
-      role="progressbar"
-      :aria-valuenow="porcentaje"
-      aria-valuemin="0"
-      aria-valuemax="100"
-      :aria-label="textoCupo"
-    >
-      <span
-        class="req-card__barra-relleno"
-        :style="{ width: `${porcentaje}%` }"
-      />
-    </div>
-
-    <template v-if="chipsCaracteristicas.length">
-      <p class="req-card__label">Características técnicas</p>
-      <div class="req-card__chips">
+      <div class="req-card__identidad">
+        <h3 class="req-card__profesion">{{ nombreProfesion }}</h3>
+        <p v-if="subtitulo" class="req-card__subtitulo">{{ subtitulo }}</p>
+      </div>
+      <div v-if="protegido || cupoCompleto" class="req-card__estados">
         <span
-          v-for="(chip, i) in chipsCaracteristicas"
-          :key="`caracteristica-${i}`"
-          class="req-card__chip"
+          v-if="protegido"
+          class="req-card__badge req-card__badge--protegido"
+          :title="textoProteccion"
         >
-          {{ chip }}
+          Protegido
+        </span>
+        <span v-if="cupoCompleto" class="req-card__badge">
+          {{ textos.CUPO_COMPLETO }}
         </span>
       </div>
-    </template>
+    </div>
 
-    <template v-if="chipsHabilidades.length">
+    <div class="req-card__cobertura">
+      <div class="req-card__cobertura-fila">
+        <span class="req-card__cobertura-label">Cobertura</span>
+        <span class="req-card__cobertura-valor">{{ textoCupo }}</span>
+      </div>
+      <div
+        class="req-card__barra"
+        role="progressbar"
+        :aria-valuenow="porcentaje"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-label="textoCupo"
+      >
+        <span
+          class="req-card__barra-relleno"
+          :style="{ width: `${porcentaje}%` }"
+        />
+      </div>
+    </div>
+
+    <p v-if="requerimiento.descripcion" class="req-card__descripcion">
+      {{ requerimiento.descripcion }}
+    </p>
+
+    <section v-if="gruposCaracteristicas.length" class="req-card__seccion">
+      <p class="req-card__label">Características técnicas</p>
+      <div class="req-card__grupos">
+        <div
+          v-for="(grupo, i) in gruposCaracteristicas"
+          :key="`caracteristica-${i}`"
+          class="req-card__grupo"
+        >
+          <p v-if="grupo.etiqueta" class="req-card__grupo-label">
+            {{ grupo.etiqueta }}
+          </p>
+          <div class="req-card__chips">
+            <span
+              v-for="(valor, j) in valoresDeGrupo(grupo)"
+              :key="`valor-${i}-${j}`"
+              class="req-card__chip"
+            >
+              {{ valor }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="chipsHabilidades.length" class="req-card__seccion">
       <p class="req-card__label">Habilidades</p>
       <div class="req-card__chips">
         <span
@@ -74,11 +101,7 @@
           {{ habilidad }}
         </span>
       </div>
-    </template>
-
-    <p v-if="requerimiento.descripcion" class="req-card__descripcion">
-      {{ requerimiento.descripcion }}
-    </p>
+    </section>
 
     <div v-if="mostrarAccion || motivo" class="req-card__pie">
       <span v-if="motivo && !mostrarAccion" class="req-card__motivo">
@@ -114,10 +137,13 @@ import {
 } from "../../utils/requerimientoProyectoConstants.js";
 
 /*
- * Requerimiento en modo lectura (general o de actividad). Reemplaza a
- * RequerimientoDetalle: conserva la traducción de características/habilidades
- * y agrega el cupo "X de Y cubiertos", la barra de progreso, el badge
- * "Cupo completo", el contexto de actividad y el link "Ver actividad".
+ * Requerimiento en modo lectura (general o de actividad). Conserva la
+ * traducción de características/habilidades y muestra el cupo "X de Y
+ * cubiertos" con barra de progreso, el badge "Cupo completo", el contexto de
+ * actividad y el link "Ver actividad".
+ *
+ * Las características se agrupan por característica (etiqueta + valores) para
+ * que el listado se lea como una ficha técnica y no como una nube de chips.
  */
 export default {
   name: "RequerimientoCard",
@@ -151,6 +177,11 @@ export default {
       type: String,
       default: null,
     },
+    /** Línea secundaria debajo de la profesión (p. ej. "Requisito del proyecto"). */
+    subtitulo: {
+      type: String,
+      default: "",
+    },
     /** Muestra el link "Ver actividad". */
     mostrarVerActividad: {
       type: Boolean,
@@ -183,6 +214,15 @@ export default {
     textoProteccion() {
       return mensajeProteccionRequerimiento(this.requerimiento);
     },
+    cantidadMostrar() {
+      const valor =
+        this.requerimiento?.cantidad ?? this.requerimiento?.cantidadRequerida;
+      const cantidad = Number(valor);
+      return Number.isFinite(cantidad) && cantidad > 0 ? cantidad : null;
+    },
+    nombreProfesion() {
+      return this.requerimiento?.nombreProfesion || "Requerimiento";
+    },
     cupoCompleto() {
       return this.sinCupo || this.requerimiento?.satisfecho === true;
     },
@@ -192,31 +232,42 @@ export default {
     porcentaje() {
       return porcentajeCupo(this.requerimiento);
     },
-    chipsCaracteristicas() {
-      const chips = [];
+    /**
+     * Características agrupadas: `{ etiqueta, valores }`. Si la característica
+     * no tiene valores enumerados/rango, la etiqueta se muestra como chip
+     * suelto dentro del grupo.
+     */
+    gruposCaracteristicas() {
+      const grupos = [];
       for (const carac of this.requerimiento?.caracteristicas || []) {
         const etiqueta = this.etiquetaCaracteristica(carac);
         if (!etiqueta) continue;
 
         if (esTipoNumerico(carac.tipoDato)) {
           const rango = this.textoRango(carac);
-          chips.push(rango ? `${etiqueta}: ${rango}` : etiqueta);
+          grupos.push({
+            etiqueta: rango ? etiqueta : "",
+            valores: rango ? [rango] : [etiqueta],
+          });
           continue;
         }
 
         if (esTipoEnumerado(carac.tipoDato)) {
           const valores = Array.isArray(carac.valores) ? carac.valores : [];
-          if (!valores.length) continue;
-          for (const idValor of valores) {
-            const codigo = this.codigoDeValor(carac, idValor);
-            chips.push(codigo ? `${etiqueta}: ${this.capitalizar(codigo)}` : etiqueta);
-          }
+          const chips = valores
+            .map((idValor) => this.codigoDeValor(carac, idValor))
+            .filter(Boolean)
+            .map((codigo) => this.capitalizar(codigo));
+          grupos.push({
+            etiqueta: chips.length ? etiqueta : "",
+            valores: chips.length ? chips : [etiqueta],
+          });
           continue;
         }
 
-        chips.push(etiqueta);
+        grupos.push({ etiqueta: "", valores: [etiqueta] });
       }
-      return chips;
+      return grupos;
     },
     chipsHabilidades() {
       const ids = this.requerimiento?.habilidades || [];
@@ -227,6 +278,9 @@ export default {
     },
   },
   methods: {
+    valoresDeGrupo(grupo) {
+      return grupo?.valores?.length ? grupo.valores : [];
+    },
     etiquetaCaracteristica(carac) {
       if (!carac) return "";
       const etiqueta = ETIQUETAS_CARACTERISTICAS[normCodigo(carac.codigo)];
@@ -274,11 +328,11 @@ export default {
 .req-card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 1rem 1.15rem;
+  gap: 0.9rem;
+  padding: 1.35rem 1.5rem;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 14px;
 }
 
 .req-card__contexto {
@@ -287,20 +341,20 @@ export default {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.65rem;
   border-bottom: 1px solid var(--color-border-soft);
 }
 
 .req-card__actividad-grupo {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
 
 .req-card__actividad {
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
@@ -313,7 +367,7 @@ export default {
   background: transparent;
   color: var(--color-primary);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -328,43 +382,61 @@ export default {
 
 .req-card__cabecera {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.85rem;
 }
 
 .req-card__cantidad {
-  font-size: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 10px;
+  background: var(--color-chip);
+  color: var(--color-text);
+  font-size: 1.45rem;
   font-weight: 700;
-  color: var(--color-primary);
+  line-height: 1;
+}
+
+.req-card__identidad {
+  min-width: 0;
+  padding-top: 0.15rem;
 }
 
 .req-card__profesion {
-  font-size: 0.95rem;
-  font-weight: 600;
+  margin: 0;
   color: var(--color-text);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
-.req-card__cupo {
-  margin-left: auto;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: var(--color-surface-muted);
+.req-card__subtitulo {
+  margin: 0.15rem 0 0;
   color: var(--color-text-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.req-card__estados {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .req-card__badge {
-  margin-left: auto;
-  padding: 0.2rem 0.6rem;
+  padding: 0.2rem 0.65rem;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -375,14 +447,33 @@ export default {
   border-color: var(--color-warning-border);
 }
 
-.req-card__badge--protegido + .req-card__badge,
-.req-card__badge--protegido + .req-card__cupo {
-  margin-left: 0.35rem;
+.req-card__cobertura {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.req-card__cobertura-fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.req-card__cobertura-label {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.req-card__cobertura-valor {
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .req-card__barra {
   width: 100%;
-  height: 6px;
+  height: 8px;
   border-radius: 999px;
   background: var(--color-surface-muted);
   overflow: hidden;
@@ -396,10 +487,47 @@ export default {
   transition: width 0.2s ease;
 }
 
-.req-card__label {
-  margin: 0.25rem 0 0;
-  font-size: 0.78rem;
+.req-card__descripcion {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
   color: var(--color-text-muted);
+}
+
+.req-card__seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.req-card__label {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.req-card__grupos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem 1.25rem;
+  align-items: start;
+}
+
+.req-card__grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.req-card__grupo-label {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .req-card__chips {
@@ -410,19 +538,12 @@ export default {
 
 .req-card__chip {
   display: inline-block;
-  padding: 0.25rem 0.65rem;
+  padding: 0.25rem 0.7rem;
   border-radius: 999px;
-  background: var(--color-info-soft);
-  color: var(--color-primary);
+  background: var(--color-chip);
+  color: var(--color-text);
   font-size: 0.78rem;
   font-weight: 500;
-}
-
-.req-card__descripcion {
-  margin: 0.15rem 0 0;
-  font-size: 0.85rem;
-  line-height: 1.45;
-  color: var(--color-text-muted);
 }
 
 .req-card__pie {
@@ -431,7 +552,7 @@ export default {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  margin-top: 0.25rem;
+  margin-top: 0.1rem;
 }
 
 .req-card__motivo {
@@ -444,5 +565,26 @@ export default {
   display: flex;
   justify-content: flex-end;
   margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .req-card {
+    padding: 1.1rem 1rem;
+  }
+
+  .req-card__cantidad {
+    width: 2.6rem;
+    height: 2.6rem;
+    font-size: 1.25rem;
+  }
+
+  .req-card__estados {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .req-card__accion {
+    width: 100%;
+  }
 }
 </style>

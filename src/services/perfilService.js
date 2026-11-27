@@ -43,6 +43,16 @@ import http from "./http";
  */
 
 /**
+ * @typedef {Object} ProfesionResponse
+ * @property {number} idProfesion
+ * @property {string} codigo
+ * @property {string} nombre forma canónica (masculino/genérico)
+ * @property {string|null} nombreFemenino variante para género MUJER; puede ser
+ *           null o igual a nombre si la palabra es invariable
+ * @property {string|null} descripcion
+ */
+
+/**
  * @typedef {"Activo"|"PendienteBaja"|"Deshabilitado"|"Baja"} EstadoPerfil
  *   Solo "Baja" es inaccesible desde esta vista (404).
  */
@@ -59,6 +69,7 @@ import http from "./http";
  * @typedef {Object} TerminosCondicionesResponse
  * @property {number} idPerfil
  * @property {number|null} idTyc
+ * @property {number|null} numeroVersion ordinal visible de la versión
  * @property {string} descripcion
  * @property {string|null} fechaInicio ISO-8601 local
  * @property {string|null} fechaFin
@@ -71,6 +82,26 @@ import http from "./http";
  */
 
 /**
+ * @typedef {Object} TerminosCondicionesVersionResumenResponse
+ * @property {number} idTyc
+ * @property {number} numeroVersion
+ * @property {string} fechaInicio ISO-8601 local
+ * @property {string|null} fechaFin ISO-8601 local; null si es la vigente
+ * @property {boolean} vigente
+ */
+
+/**
+ * @typedef {Object} TerminosCondicionesVersionResponse
+ * @property {number} idPerfil
+ * @property {number} idTyc
+ * @property {number} numeroVersion
+ * @property {string} descripcion
+ * @property {string} fechaInicio ISO-8601 local
+ * @property {string|null} fechaFin ISO-8601 local
+ * @property {boolean} vigente
+ */
+
+/**
  * @typedef {Object} PerfilDetalleResponse
  * @property {number} idPerfil
  * @property {string} nombreArtistico
@@ -79,7 +110,7 @@ import http from "./http";
  * @property {string|null} fechaSolicitudBaja ISO 8601 si estado === "PendienteBaja";
  *           null en caso contrario
  * @property {number} idProfesion
- * @property {string} profesion
+ * @property {string} profesion nombre visible según el género del dueño del perfil
  * @property {number|null} idImagen
  * @property {string|null} fotoUrl ruta relativa p. ej. "/uploads/perfiles/foto.jpg"
  *           (resolver con resolverFotoUrl de utils/fotos.js)
@@ -174,6 +205,36 @@ const perfilService = {
     );
   },
 
+  /**
+   * GET /perfiles/{idPerfil}/terminos-condiciones/historial — UC-23.
+   * Devuelve las versiones de T&C del perfil, de la más reciente a la más
+   * antigua, con fechas y marca de vigente. No incluye la plantilla base.
+   * @param {number|string} idPerfil
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: TerminosCondicionesVersionResumenResponse[]}>}
+   */
+  obtenerHistorialTerminos(idPerfil, signal) {
+    return http.get(
+      `/perfiles/${idPerfil}/terminos-condiciones/historial`,
+      { signal }
+    );
+  },
+
+  /**
+   * GET /perfiles/{idPerfil}/terminos-condiciones/historial/{idTyc} — UC-23.
+   * Devuelve el texto completo de una versión histórica.
+   * @param {number|string} idPerfil
+   * @param {number|string} idTyc
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: TerminosCondicionesVersionResponse}>}
+   */
+  obtenerVersionTerminos(idPerfil, idTyc, signal) {
+    return http.get(
+      `/perfiles/${idPerfil}/terminos-condiciones/historial/${idTyc}`,
+      { signal }
+    );
+  },
+
   editar(idPerfil, request) {
     return http.put(`/perfiles/${idPerfil}`, request);
   },
@@ -255,6 +316,10 @@ const perfilService = {
     return http.delete(`/perfiles/${idPerfil}/habilidades/${idHabilidad}`);
   },
 
+  /**
+   * GET /profesiones — catálogo de profesiones.
+   * @returns {Promise<{data: ProfesionResponse[]}>}
+   */
   listarProfesiones({ forzarRecarga = false } = {}) {
     if (cacheProfesiones && !forzarRecarga) {
       return Promise.resolve(cacheProfesiones);

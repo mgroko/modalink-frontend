@@ -73,6 +73,12 @@
         comunidad.
       </VaAlert>
 
+      <AvisoUbicacionPerfil
+        v-if="mostrarAvisoUbicacion"
+        class="inicio-perfil__aviso-ubicacion"
+        @cerrar="cerrarAvisoUbicacion"
+      />
+
       <div class="inicio-perfil__hero-cabecera">
         <PerfilHero
           :perfil="perfil"
@@ -122,6 +128,7 @@
           <!-- Sección: Términos y condiciones -->
           <TerminosCondicionesPanel
             v-else-if="seccion === 'terminos'"
+            :id-perfil="perfil?.idPerfil"
             :terminos="terminos"
             :cargando="cargandoTerminos"
             :error="errorTerminos"
@@ -550,6 +557,7 @@ import {
   state as authState,
 } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import AvisoUbicacionPerfil from "../../components/perfil/AvisoUbicacionPerfil.vue";
 import CalendarioProfesional from "../../components/calendario/CalendarioProfesional.vue";
 import CaracteristicasTecnicasCard from "../../components/perfil/CaracteristicasTecnicasCard.vue";
 import HistorialProyectosLista from "../../components/perfil/HistorialProyectosLista.vue";
@@ -569,6 +577,7 @@ import ModalEliminarConexion from "../../components/conexion/ModalEliminarConexi
 import SkeletonPerfil from "../../components/perfil/SkeletonPerfil.vue";
 import TerminosCondicionesPanel from "../../components/perfil/TerminosCondicionesPanel.vue";
 import { diasRestantes, fechaExpiracionBaja, formatearFecha } from "../../utils/fechas.js";
+import { formatUbicacion } from "../../utils/ubicacion.js";
 import {
   clasificarErrorPublicacion,
   mensajeErrorApi,
@@ -624,6 +633,7 @@ const DEBOUNCE_FILTROS_PUBLICACIONES = 400;
 export default {
   name: "InicioPerfilView",
   components: {
+    AvisoUbicacionPerfil,
     BaseAlert,
     CalendarioProfesional,
     CaracteristicasTecnicasCard,
@@ -718,6 +728,7 @@ export default {
       errorResenas: "",
       controladorResenas: null,
       cargando: true,
+      avisoUbicacionOculto: false,
       noEncontrado: false,
       mensajeNoEncontrado: "",
       errorCarga: false,
@@ -791,6 +802,15 @@ export default {
     esPropio() {
       if (this.perfil?.esPropietario != null) return this.perfil.esPropietario === true;
       return this.perfil?.idPerfil != null && this.perfil.idPerfil === idPerfilActivo();
+    },
+    mostrarAvisoUbicacion() {
+      return (
+        this.esPropio &&
+        this.perfil?.estado === "Activo" &&
+        this.seccion === "perfil" &&
+        !formatUbicacion(this.perfil) &&
+        !this.avisoUbicacionOculto
+      );
     },
     puedeGestionarPublicacionesOcultas() {
       return (
@@ -909,6 +929,48 @@ export default {
     },
   },
   methods: {
+    claveAvisoUbicacion(idPerfil) {
+      return `modalink:aviso-ubicacion-oculto:${idPerfil}`;
+    },
+    sincronizarAvisoUbicacion() {
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) {
+        this.avisoUbicacionOculto = false;
+        return;
+      }
+
+      const clave = this.claveAvisoUbicacion(idPerfil);
+
+      // Si ya tiene ubicación, el aviso deja de corresponder y se limpia el
+      // cierre recordado: si más adelante la quita, el aviso vuelve a aparecer.
+      if (formatUbicacion(this.perfil)) {
+        this.avisoUbicacionOculto = false;
+        try {
+          localStorage.removeItem(clave);
+        } catch {
+          // Almacenamiento no disponible (modo privado o bloqueado).
+        }
+        return;
+      }
+
+      try {
+        this.avisoUbicacionOculto = localStorage.getItem(clave) === "1";
+      } catch {
+        this.avisoUbicacionOculto = false;
+      }
+    },
+    cerrarAvisoUbicacion() {
+      this.avisoUbicacionOculto = true;
+
+      const idPerfil = this.perfil?.idPerfil;
+      if (idPerfil == null) return;
+
+      try {
+        localStorage.setItem(this.claveAvisoUbicacion(idPerfil), "1");
+      } catch {
+        // Si no hay almacenamiento, se oculta solo en esta vista.
+      }
+    },
     async cargarDatos() {
       this.cargando = true;
       this.mensajeError = "";
@@ -986,6 +1048,7 @@ export default {
         }
         this.actualizarContadorBaja();
         this.aplicarTerminosPerfil();
+        this.sincronizarAvisoUbicacion();
 
         // La tarjeta lateral de reseñas solo se muestra en perfiles ajenos.
         // Es best-effort: un fallo no debe romper la carga del perfil.
@@ -2693,6 +2756,10 @@ export default {
   margin-bottom: 1rem;
 }
 
+.inicio-perfil__aviso-ubicacion {
+  margin-bottom: 1rem;
+}
+
 .inicio-perfil__alerta-baja-contenido {
   display: flex;
   align-items: center;
@@ -2709,11 +2776,25 @@ export default {
 
 @media (max-width: 900px) {
   .inicio-perfil__layout {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .inicio-perfil__sidebar {
-    order: -1;
+    display: contents;
+  }
+
+  .inicio-perfil__sidebar > * {
+    order: 3;
+  }
+
+  .inicio-perfil__sidebar :deep(.perfil-nav) {
+    order: 1;
+  }
+
+  .inicio-perfil__contenido {
+    order: 2;
   }
 }
 

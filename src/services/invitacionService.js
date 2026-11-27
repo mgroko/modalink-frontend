@@ -21,7 +21,7 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} InvitacionBusquedaResponse
  * @property {number} idInvitacion
- * @property {"GENERAL"|"ACTIVIDAD"} tipo
+ * @property {"GENERAL"|"REQUERIMIENTO_GENERAL"|"ACTIVIDAD"} tipo
  * @property {"RECIBIDA"|"ENVIADA"} direccion
  * @property {"PENDIENTE"|"ACEPTADA"|"RECHAZADA"} estado
  * @property {string} fechaEnvio ISO-8601 local
@@ -62,7 +62,7 @@ import { serializarParams } from "../utils/queryParams.js";
  * @property {string} [nombrePerfil]
  * @property {"RECIBIDA"|"ENVIADA"} [direccion]
  * @property {"PENDIENTE"|"ACEPTADA"|"RECHAZADA"} [estado]
- * @property {"GENERAL"|"ACTIVIDAD"} [tipo]
+ * @property {"GENERAL"|"REQUERIMIENTO_GENERAL"|"ACTIVIDAD"} [tipo]
  * @property {number} [page] base 0
  * @property {number} [size] default 20
  * @property {boolean} [todos]
@@ -71,7 +71,7 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} InvitacionResponse
  * @property {number} idInvitacion
- * @property {"GENERAL"|"ACTIVIDAD"} tipo
+ * @property {"GENERAL"|"REQUERIMIENTO_GENERAL"|"ACTIVIDAD"} tipo
  * @property {"PENDIENTE"|"ACEPTADA"|"RECHAZADA"} estado
  * @property {string} fechaEnvio ISO-8601 local
  * @property {number} idProyecto
@@ -91,6 +91,14 @@ import { serializarParams } from "../utils/queryParams.js";
  */
 
 /**
+ * @typedef {Object} InvitacionRequerimientoGeneralRequest
+ * @property {number} idRequerimientoGral
+ * @property {number} idPerfilDestinatario
+ * @property {string|null} [mensaje]
+ * @property {AceptacionTerminosRequest} [aceptacionTerminos]
+ */
+
+/**
  * @typedef {Object} InvitacionActividadRequest
  * @property {number} idRequerimientoActividad
  * @property {number} idPerfilDestinatario
@@ -100,6 +108,14 @@ import { serializarParams } from "../utils/queryParams.js";
 
 /**
  * @typedef {Object} InvitacionGeneralBatchRequest
+ * @property {number[]} idsPerfilDestinatario
+ * @property {string|null} [mensaje]
+ * @property {AceptacionTerminosPorPerfilRequest[]} [aceptacionesTerminos]
+ */
+
+/**
+ * @typedef {Object} InvitacionRequerimientoGeneralBatchRequest
+ * @property {number} idRequerimientoGral
  * @property {number[]} idsPerfilDestinatario
  * @property {string|null} [mensaje]
  * @property {AceptacionTerminosPorPerfilRequest[]} [aceptacionesTerminos]
@@ -149,7 +165,7 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} InvitacionGestionadaResponse
  * @property {number} idInvitacion
- * @property {"GENERAL"|"ACTIVIDAD"} tipo
+ * @property {"GENERAL"|"REQUERIMIENTO_GENERAL"|"ACTIVIDAD"} tipo
  * @property {"ACEPTADA"|"RECHAZADA"} estado
  * @property {number} idProyecto
  * @property {number} idPerfil
@@ -209,10 +225,10 @@ const invitacionService = {
   },
 
   /**
-   * POST /proyectos/{idProyecto}/invitaciones/general — UC-31.
+   * POST /proyectos/{idProyecto}/invitaciones/proyecto — UC-31.
    *
-   * Errores esperables:
-   * - 400 destinatario o mensaje inválido
+   * Invitación al proyecto sin requerimiento general. Errores esperables:
+   * - 400 destinatario, mensaje o requerimiento general enviado por error
    * - 403 sin perfil activo, sin membresía o sin `INVITAR_MIEMBRO`
    * - 404 proyecto o perfil destinatario inexistente
    * - 409 proyecto no Publicado/Confirmado, perfil inactivo, autoinvitación,
@@ -223,14 +239,58 @@ const invitacionService = {
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: InvitacionResponse}>} 201 Created
    */
-  invitarGeneral(
+  invitarProyecto(
     idProyecto,
     { idPerfilDestinatario, mensaje, aceptacionTerminos } = {},
     signal
   ) {
     return http.post(
-      `/proyectos/${idProyecto}/invitaciones/general`,
+      `/proyectos/${idProyecto}/invitaciones/proyecto`,
       {
+        idPerfilDestinatario,
+        mensaje: normalizarMensaje(mensaje),
+        ...(aceptacionTerminos ? { aceptacionTerminos } : {}),
+      },
+      { signal }
+    );
+  },
+
+  /**
+   * Alias histórico de `invitarProyecto`.
+   * @param {number|string} idProyecto
+   * @param {InvitacionGeneralRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionResponse}>} 201 Created
+   */
+  invitarGeneral(idProyecto, request = {}, signal) {
+    return this.invitarProyecto(idProyecto, request, signal);
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/invitaciones/requerimiento-general — UC-31.
+   *
+   * Invitación asociada a un requerimiento general existente. El backend
+   * valida que el requerimiento pertenezca al proyecto, esté abierto y que la
+   * profesión del destinatario coincida.
+   * @param {number|string} idProyecto
+   * @param {InvitacionRequerimientoGeneralRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionResponse}>} 201 Created
+   */
+  invitarRequerimientoGeneral(
+    idProyecto,
+    {
+      idRequerimientoGral,
+      idPerfilDestinatario,
+      mensaje,
+      aceptacionTerminos,
+    } = {},
+    signal
+  ) {
+    return http.post(
+      `/proyectos/${idProyecto}/invitaciones/requerimiento-general`,
+      {
+        idRequerimientoGral,
         idPerfilDestinatario,
         mensaje: normalizarMensaje(mensaje),
         ...(aceptacionTerminos ? { aceptacionTerminos } : {}),
@@ -272,14 +332,31 @@ const invitacionService = {
   },
 
   /**
-   * POST /invitaciones/general/{idInvitacion}/aceptar — UC-28.
+   * POST /invitaciones/proyecto/{idInvitacion}/aceptar — UC-28.
    *
    * Sin body. El perfil activo debe ser el destinatario.
    * Errores:
    * - 403 la invitación no pertenece al perfil activo
    * - 404 invitación/perfil activo inexistente
-   * - 409 ya gestionada, proyecto no habilitado, requerimiento satisfecho,
-   *   profesión incompatible o perfil ya miembro
+   * - 409 ya gestionada, tipo incorrecto, proyecto no habilitado,
+   *   requerimiento satisfecho, profesión incompatible o perfil ya miembro
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
+   */
+  aceptarProyecto(idInvitacion, signal) {
+    return http.post(
+      `/invitaciones/proyecto/${idInvitacion}/aceptar`,
+      // JSON vacío: axios 1.x envía un body `null` como
+      // application/x-www-form-urlencoded y Spring responde 415 cuando el
+      // endpoint declara @RequestBody. El backend ignora este body.
+      {},
+      { signal }
+    );
+  },
+
+  /**
+   * Alias histórico de `aceptarProyecto` / `aceptarRequerimientoGeneral`.
    * @param {number|string} idInvitacion
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
@@ -287,9 +364,23 @@ const invitacionService = {
   aceptarGeneral(idInvitacion, signal) {
     return http.post(
       `/invitaciones/general/${idInvitacion}/aceptar`,
-      // JSON vacío: axios 1.x envía un body `null` como
-      // application/x-www-form-urlencoded y Spring responde 415 cuando el
-      // endpoint declara @RequestBody. El backend ignora este body.
+      {},
+      { signal }
+    );
+  },
+
+  /**
+   * POST /invitaciones/requerimiento-general/{idInvitacion}/aceptar — UC-28.
+   *
+   * Sin body. Además de la membresía, vincula al perfil con el requerimiento
+   * general de la invitación.
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
+   */
+  aceptarRequerimientoGeneral(idInvitacion, signal) {
+    return http.post(
+      `/invitaciones/requerimiento-general/${idInvitacion}/aceptar`,
       {},
       { signal }
     );
@@ -314,9 +405,23 @@ const invitacionService = {
   },
 
   /**
-   * POST /invitaciones/general/{idInvitacion}/rechazar — UC-28.
+   * POST /invitaciones/proyecto/{idInvitacion}/rechazar — UC-28.
    *
    * Sin body. La invitación queda RECHAZADA; no se elimina.
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
+   */
+  rechazarProyecto(idInvitacion, signal) {
+    return http.post(
+      `/invitaciones/proyecto/${idInvitacion}/rechazar`,
+      {},
+      { signal }
+    );
+  },
+
+  /**
+   * Alias histórico de `rechazarProyecto` / `rechazarRequerimientoGeneral`.
    * @param {number|string} idInvitacion
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
@@ -324,6 +429,22 @@ const invitacionService = {
   rechazarGeneral(idInvitacion, signal) {
     return http.post(
       `/invitaciones/general/${idInvitacion}/rechazar`,
+      {},
+      { signal }
+    );
+  },
+
+  /**
+   * POST /invitaciones/requerimiento-general/{idInvitacion}/rechazar — UC-28.
+   *
+   * Sin body. La invitación queda RECHAZADA; no se elimina.
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionGestionadaResponse}>} 200 OK
+   */
+  rechazarRequerimientoGeneral(idInvitacion, signal) {
+    return http.post(
+      `/invitaciones/requerimiento-general/${idInvitacion}/rechazar`,
       {},
       { signal }
     );
@@ -346,10 +467,10 @@ const invitacionService = {
   },
 
   /**
-   * DELETE /proyectos/{idProyecto}/invitaciones/general/{idInvitacion} — UC-32.
+   * DELETE /proyectos/{idProyecto}/invitaciones/proyecto/{idInvitacion} — UC-32.
    *
-   * Borra físicamente una invitación general pendiente enviada por el perfil
-   * activo. No genera notificación al destinatario.
+   * Borra físicamente una invitación al proyecto pendiente enviada por el
+   * perfil activo. No genera notificación al destinatario.
    *
    * Errores:
    * - 403 sin `ELIMINAR_INVITACION`, no Director o no remitente
@@ -360,9 +481,38 @@ const invitacionService = {
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: null}>} 204 No Content
    */
+  eliminarProyecto(idProyecto, idInvitacion, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/invitaciones/proyecto/${idInvitacion}`,
+      { signal }
+    );
+  },
+
+  /**
+   * Alias histórico de `eliminarProyecto` / `eliminarRequerimientoGeneral`.
+   * @param {number|string} idProyecto
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
   eliminarGeneral(idProyecto, idInvitacion, signal) {
     return http.delete(
       `/proyectos/${idProyecto}/invitaciones/general/${idInvitacion}`,
+      { signal }
+    );
+  },
+
+  /**
+   * DELETE /proyectos/{idProyecto}/invitaciones/requerimiento-general/{idInvitacion} — UC-32.
+   * Mismas reglas que la eliminación al proyecto.
+   * @param {number|string} idProyecto
+   * @param {number|string} idInvitacion
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: null}>} 204 No Content
+   */
+  eliminarRequerimientoGeneral(idProyecto, idInvitacion, signal) {
+    return http.delete(
+      `/proyectos/${idProyecto}/invitaciones/requerimiento-general/${idInvitacion}`,
       { signal }
     );
   },
@@ -383,23 +533,71 @@ const invitacionService = {
   },
 
   /**
-   * POST /proyectos/{idProyecto}/invitaciones/general/batch — UC-31.
+   * POST /proyectos/{idProyecto}/invitaciones/proyecto/batch — UC-31.
    *
-   * Crea una invitación independiente por cada perfil. Responde 200 con
+   * Crea una invitación al proyecto por cada perfil. Responde 200 con
    * `creadas` y `errores`; un perfil con error no invalida los demás.
    * @param {number|string} idProyecto
    * @param {InvitacionGeneralBatchRequest} request
    * @param {AbortSignal} [signal]
    * @returns {Promise<{data: InvitacionBatchResponse}>} 200 OK
    */
-  invitarGeneralBatch(
+  invitarProyectoBatch(
     idProyecto,
     { idsPerfilDestinatario, mensaje, aceptacionesTerminos } = {},
     signal
   ) {
     return http.post(
-      `/proyectos/${idProyecto}/invitaciones/general/batch`,
+      `/proyectos/${idProyecto}/invitaciones/proyecto/batch`,
       {
+        idsPerfilDestinatario: Array.isArray(idsPerfilDestinatario)
+          ? idsPerfilDestinatario
+          : [],
+        mensaje: normalizarMensaje(mensaje),
+        ...(Array.isArray(aceptacionesTerminos)
+          ? { aceptacionesTerminos }
+          : {}),
+      },
+      { signal }
+    );
+  },
+
+  /**
+   * Alias histórico de `invitarProyectoBatch`.
+   * @param {number|string} idProyecto
+   * @param {InvitacionGeneralBatchRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionBatchResponse}>} 200 OK
+   */
+  invitarGeneralBatch(idProyecto, request = {}, signal) {
+    return this.invitarProyectoBatch(idProyecto, request, signal);
+  },
+
+  /**
+   * POST /proyectos/{idProyecto}/invitaciones/requerimiento-general/batch — UC-31.
+   *
+   * Crea una invitación al requerimiento general por cada perfil. El backend
+   * valida que el requerimiento pertenezca al proyecto y que cada perfil
+   * tenga la profesión requerida.
+   * @param {number|string} idProyecto
+   * @param {InvitacionRequerimientoGeneralBatchRequest} request
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<{data: InvitacionBatchResponse}>} 200 OK
+   */
+  invitarRequerimientoGeneralBatch(
+    idProyecto,
+    {
+      idRequerimientoGral,
+      idsPerfilDestinatario,
+      mensaje,
+      aceptacionesTerminos,
+    } = {},
+    signal
+  ) {
+    return http.post(
+      `/proyectos/${idProyecto}/invitaciones/requerimiento-general/batch`,
+      {
+        idRequerimientoGral,
         idsPerfilDestinatario: Array.isArray(idsPerfilDestinatario)
           ? idsPerfilDestinatario
           : [],

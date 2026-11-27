@@ -1,6 +1,21 @@
 <template>
-  <div class="dashboard-layout">
-    <aside class="sidebar">
+  <div
+    class="dashboard-layout"
+    :class="{ 'dashboard-layout--menu-abierto': menuAbierto }"
+  >
+    <aside
+      id="dashboard-sidebar"
+      class="sidebar"
+      :class="{ 'sidebar--abierto': menuAbierto }"
+    >
+      <button
+        type="button"
+        class="sidebar__close"
+        aria-label="Cerrar menú"
+        @click="cerrarMenu"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
       <div class="sidebar__top">
         <div class="sidebar__user">
           <div class="sidebar__avatar">{{ inicialUsuario }}</div>
@@ -12,7 +27,7 @@
 
         <button
           class="sidebar__notifications"
-          @click="$router.push({ name: 'notificaciones-usuario' })"
+          @click="cerrarMenu(); $router.push({ name: 'notificaciones-usuario' })"
         >
           <span class="material-symbols-outlined">notifications</span>
           <span>Notificaciones</span>
@@ -21,22 +36,22 @@
 
         <div class="sidebar__section">
           <span class="sidebar__section-title">Acciones</span>
-          <button class="sidebar__action" @click="$router.push({ name: 'dashboard-usuario' })">
+          <button class="sidebar__action" @click="cerrarMenu(); $router.push({ name: 'dashboard-usuario' })">
             Mis perfiles
           </button>
-          <button class="sidebar__action" @click="$router.push({ name: 'crear-perfil' })">
+          <button class="sidebar__action" @click="cerrarMenu(); $router.push({ name: 'crear-perfil' })">
             Crear nuevo perfil
           </button>
-          <button class="sidebar__action" @click="$router.push({ name: 'modificar-datos' })">
+          <button class="sidebar__action" @click="cerrarMenu(); $router.push({ name: 'modificar-datos' })">
             Modificar datos personales
           </button>
-          <button class="sidebar__action" @click="$router.push({ name: 'calendario' })">
+          <button class="sidebar__action" @click="cerrarMenu(); $router.push({ name: 'calendario' })">
             Calendario
           </button>
           <button
             v-if="!esCuentaPendienteBaja"
             class="sidebar__action"
-            @click="modalBajaVisible = true"
+            @click="cerrarMenu(); modalBajaVisible = true"
           >
             Solicitar baja del sistema
           </button>
@@ -51,9 +66,23 @@
 
     <div class="dashboard-main">
       <header class="dashboard-main__header">
-        <div>
-          <h1 class="dashboard-main__title">DASHBOARD</h1>
-          <span class="dashboard-main__subtitle">{{ titulo }}</span>
+        <div class="dashboard-main__header-left">
+          <button
+            type="button"
+            class="dashboard-main__burger"
+            aria-label="Abrir menú"
+            :aria-expanded="menuAbierto ? 'true' : 'false'"
+            aria-controls="dashboard-sidebar"
+            @click.stop="abrirMenu"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">
+              menu
+            </span>
+          </button>
+          <div class="dashboard-main__heading">
+            <h1 class="dashboard-main__title">DASHBOARD</h1>
+            <span class="dashboard-main__subtitle">{{ titulo }}</span>
+          </div>
         </div>
         <div class="dashboard-main__header-actions">
           <ThemeToggle />
@@ -147,6 +176,14 @@
       </main>
     </div>
 
+    <button
+      v-if="menuAbierto"
+      type="button"
+      class="dashboard-layout__overlay"
+      aria-label="Cerrar menú"
+      @click="cerrarMenu"
+    ></button>
+
    <VaModal
   v-model="modalBajaVisible"
   hide-default-actions
@@ -216,6 +253,7 @@ export default {
   data() {
     return {
       modalBajaVisible: false,
+      menuAbierto: false,
       perfiles: [],
       perfilesCargando: false,
       cambiandoPerfilId: null,
@@ -265,12 +303,42 @@ export default {
     fotoPerfilActiva() {
       this.fotoRota = false;
     },
+    "$route.fullPath"() {
+      this.cerrarMenu();
+    },
+    menuAbierto(abierto) {
+      if (abierto) {
+        document.addEventListener("keydown", this.manejarEscape);
+        document.body.style.overflow = "hidden";
+      } else {
+        document.removeEventListener("keydown", this.manejarEscape);
+        document.body.style.overflow = "";
+      }
+    },
   },
   mounted() {
     this.cargarPerfiles();
     cargarResumenUsuario();
+    window.addEventListener("resize", this.cerrarMenuEnDesktop);
+  },
+  beforeUnmount() {
+    document.removeEventListener("keydown", this.manejarEscape);
+    window.removeEventListener("resize", this.cerrarMenuEnDesktop);
+    document.body.style.overflow = "";
   },
   methods: {
+    abrirMenu() {
+      this.menuAbierto = true;
+    },
+    cerrarMenu() {
+      this.menuAbierto = false;
+    },
+    manejarEscape(evento) {
+      if (evento.key === "Escape") this.cerrarMenu();
+    },
+    cerrarMenuEnDesktop() {
+      if (window.innerWidth > 900) this.cerrarMenu();
+    },
     inicialDe(valor) {
       return String(valor || "?").charAt(0).toUpperCase();
     },
@@ -335,13 +403,16 @@ export default {
 
 <style scoped>
 .dashboard-layout {
+  position: relative;
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-dashboard-bg);
 }
 
 /* ── Sidebar ── */
 .sidebar {
+  position: relative;
   width: 250px;
   min-width: 250px;
   background: var(--color-surface);
@@ -349,7 +420,36 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 1.25rem 0;
+  padding: calc(1.25rem + env(safe-area-inset-top)) 0 1.25rem env(safe-area-inset-left);
+}
+
+.sidebar__close {
+  display: none;
+  position: absolute;
+  top: calc(0.65rem + env(safe-area-inset-top));
+  right: 0.65rem;
+  z-index: 2;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.sidebar__close:hover,
+.sidebar__close:focus-visible {
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+  outline: none;
+}
+
+.sidebar__close .material-symbols-outlined {
+  font-size: 1.2rem;
 }
 
 .sidebar__top {
@@ -530,6 +630,53 @@ font-size: 1.5rem;
   padding: 0 2rem;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+}
+
+.dashboard-main__header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.dashboard-main__heading {
+  min-width: 0;
+}
+
+.dashboard-main__burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.dashboard-main__burger:hover,
+.dashboard-main__burger:focus-visible {
+  background: var(--color-surface-muted);
+  outline: none;
+}
+
+.dashboard-main__burger .material-symbols-outlined {
+  font-size: 1.25rem;
+}
+
+.dashboard-layout__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  padding: 0;
+  background: var(--color-overlay);
+  border: 0;
+  cursor: pointer;
 }
 
 .dashboard-main__title {
@@ -764,4 +911,155 @@ font-size: 1.5rem;
   flex: 1;
   padding: 1.5rem 2rem;
 }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .perfil-switcher__menu {
+    width: min(260px, calc(100vw - 2rem)) !important;
+    min-width: 0;
+    max-width: calc(100vw - 2rem);
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
+    width: 280px;
+    max-width: 86vw;
+    min-width: 0;
+    overflow-y: auto;
+    visibility: hidden;
+    transform: translateX(-105%);
+    transition: transform 0.2s ease, visibility 0.2s ease;
+    box-shadow: 0 12px 30px var(--color-shadow);
+  }
+
+  .sidebar--abierto {
+    visibility: visible;
+    transform: translateX(0);
+  }
+
+  .sidebar__close {
+    display: inline-flex;
+  }
+
+  .sidebar__top {
+    padding-top: 2.2rem;
+  }
+
+  .dashboard-layout--menu-abierto .dashboard-layout__overlay {
+    display: block;
+  }
+
+  .dashboard-main {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .dashboard-main__header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    height: auto;
+    min-height: 64px;
+    padding: 0.7rem 1rem;
+    padding-top: calc(0.7rem + env(safe-area-inset-top));
+    gap: 0.75rem;
+  }
+
+  .dashboard-main__burger {
+    display: inline-flex;
+  }
+
+  .dashboard-main__content {
+    padding: 1rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .modalink-main__title {
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-main__title {
+    font-size: 1rem;
+  }
+
+  .dashboard-main__subtitle {
+    font-size: 0.75rem;
+  }
+
+  .dashboard-main__header-actions {
+    gap: 0.45rem;
+  }
+
+  .perfil-switcher {
+    padding: 0.35rem 0.5rem;
+  }
+
+  .perfil-switcher__labels {
+    display: none;
+  }
+
+  .modalink-main__title {
+    display: none;
+  }
+
+  .perfil-switcher__menu {
+    right: 0;
+    left: auto;
+    width: calc(100vw - 2rem) !important;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .dashboard-main__content {
+    padding: 0.85rem;
+  }
+
+  .sidebar {
+    width: 86vw;
+    max-width: 320px;
+  }
+}
+
+@media (max-width: 400px) {
+  .dashboard-main__header {
+    padding: 0.6rem 0.75rem;
+    padding-top: calc(0.6rem + env(safe-area-inset-top));
+  }
+
+  .dashboard-main__title {
+    display: none;
+  }
+
+  .dashboard-main__subtitle {
+    color: var(--color-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .perfil-switcher {
+    padding: 0.3rem;
+  }
+
+  .perfil-switcher__avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .dashboard-main__content {
+    padding: 0.75rem;
+  }
+}
+
 </style>

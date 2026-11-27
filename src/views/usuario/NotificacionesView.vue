@@ -514,4 +514,32 @@ export default {
     gap: 0.15rem;
   }
 }
+
+@media (max-width: 520px) {
+  .notificaciones-view__actions {
+    width: 100%;
+  }
+
+  .notificaciones-view__select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .notificaciones-view__actions :deep(.va-button) {
+    width: 100%;
+  }
+
+  .notificacion-card {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.65rem;
+  }
+
+  .notificacion-card__contenido {
+    flex: 1 1 calc(100% - 2.2rem);
+  }
+
+  .notificacion-card__marcar {
+    margin-left: 2rem;
+  }
+}
 </style>

@@ -73,6 +73,7 @@
       <VaDataTable
         v-else
         class="gestion-habilidades__tabla"
+        v-bind="propsTablaResponsive"
         :items="habilidadesFiltradas"
         :columns="columnas"
         :per-page="porPaginaHabilidades"
@@ -254,6 +255,7 @@ import habilidadService from "../../services/habilidadService";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 
 const normalizarTextoOrden = (valor) =>
   String(valor || "")
@@ -309,6 +311,7 @@ const COLUMNAS = [
 
 export default {
   name: "GestionHabilidadesView",
+  mixins: [tablaResponsiveMixin],
   components: { BaseAlert, AdminTablaPanel },
   data() {
     return {

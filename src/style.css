@@ -223,12 +223,112 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   transition: background-color 0.2s ease, color 0.2s ease;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-wrap: break-word;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #app {
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/*
+ * En iOS, los campos con tipografía menor a 16px hacen zoom automático al
+ * enfocarse. Se fuerza un tamaño legible en móvil para evitar ese salto.
+ */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 ::placeholder {
   color: var(--color-text-subtle);
+}
+
+/*
+ * Tablas HTML administrativas convertidas a tarjetas en móvil. Requiere que
+ * cada celda tenga `data-label` con el nombre visible de su columna.
+ */
+@media (max-width: 768px) {
+  #app .admin-tabla-responsive-wrapper {
+    overflow-x: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  #app .admin-tabla-responsive {
+    min-width: 0;
+  }
+
+  #app .admin-tabla-responsive thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  #app .admin-tabla-responsive,
+  #app .admin-tabla-responsive tbody,
+  #app .admin-tabla-responsive tr,
+  #app .admin-tabla-responsive td {
+    display: block;
+    width: 100%;
+  }
+
+  #app .admin-tabla-responsive tbody tr {
+    margin-bottom: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+  }
+
+  #app .admin-tabla-responsive td {
+    position: relative;
+    padding: 0.35rem 0 0.35rem 7.5rem;
+    border: 0;
+    text-align: left;
+  }
+
+  #app .admin-tabla-responsive td::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.35rem;
+    left: 0;
+    width: 7rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
 }

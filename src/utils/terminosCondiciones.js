@@ -38,6 +38,7 @@ const FORMATO_NUMERO = new Intl.NumberFormat("es-AR");
  * @returns {{
  *   idPerfil: number|null,
  *   idTyc: number|null,
+ *   numeroVersion: number|null,
  *   descripcion: string,
  *   fechaInicio: string|null,
  *   fechaFin: string|null,
@@ -47,9 +48,14 @@ const FORMATO_NUMERO = new Intl.NumberFormat("es-AR");
 export function normalizarTerminos(data) {
   const idPerfil = Number(data?.idPerfil);
   const idTyc = Number(data?.idTyc);
+  const numeroVersion = Number(data?.numeroVersion);
   return {
     idPerfil: Number.isFinite(idPerfil) ? idPerfil : null,
     idTyc: Number.isFinite(idTyc) && idTyc > 0 ? idTyc : null,
+    numeroVersion:
+      Number.isFinite(numeroVersion) && numeroVersion > 0
+        ? numeroVersion
+        : null,
     descripcion: String(data?.descripcion ?? ""),
     fechaInicio: data?.fechaInicio || null,
     fechaFin: data?.fechaFin || null,

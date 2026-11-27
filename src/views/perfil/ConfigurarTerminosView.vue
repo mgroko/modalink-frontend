@@ -128,6 +128,13 @@
         <VaButton
           preset="secondary"
           :disabled="guardando"
+          @click="modalHistorial = true"
+        >
+          Ver historial
+        </VaButton>
+        <VaButton
+          preset="secondary"
+          :disabled="guardando"
           @click="intentarSalir"
         >
           Cancelar
@@ -143,6 +150,12 @@
         </VaButton>
       </div>
     </section>
+
+    <TerminosCondicionesHistorialModal
+      v-model="modalHistorial"
+      :id-perfil="idPerfil"
+      modo="usuario"
+    />
 
     <VaModal
       v-model="modalDescartar"
@@ -173,6 +186,7 @@
 import perfilService from "../../services/perfilService";
 import { idPerfilActivo } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
+import TerminosCondicionesHistorialModal from "../../components/perfil/TerminosCondicionesHistorialModal.vue";
 import { useToast } from "vuestic-ui";
 import {
   LIMITE_DESCRIPCION_TERMINOS,
@@ -192,7 +206,7 @@ const NOMBRE_ESTADO = {
 
 export default {
   name: "ConfigurarTerminosView",
-  components: { BaseAlert },
+  components: { BaseAlert, TerminosCondicionesHistorialModal },
   setup() {
     return { toast: useToast() };
   },
@@ -208,6 +222,7 @@ export default {
       errorCarga: "",
       errorGeneral: "",
       errorDescripcion: "",
+      modalHistorial: false,
       modalDescartar: false,
       destinoPendiente: null,
       saliendo: false,

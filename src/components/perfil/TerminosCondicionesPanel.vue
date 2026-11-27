@@ -38,8 +38,19 @@
       </p>
       <p v-else class="tyc-panel__texto">{{ terminos.descripcion }}</p>
 
-      <div v-if="esPropio && puedeConfigurar" class="tyc-panel__acciones">
+      <div
+        v-if="(!esPlantilla && terminos) || (esPropio && puedeConfigurar)"
+        class="tyc-panel__acciones"
+      >
         <VaButton
+          v-if="!esPlantilla && terminos"
+          preset="secondary"
+          @click="modalHistorial = true"
+        >
+          Ver versiones anteriores
+        </VaButton>
+        <VaButton
+          v-if="esPropio && puedeConfigurar"
           preset="primary"
           icon="mso-edit"
           @click="$emit('configurar')"
@@ -48,11 +59,18 @@
         </VaButton>
       </div>
     </template>
+
+    <TerminosCondicionesHistorialModal
+      v-model="modalHistorial"
+      :id-perfil="idPerfil"
+      modo="usuario"
+    />
   </section>
 </template>
 
 <script>
 import BaseAlert from "../AlertaBase.vue";
+import TerminosCondicionesHistorialModal from "./TerminosCondicionesHistorialModal.vue";
 import {
   esTerminosPlantilla,
   textoVigenciaTerminos,
@@ -60,8 +78,12 @@ import {
 
 export default {
   name: "TerminosCondicionesPanel",
-  components: { BaseAlert },
+  components: { BaseAlert, TerminosCondicionesHistorialModal },
   props: {
+    idPerfil: {
+      type: [Number, String],
+      default: null,
+    },
     terminos: {
       type: Object,
       default: null,
@@ -84,6 +106,11 @@ export default {
     },
   },
   emits: ["reintentar", "configurar"],
+  data() {
+    return {
+      modalHistorial: false,
+    };
+  },
   computed: {
     esPlantilla() {
       return esTerminosPlantilla(this.terminos);
@@ -150,7 +177,9 @@ export default {
 
 .tyc-panel__acciones {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
+  gap: 0.6rem;
   padding-top: 0.25rem;
 }
 

@@ -118,21 +118,21 @@
 
       <section class="admin-proyecto-detalle__card">
         <h2>Miembros <span>{{ proyecto.miembros?.length || 0 }}</span></h2>
-        <div v-if="proyecto.miembros?.length" class="admin-proyecto-detalle__table-wrapper">
-          <table class="admin-proyecto-detalle__table">
+        <div v-if="proyecto.miembros?.length" class="admin-proyecto-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-proyecto-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Miembro</th><th>Profesión</th><th>Rol</th><th>Participación</th><th>Alta</th><th>Baja</th><th>Motivo</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               <tr v-for="miembro in proyecto.miembros" :key="miembro.idMiembro">
-                <td>{{ miembro.nombreCompleto || miembro.nombreArtistico || '—' }}</td>
-                <td>{{ miembro.profesion || '—' }}</td>
-                <td>{{ miembro.rolProyecto || '—' }}</td>
-                <td>{{ miembro.estadoParticipacion || '—' }}</td>
-                <td>{{ miembro.fechaAlta ? formatearFecha(miembro.fechaAlta) : '—' }}</td>
-                <td>{{ miembro.fechaBaja ? formatearFecha(miembro.fechaBaja) : '—' }}</td>
-                <td>{{ miembro.motivoBaja || '—' }}</td>
-                <td>
+                <td data-label="Miembro">{{ miembro.nombreCompleto || miembro.nombreArtistico || '—' }}</td>
+                <td data-label="Profesión">{{ miembro.profesion || '—' }}</td>
+                <td data-label="Rol">{{ miembro.rolProyecto || '—' }}</td>
+                <td data-label="Participación">{{ miembro.estadoParticipacion || '—' }}</td>
+                <td data-label="Alta">{{ miembro.fechaAlta ? formatearFecha(miembro.fechaAlta) : '—' }}</td>
+                <td data-label="Baja">{{ miembro.fechaBaja ? formatearFecha(miembro.fechaBaja) : '—' }}</td>
+                <td data-label="Motivo">{{ miembro.motivoBaja || '—' }}</td>
+                <td data-label="Acciones">
                   <button
                     v-if="miembro.idPerfil"
                     type="button"
@@ -153,19 +153,19 @@
 
       <section class="admin-proyecto-detalle__card">
         <h2>Contratos <span>{{ proyecto.totalContratos || 0 }}</span></h2>
-        <div v-if="proyecto.contratos?.length" class="admin-proyecto-detalle__table-wrapper">
-          <table class="admin-proyecto-detalle__table">
+        <div v-if="proyecto.contratos?.length" class="admin-proyecto-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-proyecto-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Contrato</th><th>Estado</th><th>Versión</th><th>Firmados</th><th>Emisión</th><th></th></tr>
             </thead>
             <tbody>
               <tr v-for="contrato in proyecto.contratos" :key="contrato.idContrato">
-                <td>{{ contrato.nombre || '—' }}</td>
-                <td>{{ contrato.estado || '—' }}</td>
-                <td>{{ contrato.versionActual ?? '—' }}</td>
-                <td>{{ contrato.firmados }}/{{ contrato.totalPartes }}</td>
-                <td>{{ contrato.fechaEmision ? formatearFecha(contrato.fechaEmision) : '—' }}</td>
-                <td>
+                <td data-label="Contrato">{{ contrato.nombre || '—' }}</td>
+                <td data-label="Estado">{{ contrato.estado || '—' }}</td>
+                <td data-label="Versión">{{ contrato.versionActual ?? '—' }}</td>
+                <td data-label="Firmados">{{ contrato.firmados }}/{{ contrato.totalPartes }}</td>
+                <td data-label="Emisión">{{ contrato.fechaEmision ? formatearFecha(contrato.fechaEmision) : '—' }}</td>
+                <td data-label="Acciones">
                   <button type="button" class="admin-proyecto-detalle__link" @click="$router.push({ name: 'admin-contrato-detalle', params: { id: contrato.idContrato } })">
                     Ver
                   </button>

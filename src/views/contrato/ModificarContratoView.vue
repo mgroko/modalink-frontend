@@ -362,16 +362,16 @@
             </div>
 
             <p v-if="!preview && !cargandoPreview" class="modificar-contrato__nota">
-              Previsualizá los cambios para validar el texto y los conflictos
-              antes de guardar.
+              La previsualización es opcional. Podés guardar directamente; el
+              backend valida el texto y los conflictos al guardar y al emitir.
             </p>
             <div v-else-if="preview" class="modificar-contrato__preview-texto">
               {{ preview.texto || "Sin texto generado." }}
             </div>
 
             <p v-if="preview && !previewVigente" class="modificar-contrato__nota">
-              Hay cambios posteriores a la previsualización. Volvé a
-              previsualizar antes de guardar.
+              Hay cambios posteriores a la previsualización. Podés guardar
+              igualmente o volver a previsualizar.
             </p>
 
             <div
@@ -379,7 +379,7 @@
               class="modificar-contrato__aviso modificar-contrato__aviso--conflicto"
             >
               <p class="modificar-contrato__aviso-titulo">
-                No se puede guardar todavía
+                La previsualización detectó conflictos
               </p>
               <ul
                 v-if="preview.conflictos.length"
@@ -393,8 +393,8 @@
                 </li>
               </ul>
               <p v-else class="modificar-contrato__aviso-titulo">
-                La previsualización no habilitó la modificación. Revisá los
-                datos o volvé al detalle.
+                Revisá los datos. En un borrador podés guardar igualmente; al
+                emitir se volverán a validar los conflictos.
               </p>
             </div>
 
@@ -416,8 +416,14 @@
           <section class="modificar-contrato__panel modificar-contrato__panel--compacto">
             <h2 class="modificar-contrato__seccion-titulo">Guardar</h2>
             <p class="modificar-contrato__nota">
-              Las firmas se reconcilian y se genera la nueva versión. Sólo se
-              habilita después de una previsualización válida.
+              <template v-if="esBorrador">
+                Se guarda el borrador sin notificar a las partes. La
+                previsualización no es obligatoria.
+              </template>
+              <template v-else>
+                Las firmas se reconcilian y se genera la nueva versión. Las
+                partes actuales reciben la notificación de modificación.
+              </template>
             </p>
             <VaButton
               preset="primary"
@@ -452,6 +458,7 @@ import { useToast } from "vuestic-ui";
 import { mensajeErrorApi } from "../../utils/apiError";
 import {
   CODIGOS_CONTRATO,
+  ESTADOS_CONTRATO,
   LIMITE_CLAUSULA_CONTRATO,
   LIMITE_DESCRIPCION_CONTRATO,
   LIMITE_NOMBRE_CONTRATO,
@@ -713,14 +720,30 @@ export default {
       }
       return true;
     },
+    esBorrador() {
+      return this.contrato?.estado === ESTADOS_CONTRATO.BORRADOR;
+    },
     puedeGuardar() {
-      return (
-        !this.guardando &&
-        !this.bloqueado &&
-        this.previewVigente &&
-        this.preview.puedeModificarse === true &&
-        this.preview.conflictos.length === 0
-      );
+      if (
+        this.guardando ||
+        this.bloqueado ||
+        this.idTipoAcuerdo == null
+      ) {
+        return false;
+      }
+
+      // El borrador admite datos incompletos. El contrato pendiente mantiene
+      // las validaciones de UC-53 porque su texto ya fue emitido.
+      if (!this.esBorrador && !this.idsSeleccionados.length) return false;
+      if (
+        !this.esBorrador &&
+        this.modoTexto === "final" &&
+        !String(this.texto || "").trim()
+      ) {
+        return false;
+      }
+
+      return true;
     },
     resumenConfirmacion() {
       return {
@@ -1057,6 +1080,7 @@ export default {
       return {
         idTipoAcuerdo: Number(this.idTipoAcuerdo),
         idsMiembro: this.idsSeleccionados.map((id) => Number(id)),
+        modoTexto: esTextoFinal ? "MANUAL" : "AUTO",
         texto: esTextoFinal ? texto || null : null,
         clausulasAdicionales: esTextoFinal
           ? []
@@ -1140,6 +1164,7 @@ export default {
       }
 
       if (
+        clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_NO_EDITABLE ||
         clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_NO_PENDIENTE_FIRMA ||
         clasificacion.codigo === CODIGOS_CONTRATO.PROYECTO_NO_APTO_PARA_CONTRATO ||
         clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_CON_FIRMAS_REGISTRADAS
@@ -1174,9 +1199,10 @@ export default {
 
         this.modalConfirmarVisible = false;
         this.toast.init({
-          title: "Contrato modificado",
-          message:
-            "Los cambios quedaron guardados y las partes fueron notificadas.",
+          title: this.esBorrador ? "Borrador guardado" : "Contrato modificado",
+          message: this.esBorrador
+            ? "Los cambios quedaron guardados. Las partes todavía no fueron notificadas."
+            : "Los cambios quedaron guardados y las partes fueron notificadas.",
           color: "success",
           position: "top-right",
           duration: 5000,
@@ -1229,6 +1255,7 @@ export default {
       }
 
       if (
+        clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_NO_EDITABLE ||
         clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_NO_PENDIENTE_FIRMA ||
         clasificacion.codigo === CODIGOS_CONTRATO.PROYECTO_NO_APTO_PARA_CONTRATO ||
         clasificacion.codigo === CODIGOS_CONTRATO.CONTRATO_CON_FIRMAS_REGISTRADAS

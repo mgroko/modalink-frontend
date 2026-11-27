@@ -9,7 +9,7 @@
       </h2>
 
       <VaButton
-        v-if="puedeInvitar"
+        v-if="vistaActual === 'miembros' && puedeInvitar"
         class="miembros-proyecto__invitar"
         preset="primary"
         size="small"
@@ -19,7 +19,37 @@
       </VaButton>
     </header>
 
-    <BaseAlert v-if="error" :message="error" type="error" />
+    <div
+      class="miembros-proyecto__tabs"
+      role="tablist"
+      aria-label="Secciones de miembros"
+    >
+      <button
+        type="button"
+        role="tab"
+        class="miembros-proyecto__tab"
+        :class="{
+          'miembros-proyecto__tab--activa': vistaActual === 'miembros',
+        }"
+        :aria-selected="vistaActual === 'miembros'"
+        @click="cambiarVista('miembros')"
+      >
+        Miembros
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="miembros-proyecto__tab"
+        :class="{ 'miembros-proyecto__tab--activa': vistaActual === 'tyc' }"
+        :aria-selected="vistaActual === 'tyc'"
+        @click="cambiarVista('tyc')"
+      >
+        TyC de miembros
+      </button>
+    </div>
+
+    <template v-if="vistaActual === 'miembros'">
+      <BaseAlert v-if="error" :message="error" type="error" />
 
     <div v-if="error && puedeReintentar" class="miembros-proyecto__reintento">
       <VaButton preset="primary" size="small" @click="refrescar">
@@ -75,6 +105,22 @@
           </p>
 
           <p class="miembro-fila__rol">{{ textoRolMiembro(miembro) }}</p>
+
+          <p
+            v-if="mostrarRequerimiento(miembro)"
+            class="miembro-fila__requerimiento"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">
+              assignment_ind
+            </span>
+            <span v-if="miembro.idRequerimientoGral != null">
+              {{ miembro.nombreProfesionRequerimiento || "Requerimiento general" }}
+              <span class="miembro-fila__requerimiento-id">
+                #{{ miembro.idRequerimientoGral }}
+              </span>
+            </span>
+            <span v-else>Sin requerimiento general</span>
+          </p>
         </div>
 
         <span
@@ -93,6 +139,25 @@
             @click="verPerfil(miembro)"
           >
             Ver perfil
+          </VaButton>
+
+          <VaButton
+            v-if="puedeAsignarA(miembro)"
+            preset="secondary"
+            size="small"
+            :title="
+              miembro.idRequerimientoGral != null
+                ? 'Cambiar el requerimiento general del miembro'
+                : 'Asignar un requerimiento general al miembro'
+            "
+            :aria-label="
+              miembro.idRequerimientoGral != null
+                ? `Cambiar requerimiento general de ${nombreArtisticoMiembro(miembro)}`
+                : `Asignar requerimiento general a ${nombreArtisticoMiembro(miembro)}`
+            "
+            @click="abrirAsignarRequerimiento(miembro)"
+          >
+            {{ miembro.idRequerimientoGral != null ? "Cambiar req." : "Asignar req." }}
           </VaButton>
 
           <VaButton
@@ -118,11 +183,36 @@
         </div>
       </li>
     </ul>
+    </template>
+
+    <template v-else>
+      <TyCMiembrosLista
+        :miembros="tycMiembros"
+        :cargando="cargandoTyc"
+        :error="errorTyc"
+        :puede-reintentar="puedeReintentarTyc"
+        @reintentar="refrescarTyc"
+      />
+    </template>
+
+    <ModalAsignarRequerimientoGeneral
+      :model-value="modalAsignarVisible"
+      :miembro="miembroAsignar"
+      :requerimientos="requerimientosGenerales"
+      :nombre-proyecto="nombreProyecto"
+      :asignando="asignando"
+      :error="errorAsignar"
+      @update:model-value="onCambioVisibilidadAsignar"
+      @confirmar="confirmarAsignarRequerimiento"
+    />
   </section>
 </template>
 
 <script>
+import { useToast } from "vuestic-ui";
 import BaseAlert from "../AlertaBase.vue";
+import ModalAsignarRequerimientoGeneral from "./ModalAsignarRequerimientoGeneral.vue";
+import TyCMiembrosLista from "./TyCMiembrosLista.vue";
 import proyectoService from "../../services/proyectoService.js";
 import perfilService from "../../services/perfilService.js";
 import { refrescarSesion } from "../../services/authState";
@@ -147,11 +237,22 @@ import {
  */
 export default {
   name: "IntegrantesProyecto",
-  components: { BaseAlert },
+  components: {
+    BaseAlert,
+    ModalAsignarRequerimientoGeneral,
+    TyCMiembrosLista,
+  },
+  setup() {
+    return { toast: useToast() };
+  },
   props: {
     idProyecto: {
       type: [Number, String],
       required: true,
+    },
+    nombreProyecto: {
+      type: String,
+      default: "",
     },
     /** Cambia para forzar una recarga (p. ej. después de un 204). */
     tokenRefresco: {
@@ -163,13 +264,23 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Permiso `ASIGNAR_REQUERIMIENTO` y estado Publicado/Confirmado. */
+    puedeAsignarRequerimiento: {
+      type: Boolean,
+      default: false,
+    },
+    /** Requerimientos generales del proyecto (`proyecto.requerimientosGral`). */
+    requerimientosGenerales: {
+      type: Array,
+      default: () => [],
+    },
     /** Habilita el chip "Vos" en la fila del perfil activo. */
     idPerfilActivo: {
       type: [Number, String],
       default: null,
     },
   },
-  emits: ["eliminar", "invitar"],
+  emits: ["eliminar", "invitar", "requerimiento-asignado"],
   data() {
     return {
       miembros: [],
@@ -180,24 +291,43 @@ export default {
       fotosPorPerfil: {},
       fotosIntentadas: {},
       fotosRotas: {},
+      modalAsignarVisible: false,
+      miembroAsignar: null,
+      asignando: false,
+      errorAsignar: "",
+      vistaActual: "miembros",
+      tycMiembros: [],
+      cargandoTyc: false,
+      errorTyc: "",
+      puedeReintentarTyc: false,
+      idCargaTyc: 0,
     };
   },
   watch: {
     idProyecto() {
+      this.cerrarAsignarRequerimiento(true);
+      this.abortarTyc();
+      this.vistaActual = "miembros";
+      this.tycMiembros = [];
+      this.errorTyc = "";
+      this.puedeReintentarTyc = false;
       this.cargar();
     },
     tokenRefresco() {
       this.cargar();
+      if (this.vistaActual === "tyc") this.cargarTyc();
     },
   },
   created() {
     this.controlador = null;
+    this.controladorTyc = null;
   },
   mounted() {
     this.cargar();
   },
   beforeUnmount() {
     this.abortar();
+    this.abortarTyc();
   },
   methods: {
     colorAvatarMiembro,
@@ -208,6 +338,153 @@ export default {
     textoRolMiembro,
     estadoAccion(miembro) {
       return estadoAccionIntegrante(miembro);
+    },
+    esDirector(miembro) {
+      return String(miembro?.rol || "").toUpperCase() === "DIRECTOR";
+    },
+    puedeAsignarA(miembro) {
+      if (
+        !this.puedeAsignarRequerimiento ||
+        miembro?.idMiembro == null ||
+        this.esDirector(miembro)
+      ) {
+        return false;
+      }
+      // Si ya cubre un requerimiento, siempre puede cambiarlo o quitarlo.
+      if (miembro.idRequerimientoGral != null) return true;
+
+      // Sin requerimiento actual se necesita profesión y al menos un
+      // requerimiento abierto de esa profesión.
+      if (miembro.idProfesion == null) return false;
+      return (this.requerimientosGenerales || []).some((requerimiento) => {
+        if (requerimiento?.idRequerimientoGral == null) return false;
+        if (requerimiento.satisfecho === true) return false;
+        if (
+          requerimiento.faltantes != null &&
+          Number(requerimiento.faltantes) <= 0
+        ) {
+          return false;
+        }
+        return (
+          String(requerimiento.idProfesion) === String(miembro.idProfesion)
+        );
+      });
+    },
+    mostrarRequerimiento(miembro) {
+      if (this.esDirector(miembro)) return false;
+      if (miembro?.idRequerimientoGral != null) return true;
+      return this.puedeAsignarRequerimiento;
+    },
+    abrirAsignarRequerimiento(miembro) {
+      if (this.asignando || !this.puedeAsignarA(miembro)) return;
+      this.miembroAsignar = { ...miembro };
+      this.errorAsignar = "";
+      this.modalAsignarVisible = true;
+    },
+    onCambioVisibilidadAsignar(valor) {
+      if (this.asignando && !valor) return;
+      if (valor) {
+        this.modalAsignarVisible = true;
+        return;
+      }
+      this.cerrarAsignarRequerimiento();
+    },
+    cerrarAsignarRequerimiento(forzar = false) {
+      if (this.asignando && !forzar) return;
+      this.modalAsignarVisible = false;
+      this.miembroAsignar = null;
+      this.errorAsignar = "";
+    },
+    async confirmarAsignarRequerimiento(payload = {}) {
+      if (this.asignando) return;
+      if (!Object.prototype.hasOwnProperty.call(payload, "idRequerimientoGral")) {
+        return;
+      }
+      const idRequerimientoGral = payload.idRequerimientoGral ?? null;
+
+      const miembro = this.miembroAsignar;
+      if (!miembro?.idMiembro) {
+        this.errorAsignar =
+          "No se pudo identificar al miembro. Recargá la página e intentá nuevamente.";
+        return;
+      }
+
+      this.asignando = true;
+      this.errorAsignar = "";
+
+      try {
+        const response = await proyectoService.asignarRequerimientoGeneral(
+          this.idProyecto,
+          miembro.idMiembro,
+          idRequerimientoGral ?? null
+        );
+
+        this.modalAsignarVisible = false;
+        this.miembroAsignar = null;
+        this.$emit("requerimiento-asignado", response?.data || null);
+
+        this.toast.init({
+          title: "Requerimiento actualizado",
+          message:
+            idRequerimientoGral == null
+              ? "El miembro quedó sin requerimiento general."
+              : "El requerimiento general del miembro se actualizó.",
+          color: "success",
+          position: "top-right",
+          duration: 5000,
+        });
+
+        await this.cargar();
+      } catch (error) {
+        if (this.esCancelacion(error)) return;
+        this.errorAsignar = this.mensajeErrorAsignar(error);
+      } finally {
+        this.asignando = false;
+      }
+    },
+    mensajeErrorAsignar(error) {
+      const status = error?.response?.status ?? null;
+      const payload = error?.response?.data;
+      const mensaje =
+        typeof payload?.message === "string" ? payload.message.trim() : "";
+      const codigo = String(payload?.codigo || "").toUpperCase();
+
+      const mensajesPorCodigo = {
+        PROYECTO_ESTADO_INVALIDO:
+          "Sólo se puede asignar un requerimiento general en proyectos Publicados o Confirmados.",
+        MIEMBRO_DIRECTOR:
+          "Un Director no cubre requerimientos generales.",
+        PROFESION_INCOMPATIBLE:
+          "El miembro no tiene la profesión requerida por ese requerimiento.",
+        REQUERIMIENTO_SATISFECHO:
+          "El requerimiento general ya está cubierto.",
+        MIEMBRO_NO_ACTIVO:
+          "El miembro ya no está activo en el proyecto.",
+        MIEMBRO_NO_PERTENECE:
+          "El miembro no pertenece a este proyecto.",
+      };
+
+      if (mensajesPorCodigo[codigo]) return mensajesPorCodigo[codigo];
+      if (status === 403) {
+        return (
+          mensaje ||
+          "No tenés permiso para asignar requerimientos generales en este proyecto."
+        );
+      }
+      if (status === 404) {
+        return (
+          mensaje ||
+          "El proyecto, el miembro o el requerimiento ya no están disponibles."
+        );
+      }
+      if (status === 409) {
+        return mensaje || "No se pudo actualizar el requerimiento general.";
+      }
+
+      return mensajeErrorApi(
+        error,
+        "No se pudo actualizar el requerimiento general. Inténtalo nuevamente."
+      );
     },
     esVos(miembro) {
       return esPerfilActivoDelMiembro(miembro, this.idPerfilActivo);
@@ -296,6 +573,88 @@ export default {
     },
     refrescar() {
       this.cargar();
+    },
+    cambiarVista(vista) {
+      if (this.vistaActual === vista) return;
+      this.vistaActual = vista;
+      if (vista === "tyc") this.cargarTyc();
+    },
+    refrescarTyc() {
+      this.cargarTyc();
+    },
+    abortarTyc() {
+      if (this.controladorTyc) {
+        this.controladorTyc.abort();
+        this.controladorTyc = null;
+      }
+    },
+    async cargarTyc() {
+      if (this.idProyecto == null || this.idProyecto === "") return;
+
+      const corrida = ++this.idCargaTyc;
+      this.abortarTyc();
+      this.controladorTyc = new AbortController();
+
+      this.cargandoTyc = true;
+      this.errorTyc = "";
+      this.puedeReintentarTyc = false;
+
+      try {
+        const response = await proyectoService.listarTycMiembros(
+          this.idProyecto,
+          this.controladorTyc.signal
+        );
+        if (corrida !== this.idCargaTyc) return;
+
+        const data = response?.data;
+        this.tycMiembros = Array.isArray(data) ? data : [];
+      } catch (error) {
+        if (this.esCancelacion(error) || corrida !== this.idCargaTyc) return;
+        await this.manejarErrorTyc(error);
+      } finally {
+        if (corrida === this.idCargaTyc) this.cargandoTyc = false;
+      }
+    },
+    async manejarErrorTyc(error) {
+      const status = error?.response?.status;
+      const mensaje = error?.response?.data?.message || "";
+      this.tycMiembros = [];
+      this.errorTyc = "";
+      this.puedeReintentarTyc = false;
+
+      if (error?._esSesionExpirada || status === 401) {
+        return;
+      }
+
+      if (status === 403) {
+        this.errorTyc =
+          mensaje ||
+          "No tenés permiso para ver los TyC de los miembros de este proyecto.";
+        return;
+      }
+
+      if (status === 404) {
+        if (/perfil/i.test(mensaje)) {
+          await refrescarSesion();
+          this.$router.push({ name: "dashboard-usuario" });
+          return;
+        }
+        this.errorTyc =
+          mensaje || "El proyecto ya no está disponible o no tenés acceso.";
+        return;
+      }
+
+      if (!status || status >= 500) {
+        this.puedeReintentarTyc = true;
+        this.errorTyc =
+          "Ocurrió un error al cargar los TyC de los miembros. Inténtalo nuevamente.";
+        return;
+      }
+
+      this.errorTyc = mensajeErrorApi(
+        error,
+        "No se pudieron cargar los TyC de los miembros."
+      );
     },
     async cargar() {
       if (this.idProyecto == null || this.idProyecto === "") return;
@@ -432,6 +791,35 @@ export default {
   font-weight: 600;
 }
 
+.miembros-proyecto__tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 0 0.85rem;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.miembros-proyecto__tab {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.miembros-proyecto__tab:hover {
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+}
+
+.miembros-proyecto__tab--activa {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
 .miembros-proyecto__tooltip {
   display: inline-flex;
 }
@@ -536,6 +924,26 @@ export default {
   color: var(--color-text-muted);
   font-size: 0.8rem;
   line-height: 1.35;
+}
+
+.miembro-fila__requerimiento {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.2rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.miembro-fila__requerimiento .material-symbols-outlined {
+  font-size: 0.95rem;
+}
+
+.miembro-fila__requerimiento-id {
+  color: var(--color-text-soft, var(--color-text-muted));
+  font-size: 0.7rem;
+  font-weight: 600;
 }
 
 .miembro-fila__chip {

@@ -663,6 +663,26 @@ export default {
   font-weight: 600 !important;
 }
 
+@media (max-width: 640px) {
+  .planificacion-proyecto__panel {
+    padding: 1rem;
+  }
+
+  .planificacion-proyecto__pestanas {
+    align-self: stretch;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .planificacion-proyecto__pestanas::-webkit-scrollbar {
+    display: none;
+  }
+
+  .planificacion-proyecto__pestana {
+    flex: 0 0 auto;
+  }
+}
+
 .btn-agregar-actividad__icono {
   color: inherit;
   font-size: 1.4rem;

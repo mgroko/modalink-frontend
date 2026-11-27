@@ -7,59 +7,97 @@
       </span>
     </header>
 
-    <BaseAlert v-if="error" :message="error" type="error" />
+    <div class="personal-requerido__layout">
+      <div class="personal-requerido__principal">
+        <BaseAlert v-if="error" :message="error" type="error" />
 
-    <div v-if="error && puedeReintentar" class="personal-requerido__reintento">
-      <VaButton preset="primary" icon="mso-refresh" @click="cargarActividades">
-        Reintentar
-      </VaButton>
-    </div>
-
-    <div v-if="items.length" class="personal-requerido__lista">
-      <RequerimientoCard
-        v-for="item in items"
-        :key="item.clave"
-        :requerimiento="item.requerimiento"
-        :habilidades="habilidades"
-        :catalogo-caracteristicas="
-          catalogos[item.requerimiento.idProfesion] || null
-        "
-        :contexto-actividad="item.actividad?.nombre || ''"
-        :origen-actividad="item.actividad?.origenInicio || null"
-        :mostrar-ver-actividad="puedeVerActividad(item)"
-        :mostrar-accion="puedePostularItem(item)"
-        :sin-cupo="estaSinCupo(item)"
-        :motivo="motivoItem(item)"
-        @ver-actividad="$emit('ver-actividad', item)"
-      >
-        <template #accion>
-          <VaButton
-            preset="primary"
-            size="small"
-            :disabled="estaDeshabilitado(item)"
-            :loading="estaEnviando(item)"
-            :aria-busy="estaEnviando(item) ? 'true' : 'false'"
-            @click="postular(item)"
-          >
-            {{ estaPostulado(item) ? "Postulación enviada" : "Postularme" }}
+        <div
+          v-if="error && puedeReintentar"
+          class="personal-requerido__reintento"
+        >
+          <VaButton preset="primary" icon="mso-refresh" @click="cargarActividades">
+            Reintentar
           </VaButton>
-        </template>
-      </RequerimientoCard>
-    </div>
+        </div>
 
-    <div v-if="cargando" class="personal-requerido__cargando">
-      <span class="material-symbols-outlined" aria-hidden="true">
-        hourglass_empty
-      </span>
-      Cargando actividades...
-    </div>
+        <div v-if="items.length" class="personal-requerido__lista">
+          <RequerimientoCard
+            v-for="item in items"
+            :key="item.clave"
+            :requerimiento="item.requerimiento"
+            :habilidades="habilidades"
+            :catalogo-caracteristicas="
+              catalogos[item.requerimiento.idProfesion] || null
+            "
+            :contexto-actividad="item.actividad?.nombre || ''"
+            :origen-actividad="item.actividad?.origenInicio || null"
+            :subtitulo="item.actividad ? '' : 'Requisito del proyecto'"
+            :mostrar-ver-actividad="puedeVerActividad(item)"
+            :mostrar-accion="puedePostularItem(item)"
+            :sin-cupo="estaSinCupo(item)"
+            :motivo="motivoItem(item)"
+            @ver-actividad="$emit('ver-actividad', item)"
+          >
+            <template #accion>
+              <VaButton
+                color="primary"
+                class="personal-requerido__postular"
+                :disabled="estaDeshabilitado(item)"
+                :loading="estaEnviando(item)"
+                :aria-busy="estaEnviando(item) ? 'true' : 'false'"
+                @click="postular(item)"
+              >
+                {{ estaPostulado(item) ? "Postulación enviada" : "Postularme" }}
+              </VaButton>
+            </template>
+          </RequerimientoCard>
+        </div>
 
-    <p
-      v-else-if="!items.length && !error"
-      class="personal-requerido__vacio"
-    >
-      {{ textos.VACIO_PERSONAL_REQUERIDO }}
-    </p>
+        <div v-if="cargando" class="personal-requerido__cargando">
+          <span class="material-symbols-outlined" aria-hidden="true">
+            hourglass_empty
+          </span>
+          Cargando actividades...
+        </div>
+
+        <p
+          v-else-if="!items.length && !error"
+          class="personal-requerido__vacio"
+        >
+          {{ textos.VACIO_PERSONAL_REQUERIDO }}
+        </p>
+      </div>
+
+      <aside v-if="mostrarResumen" class="personal-requerido__resumen">
+        <h3 class="personal-requerido__resumen-titulo">Resumen</h3>
+
+        <div class="personal-requerido__stats">
+          <div class="personal-requerido__stat">
+            <strong class="personal-requerido__stat-valor">{{ puestosTotales }}</strong>
+            <span class="personal-requerido__stat-label">Puestos totales</span>
+          </div>
+          <div class="personal-requerido__stat">
+            <strong class="personal-requerido__stat-valor">{{ cubiertosTotales }}</strong>
+            <span class="personal-requerido__stat-label">Cubiertos</span>
+          </div>
+        </div>
+
+        <dl class="personal-requerido__detalle">
+          <div class="personal-requerido__detalle-fila">
+            <dt>Entrega</dt>
+            <dd>{{ fechaEntrega }}</dd>
+          </div>
+          <div class="personal-requerido__detalle-fila">
+            <dt>Ubicación</dt>
+            <dd>{{ ubicacionProyecto }}</dd>
+          </div>
+          <div class="personal-requerido__detalle-fila">
+            <dt>Requerimientos</dt>
+            <dd>{{ items.length }}</dd>
+          </div>
+        </dl>
+      </aside>
+    </div>
   </section>
 </template>
 
@@ -70,6 +108,7 @@ import { refrescarSesion } from "../../services/authState";
 import BaseAlert from "../AlertaBase.vue";
 import RequerimientoCard from "./RequerimientoCard.vue";
 import { mensajeErrorApi } from "../../utils/apiError";
+import { formatearFechaCorta } from "../../utils/fechas.js";
 import {
   ESTADOS_ACTIVIDAD,
   normalizarEstadoActividad,
@@ -77,7 +116,9 @@ import {
 import {
   TEXTOS_POSTULACIONES,
   TIPOS_POSTULACION,
+  cantidadDeCupo,
   clavePostulacion,
+  cubiertosDeCupo,
   esCupoCompleto,
   puedePostularActividad,
   puedePostularGeneral,
@@ -192,6 +233,33 @@ export default {
     /** Catálogos del padre + los que falten para profesiones de actividad. */
     catalogos() {
       return { ...this.catalogosCaracteristicas, ...this.catalogosLocales };
+    },
+    /** Suma de los puestos pedidos por todos los requerimientos listados. */
+    puestosTotales() {
+      return this.items.reduce(
+        (total, item) => total + (cantidadDeCupo(item.requerimiento) || 0),
+        0
+      );
+    },
+    /** Suma de los puestos ya cubiertos según el sistema. */
+    cubiertosTotales() {
+      return this.items.reduce(
+        (total, item) => total + (cubiertosDeCupo(item.requerimiento) || 0),
+        0
+      );
+    },
+    fechaEntrega() {
+      return formatearFechaCorta(this.proyecto?.fechaEntregaEstipulada);
+    },
+    ubicacionProyecto() {
+      const ciudad = this.proyecto?.ubicacion?.ciudad;
+      const nombreCiudad = ciudad?.nombre;
+      const provincia = ciudad?.provincia?.nombre;
+      if (nombreCiudad && provincia) return `${nombreCiudad}, ${provincia}`;
+      return nombreCiudad || provincia || "—";
+    },
+    mostrarResumen() {
+      return !this.cargando && !this.error;
     },
   },
   watch: {
@@ -400,19 +468,116 @@ export default {
 .personal-requerido__titulo {
   margin: 0;
   color: var(--color-text);
-  font-size: 1.05rem;
+  font-size: 1.35rem;
   font-weight: 700;
 }
 
 .personal-requerido__contador {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: 0.85rem;
+}
+
+.personal-requerido__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.personal-requerido__principal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .personal-requerido__lista {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
+}
+
+.personal-requerido__resumen {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+}
+
+.personal-requerido__resumen-titulo {
+  margin: 0 0 0.9rem;
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.personal-requerido__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.personal-requerido__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+}
+
+.personal-requerido__stat-valor {
+  color: var(--color-text);
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.personal-requerido__stat-label {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.personal-requerido__detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 1rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.personal-requerido__detalle-fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.personal-requerido__detalle-fila dt {
+  color: var(--color-text-muted);
+}
+
+.personal-requerido__detalle-fila dd {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 600;
+  text-align: right;
+}
+
+.personal-requerido__postular {
+  min-width: 150px;
+  --va-button-content-py: 0.75rem;
+  --va-button-content-px: 1.25rem;
+  --va-button-font-size: 0.9rem;
+  --va-button-line-height: 1.25rem;
+  --va-button-border-radius: 8px;
+  --va-button-font-weight: 700;
 }
 
 .personal-requerido__reintento {
@@ -451,6 +616,26 @@ export default {
 @keyframes girar {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 960px) {
+  .personal-requerido__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .personal-requerido__resumen {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .personal-requerido__titulo {
+    font-size: 1.2rem;
+  }
+
+  .personal-requerido__postular {
+    width: 100%;
   }
 }
 </style>

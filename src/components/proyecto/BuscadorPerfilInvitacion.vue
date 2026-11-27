@@ -16,7 +16,7 @@
     <p v-if="idProfesion != null" class="buscador-perfil-invitacion__filtro">
       <span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>
       Profesión requerida:
-      {{ nombreProfesion || "la actividad" }}
+      {{ nombreProfesion || "la requerida" }}
     </p>
 
     <BaseAlert v-if="error" :message="error" type="error" />

@@ -15,10 +15,22 @@
           <p>{{ contrato.proyecto?.nombre || 'Sin proyecto' }} · versión {{ contrato.versionActual ?? '—' }}</p>
         </div>
         <div class="admin-contrato-detalle__header-actions">
+          <button
+            type="button"
+            class="admin-contrato-detalle__export"
+            :disabled="exportandoPdf"
+            @click="exportarPdf"
+          >
+            {{ exportandoPdf ? "Generando PDF..." : "Exportar PDF" }}
+          </button>
           <span class="admin-contrato-detalle__readonly">Solo lectura</span>
           <span class="admin-contrato-detalle__badge">{{ estadoAmigable(contrato.estado) }}</span>
         </div>
       </header>
+
+      <p v-if="errorExportacion" class="admin-contrato-detalle__error admin-contrato-detalle__error--inline">
+        {{ errorExportacion }}
+      </p>
 
       <section class="admin-contrato-detalle__card">
         <h2>Datos generales</h2>
@@ -80,19 +92,19 @@
 
       <section class="admin-contrato-detalle__card">
         <h2>Partes y firmas <span>{{ contrato.partes?.length || 0 }}</span></h2>
-        <div v-if="contrato.partes?.length" class="admin-contrato-detalle__table-wrapper">
-          <table class="admin-contrato-detalle__table">
+        <div v-if="contrato.partes?.length" class="admin-contrato-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-contrato-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Parte</th><th>Perfil</th><th>DNI</th><th>Rol</th><th>Estado</th><th>Fecha de firma</th></tr>
             </thead>
             <tbody>
               <tr v-for="parte in contrato.partes" :key="parte.idMiembro">
-                <td>{{ parte.nombreCompleto || parte.nombreArtistico || '—' }}</td>
-                <td>{{ parte.idPerfil ?? '—' }}</td>
-                <td>{{ parte.dni || '—' }}</td>
-                <td>{{ parte.rolParte || '—' }}</td>
-                <td>{{ parte.estadoFirma || '—' }}</td>
-                <td>{{ parte.fechaFirma ? formatearFecha(parte.fechaFirma) : '—' }}</td>
+                <td data-label="Parte">{{ parte.nombreCompleto || parte.nombreArtistico || '—' }}</td>
+                <td data-label="Perfil">{{ parte.idPerfil ?? '—' }}</td>
+                <td data-label="DNI">{{ parte.dni || '—' }}</td>
+                <td data-label="Rol">{{ parte.rolParte || '—' }}</td>
+                <td data-label="Estado">{{ parte.estadoFirma || '—' }}</td>
+                <td data-label="Fecha de firma">{{ parte.fechaFirma ? formatearFecha(parte.fechaFirma) : '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -108,19 +120,19 @@
 
       <section class="admin-contrato-detalle__card">
         <h2>Eventos <span>{{ eventos.length }}</span></h2>
-        <div v-if="eventos.length" class="admin-contrato-detalle__table-wrapper">
-          <table class="admin-contrato-detalle__table">
+        <div v-if="eventos.length" class="admin-contrato-detalle__table-wrapper admin-tabla-responsive-wrapper">
+          <table class="admin-contrato-detalle__table admin-tabla-responsive">
             <thead>
               <tr><th>Evento</th><th>Fecha</th><th>Parte</th><th>Operador</th><th>Versión</th><th>Motivo</th></tr>
             </thead>
             <tbody>
               <tr v-for="evento in eventos" :key="evento.idEvento">
-                <td>{{ evento.tipoEvento || '—' }}</td>
-                <td>{{ evento.fechaHora ? formatearFecha(evento.fechaHora) : '—' }}</td>
-                <td>{{ evento.nombreParte || '—' }}</td>
-                <td>{{ evento.nombreOperador || '—' }}</td>
-                <td>{{ evento.version ?? '—' }}</td>
-                <td>{{ evento.motivo || '—' }}</td>
+                <td data-label="Evento">{{ evento.tipoEvento || '—' }}</td>
+                <td data-label="Fecha">{{ evento.fechaHora ? formatearFecha(evento.fechaHora) : '—' }}</td>
+                <td data-label="Parte">{{ evento.nombreParte || '—' }}</td>
+                <td data-label="Operador">{{ evento.nombreOperador || '—' }}</td>
+                <td data-label="Versión">{{ evento.version ?? '—' }}</td>
+                <td data-label="Motivo">{{ evento.motivo || '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -134,6 +146,11 @@
 <script>
 import adminService from "../../services/adminService";
 import { formatearFecha } from "../../utils/fechas";
+import {
+  descargarBlob,
+  mensajeErrorDescarga,
+  nombreDesdeContentDisposition,
+} from "../../utils/descargas";
 
 export default {
   name: "ContratoAdminDetalleView",
@@ -143,6 +160,8 @@ export default {
       eventos: [],
       cargando: false,
       errorMessage: "",
+      exportandoPdf: false,
+      errorExportacion: "",
     };
   },
   async mounted() {
@@ -153,6 +172,7 @@ export default {
     async cargarContrato() {
       this.cargando = true;
       this.errorMessage = "";
+      this.errorExportacion = "";
       try {
         const id = this.$route.params.id;
         const [contratoResponse, eventosResponse] = await Promise.all([
@@ -167,6 +187,29 @@ export default {
         this.errorMessage = error?.response?.data?.message || "No se pudo cargar el contrato.";
       } finally {
         this.cargando = false;
+      }
+    },
+    async exportarPdf() {
+      const idContrato = this.contrato?.idContrato;
+      if (!idContrato || this.exportandoPdf) return;
+
+      this.exportandoPdf = true;
+      this.errorExportacion = "";
+      try {
+        const response = await adminService.exportarContratoPdf(idContrato);
+        const nombre =
+          nombreDesdeContentDisposition(
+            response?.headers?.["content-disposition"]
+          ) || `contrato-${idContrato}.pdf`;
+
+        descargarBlob(response?.data, nombre);
+      } catch (error) {
+        this.errorExportacion = await mensajeErrorDescarga(
+          error,
+          "No se pudo exportar el contrato."
+        );
+      } finally {
+        this.exportandoPdf = false;
       }
     },
     estadoAmigable(estado) {
@@ -212,6 +255,29 @@ export default {
   background: var(--color-danger-soft);
   border-color: var(--color-danger-border);
 }
+.admin-contrato-detalle__error--inline {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+.admin-contrato-detalle__export {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-contrato-detalle__export:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+.admin-contrato-detalle__export:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
 .admin-contrato-detalle__header {
   display: flex;
   align-items: center;
@@ -236,6 +302,7 @@ export default {
 }
 .admin-contrato-detalle__header-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
 }

@@ -370,12 +370,19 @@ export default {
         this.cargando = false;
       }
     },
+    destinoVolver() {
+      // Cuando se llega desde el aviso de ubicación del perfil, se vuelve al
+      // perfil para que el aviso desaparezca al recargar los datos.
+      return this.$route?.query?.volver === "perfil"
+        ? { name: "inicioperfil" }
+        : { name: "dashboard-usuario" };
+    },
     programarVolverAlInicio() {
       this.cancelarRedireccion();
       // Se muestra brevemente el mensaje de éxito antes de volver al inicio.
       this.redireccionTimer = setTimeout(() => {
         this.redireccionTimer = null;
-        this.$router.push({ name: "dashboard-usuario" });
+        this.$router.push(this.destinoVolver());
       }, 1200);
     },
     cancelarRedireccion() {
@@ -386,7 +393,7 @@ export default {
     },
     volver() {
       this.cancelarRedireccion();
-      this.$router.push({ name: "dashboard-usuario" });
+      this.$router.push(this.destinoVolver());
     },
   },
 };
@@ -506,6 +513,21 @@ export default {
  
 :deep(.va-input-wrapper__field) {
   min-height: 40px;
+}
+
+@media (max-width: 480px) {
+  .modificar-datos__acciones {
+    flex-direction: column-reverse;
+  }
+
+  .modificar-datos__acciones > * {
+    width: 100%;
+  }
+
+  .modificar-datos__bloque-titulo-fila {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
 }
 </style>
  

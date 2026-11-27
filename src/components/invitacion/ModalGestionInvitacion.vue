@@ -49,6 +49,12 @@
         </div>
       </dl>
 
+      <AvisoTerminosParticipantes
+        v-if="esAceptar"
+        :nombre-proyecto="invitacion.nombreProyecto"
+        contexto="invitacion"
+      />
+
       <p
         v-if="esAceptar && esActividad"
         class="gestion-invitacion__aviso"
@@ -109,6 +115,7 @@
 
 <script>
 import BaseAlert from "../AlertaBase.vue";
+import AvisoTerminosParticipantes from "../proyecto/AvisoTerminosParticipantes.vue";
 import { formatearFechaCorta } from "../../utils/fechas.js";
 import {
   ACCIONES_GESTION_INVITACION,
@@ -118,7 +125,7 @@ import { TIPOS_INVITACION } from "../../utils/invitacionConstants.js";
 
 export default {
   name: "ModalGestionInvitacion",
-  components: { BaseAlert },
+  components: { BaseAlert, AvisoTerminosParticipantes },
   props: {
     modelValue: {
       type: Boolean,
@@ -153,6 +160,11 @@ export default {
     esActividad() {
       return this.invitacion?.tipo === TIPOS_INVITACION.ACTIVIDAD;
     },
+    esRequerimientoGeneral() {
+      return (
+        this.invitacion?.tipo === TIPOS_INVITACION.REQUERIMIENTO_GENERAL
+      );
+    },
     titulo() {
       return this.esAceptar ? "Aceptar invitación" : "Rechazar invitación";
     },
@@ -161,9 +173,13 @@ export default {
     },
     textoIntro() {
       if (this.esAceptar) {
-        return this.esActividad
-          ? "Vas a aceptar la invitación y, si hay disponibilidad, quedarás asignado a la actividad."
-          : "Vas a aceptar la invitación y pasarás a ser miembro del proyecto.";
+        if (this.esActividad) {
+          return "Vas a aceptar la invitación y, si hay disponibilidad, quedarás asignado a la actividad.";
+        }
+        if (this.esRequerimientoGeneral) {
+          return "Vas a aceptar la invitación y quedarás vinculado al requerimiento general del proyecto.";
+        }
+        return "Vas a aceptar la invitación y pasarás a ser miembro del proyecto.";
       }
       return "Vas a rechazar esta invitación.";
     },

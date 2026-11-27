@@ -364,7 +364,7 @@ export function etiquetaOrigenPostulacion(tipo) {
  * @param {object|null|undefined} elemento
  * @returns {number|null}
  */
-function cantidadDeCupo(elemento) {
+export function cantidadDeCupo(elemento) {
   const valor = elemento?.cantidadRequerida ?? elemento?.cantidad;
   const cantidad = Number(valor);
   return Number.isFinite(cantidad) && cantidad > 0 ? cantidad : null;
@@ -374,7 +374,7 @@ function cantidadDeCupo(elemento) {
  * @param {object|null|undefined} elemento
  * @returns {number|null}
  */
-function cubiertosDeCupo(elemento) {
+export function cubiertosDeCupo(elemento) {
   if (elemento?.cubiertos == null) return null;
   const cubiertos = Number(elemento.cubiertos);
   return Number.isFinite(cubiertos) ? cubiertos : null;

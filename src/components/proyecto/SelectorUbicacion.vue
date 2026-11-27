@@ -170,4 +170,10 @@ export default {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
+
+@media (max-width: 560px) {
+  .selector-ubicacion--horizontal {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

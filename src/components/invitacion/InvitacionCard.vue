@@ -55,6 +55,15 @@
           Requerimiento #{{ invitacion.idRequerimientoActividad }}
         </span>
 
+        <span
+          v-if="
+            esRequerimientoGeneral &&
+            invitacion.idRequerimientoGral != null
+          "
+        >
+          Requerimiento general #{{ invitacion.idRequerimientoGral }}
+        </span>
+
         <span class="invitacion-card__fecha">
           <span class="material-symbols-outlined" aria-hidden="true">
             calendar_today
@@ -192,6 +201,11 @@ export default {
     esActividad() {
       return this.invitacion.tipo === TIPOS_INVITACION.ACTIVIDAD;
     },
+    esRequerimientoGeneral() {
+      return (
+        this.invitacion.tipo === TIPOS_INVITACION.REQUERIMIENTO_GENERAL
+      );
+    },
     esPendienteRecibida() {
       return (
         !this.gestionBloqueada &&
@@ -253,7 +267,9 @@ export default {
       return ETIQUETAS_DIRECCION[this.invitacion.direccion] || "";
     },
     tipoClase() {
-      return this.esActividad ? "actividad" : "general";
+      if (this.esActividad) return "actividad";
+      if (this.esRequerimientoGeneral) return "requerimiento";
+      return "general";
     },
   },
   watch: {
@@ -354,6 +370,12 @@ export default {
   border-color: var(--color-info-border);
   background: var(--color-info-soft);
   color: var(--color-info-text);
+}
+
+.invitacion-card__chip--requerimiento {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-soft, var(--color-surface-muted));
+  color: var(--color-warning-text, var(--color-text-muted));
 }
 
 .invitacion-card__chip--actividad {

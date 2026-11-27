@@ -312,6 +312,7 @@
         <template v-else-if="!errorLista">
           <div class="colab-historicas__tabla-wrapper">
             <VaDataTable
+              v-bind="propsTablaResponsive"
               :items="procesamientos"
               :columns="columnas"
               striped
@@ -561,6 +562,7 @@ import publicacionService from "../../services/publicacionService.js";
 import { tienePermiso } from "../../services/authState";
 import BaseAlert from "../../components/AlertaBase.vue";
 import PaginacionResultados from "../../components/busqueda/PaginacionResultados.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 import { formatearFecha } from "../../utils/fechas.js";
 import { validarRangoFechas } from "../../utils/parametrosPostulaciones.js";
 import {
@@ -611,6 +613,7 @@ function formularioInicial() {
 
 export default {
   name: "ColaboracionesAutomaticasHistoricasView",
+  mixins: [tablaResponsiveMixin],
   components: {
     BaseAlert,
     PaginacionResultados,

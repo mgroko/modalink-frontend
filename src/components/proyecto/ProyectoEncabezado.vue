@@ -20,7 +20,26 @@
           {{ proyecto.descripcion }}
         </p>
 
-        <p class="proyecto-encabezado__subtitulo">{{ subtituloMostrar }}</p>
+        <p v-if="subtitulo" class="proyecto-encabezado__subtitulo">
+          {{ subtitulo }}
+        </p>
+
+        <div v-else-if="chips.length" class="proyecto-encabezado__chips">
+          <span
+            v-for="chip in chips"
+            :key="chip.texto"
+            class="proyecto-encabezado__chip"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">
+              {{ chip.icono }}
+            </span>
+            {{ chip.texto }}
+          </span>
+        </div>
+
+        <p v-if="notaEstado" class="proyecto-encabezado__nota">
+          {{ notaEstado }}
+        </p>
       </div>
 
       <div v-if="$slots.acciones" class="proyecto-encabezado__acciones">
@@ -95,6 +114,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Pestaña pública de Miembros y TyC aceptados. Sólo no miembros. */
+    mostrarIntegrantesPublicos: {
+      type: Boolean,
+      default: false,
+    },
     /** Pestaña Chat grupal (UC-41). Sólo miembros activos. */
     mostrarChat: {
       type: Boolean,
@@ -157,6 +181,9 @@ export default {
       if (this.mostrarIntegrantes) {
         tabs.push({ id: "integrantes", label: "Miembros" });
       }
+      if (this.mostrarIntegrantesPublicos) {
+        tabs.push({ id: "miembros-publicos", label: "Miembros" });
+      }
       if (this.mostrarChat) {
         tabs.push({ id: "chat", label: "Chat grupal" });
       }
@@ -183,49 +210,61 @@ export default {
       }
       return tabs;
     },
-    subtituloMostrar() {
-      if (this.subtitulo) return this.subtitulo;
+    /**
+     * Chips de contexto del proyecto: visibilidad/rol, privacidad, ubicación y
+     * entrega. En la pestaña Información general los dos últimos se omiten
+     * porque el panel ya los muestra.
+     */
+    chips() {
+      const chips = [];
+      const privacidad =
+        ETIQUETAS_PRIVACIDAD[this.proyecto?.privacidad] ||
+        this.proyecto?.privacidad ||
+        "";
 
-      const partes = [];
       if (this.proyecto?.esMiembro) {
-        partes.push(`Tu rol: ${etiquetaRolProyecto(this.proyecto.rolUsuario)} de proyecto`);
-
-        if (
-          normalizarEstadoProyecto(this.proyecto.estado) ===
-          ESTADOS_PROYECTO.BORRADOR
-        ) {
-          partes.push(
-            this.proyecto.rolUsuario === ROLES_PROYECTO.DIRECTOR
-              ? "Solo vos podés ver el borrador hasta publicarlo"
-              : "Este proyecto está en borrador: aún no es visible para otros perfiles"
-          );
-        }
+        chips.push({
+          icono: "badge",
+          texto: `Tu rol: ${etiquetaRolProyecto(this.proyecto.rolUsuario)} de proyecto`,
+        });
       } else {
-        partes.push("Vista pública del proyecto");
+        chips.push({
+          icono: "public",
+          texto: privacidad ? `Vista pública · ${privacidad}` : "Vista pública",
+        });
       }
 
-      if (this.mostrarDetalles) {
-        if (this.proyecto?.privacidad) {
-          partes.push(
-            ETIQUETAS_PRIVACIDAD[this.proyecto.privacidad] || this.proyecto.privacidad
-          );
-        }
+      if (!this.mostrarDetalles) return chips;
 
-        const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
-        const provincia = this.proyecto?.ubicacion?.ciudad?.provincia?.nombre;
-        if (ciudad && provincia) partes.push(`${ciudad}, ${provincia}`);
-        else if (ciudad || provincia) partes.push(ciudad || provincia);
-
-        if (this.proyecto?.fechaEntregaEstipulada) {
-          partes.push(
-            `Entrega: ${formatearFechaCorta(this.proyecto.fechaEntregaEstipulada)}`
-          );
-        }
-
-        return partes.join(" · ");
+      if (this.proyecto?.esMiembro && privacidad) {
+        chips.push({ icono: "visibility", texto: privacidad });
       }
 
-      return partes.length ? `${partes.join(". ")}.` : "";
+      const ciudad = this.proyecto?.ubicacion?.ciudad?.nombre;
+      const provincia = this.proyecto?.ubicacion?.ciudad?.provincia?.nombre;
+      if (ciudad && provincia) chips.push({ icono: "location_on", texto: `${ciudad}, ${provincia}` });
+      else if (ciudad || provincia) chips.push({ icono: "location_on", texto: ciudad || provincia });
+
+      if (this.proyecto?.fechaEntregaEstipulada) {
+        chips.push({
+          icono: "calendar_month",
+          texto: `Entrega: ${formatearFechaCorta(this.proyecto.fechaEntregaEstipulada)}`,
+        });
+      }
+
+      return chips;
+    },
+    /** Aclaración extra sólo para borradores vistos por sus miembros. */
+    notaEstado() {
+      if (
+        !this.proyecto?.esMiembro ||
+        normalizarEstadoProyecto(this.proyecto.estado) !== ESTADOS_PROYECTO.BORRADOR
+      ) {
+        return "";
+      }
+      return this.proyecto.rolUsuario === ROLES_PROYECTO.DIRECTOR
+        ? "Solo vos podés ver el borrador hasta publicarlo"
+        : "Este proyecto está en borrador: aún no es visible para otros perfiles";
     },
   },
 };
@@ -261,8 +300,9 @@ export default {
 
 .proyecto-encabezado__nombre {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--color-text);
 }
 
@@ -288,6 +328,40 @@ export default {
   margin: 0.7rem 0 0;
   font-size: 0.82rem;
   color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.proyecto-encabezado__chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.proyecto-encabezado__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.proyecto-encabezado__chip .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+.proyecto-encabezado__nota {
+  margin: 0.6rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
   line-height: 1.5;
 }
 
@@ -359,5 +433,26 @@ export default {
 .proyecto-encabezado__tab:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .proyecto-encabezado {
+    padding: 1rem 1rem 0;
+  }
+
+  .proyecto-encabezado__cuerpo {
+    min-width: 0;
+  }
+
+  .proyecto-encabezado__nombre {
+    font-size: 1.25rem;
+  }
+
+  .proyecto-encabezado__tabs {
+    gap: 1rem;
+    margin-right: -1rem;
+    margin-left: -1rem;
+    padding: 0 1rem;
+  }
 }
 </style>

@@ -87,6 +87,8 @@ import { serializarParams } from "../utils/queryParams.js";
  *           positivo = después; null sin preferencia
  * @property {AdvertenciaSobrecompromiso[]} [advertencias] no bloqueantes
  * @property {number|null} [idTycAceptado]
+ * @property {{cantidad:number,cubiertos:number,faltantes:number,satisfecho:boolean}|null} [cupo]
+ *           cupo del requerimiento después de la aceptación
  */
 
 /**
@@ -99,6 +101,8 @@ import { serializarParams } from "../utils/queryParams.js";
 /**
  * @typedef {Object} AceptarPostulacionRequest
  * @property {AceptacionTerminosRequest} [aceptacionTerminos]
+ * @property {boolean} [requerimientoExacto] true para casting: si el requerimiento
+ *           ya está cubierto, el backend responde 409 en lugar de reasignar.
  */
 
 /**
@@ -259,9 +263,7 @@ const postulacionService = {
       // Nunca `null`: axios 1.x lo envía como
       // application/x-www-form-urlencoded, content-type que Spring no puede
       // mapear al @RequestBody(required = false) del endpoint (415).
-      request?.aceptacionTerminos
-        ? { aceptacionTerminos: request.aceptacionTerminos }
-        : {},
+      payloadAceptacion(request),
       { signal }
     );
   },
@@ -314,9 +316,7 @@ const postulacionService = {
       // Nunca `null`: axios 1.x lo envía como
       // application/x-www-form-urlencoded, content-type que Spring no puede
       // mapear al @RequestBody(required = false) del endpoint (415).
-      request?.aceptacionTerminos
-        ? { aceptacionTerminos: request.aceptacionTerminos }
-        : {},
+      payloadAceptacion(request),
       { signal }
     );
   },
@@ -340,5 +340,16 @@ const postulacionService = {
     );
   },
 };
+
+function payloadAceptacion(request = {}) {
+  const payload = {};
+  if (request?.aceptacionTerminos) {
+    payload.aceptacionTerminos = request.aceptacionTerminos;
+  }
+  if (request?.requerimientoExacto != null) {
+    payload.requerimientoExacto = request.requerimientoExacto;
+  }
+  return payload;
+}
 
 export default postulacionService;

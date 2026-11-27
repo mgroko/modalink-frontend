@@ -76,6 +76,7 @@
       <VaDataTable
         v-else
         class="gestion-unidades__tabla"
+        v-bind="propsTablaResponsive"
         :items="unidadesFiltradas"
         :columns="columnas"
         :per-page="porPaginaUnidades"
@@ -239,12 +240,14 @@ import { tienePermiso } from "../../services/authState";
 import { mensajeErrorApi } from "../../utils/apiError";
 import BaseAlert from "../../components/AlertaBase.vue";
 import AdminTablaPanel from "../../components/admin/AdminTablaPanel.vue";
+import { tablaResponsiveMixin } from "../../mixins/tablaResponsive.js";
 
 const TIPOS_DATO = ["NUMERICO", "TEXTO"];
 const CAMPOS_FORM = ["nombre", "simbolo", "tipoDatoPermitido"];
 
 export default {
   name: "GestionUnidadesMedidaView",
+  mixins: [tablaResponsiveMixin],
   components: {
     BaseAlert,
     AdminTablaPanel,
