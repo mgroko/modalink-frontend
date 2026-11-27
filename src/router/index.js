@@ -74,6 +74,8 @@ import ReportePublicacionDetalleView from "../views/admin/ReportePublicacionDeta
 import AuditoriaAdminView from "../views/admin/AuditoriaAdminView.vue";
 import { esAdmin, tienePermiso, restaurarSesion, idPerfilActivo, state } from "../services/authState";
 import perfilService from "../services/perfilService";
+import { destinoSeguro } from "../utils/redirect";
+import { destinoInicial } from "../utils/navegacion";
 
 const routes = [
   {
@@ -84,13 +86,13 @@ const routes = [
     path: "/login",
     name: "login",
     component: LoginView,
-    meta: { layout: AuthLayout }
+    meta: { layout: AuthLayout, soloInvitado: true }
   },
   {
     path: "/registro",
     name: "registro",
     component: RegistroView,
-    meta: { layout: AuthLayout }
+    meta: { layout: AuthLayout, soloInvitado: true }
   },
   {
     path: "/normas-de-convivencia",
@@ -781,6 +783,24 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
+  // Rutas de invitado (login/registro): si ya hay una sesión vigente no deben
+  // mostrarse. Se restaura la sesión antes de decidir porque en una carga
+  // directa (o al entrar a "/", que redirige a "/login") el estado local
+  // todavía no se hidrató.
+  if (to.meta.soloInvitado) {
+    await restaurarSesion();
+
+    if (state.usuario) {
+      const redirect = destinoSeguro(to.query?.redirect);
+      if (redirect && !router.resolve(redirect).meta?.soloInvitado) {
+        return redirect;
+      }
+      return destinoInicial(state.usuario);
+    }
+
+    return true;
+  }
+
   if (to.meta.requiereAdmin) {
     await restaurarSesion();
     if (!esAdmin()) return { name: "login" };

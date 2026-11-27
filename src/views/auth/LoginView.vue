@@ -111,6 +111,7 @@ import {
 import BaseAlert from "../../components/AlertaBase.vue";
 import { formatearFecha, diasRestantes } from "../../utils/fechas";
 import { destinoSeguro } from "../../utils/redirect";
+import { destinoInicial } from "../../utils/navegacion";
 
 export default {
   name: "LoginView",
@@ -236,13 +237,7 @@ export default {
         this.$router.push(destino);
         return;
       }
-      if (usuario?.rolGlobal === "Administrador") {
-        this.$router.push({ name: "dashboard-admin" });
-      } else if (usuario?.idPerfilActivo != null) {
-        this.$router.push({ name: "home" });
-      } else {
-        this.$router.push({ name: "dashboard-usuario" });
-      }
+      this.$router.push(destinoInicial(usuario));
     },
     async reactivarCuenta() {
       if (this.reactivando) return;
